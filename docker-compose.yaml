@@ -1,0 +1,31 @@
+services:
+  ooba:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    # image: beecave-homelab.com/ooba-insanely-fast-whisper:rocm6.1
+    container_name: insanely-fast-whisper
+    restart: unless-stopped
+
+    devices:
+      - "/dev/kfd:/dev/kfd"
+      - "/dev/dri:/dev/dri"
+    stdin_open: true
+    tty: true
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    group_add:
+      - video
+    ipc: host
+    shm_size: 8G
+
+    volumes:
+      - ./data:/data
+
+    command: ["python", "main.py"]
+
+    ports:
+      - 7860:7860
