@@ -108,4 +108,4 @@ ENV GRADIO_SERVER_NAME="0.0.0.0"
 ENV HSA_OVERRIDE_GFX_VERSION=10.3.0
 
 # Run the application
-ENTRYPOINT ["/bin/bash", "echo 'This is a test for insanely-fast-whisper on rocm 6.1'"]
+ENTRYPOINT ["python", "-c", "import torch; print('GPU is available' if torch.cuda.is_available() else 'GPU is not available')"]

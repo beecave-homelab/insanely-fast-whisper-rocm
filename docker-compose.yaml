@@ -25,7 +25,7 @@ services:
     volumes:
       - ./data:/data
 
-    command: ["python", "main.py"]
+    command: ["python", "-c", "import torch; print('GPU is available' if torch.cuda.is_available() else 'GPU is not available')"]
 
     ports:
       - 7860:7860
