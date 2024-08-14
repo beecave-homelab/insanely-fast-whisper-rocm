@@ -1,4 +1,8 @@
 gradio
+keyboard
+soundfile
+python-dotenv
+# SpeechRecognition
 # numpy
 # transformers
 # accelerate
@@ -6,7 +10,3 @@ gradio
 # setuptools >= 68.2.2
 # rich >= 13.7.0
 # optimum
-keyboard
-soundfile
-# SpeechRecognition
-python-dotenv
