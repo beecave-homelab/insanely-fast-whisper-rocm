@@ -108,4 +108,4 @@ ENV GRADIO_SERVER_NAME="0.0.0.0"
 ENV HSA_OVERRIDE_GFX_VERSION=10.3.0
 
 # Run the application
-ENTRYPOINT ["python", "main.py"]gi
+ENTRYPOINT ["/bin/bash", "echo 'This is a test for insanely-fast-whisper on rocm 6.1'"]
