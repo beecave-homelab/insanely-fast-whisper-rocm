@@ -1,11 +1,11 @@
 services:
-  ooba:
+  insanely-fast:
     build:
       context: .
       dockerfile: Dockerfile
 
     # image: beecave-homelab.com/ooba-insanely-fast-whisper:rocm6.1
-    container_name: insanely-fast-whisper
+    container_name: whisper
     restart: unless-stopped
 
     devices:
