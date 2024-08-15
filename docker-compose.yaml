@@ -1,11 +1,11 @@
 services:
-  insanely-fast:
+  insanely-fast-whisper:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.v2
 
-    # image: beecave-homelab.com/ooba-insanely-fast-whisper:rocm6.1
-    container_name: whisper
+    image: ghrc.io/beecave-homelab/insanely-fast-whisper-rocm:rocm6.1
+    container_name: insanely-fast-whisper-rocm
     restart: unless-stopped
 
     devices:
@@ -25,7 +25,9 @@ services:
     volumes:
       - ./data:/data
 
-    command: ["python", "-c", "import torch; print('GPU is available' if torch.cuda.is_available() else 'GPU is not available')"]
+    # command: ["python", "-c", "import torch; print('GPU is available' if torch.cuda.is_available() else 'GPU is not available')"]
+    # command: ["python", "testing/test_cuda.py"]
+    command: ["/bin/bash", "testing/test_insanely_fast_whisper.sh"]
 
     ports:
       - 7860:7860

@@ -2,6 +2,8 @@ gradio
 keyboard
 soundfile
 python-dotenv
+# insanely-fast-whisper
+# flash-attn
 # SpeechRecognition
 # numpy
 # transformers
