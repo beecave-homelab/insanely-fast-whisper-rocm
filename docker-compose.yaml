@@ -31,3 +31,4 @@ services:
       - "./uploads:/app/uploads"
       - "./transcripts:/app/transcripts"
       - "./models:/app/models"
+      - "./testing:/app/testing"
