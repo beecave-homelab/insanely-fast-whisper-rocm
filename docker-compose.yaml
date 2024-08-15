@@ -2,7 +2,7 @@ services:
   insanely-fast-whisper:
     build:
       context: .
-      dockerfile: Dockerfile.v2
+      dockerfile: Dockerfile
 
     image: ghrc.io/beecave-homelab/insanely-fast-whisper-rocm:rocm6.1
     container_name: insanely-fast-whisper-rocm
@@ -22,12 +22,12 @@ services:
     ipc: host
     shm_size: 8G
 
-    volumes:
-      - ./data:/data
-
-    # command: ["python", "-c", "import torch; print('GPU is available' if torch.cuda.is_available() else 'GPU is not available')"]
-    # command: ["python", "testing/test_cuda.py"]
-    command: ["/bin/bash", "testing/test_insanely_fast_whisper.sh"]
+    command: ["/bin/bash", "testing/mp3_test_insanely_fast_whisper.sh"]
 
     ports:
       - 7860:7860
+    
+    volumes:
+      - "./uploads:/app/uploads"
+      - "./transcripts:/app/transcripts"
+      - "./models:/app/models"
