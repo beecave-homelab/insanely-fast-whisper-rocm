@@ -1,6 +1,6 @@
-################################################
-#### SETUP ROCM-5.7 and CLBlas and rocBLAS #####
-################################################
+##################################################
+#### SETUP ROCM-6.1.2 and CLBlas and rocBLAS #####
+##################################################
 FROM rocm/dev-ubuntu-22.04:6.1.2 AS rocm
 
 # Login as root user.    
@@ -20,9 +20,9 @@ USER rocm-user
 WORKDIR /home/rocm-user
 ENV PATH "${PATH}:/opt/rocm/bin"
 
-##################################
-######### SETUP CLBLAST ##########
-##################################
+########################################
+######### PRE-INSTALL CLBLAST ##########
+########################################
 FROM rocm AS rocm-clblas
 
 # Login as root user.    
@@ -94,9 +94,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pipx install insanely-fast-whisper
 
 # Install torch and onnxruntime
-RUN yes | pip uninstall onnxruntime-rocm numpy
-# RUN pip install --no-cache-dir https://repo.radeon.com/rocm/manylinux/rocm-rel-6.1.3/onnxruntime_rocm-1.17.0-cp310-cp310-linux_x86_64.whl numpy==1.26.4
-# RUN pip install --no-cache-dir --force-reinstall --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/rocm6.1/
+# RUN yes | pip uninstall onnxruntime-rocm numpy
 
 ##################################
 ########## INSTALL IFW ###########
@@ -106,13 +104,8 @@ FROM insanely-fast-whisper-pre-install AS insanely-fast-whisper
 # # Login as rocm-user.    
 USER rocm-user
 
-# Set the workdir of the application    
+# Set the workdir of the application
 WORKDIR /app
-
-# Inject packages into insanely-fast-whisper pipx environment
-# RUN pipx inject insanely-fast-whisper https://repo.radeon.com/rocm/manylinux/rocm-rel-6.1.3/onnxruntime_rocm-1.17.0-cp310-cp310-linux_x86_64.whl \
-    # && pipx inject insanely-fast-whisper numpy==1.26.4 \
-    # && pipx inject insanely-fast-whisper --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/rocm6.1/
 
 # Inject packages into insanely-fast-whisper pipx environment  
 RUN pipx runpip insanely-fast-whisper install --no-cache-dir https://repo.radeon.com/rocm/manylinux/rocm-rel-6.1.3/onnxruntime_rocm-1.17.0-cp310-cp310-linux_x86_64.whl numpy==1.26.4 \
@@ -130,6 +123,5 @@ ENV GRADIO_SERVER_NAME="0.0.0.0"
 ENV HSA_OVERRIDE_GFX_VERSION=10.3.0
 
 # Run the application
-# ENTRYPOINT ["python", "-c", "import torch; print('GPU is available' if torch.cuda.is_available() else 'GPU is not available')"]
 # ENTRYPOINT ["python", "testing/test_cuda.py"]
 CMD ["/bin/bash", "testing/mp3_test_insanely_fast_whisper.sh"]
