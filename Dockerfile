@@ -124,4 +124,4 @@ ENV HSA_OVERRIDE_GFX_VERSION=10.3.0
 
 # Run the application
 # ENTRYPOINT ["python", "testing/test_cuda.py"]
-CMD ["/bin/bash", "testing/mp3_test_insanely_fast_whisper.sh"]
+CMD ["/bin/bash"]
