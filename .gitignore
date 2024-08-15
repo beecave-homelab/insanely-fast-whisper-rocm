@@ -25,4 +25,8 @@ venv/
 env/
 .venv/
 
-uploads/
+uploads/*
+models/*
+testing/*
+transcripts/*
+testing/mp3_test_insanely_fast_whisper.sh
