@@ -22,7 +22,8 @@ env/
 .venv/
 
 uploads/
-models/hub/
 testing/
-transcripts/
 testing/mp3_test_insanely_fast_whisper.sh
+testing/test_cuda.py
+testing/test_insanely_fast_whisper.sh
+transcripts/
