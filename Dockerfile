@@ -108,20 +108,22 @@ USER rocm-user
 WORKDIR /app
 
 # Inject packages into insanely-fast-whisper pipx environment  
-RUN pipx runpip insanely-fast-whisper install --no-cache-dir https://repo.radeon.com/rocm/manylinux/rocm-rel-6.1.3/onnxruntime_rocm-1.17.0-cp310-cp310-linux_x86_64.whl numpy==1.26.4 \
-    && pipx runpip insanely-fast-whisper install --no-cache-dir --force-reinstall --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/rocm6.1/
-    # && pipx runpip insanely-fast-whisper install flash-attn --no-build-isolation
+# RUN pipx runpip insanely-fast-whisper install --no-cache-dir https://repo.radeon.com/rocm/manylinux/rocm-rel-6.1.3/onnxruntime_rocm-1.17.0-cp310-cp310-linux_x86_64.whl numpy==1.26.4 \
+    # && pipx runpip insanely-fast-whisper install --no-cache-dir --force-reinstall --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/rocm6.1/
+RUN pipx runpip insanely-fast-whisper install --no-cache-dir -r requirements-onnxruntime-rocm.txt \
+    && pipx runpip insanely-fast-whisper install --no-cache-dir --force-reinstall -r requirements-torch-rocm.txt
 
 # Copy all files to workdir and change permissions.
 COPY --chown=rocm-user:rocm-user . /app
 
 # Port to expose
-EXPOSE 7860
+# EXPOSE 7860
 
 # Set up Gradio host
-ENV GRADIO_SERVER_NAME="0.0.0.0"
+# ENV GRADIO_SERVER_NAME="0.0.0.0"
+
+# Set AMDGPU envs
 ENV HSA_OVERRIDE_GFX_VERSION=10.3.0
 
 # Run the application
-# ENTRYPOINT ["python", "testing/test_cuda.py"]
-CMD ["/bin/bash"]
+ENTRYPOINT ["/bin/bash", "entrypoint.sh"]
