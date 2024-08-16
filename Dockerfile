@@ -128,4 +128,5 @@ COPY --chown=rocm-user:rocm-user . .
 ENV HSA_OVERRIDE_GFX_VERSION=10.3.0
 
 # Run the application
-ENTRYPOINT ["/bin/bash", "-c", "./entrypoint.sh -u uploads -t transcripts -l logs -b 10 -v"]
+# ENTRYPOINT ["/bin/bash", "-c", "./entrypoint.sh -u uploads -t transcripts -l logs -b 10 -v"]
+ENTRYPOINT ["python3", "entrypoint.py"]
