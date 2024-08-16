@@ -1,14 +1,1 @@
-gradio
-keyboard
-soundfile
 python-dotenv
-# insanely-fast-whisper
-# flash-attn
-# SpeechRecognition
-# numpy
-# transformers
-# accelerate
-# pyannote-audio >= 3.1.0
-# setuptools >= 68.2.2
-# rich >= 13.7.0
-# optimum
