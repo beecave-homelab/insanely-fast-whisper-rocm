@@ -2,18 +2,17 @@
 set -euo pipefail
 
 # Script Description: Monitors a specified directory for file changes, processes each new or modified file using the insanely-fast-whisper command, and saves the output to a transcript directory.
-# Author: [Your Name]
+# Author: elvee
 # Version: 0.5.0
 # License: MIT
-# Creation Date: [dd/mm/yyyy]
-# Last Modified: [dd/mm/yyyy]
-# Usage: script.sh [OPTIONS]
+# Creation Date: 16-08-2024
+# Last Modified: 16-08-2024
 
 # Default Values
 DEFAULT_UPLOADS="uploads"             # Directory to watch for file changes
 DEFAULT_TRANSCRIPTS="transcripts"     # Directory to save the transcript files
 DEFAULT_LOGS="logs"                   # Directory to save log files
-DEFAULT_BATCH_SIZE=4                  # Batch size for processing
+DEFAULT_BATCH_SIZE=10                 # Batch size for processing
 DEFAULT_VERBOSE=false                 # Default value for verbose logging
 
 # Function to display help

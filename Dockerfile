@@ -76,17 +76,18 @@ RUN sudo apt-get update -y && sudo apt-get upgrade -y && sudo DEBIAN_FRONTEND=no
 # Set the workdir of the application    
 WORKDIR /app
 
-# Copy files to workdir and change permissions.
-COPY requirements.txt /app
+# Copy requirement files to workdir and change permissions.
+COPY --chown=rocm-user:rocm-user requirements.txt .
 
 # Install dependencies
 RUN pip install -U pip && pip install --no-cache-dir -r requirements.txt
 RUN pipx install insanely-fast-whisper
 
+
 ##################################
 ########## INSTALL IFW ###########
 ##################################
-FROM insanely-fast-whisper-pre-install AS insanely-fast-whisper
+FROM insanely-fast-whisper-pre-install AS insanely-fast-whisper-install
 
 # Login as rocm-user.
 USER rocm-user
@@ -94,12 +95,28 @@ USER rocm-user
 # Set the workdir of the application
 WORKDIR /app
 
+# Copy requirement files to workdir and change permissions.
+COPY --chown=rocm-user:rocm-user requirements-onnxruntime-rocm.txt .
+COPY --chown=rocm-user:rocm-user requirements-torch-rocm.txt .
+
 # Install additional dependencies for insanely-fast-whisper
 RUN pipx runpip insanely-fast-whisper install --no-cache-dir -r requirements-onnxruntime-rocm.txt \
     && pipx runpip insanely-fast-whisper install --no-cache-dir --force-reinstall -r requirements-torch-rocm.txt
 
-# Copy all files to workdir and change permissions.
-COPY --chown=rocm-user:rocm-user . /app
+
+##############################
+########## RUN IFW ###########
+##############################
+FROM insanely-fast-whisper-install AS insanely-fast-whisper
+
+# Login as rocm-user.
+USER rocm-user
+
+# Set the workdir of the application
+WORKDIR /app
+
+
+COPY --chown=rocm-user:rocm-user . .
 
 # Expose port if needed
 # EXPOSE 7860
@@ -111,4 +128,4 @@ COPY --chown=rocm-user:rocm-user . /app
 ENV HSA_OVERRIDE_GFX_VERSION=10.3.0
 
 # Run the application
-ENTRYPOINT ["/bin/bash", "entrypoint.sh"]
+ENTRYPOINT ["/bin/bash", "-c", "./entrypoint.sh -u uploads -t transcripts -l logs -b 10 -v"]

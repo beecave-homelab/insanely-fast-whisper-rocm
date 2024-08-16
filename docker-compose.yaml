@@ -22,7 +22,11 @@ services:
     ipc: host
     shm_size: 8G
 
-    command: ["/bin/bash", "entrypoint.sh"]
+    command: ["/bin/bash", "-c", "./entrypoint.sh -u uploads -t transcripts -l logs -b 10 -v
+"]
+
+    env_file:
+      - .env
 
     # ports:
       # - 7860:7860
