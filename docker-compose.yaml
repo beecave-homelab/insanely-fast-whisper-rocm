@@ -24,11 +24,10 @@ services:
 
     command: ["/bin/bash", "entrypoint.sh"]
 
-    ports:
-      - 7860:7860
+    # ports:
+      # - 7860:7860
     
     volumes:
       - "./uploads:/app/uploads"
       - "./transcripts:/app/transcripts"
-      - "./models:/app/models"
-      - "./testing:/app/testing"
+      - "./logs:/app/logs"
