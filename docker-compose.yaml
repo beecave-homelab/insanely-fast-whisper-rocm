@@ -22,7 +22,7 @@ services:
     ipc: host
     shm_size: 8G
 
-    command: ["/bin/bash", "testing/mp3_test_insanely_fast_whisper.sh"]
+    command: ["/bin/bash", "entrypoint.sh"]
 
     ports:
       - 7860:7860

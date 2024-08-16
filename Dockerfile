@@ -61,7 +61,7 @@ RUN sudo apt-get update -y && sudo DEBIAN_FRONTEND=noninteractive apt-get instal
     python3 python3-dev python3-pip \
     libclblast-dev libopenblas-dev libaio-dev \
     && mkdir -p /etc/OpenCL/vendors && echo "libamdrocopencl.so" | sudo tee /etc/OpenCL/vendors/amd.icd \
-    && sudo ln -s /usr/bin/python3 /usr/bin/python \
+    # && sudo ln -s /usr/bin/python3 /usr/bin/python \
     && sudo apt-get clean \
     && sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
