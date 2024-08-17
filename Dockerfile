@@ -119,14 +119,14 @@ WORKDIR /app
 COPY --chown=rocm-user:rocm-user . .
 
 # Expose port if needed
-# EXPOSE 7860
+EXPOSE 7860
 
 # Set up Gradio host if needed
-# ENV GRADIO_SERVER_NAME="0.0.0.0"
+ENV GRADIO_SERVER_NAME="0.0.0.0"
 
 # Set AMDGPU envs
 ENV HSA_OVERRIDE_GFX_VERSION=10.3.0
 
 # Run the application
 # ENTRYPOINT ["/bin/bash", "-c", "./entrypoint.sh -u uploads -t transcripts -l logs -b 10 -v"]
-ENTRYPOINT ["python3", "entrypoint.py"]
+ENTRYPOINT ["python3", "app.py"]

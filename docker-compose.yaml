@@ -29,8 +29,8 @@ services:
     env_file:
       - .env
 
-    # ports:
-      # - 7860:7860
+    ports:
+      - 7860:7860
     
     volumes:
       - "./uploads:/app/uploads"
