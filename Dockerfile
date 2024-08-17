@@ -115,7 +115,7 @@ USER rocm-user
 # Set the workdir of the application
 WORKDIR /app
 
-
+# Copy the application to the workdir
 COPY --chown=rocm-user:rocm-user . .
 
 # Expose port if needed
