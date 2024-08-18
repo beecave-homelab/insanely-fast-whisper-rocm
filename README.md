@@ -1,4 +1,3 @@
-```markdown
 # Insanely Fast Whisper ROCm
 
 This repository provides an implementation of Whisper, a highly efficient Automatic Speech Recognition (ASR) model, optimized for use with ROCm (Radeon Open Compute). The project leverages GPU acceleration for high-speed audio processing, making it suitable for applications requiring fast and accurate transcription.
@@ -71,4 +70,3 @@ This project is licensed under the MIT license. See [LICENSE](LICENSE) for more 
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-```
