@@ -1,10 +1,11 @@
 # Ignore environment variables
-.env
+
 
 # Ignore data directories
 uploads/
 testing/
 transcripts/
+logs/
 
 # Ignore Python bytecode
 __pycache__/
@@ -22,3 +23,8 @@ Thumbs.db
 venv/
 env/
 .venv/
+
+# Ignore .git files
+.git/
+.gitignore
+

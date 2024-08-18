@@ -22,10 +22,6 @@ services:
     ipc: host
     shm_size: 8G
 
-    # command: ["/bin/bash", "-c", "./entrypoint.sh -u uploads -t transcripts -l logs -b 10 -v"]
-    # command: ["python3", "entrypoint.py"]
-
-
     env_file:
       - .env
 
