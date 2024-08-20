@@ -5,6 +5,9 @@
 uploads/
 testing/
 transcripts/
+logs/
+transcripts-srt/
+transcripts-txt/
 
 # Ignore Python bytecode
 __pycache__/
