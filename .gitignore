@@ -8,7 +8,7 @@
 !requirements.txt
 !requirements-torch-rocm.txt
 !requirements-onnxruntime-rocm.txt
-!.env
+!.env.example
 !sudo-nopasswd
 !LICENSE
 !README.md
