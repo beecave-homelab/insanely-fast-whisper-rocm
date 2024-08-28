@@ -1,10 +1,14 @@
+
+
+
 services:
   insanely-fast-whisper:
     build:
       context: .
       dockerfile: Dockerfile
 
-    image: ghrc.io/beecave-homelab/insanely-fast-whisper-rocm:rocm6.1
+    # image: ghrc.io/beecave-homelab/insanely-fast-whisper-rocm:main
+    image: beecave/insanely-fast-whisper-rocm:main
     container_name: insanely-fast-whisper-rocm
     restart: unless-stopped
 
@@ -26,9 +30,14 @@ services:
       - .env
 
     ports:
-      - 7860:7860
+      - 7861:7860
     
     volumes:
       - "./uploads:/app/uploads"
       - "./transcripts:/app/transcripts"
       - "./logs:/app/logs"
+
+    # Choose one of the commands below
+    # command: ["app.py"]
+    command: ["main.py"]
+    # command: ["convert_output.py"]
