@@ -1,24 +1,19 @@
-# Ignore environment variables
-.env
+# Ignore everything by default
+*
 
-# Ignore data directories
-uploads/
-testing/
-transcripts/
-
-# Ignore Python bytecode
-__pycache__/
-*.pyc
-
-# Ignore logs and temporary files
-*.log
-*.tmp
-
-# Ignore system files
-.DS_Store
-Thumbs.db
-
-# Ignore virtual environments
-venv/
-env/
-.venv/
+# needed to run:
+!app.py
+!main.py
+!convert_output.py
+!requirements.txt
+!requirements-torch-rocm.txt
+!requirements-onnxruntime-rocm.txt
+!.env.example
+!sudo-nopasswd
+!LICENSE
+!README.md
+!Dockerfile
+!docker-compose.yaml
+!.dockerignore
+!testing/
+!.gitingore
