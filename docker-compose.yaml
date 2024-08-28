@@ -27,7 +27,7 @@ services:
       - .env
 
     ports:
-      - 7861:7860
+      - 7862:7860
     
     volumes:
       - "./uploads:/app/uploads"
