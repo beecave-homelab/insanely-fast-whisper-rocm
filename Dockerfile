@@ -103,6 +103,10 @@ COPY --chown=rocm-user:rocm-user requirements-torch-rocm.txt .
 RUN pipx runpip insanely-fast-whisper install --no-cache-dir -r requirements-onnxruntime-rocm.txt \
     && pipx runpip insanely-fast-whisper install --no-cache-dir --force-reinstall -r requirements-torch-rocm.txt
 
+RUN pip install transformers accelerate matplotlib
+RUN git clone --recursive https://github.com/ROCm/flash-attention.git \
+    && cd flash-attention \
+    && MAX_JOBS=$((`nproc` - 1)) pipx runpip insanely-fast-whisper install --no-cache-dir --no-build-isolation -v .
 
 ##############################
 ########## RUN IFW ###########
