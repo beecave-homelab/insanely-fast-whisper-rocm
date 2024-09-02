@@ -14,6 +14,8 @@ DEFAULT_LOGS = os.getenv("LOGS", "/app/logs")
 DEFAULT_BATCH_SIZE = int(os.getenv("BATCH_SIZE", 4))
 DEFAULT_VERBOSE = os.getenv("VERBOSE", "true").lower() in ("true", "1", "yes")
 DEFAULT_MODEL = os.getenv("MODEL", "openai/whisper-large-v3")
+DEFAULT_PROCESSED_TXT_DIR = os.getenv("PROCESSED_TXT_DIR", "transcripts-txt")
+DEFAULT_PROCESSED_SRT_DIR = os.getenv("PROCESSED_SRT_DIR", "transcripts-srt")
 
 def setup_logging(verbose):
     log_level = logging.DEBUG if verbose else logging.INFO
@@ -36,13 +38,15 @@ def main():
     parser.add_argument('-b', '--batch-size', default=DEFAULT_BATCH_SIZE, type=int, help='Batch size for processing')
     parser.add_argument('-v', '--verbose', action='store_true', default=DEFAULT_VERBOSE, help='Enable verbose logging')
     parser.add_argument('-m', '--model', default=DEFAULT_MODEL, help='Model to be used for processing')
+    parser.add_argument('--processed-txt-dir', default=DEFAULT_PROCESSED_TXT_DIR, help='Directory to save processed txt files')
+    parser.add_argument('--processed-srt-dir', default=DEFAULT_PROCESSED_SRT_DIR, help='Directory to save processed srt files')
 
     args = parser.parse_args()
-    
+
     setup_logging(args.verbose)
-    
+
     # Validate directories
-    for directory in [args.uploads, args.transcripts, args.logs]:
+    for directory in [args.uploads, args.transcripts, args.logs, args.processed_txt_dir, args.processed_srt_dir]:
         if not os.path.isdir(directory):
             error_exit(f"Directory not found: {directory}")
 
@@ -52,20 +56,22 @@ def main():
 
         for filename in os.listdir(args.uploads):
             filepath = os.path.join(args.uploads, filename)
-            
+
             if os.path.isfile(filepath):
                 files_found = True
                 transcript_output = os.path.join(args.transcripts, f"{os.path.splitext(filename)[0]}.json")
                 log_file_path = os.path.join(args.logs, f"{os.path.splitext(filename)[0]}.log")
+                txt_output = os.path.join(args.processed_txt_dir, f"{os.path.splitext(filename)[0]}.txt")
+                srt_output = os.path.join(args.processed_srt_dir, f"{os.path.splitext(filename)[0]}.srt")
 
                 # Check if the transcript already exists
                 if os.path.exists(transcript_output):
                     time.sleep(60)
                     continue
-                
+
                 # Construct the command
-                command = f"insanely-fast-whisper --file-name '{filepath}' --model '{args.model}' --transcript-path '{transcript_output}' --batch-size '{args.batch_size}'"
-                
+                command = f"insanely-fast-whisper --file-name '{filepath}' --model '{args.model}' --transcript-path '{transcript_output}' --batch-size '{args.batch_size}' --txt-output '{txt_output}' --srt-output '{srt_output}'"
+
                 # Log verbose information
                 logging.debug(f"Processing file: {filename}")
                 logging.debug(f"Command: {command}")
