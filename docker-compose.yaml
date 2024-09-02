@@ -32,9 +32,12 @@ services:
     volumes:
       - "./uploads:/app/uploads"
       - "./transcripts:/app/transcripts"
+      - "./transcripts-srt:/app/transcripts-srt"
+      - "./transcripts-txt:/app/transcripts-txt"
       - "./logs:/app/logs"
+      - "./src:/app/src"
 
     # Choose one of the commands below
     # command: ["app.py"] # For a simple Gradio webui for uploading files.
-    command: ["main.py"] # For automatically processing any file placed in the ./uploads directory.
-    # command: ["convert_output.py"] # insanely-fast-whisper creates .json files. Convert them to .txt and .srt file with this script.
+    command: ["src/main.py"] # For automatically processing any file placed in the ./uploads directory.
+    # command: ["src/convert_output.py"] # insanely-fast-whisper creates .json files. Convert them to .txt and .srt file with this script.
