@@ -10,3 +10,7 @@
 !requirements-onnxruntime-rocm.txt
 !.env
 !sudo-nopasswd
+
+!/src/
+!/src/main.py
+!/src/convert_output.py
