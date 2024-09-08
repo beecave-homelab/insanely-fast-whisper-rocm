@@ -2,9 +2,10 @@
 *
 
 # needed to run:
-!app.py
-!main.py
-!convert_output.py
+!/src/
+!/src/app.py
+!/src/main.py
+!/src/convert_output.py
 !requirements.txt
 !requirements-torch-rocm.txt
 !requirements-onnxruntime-rocm.txt
@@ -15,5 +16,4 @@
 !Dockerfile
 !docker-compose.yaml
 !.dockerignore
-!testing/
 !.gitingore
