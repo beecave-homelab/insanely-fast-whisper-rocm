@@ -9,6 +9,7 @@ services:
     container_name: insanely-fast-whisper-rocm
     restart: unless-stopped
 
+    # To allow AMD GPU access:
     devices:
       - "/dev/kfd:/dev/kfd"
       - "/dev/dri:/dev/dri"
@@ -37,8 +38,11 @@ services:
       - "./logs:/app/logs"
       - "./src:/app/src"
       - "./testing:/app/testing"
+
     # Choose one of the commands below
-    # command: ["app.py"] # For a simple Gradio webui for uploading files.
+    # - ["src/app.py"] # For a simple Gradio webui for uploading files.
+    # - ["src/main.py"] # For automatically processing any file placed in the ./uploads directory.
+    # - ["src/convert_output.py"] # insanely-fast-whisper creates .json files. Convert them to .txt and .srt file with this script.
+    # - ["testing/test_cuda.py"] # Test CUDA availability.
+
     command: ["src/main.py"] # For automatically processing any file placed in the ./uploads directory.
-    # command: ["src/convert_output.py"] # insanely-fast-whisper creates .json files. Convert them to .txt and .srt file with this script.
-    # command: ["testing/main.py"] # For automatically processing any file placed in the ./uploads directory.
