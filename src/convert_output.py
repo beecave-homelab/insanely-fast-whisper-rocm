@@ -42,6 +42,8 @@ class SrtFormatter:
 
     @classmethod
     def format_seconds(cls, seconds):
+        if seconds is None:
+            return "00:00:00,000"
         whole_seconds = int(seconds)
         milliseconds = int((seconds - whole_seconds) * 1000)
 
@@ -54,7 +56,7 @@ class SrtFormatter:
     @classmethod
     def format_chunk(cls, chunk, index):
         text = chunk['text']
-        start, end = chunk['timestamp'][0], chunk['timestamp'][1]
+        start, end = chunk.get('timestamp', [None, None])
         start_format, end_format = cls.format_seconds(start), cls.format_seconds(end)
         return f"{index}\n{start_format} --> {end_format}\n{text}\n\n"
 
