@@ -78,17 +78,15 @@ def create_gradio_interface():
     with gr.Blocks() as app:
         gr.Markdown("# Audio Transcription App")
         
-        with gr.Row():
-            file_input = gr.File(label="Upload Audio Files", file_count="multiple")
-            process_button = gr.Button("Process")
+        file_input = gr.File(label="Upload Audio Files", file_count="multiple")
+        process_button = gr.Button("Process")
 
-        with gr.Row():
-            log_output = gr.Textbox(label="Processing Logs", lines=10)
+        log_output = gr.Textbox(label="Processing Logs", lines=10)
         
         with gr.Row():
             json_download = gr.File(label="Download JSON", file_count="multiple")
-            srt_download = gr.File(label="Download SRT", file_count="multiple")
-            txt_download = gr.File(label="Download TXT", file_count="multiple")
+            srt_download = gr.File(label="Download SRT", file_count="multiple", height=150)
+            txt_download = gr.File(label="Download TXT", file_count="multiple", height=150)
 
         def process_and_update(files):
             if not files:
