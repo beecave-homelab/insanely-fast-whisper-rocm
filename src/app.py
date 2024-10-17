@@ -10,6 +10,9 @@ import queue
 import threading
 from pathlib import Path
 import zipfile
+import tempfile
+import shutil
+from datetime import datetime, timedelta
 
 # Load environment variables
 load_dotenv()
@@ -80,10 +83,49 @@ def process_file(file_path, model, task):
     return transcript_output
 
 def create_zip_file(file_list, zip_filename):
-    with zipfile.ZipFile(zip_filename, 'w') as zipf:
+    zip_path = os.path.join(TEMP_ZIP_DIR, zip_filename)
+    with zipfile.ZipFile(zip_path, 'w') as zipf:
         for file in file_list:
             zipf.write(file, os.path.basename(file))
-    return zip_filename
+    return zip_path
+
+def process_and_update(files, model, task):
+    if not files:
+        return [], [], [], "No files uploaded.", None, None, None
+
+    json_outputs = []
+    srt_outputs = []
+    txt_outputs = []
+    log_content = ""
+
+    setup_logging_with_queue(True)
+
+    for file in files:
+        process_file(file.name, model, task)
+
+    while not log_queue.empty():
+        log_entry = log_queue.get()
+        log_content += log_entry + "\n"
+
+    while not file_queue.empty():
+        json_file, txt_file, srt_file = file_queue.get()
+        json_outputs.append(json_file)
+        txt_outputs.append(txt_file)
+        srt_outputs.append(srt_file)
+
+    json_zip_path = create_zip_file(json_outputs, "all_json_transcripts.zip")
+    srt_zip_path = create_zip_file(srt_outputs, "all_srt_transcripts.zip")
+    txt_zip_path = create_zip_file(txt_outputs, "all_txt_transcripts.zip")
+
+    return (
+        json_outputs,
+        srt_outputs,
+        txt_outputs,
+        log_content,
+        json_zip_path,
+        srt_zip_path,
+        txt_zip_path
+    )
 
 def create_gradio_interface():
     with gr.Blocks() as app:
@@ -102,52 +144,9 @@ def create_gradio_interface():
             txt_download = gr.File(label="Download TXT", file_count="multiple")
 
         with gr.Row():
-            json_download_all = gr.DownloadButton("Download All JSON")
-            srt_download_all = gr.DownloadButton("Download All SRT")
-            txt_download_all = gr.DownloadButton("Download All TXT")
-
-        def process_and_update(files, model, task):
-            if not files:
-                yield [], [], [], "No files uploaded.", None, None, None
-                return
-
-            json_outputs = []
-            srt_outputs = []
-            txt_outputs = []
-            log_content = ""
-
-            setup_logging_with_queue(True)
-
-            def process_files():
-                for file in files:
-                    process_file(file.name, model, task)
-
-            thread = threading.Thread(target=process_files)
-            thread.start()
-
-            while thread.is_alive() or not log_queue.empty() or not file_queue.empty():
-                while not log_queue.empty():
-                    log_entry = log_queue.get()
-                    log_content += log_entry + "\n"
-
-                while not file_queue.empty():
-                    json_file, txt_file, srt_file = file_queue.get()
-                    json_outputs.append(json_file)
-                    txt_outputs.append(txt_file)
-                    srt_outputs.append(srt_file)
-
-                json_zip = create_zip_file(json_outputs, "all_json_transcripts.zip")
-                srt_zip = create_zip_file(srt_outputs, "all_srt_transcripts.zip")
-                txt_zip = create_zip_file(txt_outputs, "all_txt_transcripts.zip")
-
-                yield json_outputs, srt_outputs, txt_outputs, log_content, json_zip, srt_zip, txt_zip
-                time.sleep(0.1)
-
-            log_content += "All files processed."
-            json_zip = create_zip_file(json_outputs, "all_json_transcripts.zip")
-            srt_zip = create_zip_file(srt_outputs, "all_srt_transcripts.zip")
-            txt_zip = create_zip_file(txt_outputs, "all_txt_transcripts.zip")
-            yield json_outputs, srt_outputs, txt_outputs, log_content, json_zip, srt_zip, txt_zip
+            json_download_all = gr.File(label="Download All JSON")
+            srt_download_all = gr.File(label="Download All SRT")
+            txt_download_all = gr.File(label="Download All TXT")
 
         process_button.click(
             process_and_update,
@@ -156,6 +155,30 @@ def create_gradio_interface():
         )
 
     return app
+
+# Define a temporary directory for zip files
+TEMP_ZIP_DIR = os.path.join(tempfile.gettempdir(), "transcription_zips")
+os.makedirs(TEMP_ZIP_DIR, exist_ok=True)
+
+def cleanup_temp_zips():
+    while True:
+        now = datetime.now()
+        for filename in os.listdir(TEMP_ZIP_DIR):
+            file_path = os.path.join(TEMP_ZIP_DIR, filename)
+            if os.path.isfile(file_path):
+                file_time = datetime.fromtimestamp(os.path.getmtime(file_path))
+                # Delete files older than 10 minutes
+                if now - file_time > timedelta(minutes=10):
+                    try:
+                        os.remove(file_path)
+                        logging.info(f"Deleted temporary zip file: {file_path}")
+                    except Exception as e:
+                        logging.error(f"Error deleting temporary zip file {file_path}: {str(e)}")
+        time.sleep(600)  # Run cleanup every 10 minutes
+
+# Start the cleanup thread when the application starts
+cleanup_thread = threading.Thread(target=cleanup_temp_zips, daemon=True)
+cleanup_thread.start()
 
 if __name__ == "__main__":
     app = create_gradio_interface()
