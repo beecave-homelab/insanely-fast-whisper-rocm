@@ -33,11 +33,19 @@ This project is designed to provide a high-performance, GPU-accelerated environm
 2. **Create a `.env` file**:
     - Create a `.env` file in the root directory of the project with the necessary configuration. Example:
     ```bash
-    UPLOADS_DIR=/app/uploads
-    TRANSCRIPTS_DIR=/app/transcripts
-    LOGS_DIR=/app/logs
-    BATCH_SIZE=16
-    VERBOSE=false
+    # Default values for main.py
+    UPLOADS="uploads"
+    TRANSCRIPTS="transcripts"
+    LOGS="logs"
+    BATCH_SIZE=6
+    VERBOSE=true
+    MODEL=distil-whisper/distil-large-v3
+
+    # Default values for convert_output.py
+    CONVERT_OUTPUT_FORMATS="txt,srt"
+    CONVERT_CHECK_INTERVAL=120
+    PROCESSED_TXT_DIR="transcripts-txt"
+    PROCESSED_SRT_DIR="transcripts-srt"
     ```
 
 3. **Build the Docker image**:
@@ -52,29 +60,36 @@ This project is designed to provide a high-performance, GPU-accelerated environm
 
 ## Usage
 
-### Automatic Uploading Service
-The `main.py` script monitors a specified directory for new files and automatically generates transcripts. Follow these steps to use this feature:
-
-1. **Start the service**:
-    - Ensure the Docker container is running (`docker-compose up -d`).
-    
-2. **Place files in the `/uploads` directory**:
-    - Any files added to this directory will be automatically processed, and the transcripts will be placed in the `/transcripts` directory.
-
-3. **Check logs**:
-    - Logs for the processing will be stored in the `/logs` directory.
-
 ### Gradio Web UI
 The `app.py` script provides a web interface for uploading files and generating transcripts.
 
 1. **Access the web interface**:
-    - Navigate to `http://localhost:7860` in your web browser.
+    - Navigate to `http://localhost:7862` in your web browser.
     
 2. **Upload an audio file**:
     - Use the provided interface to upload an audio file. The file will be processed, and the transcript will be generated and displayed in the interface.
 
 3. **View logs**:
     - Real-time logs are displayed in the web interface, and you can also find them in the `/logs` directory.
+
+### Specifying a Different Script
+The `docker-compose.yaml` file allows you to specify which script from the `/src` folder should be run by modifying the `command` line. By default, it runs the `/src/app.py` script (Gradio Web UI). To run a different script, change the `command` section in `docker-compose.yaml` accordingly. For example, to use the automatic uploading service (`main.py`):
+
+```yaml
+command: ["src/main.py"] # For automatically processing files in the uploads directory.
+```
+
+### Automatic Uploading Service
+The `main.py` script monitors a specified directory for new files and automatically generates transcripts. Follow these steps to use this feature:
+
+1. **Start the service**:
+    - Ensure the Docker container is running (`docker-compose up -d`).
+
+2. **Place files in the `/uploads` directory**:
+    - Any files added to this directory will be automatically processed, and the transcripts will be placed in the `/transcripts` directory.
+
+3. **Check logs**:
+    - Logs for the processing will be stored in the `/logs` directory.
 
 ## License
 This project is licensed under the MIT license. See [LICENSE](LICENSE) for more information.
