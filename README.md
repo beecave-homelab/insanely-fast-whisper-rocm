@@ -30,13 +30,7 @@ This project is designed to provide a high-performance, GPU-accelerated environm
     git clone https://github.com/beecave-homelab/insanely-fast-whisper-rocm.git
     cd insanely-fast-whisper-rocm
     ```
-
-2. **Build the Docker image**:
-    ```bash
-    docker-compose build
-    ```
-
-3. **Create a `.env` file**:
+2. **Create a `.env` file**:
     - Create a `.env` file in the root directory of the project with the necessary configuration. Example:
     ```bash
     UPLOADS_DIR=/app/uploads
@@ -44,6 +38,11 @@ This project is designed to provide a high-performance, GPU-accelerated environm
     LOGS_DIR=/app/logs
     BATCH_SIZE=16
     VERBOSE=false
+    ```
+
+3. **Build the Docker image**:
+    ```bash
+    docker-compose build
     ```
 
 4. **Run the Docker container**:
