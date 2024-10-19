@@ -91,7 +91,8 @@ def create_zip_file(file_list, zip_filename):
 
 def process_and_update(files, model, task):
     if not files:
-        return [], [], [], "No files uploaded.", None, None, None
+        yield (None, None, None, "No files uploaded.", None, None, None)
+        return
 
     json_outputs = []
     srt_outputs = []
@@ -102,10 +103,15 @@ def process_and_update(files, model, task):
 
     for file in files:
         process_file(file.name, model, task)
+        while not log_queue.empty():
+            log_entry = log_queue.get()
+            log_content += log_entry + "\n"
+            yield (None, None, None, log_content, None, None, None)
 
     while not log_queue.empty():
         log_entry = log_queue.get()
         log_content += log_entry + "\n"
+        yield (None, None, None, log_content, None, None, None)
 
     while not file_queue.empty():
         json_file, txt_file, srt_file = file_queue.get()
@@ -117,7 +123,7 @@ def process_and_update(files, model, task):
     srt_zip_path = create_zip_file(srt_outputs, "all_srt_transcripts.zip")
     txt_zip_path = create_zip_file(txt_outputs, "all_txt_transcripts.zip")
 
-    return (
+    yield (
         json_outputs,
         srt_outputs,
         txt_outputs,
