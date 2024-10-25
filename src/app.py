@@ -54,7 +54,7 @@ def setup_logging_with_queue(console_output=True):
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
 
-def process_file(file_path, model, task):
+def process_file(file_path, model, task, progress=gr.Progress()):
     filename = os.path.basename(file_path)
     transcript_output = os.path.join(TRANSCRIPTS, f"{os.path.splitext(filename)[0]}.json")
 
@@ -89,7 +89,7 @@ def create_zip_file(file_list, zip_filename):
             zipf.write(file, os.path.basename(file))
     return zip_path
 
-def process_and_update(files, model, task):
+def process_and_update(files, model, task, progress=gr.Progress()):
     if not files:
         yield (None, None, None, "No files uploaded.", None, None, None)
         return
@@ -101,12 +101,18 @@ def process_and_update(files, model, task):
 
     setup_logging_with_queue(True)
 
-    for file in files:
+    progress(0, desc="Starting transcription process...")
+    total_files = len(files)
+
+    for i, file in enumerate(files):
+        progress((i / total_files), desc=f"Processing file {i+1} of {total_files}")
         process_file(file.name, model, task)
         while not log_queue.empty():
             log_entry = log_queue.get()
             log_content += log_entry + "\n"
             yield (None, None, None, log_content, None, None, None)
+
+    progress(0.9, desc="Finalizing transcriptions...")
 
     while not log_queue.empty():
         log_entry = log_queue.get()
@@ -119,9 +125,13 @@ def process_and_update(files, model, task):
         txt_outputs.append(txt_file)
         srt_outputs.append(srt_file)
 
+    progress(0.95, desc="Creating zip files...")
+
     json_zip_path = create_zip_file(json_outputs, "all_json_transcripts.zip")
     srt_zip_path = create_zip_file(srt_outputs, "all_srt_transcripts.zip")
     txt_zip_path = create_zip_file(txt_outputs, "all_txt_transcripts.zip")
+
+    progress(1.0, desc="Transcription complete!")
 
     yield (
         json_outputs,
@@ -188,4 +198,4 @@ cleanup_thread.start()
 
 if __name__ == "__main__":
     app = create_gradio_interface()
-    app.launch(server_name="0.0.0.0", server_port=7860)
+    app.queue().launch(server_name="0.0.0.0", server_port=7860)
