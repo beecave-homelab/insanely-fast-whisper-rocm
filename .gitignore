@@ -17,4 +17,6 @@
 !docker-compose.yaml
 !.dockerignore
 !.gitingore
-!project-v0.2.0.md
+!project-plan.md
+!/to-do/
+!/to-do/*.md
