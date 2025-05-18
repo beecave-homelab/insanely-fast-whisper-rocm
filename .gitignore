@@ -1,22 +1,89 @@
-# Ignore everything by default
-*
+# Exclude everything by default
+*/
+!*/
 
-# needed to run:
-!/src/
-!/src/app.py
-!/src/main.py
-!/src/convert_output.py
-!requirements.txt
-!requirements-torch-rocm.txt
-!requirements-onnxruntime-rocm.txt
-!.env.example
+# Include only the necessary files and directories
+
+# Project files
+!pyproject.toml
+!setup.sh
 !sudo-nopasswd
-!LICENSE
 !README.md
-!Dockerfile
-!docker-compose.yaml
+!LICENSE
+!.gitignore
 !.dockerignore
-!.gitingore
-!project-plan.md
-!/to-do/
-!/to-do/*.md
+!Dockerfile
+!docker-compose*.yaml
+!requirements*.txt
+
+# Source code
+!src/
+!src/**/*.py
+
+# Documentation
+!*.md
+!docs/
+!docs/**/*
+
+# Configuration
+!.pre-commit-config.yaml
+!pytest.ini
+!setup.cfg
+!.flake8
+!.pylintrc
+!mypy.ini
+
+# Tests
+!tests/
+!tests/**/*.py
+!conftest.py
+
+# To-do files
+!to-do/
+!to-do/*.md
+
+# Exclude Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Exclude environment and virtualenv
+.env
+.env.*
+.venv/
+venv/
+ENV/
+
+# Exclude IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Exclude testing and coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# Exclude logs and local development files
+logs/
+*.log
+
+# Exclude upload and transcript directories by default
+/uploads/
+/transcripts/
+/transcripts-srt/
+/transcripts-txt/
+
+# Include .gitkeep files in excluded directories
+!**/.gitkeep
+.cursorrules

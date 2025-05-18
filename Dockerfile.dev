@@ -1,0 +1,203 @@
+##################################################
+#### SETUP ROCM-6.1.2 and CLBlast and rocBLAS #####
+##################################################
+FROM rocm/dev-ubuntu-22.04:6.1.2 AS rocm
+
+# Login as root user.    
+USER root
+
+# Install dependencies and rocm-6.1.2
+RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    sudo wget git cmake rocsparse-dev hipsparse-dev rocthrust-dev rocblas-dev hipblas-dev make build-essential \
+    ocl-icd-opencl-dev opencl-headers clinfo \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Setup rocm-user, add password-less sudo, and set workdir.
+COPY sudo-nopasswd /etc/sudoers.d/sudo-nopasswd
+RUN useradd --create-home -G sudo,video --shell /bin/bash rocm-user
+USER rocm-user
+WORKDIR /home/rocm-user
+ENV PATH="${PATH}:/opt/rocm/bin"
+
+########################################
+######### PRE-INSTALL CLBLAST ##########
+########################################
+FROM rocm AS rocm-clblas
+
+# Login as root user.
+USER root
+
+# Set environment variables
+ENV ROCM_PATH=/opt/rocm \
+    CLBlast_DIR=/usr/lib/cmake/CLBlast \
+    HSA_OVERRIDE_GFX_VERSION=10.3.0 \
+    ROCR_VISIBLE_DEVICES=0 \
+    ROC_ENABLE_PRE_VEGA=1
+
+# Install ROCm development packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    rocm-libs \
+    rccl \
+    rocblas \
+    miopen-hip \
+    rocrand \
+    hipsparse \
+    rocfft \
+    rocblas-dev \
+    rocsparse-dev \
+    rocthrust-dev \
+    rocprim-dev \
+    hipblas-dev \
+    rocminfo \
+    rocm-smi \
+    hipify-clang \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build and install CLBlast
+RUN git clone https://github.com/CNugteren/CLBlast.git \
+    && cd CLBlast \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && make \
+    && make install
+
+# Verify ROCm installation
+RUN /bin/bash -c '\
+    echo "ROCm version:" && \
+    /opt/rocm/bin/rocminfo | grep "ROCk" && \
+    echo "\nROCm devices:" && \
+    /opt/rocm/bin/rocminfo | grep -A 2 "Device Type" && \
+    echo "\nHSA_OVERRIDE_GFX_VERSION:" && \
+    echo "${HSA_OVERRIDE_GFX_VERSION}"'
+
+#######################################
+########## INSTALL CLBLAST ############
+####################################### 
+FROM rocm-clblas AS clblas-installer
+
+# Login as root user.
+USER root
+
+# Install development tools and Python
+RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    nano git gcc build-essential python3-dev python3-pip python3-venv \
+    libclblast-dev libopenblas-dev libaio-dev ffmpeg \
+    && mkdir -p /etc/OpenCL/vendors && echo "libamdrocopencl.so" | tee /etc/OpenCL/vendors/amd.icd \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Create and activate a virtual environment
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install build dependencies
+RUN pip install --upgrade pip setuptools wheel
+
+# Set the workdir
+WORKDIR /app
+
+# Create app directory and set ownership
+RUN mkdir -p /app && chown -R rocm-user:rocm-user /app
+
+# Copy project files
+COPY --chown=rocm-user:rocm-user . /app/
+
+# Verify files were copied
+RUN ls -la /app/
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsndfile1 \
+    libsndfile1-dev \
+    libasound2-dev \
+    portaudio19-dev \
+    libportaudio2 \
+    libportaudiocpp0 \
+    libavcodec-extra \
+    ffmpeg \
+    libsm6 \
+    libxext6 \
+    python3-pip \
+    python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up Python environment
+RUN python3 -m pip install --upgrade pip setuptools wheel
+
+# Install PyTorch with ROCm support first
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/rocm6.1/ \
+    torch==2.5.0+rocm6.1 \
+    torchaudio==2.5.0+rocm6.1
+
+# Install ONNX Runtime with ROCm support
+RUN pip install --no-cache-dir \
+    https://repo.radeon.com/rocm/manylinux/rocm-rel-6.1.3/onnxruntime_rocm-1.17.0-cp310-cp310-linux_x86_64.whl
+
+# Install remaining Python dependencies
+COPY requirements-all.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
+    rm -f /tmp/requirements.txt
+
+# Install the package in development mode
+RUN pip install -e .
+
+# Set ROCm environment variables
+ENV ROCM_PATH=/opt/rocm
+ENV HSA_OVERRIDE_GFX_VERSION=10.3.0
+ENV ROCR_VISIBLE_DEVICES=0
+ENV ROC_ENABLE_PRE_VEGA=1
+ENV PATH="${PATH}:/opt/rocm/bin:/opt/rocm/profiler/bin:/opt/rocm/opencl/bin"
+ENV LD_LIBRARY_PATH="/opt/rocm/lib:/opt/rocm/lib64"
+
+# Verify ROCm installation
+RUN /bin/bash -c '\
+    echo "=== ROCm Installation Check ===" && \
+    echo "Checking ROCm installation..." && \
+    if [ -f /opt/rocm/bin/rocminfo ]; then \
+        echo "rocminfo found at /opt/rocm/bin/rocminfo"; \
+        /opt/rocm/bin/rocminfo --version || echo "rocminfo version check failed"; \
+        echo "\nROCm devices:"; \
+        /opt/rocm/bin/rocminfo 2>/dev/null | grep -i -A 2 "device\|gpu\|type" || echo "No ROCm devices found"; \
+    else \
+        echo "WARNING: rocminfo not found in /opt/rocm/bin/"; \
+    fi && \
+    echo "\n=== Environment Variables ===" && \
+    echo "HSA_OVERRIDE_GFX_VERSION: ${HSA_OVERRIDE_GFX_VERSION:-Not set}" && \
+    echo "ROCR_VISIBLE_DEVICES: ${ROCR_VISIBLE_DEVICES:-Not set}" && \
+    echo "ROCM_PATH: ${ROCM_PATH:-Not set}" && \
+    echo "LD_LIBRARY_PATH: ${LD_LIBRARY_PATH:-Not set}" && \
+    echo "\n=== Python Environment ===" && \
+    python3 --version && \
+    pip --version && \
+    echo "\n=== ROCm Packages ===" && \
+    dpkg -l | grep -E "rocm|hip|hsa" | grep -v "^ii\|^rc" || echo "No ROCm packages found"'
+
+# Verify PyTorch installation with ROCm support
+RUN python -c "\
+import torch; \
+print('PyTorch version:', torch.__version__); \
+print('CUDA available:', torch.cuda.is_available()); \
+print('ROCm available:', hasattr(torch.version, 'hip') and torch.version.hip is not None); \
+print('PyTorch HIP version:', getattr(torch.version, 'hip', 'Not available')); \
+print('Device count:', torch.cuda.device_count()); \
+if torch.cuda.is_available(): \
+    print('Current device:', torch.cuda.get_device_name(0)); \
+    print('Device properties:', torch.cuda.get_device_properties(0) if torch.cuda.device_count() > 0 else 'No devices found')"
+
+# Verify ONNX Runtime installation
+RUN python -c "\
+import onnxruntime as ort; \
+print('ONNX Runtime version:', ort.__version__); \
+print('Available providers:', ort.get_available_providers()); \
+print('ROCm available:', 'ROCMExecutionProvider' in ort.get_available_providers()); \
+print('CUDA available:', 'CUDAExecutionProvider' in ort.get_available_providers())"
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    HSA_OVERRIDE_GFX_VERSION=10.3.0
+
+# Set the default command to start a shell
+CMD ["/bin/bash"]

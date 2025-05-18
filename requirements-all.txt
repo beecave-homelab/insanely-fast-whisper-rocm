@@ -1,0 +1,31 @@
+# Core dependencies
+python-dotenv>=0.19.0
+gradio>=3.0.0,<4.0.0
+
+# Machine learning dependencies
+transformers>=4.30.0,<5.0.0
+sentencepiece>=0.1.97  # Required by transformers for some models
+
+# Audio processing
+librosa>=0.9.0  # For audio file handling
+soundfile>=0.12.1  # For WAV file support
+
+# Utility libraries
+pydantic>=1.10.0,<2.0.0
+watchdog>=2.1.0,<3.0.0
+tqdm>=4.65.0,<5.0.0
+rich>=13.0.0,<14.0.0
+click>=8.1.0,<9.0.0
+python-multipart>=0.0.5  # For file uploads in web interface
+
+# Development dependencies (installed with [dev])
+pytest>=7.0.0,<8.0.0
+pytest-cov>=4.0.0,<5.0.0
+black>=23.0.0,<24.0.0
+isort>=5.12.0,<6.0.0
+mypy>=1.0.0,<2.0.0
+flake8>=6.0.0,<7.0.0
+pre-commit>=3.0.0,<4.0.0
+
+# Note: PyTorch and ONNX Runtime are installed separately in the Dockerfile
+# to ensure proper ROCm support

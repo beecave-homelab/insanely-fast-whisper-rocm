@@ -31,15 +31,17 @@ log_queue = queue.Queue()
 file_queue = queue.Queue()
 log_file_path = os.path.join(LOGS, "transcription.log")
 
+
 class QueueHandler(logging.Handler):
     def emit(self, record):
         log_entry = self.format(record)
         log_queue.put(log_entry)
 
+
 def setup_logging_with_queue(console_output=True):
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 
     file_handler = logging.FileHandler(log_file_path)
     file_handler.setFormatter(formatter)
@@ -54,9 +56,12 @@ def setup_logging_with_queue(console_output=True):
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
 
+
 def process_file(file_path, model, task, progress=gr.Progress()):
     filename = os.path.basename(file_path)
-    transcript_output = os.path.join(TRANSCRIPTS, f"{os.path.splitext(filename)[0]}.json")
+    transcript_output = os.path.join(
+        TRANSCRIPTS, f"{os.path.splitext(filename)[0]}.json"
+    )
 
     logging.info(f"Processing file: {filename}")
     command = f"insanely-fast-whisper --file-name '{file_path}' --model '{model}' --task '{task}' --transcript-path '{transcript_output}' --batch-size '{BATCH_SIZE}'"
@@ -67,27 +72,37 @@ def process_file(file_path, model, task, progress=gr.Progress()):
     if result != 0:
         logging.error(f"Failed to process file: {filename}")
         return None
-    
+
     logging.info(f"{filename} processed successfully.")
 
     try:
-        txt_output = os.path.join(PROCESSED_TXT_DIR, f"{os.path.splitext(filename)[0]}.txt")
-        srt_output = os.path.join(PROCESSED_SRT_DIR, f"{os.path.splitext(filename)[0]}.srt")
-        convert(transcript_output, 'txt', PROCESSED_TXT_DIR, True)
-        convert(transcript_output, 'srt', PROCESSED_SRT_DIR, True)
-        logging.info(f"Converted {os.path.basename(transcript_output)} to TXT and SRT formats.")
+        txt_output = os.path.join(
+            PROCESSED_TXT_DIR, f"{os.path.splitext(filename)[0]}.txt"
+        )
+        srt_output = os.path.join(
+            PROCESSED_SRT_DIR, f"{os.path.splitext(filename)[0]}.srt"
+        )
+        convert(transcript_output, "txt", PROCESSED_TXT_DIR, True)
+        convert(transcript_output, "srt", PROCESSED_SRT_DIR, True)
+        logging.info(
+            f"Converted {os.path.basename(transcript_output)} to TXT and SRT formats."
+        )
         file_queue.put((transcript_output, txt_output, srt_output))
     except Exception as e:
-        logging.error(f"Error converting {os.path.basename(transcript_output)}: {str(e)}")
+        logging.error(
+            f"Error converting {os.path.basename(transcript_output)}: {str(e)}"
+        )
 
     return transcript_output
 
+
 def create_zip_file(file_list, zip_filename):
     zip_path = os.path.join(TEMP_ZIP_DIR, zip_filename)
-    with zipfile.ZipFile(zip_path, 'w') as zipf:
+    with zipfile.ZipFile(zip_path, "w") as zipf:
         for file in file_list:
             zipf.write(file, os.path.basename(file))
     return zip_path
+
 
 def process_and_update(files, model, task, progress=gr.Progress()):
     if not files:
@@ -140,20 +155,23 @@ def process_and_update(files, model, task, progress=gr.Progress()):
         log_content,
         json_zip_path,
         srt_zip_path,
-        txt_zip_path
+        txt_zip_path,
     )
+
 
 def create_gradio_interface():
     with gr.Blocks() as app:
         gr.Markdown("# Audio Transcription App")
-        
+
         file_input = gr.File(label="Upload Audio Files", file_count="multiple")
         model_input = gr.Textbox(label="Model", value=DEFAULT_MODEL)
-        task_input = gr.Dropdown(label="Task", choices=["transcribe", "translate"], value=DEFAULT_TASK)
+        task_input = gr.Dropdown(
+            label="Task", choices=["transcribe", "translate"], value=DEFAULT_TASK
+        )
         process_button = gr.Button("Process")
 
         log_output = gr.Textbox(label="Processing Logs", lines=10)
-        
+
         with gr.Row():
             json_download = gr.File(label="Download JSON", file_count="multiple")
             srt_download = gr.File(label="Download SRT", file_count="multiple")
@@ -167,14 +185,24 @@ def create_gradio_interface():
         process_button.click(
             process_and_update,
             inputs=[file_input, model_input, task_input],
-            outputs=[json_download, srt_download, txt_download, log_output, json_download_all, srt_download_all, txt_download_all]
+            outputs=[
+                json_download,
+                srt_download,
+                txt_download,
+                log_output,
+                json_download_all,
+                srt_download_all,
+                txt_download_all,
+            ],
         )
 
     return app
 
+
 # Define a temporary directory for zip files
 TEMP_ZIP_DIR = os.path.join(tempfile.gettempdir(), "transcription_zips")
 os.makedirs(TEMP_ZIP_DIR, exist_ok=True)
+
 
 def cleanup_temp_zips():
     while True:
@@ -189,8 +217,11 @@ def cleanup_temp_zips():
                         os.remove(file_path)
                         logging.info(f"Deleted temporary zip file: {file_path}")
                     except Exception as e:
-                        logging.error(f"Error deleting temporary zip file {file_path}: {str(e)}")
+                        logging.error(
+                            f"Error deleting temporary zip file {file_path}: {str(e)}"
+                        )
         time.sleep(600)  # Run cleanup every 10 minutes
+
 
 # Start the cleanup thread when the application starts
 cleanup_thread = threading.Thread(target=cleanup_temp_zips, daemon=True)

@@ -1,16 +1,13 @@
 # Ignore everything by default
 *
 
-# needed to run:
-!app.py
-!main.py
-!convert_output.py
-!requirements.txt
-!requirements-torch-rocm.txt
-!requirements-onnxruntime-rocm.txt
+# Include only what's needed for the build
+!pyproject.toml
+!README.md
+!requirements*.txt
 !.env
 !sudo-nopasswd
-
-!/src/
-!/src/main.py
-!/src/convert_output.py
+!src/
+!src/**
+!*.py
+!*.sh

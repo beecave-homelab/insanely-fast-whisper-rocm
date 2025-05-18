@@ -1,13 +1,12 @@
 import os
 import time
 import logging
+from dotenv import load_dotenv
 import argparse
 import json
 import subprocess
 import sys
 import traceback
-
-from dotenv import load_dotenv
 
 # Load .env file if it exists
 try:

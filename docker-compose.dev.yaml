@@ -1,0 +1,38 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: clblas-installer
+    container_name: insanely-fast-whisper-dev
+    user: rocm-user
+    working_dir: /app
+    volumes:
+      - .:/app
+      - ~/.cache:/home/rocm-user/.cache
+      - /opt/rocm:/opt/rocm:ro
+      - /etc/group:/etc/group:ro
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/shadow:/etc/shadow:ro
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=10.3.0
+      - ROCR_VISIBLE_DEVICES=0
+      - ROC_ENABLE_PRE_VEGA=1
+      - ROCM_PATH=/opt/rocm
+      - HSA_OVERRIDE_GFX_VERSION=10.3.0
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONPATH=/app
+      - LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+      - render
+    ipc: host
+    shm_size: '8gb'
+    stdin_open: true
+    tty: true
+    privileged: true
+    command: /bin/bash
