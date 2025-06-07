@@ -1,8 +1,0 @@
-setuptools
-wheel
-packaging
-ninja
-git+https://github.com/huggingface/transformers
-accelerate
-matplotlib
-optimum
