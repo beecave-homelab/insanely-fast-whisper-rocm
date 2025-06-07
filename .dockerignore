@@ -1,13 +1,74 @@
-# Ignore everything by default
-*
+# Git
+.git
+.gitignore
 
-# Include only what's needed for the build
-!pyproject.toml
-!README.md
-!requirements*.txt
-!.env
-!sudo-nopasswd
-!src/
-!src/**
-!*.py
-!*.sh
+# IDE & Editor specific
+.idea/
+.vscode/
+.project
+.settings/
+*.swp
+*.swo
+.DS_Store
+
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+
+# Added based on to-do list suggestions
+.venv/
+*.log
+*.lock
+*.egg-info/
+to-do/
+*.md
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.env
+.venv/
+env/
+venv/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+celerybeat-schedule
+*.log
+*.lock
+*.pot
+*.py[cod]
+
+# Docker & project specific
+Dockerfile
+docker-compose.yaml
+.dockerignore
+to-do/
+*.md # Excluding markdown files unless explicitly needed in the image
+temp_uploads/
+tests/
+transcripts/
+.cursor
+.windsurf
+to-do/
+
+
+# Rye specific
+.rye/
+*.lock # if rye generates a lock file other than pyproject.toml related ones

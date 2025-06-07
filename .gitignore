@@ -1,89 +1,87 @@
-# Exclude everything by default
-*/
-!*/
-
-# Include only the necessary files and directories
-
-# Project files
-!pyproject.toml
-!setup.sh
-!sudo-nopasswd
-!README.md
-!LICENSE
-!.gitignore
-!.dockerignore
-!Dockerfile
-!docker-compose*.yaml
-!requirements*.txt
-
-# Source code
-!src/
-!src/**/*.py
-
-# Documentation
-!*.md
-!docs/
-!docs/**/*
-
-# Configuration
-!.pre-commit-config.yaml
-!pytest.ini
-!setup.cfg
-!.flake8
-!.pylintrc
-!mypy.ini
-
-# Tests
-!tests/
-!tests/**/*.py
-!conftest.py
-
-# To-do files
-!to-do/
-!to-do/*.md
-
-# Exclude Python cache and build artifacts
+# ---> Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
+env/
 build/
+develop-eggs/
 dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
 *.egg-info/
 .installed.cfg
 *.egg
 
-# Exclude environment and virtualenv
-.env
-.env.*
-.venv/
-venv/
-ENV/
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
 
-# Exclude IDE specific files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Exclude testing and coverage
-.coverage
+# Unit test / coverage reports
 htmlcov/
-.pytest_cache/
-.mypy_cache/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*,cover
 
-# Exclude logs and local development files
-logs/
+# Translations
+*.mo
+*.pot
+
+venv/
+venv/*
+venv/**
+.venv/
+.venv/*
+.venv/**
+
+# Django stuff:
 *.log
 
-# Exclude upload and transcript directories by default
-/uploads/
-/transcripts/
-/transcripts-srt/
-/transcripts-txt/
+# Sphinx documentation
+docs/_build/
 
-# Include .gitkeep files in excluded directories
-!**/.gitkeep
+# PyBuilder
+target/
+
 .cursorrules
+.cursor/*/*.mdc
+.windsurf/*/*.md
+.windsurfrules
+
+# Uploads directory
+uploads/
+
+# Test directory
+tests/*.mp3
+transcripts/*.json
+transcripts/*
+temp_uploads/*
+
+.env
+# to-do/*.md
+.DS_Store
+commit_subdirectories.sh
+.vscode/settings.json
+project-overview.md.bak
