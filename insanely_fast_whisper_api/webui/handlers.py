@@ -36,7 +36,7 @@ from insanely_fast_whisper_api.utils.filename_generator import (
     TaskType,
 )
 from insanely_fast_whisper_api.core.errors import TranscriptionError
-from insanely_fast_whisper_api.webui.downloads.zip_creator import (
+from insanely_fast_whisper_api.webui.zip_creator import (
     BatchZipBuilder,
     ZipConfiguration,
 )
