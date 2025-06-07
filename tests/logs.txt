@@ -1,0 +1,212 @@
+insanely-fast-whisper-rocm-api  | [32mINFO[0m:     Started server process [[36m1[0m]
+insanely-fast-whisper-rocm-api  | [32mINFO[0m:     Waiting for application startup.
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main - ==================================================
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main - Starting Insanely Fast Whisper API v0.1.0
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main - API Description: A FastAPI wrapper around the insanely-fast-whisper CLI tool.
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main - --------------------------------------------------
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main - Available endpoints:
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main -   POST       /v1/audio/transcriptions
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main -   POST       /v1/audio/translations
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main - ==================================================
+insanely-fast-whisper-rocm-api  | [32mINFO[0m:     Application startup complete.
+insanely-fast-whisper-rocm-api  | [32mINFO[0m:     Uvicorn running on [1mhttp://0.0.0.0:8000[0m (Press CTRL+C to quit)
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main - --------------------------------------------------
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main - Received transcription request:
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main -   File: test.mp3
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main - File saved temporarily as: temp_uploads/15bbed7d-dcce-4002-ac59-5dd891ec934c_test.mp3
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main - Starting transcription process...
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.core - Starting ASR processing for file: temp_uploads/15bbed7d-dcce-4002-ac59-5dd891ec934c_test.mp3
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.core - ASR using device: cuda:0, model: openai/whisper-tiny, dtype: float16
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.core - Loading ASR model 'openai/whisper-tiny'...
+insanely-fast-whisper-rocm-api  | config.json:   0% 0.00/1.98k [00:00<?, ?B/s]config.json: 100% 1.98k/1.98k [00:00<00:00, 18.3MB/s]
+insanely-fast-whisper-rocm-api  | model.safetensors:   0% 0.00/151M [00:00<?, ?B/s]model.safetensors:   7% 10.5M/151M [00:00<00:05, 24.6MB/s]model.safetensors:  14% 21.0M/151M [00:00<00:05, 25.0MB/s]model.safetensors:  21% 31.5M/151M [00:01<00:04, 25.2MB/s]model.safetensors:  28% 41.9M/151M [00:01<00:04, 24.8MB/s]model.safetensors:  35% 52.4M/151M [00:02<00:03, 25.0MB/s]model.safetensors:  42% 62.9M/151M [00:02<00:03, 25.1MB/s]model.safetensors:  49% 73.4M/151M [00:02<00:03, 25.2MB/s]model.safetensors:  56% 83.9M/151M [00:03<00:02, 25.0MB/s]model.safetensors:  62% 94.4M/151M [00:03<00:02, 24.9MB/s]model.safetensors:  69% 105M/151M [00:04<00:01, 25.0MB/s] model.safetensors:  76% 115M/151M [00:04<00:01, 25.1MB/s]model.safetensors:  83% 126M/151M [00:05<00:01, 25.1MB/s]model.safetensors:  90% 136M/151M [00:05<00:00, 25.2MB/s]model.safetensors:  97% 147M/151M [00:05<00:00, 25.2MB/s]model.safetensors: 100% 151M/151M [00:06<00:00, 25.2MB/s]model.safetensors: 100% 151M/151M [00:06<00:00, 25.1MB/s]
+insanely-fast-whisper-rocm-api  | generation_config.json:   0% 0.00/3.75k [00:00<?, ?B/s]generation_config.json: 100% 3.75k/3.75k [00:00<00:00, 35.4MB/s]
+insanely-fast-whisper-rocm-api  | tokenizer_config.json:   0% 0.00/283k [00:00<?, ?B/s]tokenizer_config.json: 100% 283k/283k [00:00<00:00, 3.25MB/s]
+insanely-fast-whisper-rocm-api  | vocab.json:   0% 0.00/836k [00:00<?, ?B/s]vocab.json: 100% 836k/836k [00:00<00:00, 3.37MB/s]vocab.json: 100% 836k/836k [00:00<00:00, 3.37MB/s]
+insanely-fast-whisper-rocm-api  | tokenizer.json:   0% 0.00/2.48M [00:00<?, ?B/s]tokenizer.json: 100% 2.48M/2.48M [00:00<00:00, 6.92MB/s]tokenizer.json: 100% 2.48M/2.48M [00:00<00:00, 6.89MB/s]
+insanely-fast-whisper-rocm-api  | merges.txt:   0% 0.00/494k [00:00<?, ?B/s]merges.txt: 100% 494k/494k [00:00<00:00, 2.94MB/s]merges.txt: 100% 494k/494k [00:00<00:00, 2.93MB/s]
+insanely-fast-whisper-rocm-api  | normalizer.json:   0% 0.00/52.7k [00:00<?, ?B/s]normalizer.json: 100% 52.7k/52.7k [00:00<00:00, 179MB/s]
+insanely-fast-whisper-rocm-api  | added_tokens.json:   0% 0.00/34.6k [00:00<?, ?B/s]added_tokens.json: 100% 34.6k/34.6k [00:00<00:00, 36.8MB/s]
+insanely-fast-whisper-rocm-api  | special_tokens_map.json:   0% 0.00/2.19k [00:00<?, ?B/s]special_tokens_map.json: 100% 2.19k/2.19k [00:00<00:00, 16.0MB/s]
+insanely-fast-whisper-rocm-api  | preprocessor_config.json:   0% 0.00/185k [00:00<?, ?B/s]preprocessor_config.json: 100% 185k/185k [00:00<00:00, 2.19MB/s]
+insanely-fast-whisper-rocm-api  | Device set to use cuda:0
+insanely-fast-whisper-rocm-api  | /usr/local/lib/python3.10/site-packages/torch/nn/modules/module.py:1329: UserWarning: expandable_segments not supported on this platform (Triggered internally at /pytorch/c10/hip/HIPAllocatorConfig.h:29.)
+insanely-fast-whisper-rocm-api  |   return t.to(
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.core - Starting transcription for: temp_uploads/15bbed7d-dcce-4002-ac59-5dd891ec934c_test.mp3
+insanely-fast-whisper-rocm-api  | ERROR:     insanely_fast_whisper_api.core - Transcription failed for temp_uploads/15bbed7d-dcce-4002-ac59-5dd891ec934c_test.mp3: ffmpeg was not found but is required to load audio files from filename
+insanely-fast-whisper-rocm-api  | Traceback (most recent call last):
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/transformers/pipelines/audio_utils.py", line 34, in ffmpeg_read
+insanely-fast-whisper-rocm-api  |     with subprocess.Popen(ffmpeg_command, stdin=subprocess.PIPE, stdout=subprocess.PIPE) as ffmpeg_process:
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/subprocess.py", line 971, in __init__
+insanely-fast-whisper-rocm-api  |     self._execute_child(args, executable, preexec_fn, close_fds,
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/subprocess.py", line 1863, in _execute_child
+insanely-fast-whisper-rocm-api  |     raise child_exception_type(errno_num, err_msg, err_filename)
+insanely-fast-whisper-rocm-api  | FileNotFoundError: [Errno 2] No such file or directory: 'ffmpeg'
+insanely-fast-whisper-rocm-api  | 
+insanely-fast-whisper-rocm-api  | The above exception was the direct cause of the following exception:
+insanely-fast-whisper-rocm-api  | 
+insanely-fast-whisper-rocm-api  | Traceback (most recent call last):
+insanely-fast-whisper-rocm-api  |   File "/app/insanely_fast_whisper_api/core.py", line 127, in run_asr_pipeline
+insanely-fast-whisper-rocm-api  |     outputs = asr_pipe(str(audio_file_path), **pipeline_kwargs)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/transformers/pipelines/automatic_speech_recognition.py", line 283, in __call__
+insanely-fast-whisper-rocm-api  |     return super().__call__(inputs, **kwargs)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/transformers/pipelines/base.py", line 1371, in __call__
+insanely-fast-whisper-rocm-api  |     return next(
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/transformers/pipelines/pt_utils.py", line 124, in __next__
+insanely-fast-whisper-rocm-api  |     item = next(self.iterator)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/transformers/pipelines/pt_utils.py", line 269, in __next__
+insanely-fast-whisper-rocm-api  |     processed = self.infer(next(self.iterator), **self.params)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 708, in __next__
+insanely-fast-whisper-rocm-api  |     data = self._next_data()
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 764, in _next_data
+insanely-fast-whisper-rocm-api  |     data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 33, in fetch
+insanely-fast-whisper-rocm-api  |     data.append(next(self.dataset_iter))
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/transformers/pipelines/pt_utils.py", line 186, in __next__
+insanely-fast-whisper-rocm-api  |     processed = next(self.subiterator)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/transformers/pipelines/automatic_speech_recognition.py", line 370, in preprocess
+insanely-fast-whisper-rocm-api  |     inputs = ffmpeg_read(inputs, self.feature_extractor.sampling_rate)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/transformers/pipelines/audio_utils.py", line 37, in ffmpeg_read
+insanely-fast-whisper-rocm-api  |     raise ValueError("ffmpeg was not found but is required to load audio files from filename") from error
+insanely-fast-whisper-rocm-api  | ValueError: ffmpeg was not found but is required to load audio files from filename
+insanely-fast-whisper-rocm-api  | ERROR:     insanely_fast_whisper_api.core - Error during ASR processing for temp_uploads/15bbed7d-dcce-4002-ac59-5dd891ec934c_test.mp3: Failed to transcribe audio: ffmpeg was not found but is required to load audio files from filename
+insanely-fast-whisper-rocm-api  | [32mINFO[0m:     172.23.0.1:41910 - "[1mPOST /v1/audio/transcriptions HTTP/1.1[0m" [91m500 Internal Server Error[0m
+insanely-fast-whisper-rocm-api  | [31mERROR[0m:    Exception in ASGI application
+insanely-fast-whisper-rocm-api  |   + Exception Group Traceback (most recent call last):
+insanely-fast-whisper-rocm-api  |   |   File "/usr/local/lib/python3.10/site-packages/starlette/_utils.py", line 76, in collapse_excgroups
+insanely-fast-whisper-rocm-api  |   |     yield
+insanely-fast-whisper-rocm-api  |   |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/base.py", line 177, in __call__
+insanely-fast-whisper-rocm-api  |   |     async with anyio.create_task_group() as task_group:
+insanely-fast-whisper-rocm-api  |   |   File "/usr/local/lib/python3.10/site-packages/anyio/_backends/_asyncio.py", line 772, in __aexit__
+insanely-fast-whisper-rocm-api  |   |     raise BaseExceptionGroup(
+insanely-fast-whisper-rocm-api  |   | exceptiongroup.ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+insanely-fast-whisper-rocm-api  |   +-+---------------- 1 ----------------
+insanely-fast-whisper-rocm-api  |     | Traceback (most recent call last):
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/uvicorn/protocols/http/h11_impl.py", line 403, in run_asgi
+insanely-fast-whisper-rocm-api  |     |     result = await app(  # type: ignore[func-returns-value]
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+insanely-fast-whisper-rocm-api  |     |     return await self.app(scope, receive, send)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/fastapi/applications.py", line 1054, in __call__
+insanely-fast-whisper-rocm-api  |     |     await super().__call__(scope, receive, send)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/applications.py", line 112, in __call__
+insanely-fast-whisper-rocm-api  |     |     await self.middleware_stack(scope, receive, send)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/errors.py", line 187, in __call__
+insanely-fast-whisper-rocm-api  |     |     raise exc
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/errors.py", line 165, in __call__
+insanely-fast-whisper-rocm-api  |     |     await self.app(scope, receive, _send)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/base.py", line 176, in __call__
+insanely-fast-whisper-rocm-api  |     |     with recv_stream, send_stream, collapse_excgroups():
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/contextlib.py", line 153, in __exit__
+insanely-fast-whisper-rocm-api  |     |     self.gen.throw(typ, value, traceback)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/_utils.py", line 82, in collapse_excgroups
+insanely-fast-whisper-rocm-api  |     |     raise exc
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/base.py", line 178, in __call__
+insanely-fast-whisper-rocm-api  |     |     response = await self.dispatch_func(request, call_next)
+insanely-fast-whisper-rocm-api  |     |   File "/app/insanely_fast_whisper_api/main.py", line 88, in log_request_timing
+insanely-fast-whisper-rocm-api  |     |     response = await call_next(request)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/base.py", line 156, in call_next
+insanely-fast-whisper-rocm-api  |     |     raise app_exc
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/base.py", line 141, in coro
+insanely-fast-whisper-rocm-api  |     |     await self.app(scope, receive_or_disconnect, send_no_error)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+insanely-fast-whisper-rocm-api  |     |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+insanely-fast-whisper-rocm-api  |     |     raise exc
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+insanely-fast-whisper-rocm-api  |     |     await app(scope, receive, sender)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/routing.py", line 714, in __call__
+insanely-fast-whisper-rocm-api  |     |     await self.middleware_stack(scope, receive, send)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/routing.py", line 734, in app
+insanely-fast-whisper-rocm-api  |     |     await route.handle(scope, receive, send)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/routing.py", line 288, in handle
+insanely-fast-whisper-rocm-api  |     |     await self.app(scope, receive, send)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/routing.py", line 76, in app
+insanely-fast-whisper-rocm-api  |     |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+insanely-fast-whisper-rocm-api  |     |     raise exc
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+insanely-fast-whisper-rocm-api  |     |     await app(scope, receive, sender)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/starlette/routing.py", line 73, in app
+insanely-fast-whisper-rocm-api  |     |     response = await f(request)
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/fastapi/routing.py", line 301, in app
+insanely-fast-whisper-rocm-api  |     |     raw_response = await run_endpoint_function(
+insanely-fast-whisper-rocm-api  |     |   File "/usr/local/lib/python3.10/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+insanely-fast-whisper-rocm-api  |     |     return await dependant.call(**values)
+insanely-fast-whisper-rocm-api  |     |   File "/app/insanely_fast_whisper_api/main.py", line 184, in create_transcription
+insanely-fast-whisper-rocm-api  |     |     result = asr(
+insanely-fast-whisper-rocm-api  |     |   File "/app/insanely_fast_whisper_api/core.py", line 294, in __call__
+insanely-fast-whisper-rocm-api  |     |     result = run_asr_pipeline(
+insanely-fast-whisper-rocm-api  |     |   File "/app/insanely_fast_whisper_api/core.py", line 133, in run_asr_pipeline
+insanely-fast-whisper-rocm-api  |     |     raise TranscriptionError(f"Failed to transcribe audio: {str(e)}")
+insanely-fast-whisper-rocm-api  |     | insanely_fast_whisper_api.core.TranscriptionError: Failed to transcribe audio: ffmpeg was not found but is required to load audio files from filename
+insanely-fast-whisper-rocm-api  |     +------------------------------------
+insanely-fast-whisper-rocm-api  | 
+insanely-fast-whisper-rocm-api  | During handling of the above exception, another exception occurred:
+insanely-fast-whisper-rocm-api  | 
+insanely-fast-whisper-rocm-api  | Traceback (most recent call last):
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/uvicorn/protocols/http/h11_impl.py", line 403, in run_asgi
+insanely-fast-whisper-rocm-api  |     result = await app(  # type: ignore[func-returns-value]
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+insanely-fast-whisper-rocm-api  |     return await self.app(scope, receive, send)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/fastapi/applications.py", line 1054, in __call__
+insanely-fast-whisper-rocm-api  |     await super().__call__(scope, receive, send)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/applications.py", line 112, in __call__
+insanely-fast-whisper-rocm-api  |     await self.middleware_stack(scope, receive, send)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/errors.py", line 187, in __call__
+insanely-fast-whisper-rocm-api  |     raise exc
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/errors.py", line 165, in __call__
+insanely-fast-whisper-rocm-api  |     await self.app(scope, receive, _send)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/base.py", line 176, in __call__
+insanely-fast-whisper-rocm-api  |     with recv_stream, send_stream, collapse_excgroups():
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/contextlib.py", line 153, in __exit__
+insanely-fast-whisper-rocm-api  |     self.gen.throw(typ, value, traceback)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/_utils.py", line 82, in collapse_excgroups
+insanely-fast-whisper-rocm-api  |     raise exc
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/base.py", line 178, in __call__
+insanely-fast-whisper-rocm-api  |     response = await self.dispatch_func(request, call_next)
+insanely-fast-whisper-rocm-api  |   File "/app/insanely_fast_whisper_api/main.py", line 88, in log_request_timing
+insanely-fast-whisper-rocm-api  |     response = await call_next(request)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/base.py", line 156, in call_next
+insanely-fast-whisper-rocm-api  |     raise app_exc
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/base.py", line 141, in coro
+insanely-fast-whisper-rocm-api  |     await self.app(scope, receive_or_disconnect, send_no_error)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+insanely-fast-whisper-rocm-api  |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+insanely-fast-whisper-rocm-api  |     raise exc
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+insanely-fast-whisper-rocm-api  |     await app(scope, receive, sender)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/routing.py", line 714, in __call__
+insanely-fast-whisper-rocm-api  |     await self.middleware_stack(scope, receive, send)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/routing.py", line 734, in app
+insanely-fast-whisper-rocm-api  |     await route.handle(scope, receive, send)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/routing.py", line 288, in handle
+insanely-fast-whisper-rocm-api  |     await self.app(scope, receive, send)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/routing.py", line 76, in app
+insanely-fast-whisper-rocm-api  |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+insanely-fast-whisper-rocm-api  |     raise exc
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+insanely-fast-whisper-rocm-api  |     await app(scope, receive, sender)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/starlette/routing.py", line 73, in app
+insanely-fast-whisper-rocm-api  |     response = await f(request)
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/fastapi/routing.py", line 301, in app
+insanely-fast-whisper-rocm-api  |     raw_response = await run_endpoint_function(
+insanely-fast-whisper-rocm-api  |   File "/usr/local/lib/python3.10/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+insanely-fast-whisper-rocm-api  |     return await dependant.call(**values)
+insanely-fast-whisper-rocm-api  |   File "/app/insanely_fast_whisper_api/main.py", line 184, in create_transcription
+insanely-fast-whisper-rocm-api  |     result = asr(
+insanely-fast-whisper-rocm-api  |   File "/app/insanely_fast_whisper_api/core.py", line 294, in __call__
+insanely-fast-whisper-rocm-api  |     result = run_asr_pipeline(
+insanely-fast-whisper-rocm-api  |   File "/app/insanely_fast_whisper_api/core.py", line 133, in run_asr_pipeline
+insanely-fast-whisper-rocm-api  |     raise TranscriptionError(f"Failed to transcribe audio: {str(e)}")
+insanely-fast-whisper-rocm-api  | insanely_fast_whisper_api.core.TranscriptionError: Failed to transcribe audio: ffmpeg was not found but is required to load audio files from filename
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main - --------------------------------------------------
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main - Received transcription request:
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main -   File: test-long.mp3
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main - File saved temporarily as: temp_uploads/1164d79e-1ab0-4266-bfcb-8c6a90e9c86f_test-long.mp3
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.main - Starting transcription process...
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.core - Starting ASR processing for file: temp_uploads/1164d79e-1ab0-4266-bfcb-8c6a90e9c86f_test-long.mp3
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.core - ASR using device: cuda:0, model: openai/whisper-large-v3, dtype: float16
+insanely-fast-whisper-rocm-api  | INFO:     insanely_fast_whisper_api.core - Loading ASR model 'openai/whisper-large-v3'...
+insanely-fast-whisper-rocm-api  | config.json:   0% 0.00/1.27k [00:00<?, ?B/s]config.json: 100% 1.27k/1.27k [00:00<00:00, 13.3MB/s]
