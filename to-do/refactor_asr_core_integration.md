@@ -1,0 +1,83 @@
+# To-Do: Refactor ASR Functionality into `core.py`
+
+This plan outlines the steps to refactor the Automatic Speech Recognition (ASR) functionality. The goal is to move the ASR logic currently in `insanely_fast_whisper_api/insanely_fast_whisper.py` directly into `insanely_fast_whisper_api/core.py`, eliminating the need for `core.py` to use a subprocess to call the `insanely-fast-whisper` command.
+
+## Tasks
+
+- [x] **Analysis Phase:**
+  - [x] Analyze `insanely_fast_whisper_api/insanely_fast_whisper.py`
+    - Path: `insanely_fast_whisper_api/insanely_fast_whisper.py`
+    - Action: Identify key ASR functions, classes, dependencies, entry points, and argument handling.
+  - [x] Analyze `insanely_fast_whisper_api/core.py`
+    - Path: `insanely_fast_whisper_api/core.py`
+    - Action: Review `ASRPipeline` class (esp. `_build_command`), subprocess invocation, and argument passing to `insanely-fast-whisper`.
+- [x] **Planning Phase:**
+  - [x] Define integration strategy
+    - Action: Determine components to move/import from `insanely_fast_whisper.py` to `core.py`. Plan adaptation of argument parsing and pipeline invocation. Identify potential conflicts. **Note:** Speaker diarization functionality will be deferred in this refactor.
+- [x] **Implementation Phase:**
+  - [x] Modify `insanely_fast_whisper_api/core.py`
+    - Path: `insanely_fast_whisper_api/core.py`
+    - Action: Integrate ASR logic from `insanely_fast_whisper.py` (direct transfer or import). Update `ASRPipeline` to use integrated logic. Remove subprocess calls for `insanely-fast-whisper`. Ensure all previous functionalities and arguments are handled (excluding diarization, which is deferred).
+  - [x] **Ensure System Dependencies:**
+    - [x] Install `ffmpeg` in `Dockerfile`
+      - Path: `Dockerfile`
+      - Action: Add `RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*` to ensure ffmpeg is available for audio processing.
+    - [x] Set `HSA_OVERRIDE_GFX_VERSION` for RX6600
+      - Paths: `Dockerfile`, `docker-compose.yaml`
+      - Action: Add `ENV HSA_OVERRIDE_GFX_VERSION=10.3.0` to Dockerfile and `HSA_OVERRIDE_GFX_VERSION: 10.3.0` to environment in docker-compose.yaml for RX6600 GPU compatibility.
+    - [x] Attempt to get more detailed GPU errors by setting `HIP_LAUNCH_BLOCKING=1`
+      - [x] Add `HIP_LAUNCH_BLOCKING=1` to `docker-compose.yaml`
+  - [x] **Add Transcription/Translation Persistence:**
+    - [x] Create `/app/transcripts` directory if it doesn't exist
+      - Path: `insanely_fast_whisper_api/core.py`
+      - Action: Added directory creation logic in `ASRPipeline.__init__`
+    - [x] Implement saving successful transcriptions/translations
+      - Path: `insanely_fast_whisper_api/core.py`
+      - Action: Modified the ASR pipeline to save results to `/app/transcripts` with timestamped filenames
+    - [x] Docker volume mapping
+      - Path: `docker-compose.yaml`
+      - Action: Confirmed volume mapping for `./transcripts:/app/transcripts` exists
+- [ ] **Testing Phase:**
+  - [x] Review ASR functionality migration
+    - Path: `insanely_fast_whisper_api/core.py`, `insanely_fast_whisper_api/insanely_fast_whisper.py`
+    - Action: Verified that all ASR functionalities (excluding deferred diarization) from `insanely_fast_whisper.py` have been correctly moved to `core.py`. Subprocess calls for `insanely-fast-whisper` for ASR purposes have been removed from `core.py`. Updated module docstring and removed unused `subprocess` import in `core.py`.
+  - [ ] Develop/Update Tests
+    - Path: `tests/`
+    - Action: Create or update unit/integration tests for the refactored ASR functionality in `core.py`.
+  - [ ] Manual API Testing
+    - Action: Manually test API endpoints using ASR to confirm correct behavior post-refactor.
+    - [x] Ran `tests/test_api.sh`. Most tests failed with "Internal Server Error". Test 6 (unsupported format) passed.
+    - [x] Inspected Docker logs (`docker compose logs insanely-fast-whisper-rocm-api`).
+      - Revealed `insanely_fast_whisper_api.core.TranscriptionError: Failed to transcribe audio: ... 401 Client Error: Unauthorized for url: https://huggingface.co/.../config.json ... Invalid credentials in Authorization header`.
+    - [x] Investigated `insanely_fast_whisper_api/core.py`:
+      - Confirmed `ASRPipeline` initializes with `hf_token` but doesn't explicitly pass it to the Hugging Face `pipeline()` call in `run_asr_pipeline`. The `transformers` library likely defaults to using the `HF_TOKEN` environment variable.
+    - [x] Inspected `docker-compose.yaml`:
+      - Found `env_file: - .env`, indicating environment variables are loaded from `.env`.
+    - [x] Inspected `/home/elvee/Local-AI/insanely-fast-whisper-api/.env`:
+      - Found `HF_TOKEN=your_huggingface_token_here`. This placeholder is causing the 401 error as public models don't require a token, and an invalid one causes authentication failure.
+    - [x] **Next Step**: Remove or comment out `HF_TOKEN` in `.env`, restart the Docker container, and re-run `tests/test_api.sh`.
+      - Action: Commented out `HF_TOKEN` in `.env`.
+    - [x] Re-ran `tests/test_api.sh` after restarting the container.
+      - Result: Most tests still failed with "Internal Server Error". Test 6 (unsupported format) passed as expected.
+    - [x] Inspected Docker logs (`docker compose logs insanely-fast-whisper-rocm-api`).
+      - Revealed `insanely_fast_whisper_api.core.TranscriptionError: Failed to transcribe audio: HIP out of memory. Tried to allocate 20.00 MiB. GPU 0 has a total capacity of 7.98 GiB of which 0 bytes is free.`
+    - [x] **Next Step**: Apply the suggested PyTorch memory configuration (`PYTORCH_HIP_ALLOC_CONF=expandable_segments:True`) in `.env` and `docker-compose.yaml`, restart the container, and re-run `tests/test_api.sh`.
+      - Action: Added `PYTORCH_HIP_ALLOC_CONF=expandable_segments:True` to `.env`. Ensured `HF_TOKEN` remains commented out. `docker-compose.yaml` already loads `.env` via `env_file`.
+    - [x] Restart Docker container and re-run `tests/test_api.sh`.
+      - Result: Most tests still failed with "Internal Server Error". Test 6 (unsupported format) passed.
+    - [x] Inspect Docker logs again.
+      - Result: `HIP out of memory` error persists. `PYTORCH_HIP_ALLOC_CONF` did not resolve it.
+    - [x] **Next Step**: Modify `tests/test_api.sh` to use a smaller model (e.g., `openai/whisper-tiny`) for one of the failing tests to check if VRAM is the bottleneck. Then, re-run tests.
+      - Action: Modified Test 1 in `tests/test_api.sh` to use `model=openai/whisper-tiny`.
+    - [ ] Re-run `tests/test_api.sh`.
+  - [ ] Performance Verification (Optional)
+    - Action: Compare performance and resource usage with the previous subprocess-based method.
+- [x] **Documentation Phase:**
+  - [x] Update `project-overview.md`
+    - Path: `project-overview.md`
+    - Action: Document changes to ASR handling and `core.py` structure, noting deferred diarization.
+  - [x] Add Code Documentation
+    - Path: `insanely_fast_whisper_api/core.py`
+    - Action: Added comprehensive docstrings and comments for all classes and methods, including detailed parameter descriptions, return values, and examples where appropriate.
+- [ ] **Future Feature: Re-integrate Speaker Diarization**
+  - Action: Investigate and implement speaker diarization capabilities directly within the `core.py` ASR pipeline, or by enhancing/calling a suitable diarization module. This was deferred during the initial refactor of ASR functionality from subprocess to direct call.
