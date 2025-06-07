@@ -1,38 +1,63 @@
 services:
-  app:
+  insanely-fast-whisper-rocm-api:
     build:
       context: .
-      dockerfile: Dockerfile.dev
-      target: clblas-installer
-    container_name: insanely-fast-whisper-dev
-    user: rocm-user
-    working_dir: /app
-    volumes:
-      - .:/app
-      - ~/.cache:/home/rocm-user/.cache
-      - /opt/rocm:/opt/rocm:ro
-      - /etc/group:/etc/group:ro
-      - /etc/passwd:/etc/passwd:ro
-      - /etc/shadow:/etc/shadow:ro
-    environment:
-      - HSA_OVERRIDE_GFX_VERSION=10.3.0
-      - ROCR_VISIBLE_DEVICES=0
-      - ROC_ENABLE_PRE_VEGA=1
-      - ROCM_PATH=/opt/rocm
-      - HSA_OVERRIDE_GFX_VERSION=10.3.0
-      - PYTHONUNBUFFERED=1
-      - PYTHONDONTWRITEBYTECODE=1
-      - PYTHONPATH=/app
-      - LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64
+      dockerfile: Dockerfile
+
+    # image: ghrc.io/beecave-homelab/insanely-fast-whisper-rocm-api:dev
+    image: beecave/insanely-fast-whisper-rocm-api:dev
+    container_name: insanely-fast-whisper-rocm-api-dev
+    restart: unless-stopped
+
+    # To allow AMD GPU access:
     devices:
-      - /dev/kfd:/dev/kfd
-      - /dev/dri:/dev/dri
-    group_add:
-      - video
-      - render
-    ipc: host
-    shm_size: '8gb'
+      - "/dev/kfd:/dev/kfd"
+      - "/dev/dri:/dev/dri"
     stdin_open: true
     tty: true
-    privileged: true
-    command: /bin/bash
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    group_add:
+      - video
+    ipc: host
+    shm_size: 8G
+
+    env_file:
+      - .env
+
+    ports:
+      - "8888:8888"  # API port
+      - "7860:7860"  # WebUI port
+    
+    volumes:
+      - "./transcripts:/app/transcripts"
+      - "./temp_uploads:/app/temp_uploads"
+      - "./insanely_fast_whisper_api:/app/insanely_fast_whisper_api"
+      - "./tests:/app/tests"
+      - "$HOME/.cache/huggingface/hub:/root/.cache/huggingface/hub"
+
+    #################################################
+    ## Default: Gradio WebUI without debug logging ##
+    #################################################
+    command: ["python", "-m", "insanely_fast_whisper_api.webui.cli"]
+    
+    ##############################################
+    ## Alternative commands (uncomment to use): ##
+    ##############################################
+    #
+    # Gradio WebUI with debug logging:
+    # command: ["python", "-m", "insanely_fast_whisper_api.webui.cli",  "--debug"]
+    #
+    # API only:
+    # command: ["python", "-m", "insanely_fast_whisper_api"]
+    #
+    # API with verbose output:
+    # command: ["python", "-m", "insanely_fast_whisper_api", "-v"]
+    #
+    # Custom WebUI with extra args:
+    # command: ["python", "-m", "insanely_fast_whisper_api.webui.cli", "--port", "7860", "--host", "0.0.0.0", "--debug"]
+    #
+    # CLI transcription example:
+    # command: ["python", "-m", "insanely_fast_whisper_api.cli.cli", "transcribe", "tests/file.mp3", "--debug"]
