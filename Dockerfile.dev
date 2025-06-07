@@ -23,13 +23,13 @@ WORKDIR /app
 COPY requirements.txt /app/
 COPY requirements-onnxruntime-rocm.txt /app/
 COPY requirements-rocm.txt /app/
-# COPY requirements-dev.txt /app/
+COPY requirements-dev.txt /app/
 
 # Install project dependencies from requirements files.
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir -r requirements-onnxruntime-rocm.txt
 RUN pip install --no-cache-dir -r requirements-rocm.txt
-# RUN pip install --no-cache-dir -r requirements-dev.txt
+RUN pip install --no-cache-dir -r requirements-dev.txt
 
 # Copy the project definition file to leverage Docker layer caching for dependencies
 COPY pyproject.toml /app/
@@ -43,7 +43,7 @@ COPY ./insanely_fast_whisper_api /app/insanely_fast_whisper_api/
 # Now, install the local package itself
 # This command reads pyproject.toml (already copied) and installs the current project.
 RUN pip install -U pip
-# RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir .
 
 # After `pip install .`, the package `insanely_fast_whisper_api` and its CLI/modules
 # should be available in the Python environment.

@@ -1,12 +1,12 @@
 services:
-  insanely-fast-whisper-rocm-api:
+  insanely-fast-whisper-rocm:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
 
-    # image: ghrc.io/beecave-homelab/insanely-fast-whisper-rocm-api:dev
-    image: beecave/insanely-fast-whisper-rocm-api:dev
-    container_name: insanely-fast-whisper-rocm-api-dev
+    image: ghrc.io/beecave-homelab/insanely-fast-whisper-rocm:dev
+    # image: beecave/insanely-fast-whisper-rocm:dev
+    container_name: insanely-fast-whisper-rocm-dev
     restart: unless-stopped
 
     # To allow AMD GPU access:
