@@ -77,6 +77,8 @@ uploads/
 tests/*.mp3
 transcripts/*.json
 transcripts/*
+transcripts-srt/*
+transcripts-txt/*
 temp_uploads/*
 
 .env
