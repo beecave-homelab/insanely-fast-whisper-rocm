@@ -2,7 +2,7 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Current Version](https://img.shields.io/badge/Current-v0.4.0-blue)](#v040-current---june-2025)
+[![Current Version](https://img.shields.io/badge/Current-v0.4.1-blue)](#v041-current---june-2025)
 [![Latest Release](https://img.shields.io/badge/Latest%20Release-June%202025-green)](#v040-current---june-2025)
 [![Development Status](https://img.shields.io/badge/Status-Active%20Development-orange)](#roadmap)
 
@@ -19,7 +19,30 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## 🏷️ Release Timeline
 
-### **v0.4.0** (Current) - *June 2025*
+### **v0.4.1** (Current) - *June 2025*
+**🐛 WebUI Download Fixes & Stability**
+
+#### 🐛 **Bug Fixes**
+- **Fixed**: `TypeError` in Gradio `DownloadButton` when updating visibility/value.
+  - **Issue**: Returning `gr.DownloadButton()` instances instead of `gr.update()` dictionaries caused `TypeError: expected str, bytes or os.PathLike object, not function`.
+  - **Root Cause**: Incorrect usage of Gradio update mechanisms for `gr.DownloadButton`.
+  - **Solution**: Changed assignments to use `gr.update(value=filepath, visible=True)` for showing and `gr.update(visible=False)` for hiding download buttons. (Related to commit `76252e4`)
+- **Fixed**: ZIP archive overwrites for different download types in WebUI.
+  - **Issue**: Requesting different ZIP formats (e.g., "All", "TXT only") for the same batch of files resulted in the last requested ZIP overwriting previous ones.
+  - **Root Cause**: `BatchZipBuilder.create` used the same base filename derived from `batch_id` for all ZIP types.
+  - **Solution**: Appended unique suffixes (e.g., `_all_formats`, `_txt_only`) to the `batch_id` when constructing filenames for `BatchZipBuilder.create`, ensuring distinct archive names.
+
+#### 🔧 **Improvements**
+- **Docs**: Added documentation for Gradio `DownloadButton` `TypeError` fix and ZIP archive overwrite fix (`c3eba0c`).
+- **Chore**: Updated Dockerfile labels and added source URL (`a2f2ac2`).
+- **Chore**: Enhanced support for long audio files (`e1ea7c3`).
+- **Chore**: Removed an unused test file (`b447757`).
+
+#### 📝 **Commits**: `c3eba0c`, `76252e4`, `a2f2ac2`, `e1ea7c3`, `b447757`
+
+---
+
+### **v0.4.0** - *June 2025*
 **✨ Enhanced Versioning & Logging**
 
 #### ✨ **New Features**

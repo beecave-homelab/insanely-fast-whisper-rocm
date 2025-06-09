@@ -3,7 +3,7 @@
 A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture. This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/Version-v0.4.0-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v0.4.1-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-endpoints)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-tools-cli)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#web-ui-webui)
@@ -11,28 +11,28 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 
 ---
 
-## 📚 Table of Contents
+## Table of Contents
 
-1. [Quickstart for Developers](#quickstart-for-developers)
-2. [Version Summary](#version-summary)
-3. [Project Features](#project-features)
-4. [Project Structure](#project-structure)
-5. [Architecture Highlights](#architecture-highlights)
-6. [Filename Conventions](#filename-conventions)
-7. [Configuration System](#configuration-system)
-8. [Dependency Management](#dependency-management)
-9. [API Endpoints](#api-endpoints)
-10. [Error Handling](#error-handling)
-11. [Development Guidelines](#development-guidelines)
-12. [Deployment Options](#deployment-options)
-13. [Monitoring & Security](#monitoring--security)
-14. [Import Standardization](#import-standardization)
-15. [Recent Enhancements](#recent-enhancements)
-16. [Bug Fixes](#bug-fixes)
+- [Quickstart for Developers](#quickstart-for-developers)
+- [Version Summary](#version-summary)
+- [Project Features](#project-features)
+- [Project Structure](#project-structure)
+- [Architecture Highlights](#architecture-highlights)
+- [Filename Conventions](#filename-conventions)
+- [Configuration System](#configuration-system)
+- [Dependency Management](#dependency-management)
+- [API Endpoints](#api-endpoints)
+- [Error Handling](#error-handling)
+- [Development Guidelines](#development-guidelines)
+- [Deployment Options](#deployment-options)
+- [Monitoring & Security](#monitoring--security)
+- [Import Standardization](#import-standardization)
+- [Recent Enhancements](#recent-enhancements)
+- [Bug Fixes](#bug-fixes)
 
 ---
 
-## 🚀 Quickstart for Developers
+## Quickstart for Developers
 
 ```bash
 # Clone and activate
@@ -66,29 +66,28 @@ python -m insanely_fast_whisper_api.cli.cli transcribe audio.mp3  # CLI
 
 ---
 
-## 📋 Version Summary
+## Version Summary
 
-### 🏷️ **Current Version: v0.4.0** *(June 2025)*
-**Latest improvements**: Enhanced versioning, improved logging format
+### 🏷️ **Current Version: v0.4.1** *(June 2025)*
+
+**Latest improvements**: Fixed Gradio DownloadButton TypeError and ZIP archive overwrite issues.
 
 ### 📊 **Release Overview**
+
 | Version | Date | Type | Key Features |
 |---------|------|------|--------------|
+| **v0.4.1** | Jun 2025 | 🐛 Patch | WebUI download fixes, stability |
 | **v0.4.0** | Jun 2025 | ✨ Minor | Versioning improvements, logging enhancements |
 | **v0.3.1** | Jun 2025 | 🐛 Patch | ZIP fixes, audio validation, stability |
 | **v0.3.0** | May 2025 | ✨ Minor | WebUI modularization, batch processing |
 | **v0.2.1** | May 2025 | ♻️ Minor | Import standardization, core refinements |
-| **v0.2.0** | May 2025 | 🔄 **Major** | **Breaking**: Hugging Face direct integration |
+| **v0.2.0** | May 2025 | 🔄 Major | Breaking: Hugging Face direct integration |
 | **v0.1.2** | Mar 2025 | ✨ Minor | First WebUI introduction |
 | **v0.1.1** | Jan 2025 | 🔧 Minor | Enhanced functionality, logging |
-| **v0.1.0** | Jan 2025 | 🎉 **Major** | **Initial Release**: FastAPI wrapper |
-
-### 🎯 **What's Next?**
-- **v0.5.0**: Multi-language expansion, real-time streaming
-- **v0.6.0**: Speaker diarization, cloud integration
-- **v1.0.0**: Production-ready, enterprise features
+| **v0.1.0** | Jan 2025 | 🎉 Major | Initial Release: FastAPI wrapper |
 
 ### 📈 **Development Stats**
+
 - **100+ commits** across 5 months of development
 - **3 major architectural refactors**
 - **1 breaking change** (v0.2.0)
@@ -99,113 +98,121 @@ python -m insanely_fast_whisper_api.cli.cli transcribe audio.mp3  # CLI
 
 ---
 
-## 🌟 Project Features
+## Project Features
 
 ### Primary Focus: ROCm Support
-* **AMD GPU (ROCm v6.1) Support**: First-class AMD GPU acceleration for Whisper models
-* **Extended Original Package**: Builds upon [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) with additional interfaces and ROCm compatibility
-* **Production-Ready Architecture**: Beyond CLI-only approach of original package
+
+- **AMD GPU (ROCm v6.1) Support**: First-class AMD GPU acceleration for Whisper models
+
+- **Extended Original Package**: Builds upon [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) with additional interfaces and ROCm compatibility
+- **Production-Ready Architecture**: Beyond CLI-only approach of original package
 
 ### Core Capabilities
-* **Transcription**: Audio to text in source language
-* **Translation**: Audio to English
-* **Multiple Audio Formats**: Support for .wav, .flac, and .mp3 formats
-* **Filename Standardization**: Predictable and configurable output naming
+
+- **Transcription**: Audio to text in source language
+
+- **Translation**: Audio to English
+- **Multiple Audio Formats**: Support for .wav, .flac, and .mp3 formats
+- **Filename Standardization**: Predictable and configurable output naming
 
 ### Interface Options
-* **FastAPI Server**: RESTful API with OpenAI-compatible v1 endpoints (`/v1/audio/transcriptions`, etc.)
-* **Gradio WebUI**: Batch file upload, live progress tracking, ZIP downloads
-* **CLI Interface**: Command-line tool for single-file processing
-* **Model Management**: Automatic Hugging Face model downloading and caching
-* **Docker Support**: Full containerization with development and production configurations
+
+- **FastAPI Server**: RESTful API with OpenAI-compatible v1 endpoints (`/v1/audio/transcriptions`, etc.)
+
+- **Gradio WebUI**: Batch file upload, live progress tracking, ZIP downloads
+- **CLI Interface**: Command-line tool for single-file processing
+- **Model Management**: Automatic Hugging Face model downloading and caching
+- **Docker Support**: Full containerization with development and production configurations
 
 ### Architecture
-* **Modular Design**: Split core, audio, API, CLI, WebUI, and utils
-* **Error Handling**: Layered, type-specific, with full trace logging
-* **Direct Hugging Face Integration**: Native `transformers.pipeline` support
-* **Configurable Processing**: Batch size, device, model selection
-* **ROCm Integration**: Optimized PyTorch and ONNX runtime configurations for AMD GPUs
+
+- **Modular Design**: Split core, audio, API, CLI, WebUI, and utils
+
+- **Error Handling**: Layered, type-specific, with full trace logging
+- **Direct Hugging Face Integration**: Native `transformers.pipeline` support
+- **Configurable Processing**: Batch size, device, model selection
+- **ROCm Integration**: Optimized PyTorch and ONNX runtime configurations for AMD GPUs
 
 ---
 
-## 🗂️ Project Structure
+## Project Structure
 
-### 🔧 Core Logic (`core/`)
+### Core Logic (`core/`)
 
-* `pipeline.py`: ASR orchestration
-* `asr_backend.py`: Whisper model backend
-* `storage.py`: File lifecycle management
-* `utils.py`: General utilities
-* `errors.py`: Exception classes
+- `pipeline.py`: ASR orchestration
+- `asr_backend.py`: Whisper model backend
+- `storage.py`: File lifecycle management
+- `utils.py`: General utilities
+- `errors.py`: Exception classes
 
-### 🔊 Audio Processing (`audio/`)
+### Audio Processing (`audio/`)
 
-* `processing.py`: Validation and preprocessing
-* `results.py`: Output formatting and handling
+- `processing.py`: Validation and preprocessing
+- `results.py`: Output formatting and handling
 
-### 🌐 API Layer (`api/`)
+### API Layer (`api/`)
 
-* `app.py`: FastAPI setup and startup
-* `routes.py`: Endpoint definitions
-* `models.py`: Pydantic schemas
-* `middleware.py`: Request/response middleware
-* `dependencies.py`: Dependency injection
-* `responses.py`: Response formatters
+- `app.py`: FastAPI setup and startup
+- `routes.py`: Endpoint definitions
+- `models.py`: Pydantic schemas
+- `middleware.py`: Request/response middleware
+- `dependencies.py`: Dependency injection
+- `responses.py`: Response formatters
 
-### 🧪 CLI Tools (`cli/`)
+### CLI Tools (`cli/`)
 
-* `cli.py`: CLI entry point
-* `commands.py`: Subcommand logic
-* `facade.py`: High-level CLI wrapper
+- `cli.py`: CLI entry point
+- `commands.py`: Subcommand logic
+- `facade.py`: High-level CLI wrapper
 
-### 🎛️ Web UI (`webui/`)
+### Web UI (`webui/`)
 
-* `cli.py`: WebUI CLI entry point
-* `ui.py`: Gradio interface
-* `handlers.py`: Upload + result management
-* `formatters.py`: Export formats (TXT, JSON, SRT)
-* `utils.py`: WebUI utilities
-* `errors.py`: UI-specific exceptions
-* `downloads/`: ZIP and file merging logic for downloads
-  * `zip_creator.py`: Builder for creating ZIP archives
-  * `merge_handler.py`: Handlers for merging transcription files
+- `cli.py`: WebUI CLI entry point
+- `ui.py`: Gradio interface
+- `handlers.py`: Upload + result management
+- `formatters.py`: Export formats (TXT, JSON, SRT)
+- `utils.py`: WebUI utilities
+- `errors.py`: UI-specific exceptions
+- `downloads/`: ZIP and file merging logic for downloads
+  - `zip_creator.py`: Builder for creating ZIP archives
+  - `merge_handler.py`: Handlers for merging transcription files
 
-### 🧰 Utilities (`utils/`)
+### Utilities (`utils/`)
 
-* `constants.py`: Env var loading + default handling
-* `download_hf_model.py`: Model downloading + caching
-* `file_utils.py`: File operations
-* `filename_generator.py`: Unified filename logic
-
----
-
-## 🧱 Architecture Highlights
-
-### 🔗 Core Refactor (v0.2.0+)
-
-* Direct integration with Hugging Face `pipeline`
-* No subprocess dependency on `insanely-fast-whisper`
-* Modular architecture: `pipeline.py`, `asr_backend.py`, etc.
-* *See [v0.2.0 changelog](#v020---may-2025) for complete architectural changes*
-
-### 🎨 WebUI Refactor (v0.3.0+)
-
-* Full Gradio-based multi-file support
-* Native ZIP creation and download buttons
-* Real-time batch progress with `gr.Progress`
-* Backward-compatible with single-file use
-* *See [v0.3.0 changelog](#v030---may-2025) for WebUI modularization details*
-
-### 🗃️ Multiple File Support (v0.3.1+)
-
-* `gr.File(file_count="multiple")`
-* Native batching + ZIP archive output
-* Chunk-level processing progress
-* *See [v0.3.1 changelog](#v031-current---june-2025) for latest enhancements*
+- `constants.py`: Env var loading + default handling
+- `download_hf_model.py`: Model downloading + caching
+- `file_utils.py`: File operations
+- `filename_generator.py`: Unified filename logic
 
 ---
 
-## 🧾 Filename Conventions
+## Architecture Highlights
+
+### Core Refactor (v0.2.0+)
+
+- Direct integration with Hugging Face `pipeline`
+- No subprocess dependency on `insanely-fast-whisper`
+- Modular architecture: `pipeline.py`, `asr_backend.py`, etc.
+- *See [v0.2.0 changelog](VERSIONS.md#v020---may-2025) for complete architectural changes*
+
+### WebUI Refactor (v0.3.0+)
+
+- Full Gradio-based multi-file support
+- Native ZIP creation and download buttons
+- Real-time batch progress with `gr.Progress`
+- Backward-compatible with single-file use
+- *See [v0.3.0 changelog](VERSIONS.md#v030---may-2025) for WebUI modularization details*
+
+### Multiple File Support (v0.3.1+)
+
+- `gr.File(file_count="multiple")`
+- Native batching + ZIP archive output
+- Chunk-level processing progress
+- *See [v0.3.1 changelog](VERSIONS.md#v031---june-2025) for latest enhancements*
+
+---
+
+## Filename Conventions
 
 **Pattern:** `{audio_stem}_{task}_{timestamp}.{extension}`
 
@@ -216,7 +223,7 @@ python -m insanely_fast_whisper_api.cli.cli transcribe audio.mp3  # CLI
 | `timestamp`  | ISO 8601 format (`YYYYMMDDTHHMMSSZ`) |
 | `extension`  | `json`, `txt`, or `srt`              |
 
-### Example:
+### Example
 
 ```txt
 interview_audio_translate_20250601T091234Z.txt
@@ -230,7 +237,7 @@ FILENAME_TIMEZONE=Europe/Amsterdam  # or UTC (default)
 
 ---
 
-## ⚙️ Configuration System
+## Configuration System
 
 ### Centralized via `utils/constants.py`
 
@@ -238,41 +245,41 @@ All environment variables are defined and loaded from here using `dotenv`.
 
 ### Benefits
 
-* Consistent defaults and types
-* Type-safe: all values converted properly (bool/int/float/str)
-* `.env` supported in project root and user config
+- Consistent defaults and types
+- Type-safe: all values converted properly (bool/int/float/str)
+- `.env` supported in project root and user config
 
 ### Common Vars
 
-* `WHISPER_MODEL`: Model name (e.g. `openai/whisper-large-v3`)
-* `WHISPER_DEVICE`: e.g., `cpu`, `0`, etc.
-* `WHISPER_BATCH_SIZE`: Parallel segment processing
-* `SAVE_TRANSCRIPTIONS`: Save outputs to disk
-* `FILENAME_TIMEZONE`: UTC or a timezone name
+- `WHISPER_MODEL`: Model name (e.g. `openai/whisper-large-v3`)
+- `WHISPER_DEVICE`: e.g., `cpu`, `0`, etc.
+- `WHISPER_BATCH_SIZE`: Parallel segment processing
+- `SAVE_TRANSCRIPTIONS`: Save outputs to disk
+- `FILENAME_TIMEZONE`: UTC or a timezone name
 
 No `os.getenv()` calls outside `constants.py`.
 
 ---
 
-## 📦 Dependency Management
+## Dependency Management
 
-### `pyproject.toml` with extras:
+### `pyproject.toml` with extras
 
-* `[project.dependencies]`: Core runtime
-* `[project.optional-dependencies]`: `dev`, `torch-cpu`, `torch-rocm`, etc.
+- `[project.dependencies]`: Core runtime
+- `[project.optional-dependencies]`: `dev`, `torch-cpu`, `torch-rocm`, etc.
 
 ### `requirements-*.txt` Files
 
-* `requirements.txt`: Base runtime
-* `requirements-dev.txt`: Linters, pytest, etc.
-* `requirements-rocm.txt`: ROCm-only PyTorch
-* `requirements-onnxruntime-rocm.txt`: Optional ROCm ONNX
+- `requirements.txt`: Base runtime
+- `requirements-dev.txt`: Linters, pytest, etc.
+- `requirements-rocm.txt`: ROCm-only PyTorch
+- `requirements-onnxruntime-rocm.txt`: Optional ROCm ONNX
 
 > **PyTorch note:** Not in `pyproject.toml` due to index URL requirements
 
 ---
 
-## 🧪 API Endpoints
+## API Endpoints
 
 ### `POST /v1/audio/transcriptions`
 
@@ -295,34 +302,34 @@ Translates audio to English.
 
 ---
 
-## 🧯 Error Handling
+## Error Handling
 
 ### Strategy
 
-* Catch specific exceptions: `ValueError`, `HTTPException`, `RuntimeError`, etc.
-* Use `from e` to preserve traceback
-* Avoid broad `except Exception`
+- Catch specific exceptions: `ValueError`, `HTTPException`, `RuntimeError`, etc.
+- Use `from e` to preserve traceback
+- Avoid broad `except Exception`
 
 ### Logging
 
-* Full stack trace
-* Log level: Critical / Error / Warning / Debug
+- Full stack trace
+- Log level: Critical / Error / Warning / Debug
 
 ### Layered Handling
 
-* API → custom response formatting
-* CLI → friendly messages
-* WebUI → visual feedback
+- API → custom response formatting
+- CLI → friendly messages
+- WebUI → visual feedback
 
 ---
 
-## 🧰 Development Guidelines
+## Development Guidelines
 
 ### Code Style
 
-* PEP8 + 88-char lines
-* `black`, `isort`, `mypy`, `pylint`
-* Type hints everywhere
+- PEP8 + 88-char lines
+- `black`, `isort`, `mypy`, `pylint`
+- Type hints everywhere
 
 ### Testing
 
@@ -369,7 +376,7 @@ black . && isort .
 
 ---
 
-## 🚢 Deployment Options
+## Deployment Options
 
 ### Local Development
 
@@ -418,98 +425,100 @@ docker compose up --build -d
 **Default behavior**: Launches WebUI with debug logging on port 7860
 
 **Access URLs:**
-* WebUI: [http://localhost:7860](http://localhost:7860)
-* API (when enabled): [http://localhost:8888/docs](http://localhost:8888/docs)
+
+- WebUI: [http://localhost:7860](http://localhost:7860)
+- API (when enabled): [http://localhost:8888/docs](http://localhost:8888/docs)
 
 ---
 
-## 🛡️ Monitoring & Security
+## Monitoring & Security
 
-* Validates file uploads (type and size)
-* Cleans up temp files after use
-* Logs to stdout or file via YAML config
-* Rate limiting and auth should be implemented in prod
+- Validates file uploads (type and size)
+- Cleans up temp files after use
+- Logs to stdout or file via YAML config
+- Rate limiting and auth should be implemented in prod
 
 ---
 
-## 📦 Import Standardization (v0.2.1+)
+## Import Standardization
 
-All imports now follow **absolute import** conventions for improved IDE support and maintainability:
+All imports now follow **absolute import** conventions for improved IDE support and maintainability (v0.2.1+):
 
 ```python
-# ✅ Good - Absolute imports
+# Good - Absolute imports
 from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_api.utils.constants import WHISPER_MODEL
 
-# ❌ Deprecated - Relative imports (removed in v0.2.1)
+# Deprecated - Relative imports (removed in v0.2.1)
 # from .core.pipeline import WhisperPipeline
 ```
 
 **Benefits:**
-* Better IDE auto-completion and navigation
-* Clearer dependency tracking
-* Improved code maintainability
-* Consistent import patterns across the codebase
+
+- Better IDE auto-completion and navigation
+- Clearer dependency tracking
+- Improved code maintainability
+- Consistent import patterns across the codebase
 
 *See [v0.2.1 changelog in VERSIONS.md](VERSIONS.md#v021---may-29-30-2025) for implementation details.*
 
 ---
 
-## 🆕 Recent Enhancements
+## Recent Enhancements
 
 *For complete feature details and changelog, see [VERSIONS.md](VERSIONS.md).*
 
-### ✅ Multi-file WebUI Support (v0.3.1)
+### Multi-file WebUI Support (v0.3.1)
 
-* Batch uploads with improved error handling
-* ZIP downloads with TXT/SRT/JSON formats
-* Real-time chunk-level progress tracking
-* Fixed empty ZIP file bug
+- Batch uploads with improved error handling
+- ZIP downloads with TXT/SRT/JSON formats
+- Real-time chunk-level progress tracking
+- Fixed empty ZIP file bug
 
-### ✅ Modular WebUI Architecture (v0.3.0)
+### Modular WebUI Architecture (v0.3.0)
 
-* `ui.py`, `handlers.py`, `formatters.py`, `errors.py`
-* Replaces monolithic `webui.py`
-* CLI entrypoint for WebUI launches
-* Configuration dataclasses
+- `ui.py`, `handlers.py`, `formatters.py`, `errors.py`
+- Replaces monolithic `webui.py`
+- CLI entrypoint for WebUI launches
+- Configuration dataclasses
 
-### ✅ Core Architecture Revolution (v0.2.0)
+### Core Architecture Revolution (v0.2.0)
 
-* Direct Hugging Face Transformers integration
-* Dropped subprocess-based `insanely-fast-whisper` dependency
-* Native `transformers.pipeline` support
-* Performance optimizations with configurable batching
+- Direct Hugging Face Transformers integration
+- Dropped subprocess-based `insanely-fast-whisper` dependency
+- Native `transformers.pipeline` support
+- Performance optimizations with configurable batching
 
 ---
 
-## 🐞 Bug Fixes
+## Bug Fixes
 
 *For complete bug fix details and changelog, see [VERSIONS.md](VERSIONS.md).*
 
-### ✅ Fixed empty ZIP files (v0.3.1)
+### Fixed empty ZIP files (v0.3.1)
 
-* **Issue**: WebUI ZIP downloads were missing transcription content
-* **Root Cause**: `result_dict` was incorrectly accessed in `handlers.py`
-* **Fix**: Corrected data structure access and improved error handling
-* **Result**: Properly populated ZIP downloads with all transcription formats
+- **Issue**: WebUI ZIP downloads were missing transcription content
+- **Root Cause**: `result_dict` was incorrectly accessed in `handlers.py`
+- **Fix**: Corrected data structure access and improved error handling
+- **Result**: Properly populated ZIP downloads with all transcription formats
 
 ### ✅ Audio Format Validation (v0.3.1)
 
-* **Issue**: Deprecated audio extensions causing processing errors
-* **Fix**: Updated supported format validation and removed legacy extensions
-* **Result**: More reliable audio file processing
+- **Issue**: Deprecated audio extensions causing processing errors
+- **Fix**: Updated supported format validation and removed legacy extensions
+- **Result**: More reliable audio file processing
 
 ### ✅ Configuration Test Stability (v0.3.1)
 
-* **Issue**: Inconsistent configuration test results
-* **Fix**: Refactored centralized configuration tests for improved robustness
-* **Result**: More reliable testing and validation
+- **Issue**: Inconsistent configuration test results
+- **Fix**: Refactored centralized configuration tests for improved robustness
+- **Result**: More reliable testing and validation
 
 ### ✅ WebUI Batch Download (v0.3.1)
 
-* **Issue**: `TypeError` in Gradio `DownloadButton` when processing multiple files
-* **Fix**: Ensured `value` parameter receives a file path instead of a function
-* **Result**: Fixed `TypeError` in WebUI batch download functionality
+- **Issue**: `TypeError` in Gradio `DownloadButton` when processing multiple files
+- **Fix**: Ensured `value` parameter receives a file path instead of a function
+- **Result**: Fixed `TypeError` in WebUI batch download functionality
 
 ---
 
