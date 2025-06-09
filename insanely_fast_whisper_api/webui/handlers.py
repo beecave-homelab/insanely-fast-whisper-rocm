@@ -422,15 +422,15 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 "details": "Check logs.",
             }
             raw_result_state_val = {"error": str(e), "details": "Check logs."}
-            dl_btn_hidden = gr.DownloadButton(visible=False, interactive=False)
+            dl_btn_hidden_update = gr.update(visible=False, value=None, interactive=False)
             return (
                 transcription_output_val,
                 json_output_val,
                 raw_result_state_val,
-                dl_btn_hidden,
-                dl_btn_hidden,
-                dl_btn_hidden,
-                dl_btn_hidden,
+                dl_btn_hidden_update,  # zip_btn_update
+                dl_btn_hidden_update,  # txt_btn_update
+                dl_btn_hidden_update,  # srt_btn_update
+                dl_btn_hidden_update,  # json_btn_update
             )
 
     if not all_results_data:
@@ -438,15 +438,15 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             "No files processed.",
             {},
             {},
-            gr.DownloadButton(visible=False),
-            gr.DownloadButton(visible=False),
-            gr.DownloadButton(visible=False),
-            gr.DownloadButton(visible=False),
+            dl_btn_hidden_update,  # zip_btn_update
+            dl_btn_hidden_update,  # txt_btn_update
+            dl_btn_hidden_update,  # srt_btn_update
+            dl_btn_hidden_update,  # json_btn_update
         )
 
     # Initialize default Gradio button updates (hidden)
-    dl_btn_hidden = gr.DownloadButton(visible=False, interactive=False)
-    zip_btn_update = txt_btn_update = srt_btn_update = json_btn_update = dl_btn_hidden
+    dl_btn_hidden_update = gr.update(visible=False, value=None, interactive=False)
+    zip_btn_update = txt_btn_update = srt_btn_update = json_btn_update = dl_btn_hidden_update
 
     successful_results = [res for res in all_results_data if "error" not in res]
 
@@ -464,10 +464,10 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             transcription_output_val,
             json_output_val,
             raw_result_state_val,
-            dl_btn_hidden,
-            dl_btn_hidden,
-            dl_btn_hidden,
-            dl_btn_hidden,
+            dl_btn_hidden_update,
+            dl_btn_hidden_update,
+            dl_btn_hidden_update,
+            dl_btn_hidden_update,
         )
 
     # Common configuration timestamp for all zip files
@@ -491,36 +491,36 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         )
 
         # Individual file downloads
-        txt_btn_update = gr.DownloadButton(
-            value=lambda fr=first_success: _prepare_temp_downloadable_file(
-                fr["raw_result"],
+        txt_btn_update = gr.update(
+            value=_prepare_temp_downloadable_file(
+                first_success["raw_result"],
                 "txt",
-                fr["audio_original_stem"],
+                first_success["audio_original_stem"],
                 output_base_dir,
                 current_task_type,
             ),
-            label=f"Download {first_success['audio_original_stem']}.txt",
             visible=True,
             interactive=True,
+            label="Download .txt",
         )
-        srt_btn_update = gr.DownloadButton(
-            value=lambda fr=first_success: _prepare_temp_downloadable_file(
-                fr["raw_result"],
+        srt_btn_update = gr.update(
+            value=_prepare_temp_downloadable_file(
+                first_success["raw_result"],
                 "srt",
-                fr["audio_original_stem"],
+                first_success["audio_original_stem"],
                 output_base_dir,
                 current_task_type,
             ),
-            label=f"Download {first_success['audio_original_stem']}.srt",
             visible=True,
             interactive=True,
+            label="Download .srt",
         )
         # JSON button points to the already saved pipeline JSON
-        json_btn_update = gr.DownloadButton(
+        json_btn_update = gr.update(
             value=first_success["json_file_path"],
-            label=f"Download {Path(first_success['json_file_path']).name if first_success['json_file_path'] else 'result.json'}",
             visible=True,
             interactive=True,
+            label="Download .json",
         )
 
         # "Download All (ZIP)" for single file
@@ -551,12 +551,13 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 )
                 single_all_zip_path, _ = builder.build()
 
-            zip_btn_update = gr.DownloadButton(
-                value=single_all_zip_path,
+            zip_btn_update = gr.update(
+                value=single_all_zip_path,  # Use the returned path
                 visible=True,
                 interactive=True,
                 label="Download All (ZIP)",
             )
+            raw_result_state_val["all_zip"] = single_all_zip_path
             logger.info(
                 "Prepared single file downloads and ALL_ZIP=%s", single_all_zip_path
             )
@@ -613,7 +614,8 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 include_summary=True,
             )  # Enable summary for main zip
             all_zip_builder = BatchZipBuilder(config=all_zip_config)
-            all_zip_builder.create(batch_id=timestamp_str)
+            all_zip_filename = f"batch_archive_{timestamp_str}_all_formats.zip"
+            all_zip_builder.create(batch_id=timestamp_str, filename=all_zip_filename)
             all_zip_builder.add_batch_files(
                 {
                     res["audio_original_path"]: res["raw_result"]
@@ -625,11 +627,11 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
 
             ALL_ZIP_PATH, _ = all_zip_builder.build()  # Call build() to get the path
 
-            zip_btn_update = gr.DownloadButton(
+            zip_btn_update = gr.update(
                 value=ALL_ZIP_PATH,  # Use the returned path
-                label=f"Download All ({num_files} files) as ZIP",
                 visible=True,
                 interactive=True,
+                label=f"Download All ({len(successful_results)} files) as ZIP",
             )
             raw_result_state_val["all_zip"] = ALL_ZIP_PATH
             logger.info(
@@ -650,7 +652,8 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     temp_dir=str(output_base_dir), organize_by_format=False
                 )  # Flat for single type
                 txt_zip_builder = BatchZipBuilder(config=txt_zip_config)
-                txt_zip_builder.create(batch_id=timestamp_str)
+                txt_zip_filename = f"batch_archive_{timestamp_str}_txt_only.zip"
+                txt_zip_builder.create(batch_id=timestamp_str, filename=txt_zip_filename)
                 txt_zip_builder.add_batch_files(
                     {
                         res["audio_original_path"]: res["raw_result"]
@@ -661,7 +664,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 txt_zip_builder.add_summary(include_stats=True)
 
                 txt_zip_path, _ = txt_zip_builder.build()
-                txt_btn_update = gr.DownloadButton(
+                txt_btn_update = gr.update(
                     value=txt_zip_path,
                     visible=True,
                     interactive=True,
@@ -686,7 +689,8 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     temp_dir=str(output_base_dir), organize_by_format=False
                 )
                 srt_zip_builder = BatchZipBuilder(config=srt_zip_config)
-                srt_zip_builder.create(batch_id=timestamp_str)
+                srt_zip_filename = f"batch_archive_{timestamp_str}_srt_only.zip"
+                srt_zip_builder.create(batch_id=timestamp_str, filename=srt_zip_filename)
                 srt_zip_builder.add_batch_files(
                     {
                         res["audio_original_path"]: res["raw_result"]
@@ -697,7 +701,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 srt_zip_builder.add_summary(include_stats=True)
 
                 srt_zip_path, _ = srt_zip_builder.build()
-                srt_btn_update = gr.DownloadButton(
+                srt_btn_update = gr.update(
                     value=srt_zip_path,
                     visible=True,
                     interactive=True,
@@ -724,7 +728,8 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     temp_dir=str(output_base_dir), organize_by_format=False
                 )
                 json_zip_builder = BatchZipBuilder(config=json_zip_config)
-                json_zip_builder.create(batch_id=timestamp_str)
+                json_zip_filename = f"batch_archive_{timestamp_str}_json_only.zip"
+                json_zip_builder.create(batch_id=timestamp_str, filename=json_zip_filename)
                 json_zip_builder.add_batch_files(
                     {
                         res["audio_original_path"]: res["raw_result"]
@@ -735,7 +740,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 json_zip_builder.add_summary(include_stats=True)
 
                 json_zip_path, _ = json_zip_builder.build()
-                json_btn_update = gr.DownloadButton(
+                json_btn_update = gr.update(
                     value=json_zip_path,
                     visible=True,
                     interactive=True,
