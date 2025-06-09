@@ -1,7 +1,7 @@
-LABEL org.opencontainers.image.source https://github.com/beecave-homelab/insanely-fast-whisper-rocm
-
 # Use an official Python runtime as a parent image
 FROM python:3.10-slim
+
+LABEL org.opencontainers.image.source https://github.com/beecave-homelab/insanely-fast-whisper-rocm
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
