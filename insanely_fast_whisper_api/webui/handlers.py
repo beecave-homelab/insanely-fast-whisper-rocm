@@ -8,6 +8,7 @@ the UI components and the ASR pipeline.
 import logging
 from typing import Any, Dict, Optional, Tuple, List, Literal
 import json
+import zipfile
 from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
@@ -395,7 +396,15 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 dl_btn_hidden,
                 dl_btn_hidden,
             )
-        except Exception as e:
+        except (
+            IOError,
+            OSError,
+            ValueError,
+            TypeError,
+            RuntimeError,
+            AttributeError,
+            KeyError,
+        ) as e:
             logger.error(
                 "Unexpected error processing %s: %s",
                 file_name_for_log,
@@ -422,7 +431,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 "details": "Check logs.",
             }
             raw_result_state_val = {"error": str(e), "details": "Check logs."}
-            dl_btn_hidden_update = gr.update(visible=False, value=None, interactive=False)
+            dl_btn_hidden_update = gr.update(
+                visible=False, value=None, interactive=False
+            )
             return (
                 transcription_output_val,
                 json_output_val,
@@ -446,7 +457,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
 
     # Initialize default Gradio button updates (hidden)
     dl_btn_hidden_update = gr.update(visible=False, value=None, interactive=False)
-    zip_btn_update = txt_btn_update = srt_btn_update = json_btn_update = dl_btn_hidden_update
+    zip_btn_update = txt_btn_update = srt_btn_update = json_btn_update = (
+        dl_btn_hidden_update
+    )
 
     successful_results = [res for res in all_results_data if "error" not in res]
 
@@ -561,7 +574,14 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             logger.info(
                 "Prepared single file downloads and ALL_ZIP=%s", single_all_zip_path
             )
-        except Exception as e:
+        except (
+            ValueError,
+            TypeError,
+            KeyError,
+            AttributeError,
+            FileNotFoundError,
+            zipfile.BadZipFile,
+        ) as e:
             logger.error(
                 "Failed to create ALL ZIP for single file: %s", e, exc_info=True
             )
@@ -638,7 +658,16 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 "Prepared ALL ZIP: %s, Files: %s", ALL_ZIP_PATH, len(successful_results)
             )
             json_output_val["zip_archive_all"] = Path(ALL_ZIP_PATH).name
-        except Exception as e:
+        except (
+            IOError,
+            OSError,
+            ValueError,
+            TypeError,
+            KeyError,
+            AttributeError,
+            FileNotFoundError,
+            zipfile.BadZipFile,
+        ) as e:
             logger.error("Failed to create ALL ZIP for batch: %s", e, exc_info=True)
             # zip_btn_update remains hidden
 
@@ -653,7 +682,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 )  # Flat for single type
                 txt_zip_builder = BatchZipBuilder(config=txt_zip_config)
                 txt_zip_filename = f"batch_archive_{timestamp_str}_txt_only.zip"
-                txt_zip_builder.create(batch_id=timestamp_str, filename=txt_zip_filename)
+                txt_zip_builder.create(
+                    batch_id=timestamp_str, filename=txt_zip_filename
+                )
                 txt_zip_builder.add_batch_files(
                     {
                         res["audio_original_path"]: res["raw_result"]
@@ -676,7 +707,16 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     txt_zip_path,
                     len(successful_results),
                 )
-            except Exception as e:
+            except (
+                IOError,
+                OSError,
+                ValueError,
+                TypeError,
+                KeyError,
+                AttributeError,
+                FileNotFoundError,
+                zipfile.BadZipFile,
+            ) as e:
                 logger.error("Failed to create TXT ZIP for batch: %s", e, exc_info=True)
 
         # 3. Download All SRT (ZIP)
@@ -690,7 +730,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 )
                 srt_zip_builder = BatchZipBuilder(config=srt_zip_config)
                 srt_zip_filename = f"batch_archive_{timestamp_str}_srt_only.zip"
-                srt_zip_builder.create(batch_id=timestamp_str, filename=srt_zip_filename)
+                srt_zip_builder.create(
+                    batch_id=timestamp_str, filename=srt_zip_filename
+                )
                 srt_zip_builder.add_batch_files(
                     {
                         res["audio_original_path"]: res["raw_result"]
@@ -713,7 +755,16 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     srt_zip_path,
                     len(successful_results),
                 )
-            except Exception as e:
+            except (
+                IOError,
+                OSError,
+                ValueError,
+                TypeError,
+                KeyError,
+                AttributeError,
+                FileNotFoundError,
+                zipfile.BadZipFile,
+            ) as e:
                 logger.error("Failed to create SRT ZIP for batch: %s", e, exc_info=True)
 
         # 4. Download All JSON (ZIP)
@@ -729,7 +780,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 )
                 json_zip_builder = BatchZipBuilder(config=json_zip_config)
                 json_zip_filename = f"batch_archive_{timestamp_str}_json_only.zip"
-                json_zip_builder.create(batch_id=timestamp_str, filename=json_zip_filename)
+                json_zip_builder.create(
+                    batch_id=timestamp_str, filename=json_zip_filename
+                )
                 json_zip_builder.add_batch_files(
                     {
                         res["audio_original_path"]: res["raw_result"]
@@ -752,7 +805,16 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     json_zip_path,
                     len(successful_results),
                 )
-            except Exception as e:
+            except (
+                IOError,
+                OSError,
+                ValueError,
+                TypeError,
+                KeyError,
+                AttributeError,
+                FileNotFoundError,
+                zipfile.BadZipFile,
+            ) as e:
                 logger.error(
                     "Failed to create JSON ZIP for batch: %s", e, exc_info=True
                 )

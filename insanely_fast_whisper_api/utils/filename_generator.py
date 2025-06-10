@@ -1,3 +1,5 @@
+"""Utilities for generating standardized filenames for transcription outputs."""
+
 import datetime
 import os
 from abc import ABC, abstractmethod
@@ -5,7 +7,7 @@ from enum import Enum
 from dataclasses import dataclass
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from insanely_fast_whisper_api.utils.constants import FILENAME_TIMEZONE
+from insanely_fast_whisper_api.utils.constants import APP_TIMEZONE
 
 
 class TaskType(Enum):
@@ -41,7 +43,7 @@ class FilenameGenerationStrategy(ABC):
         Returns:
             A string representing the generated filename.
         """
-        pass
+        raise NotImplementedError
 
 
 class StandardFilenameStrategy(FilenameGenerationStrategy):
@@ -69,7 +71,7 @@ class StandardFilenameStrategy(FilenameGenerationStrategy):
 class FilenameGenerator:
     """
     Context class that uses a FilenameGenerationStrategy to create filenames.
-    Uses centralized timezone configuration from constants.py (FILENAME_TIMEZONE
+    Uses centralized timezone configuration from constants.py (APP_TIMEZONE
     environment variable, defaults to UTC) for generating timestamps
     or interpreting naive provided timestamps.
     """
@@ -91,7 +93,7 @@ class FilenameGenerator:
         """
         Creates a filename for a given audio path, task, and extension.
         Uses centralized timezone configuration from constants.py
-        (FILENAME_TIMEZONE environment variable, defaults to UTC).
+        (TZ environment variable via APP_TIMEZONE, defaults to Europe/Amsterdam).
 
         Args:
             audio_path: The full path to the original audio file.
@@ -106,14 +108,14 @@ class FilenameGenerator:
             The generated filename string.
         """
 
-        target_tz_str = FILENAME_TIMEZONE
+        target_tz_str = APP_TIMEZONE
         try:
             target_tz = ZoneInfo(target_tz_str)
         except ZoneInfoNotFoundError:
             # Fallback to UTC if the configured timezone is invalid, and log a warning.
             # In a real application, this might raise an error or have more robust handling.
             print(
-                f"Warning: Invalid timezone '{target_tz_str}' specified in FILENAME_TIMEZONE. Falling back to UTC."
+                f"Warning: Invalid timezone '{target_tz_str}' specified via TZ/APP_TIMEZONE. Falling back to UTC."
             )
             target_tz = ZoneInfo("UTC")
 

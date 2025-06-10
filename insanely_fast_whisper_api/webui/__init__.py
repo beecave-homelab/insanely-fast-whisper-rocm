@@ -27,7 +27,7 @@ from insanely_fast_whisper_api.webui.merge_handler import (
 )
 
 __all__ = [
-    "create_ui_components", 
+    "create_ui_components",
     "launch_webui",
     # ZIP creation
     "BatchZipBuilder",

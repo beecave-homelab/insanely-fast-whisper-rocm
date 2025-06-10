@@ -88,7 +88,7 @@ class MergeHandler(ABC):
                 warnings=self.warnings,
             )
 
-        except Exception as e:
+        except (IOError, OSError, ValueError, TypeError, KeyError, AttributeError) as e:
             error_msg = f"Error merging files: {str(e)}"
             logger.error(error_msg)
             return MergeResult(
@@ -127,7 +127,7 @@ class MergeHandler(ABC):
                 content = self._format_file_content(result_data)
                 section += content
                 sections.append(section)
-            except Exception as e:
+            except (ValueError, TypeError, KeyError, IndexError) as e:
                 self.warnings.append(
                     f"Error formatting {Path(file_path).name}: {str(e)}"
                 )
@@ -161,17 +161,17 @@ class MergeHandler(ABC):
     @abstractmethod
     def _is_valid_file_result(self, result_data: Dict[str, Any]) -> bool:
         """Check if file result is valid."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def _format_file_content(self, result_data: Dict[str, Any]) -> str:
         """Format file content."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def get_format_name(self) -> str:
         """Get format name."""
-        pass
+        raise NotImplementedError
 
 
 class TxtMerger(MergeHandler):

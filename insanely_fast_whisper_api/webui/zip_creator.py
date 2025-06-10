@@ -263,7 +263,7 @@ class BatchZipBuilder:
             logger.info("Added batch summary file")
             return self
 
-        except Exception as e:
+        except (IOError, OSError, ValueError, TypeError, zipfile.BadZipFile) as e:
             error_msg = "Failed to add summary: %s"
             logger.error(error_msg, str(e))
             self.stats.errors.append(error_msg % str(e))
@@ -337,7 +337,7 @@ class BatchZipBuilder:
             if self._zipfile:
                 try:
                     self._zipfile.close()
-                except Exception:
+                except (IOError, OSError):
                     pass  # Ignore errors during cleanup
                 self._zipfile = None
             self._is_open = False
@@ -424,7 +424,16 @@ class BatchZipBuilder:
                     self._zipfile.writestr(archive_path, content)
                     self._track_addition(archive_path, len(content.encode("utf-8")))
 
-                except Exception as e:
+                except (
+                    IOError,
+                    OSError,
+                    ValueError,
+                    TypeError,
+                    KeyError,
+                    AttributeError,
+                    zipfile.BadZipFile,
+                    UnicodeEncodeError,
+                ) as e:
                     error_msg = "Failed to add %s file for %s: %s"
                     logger.error(error_msg, format_type, source_folder, str(e))
                     self.stats.errors.append(
@@ -686,7 +695,7 @@ class BatchZipBuilder:
         if self._is_open and self._zipfile:
             try:
                 self._zipfile.close()
-            except Exception as e:
+            except (IOError, OSError) as e:
                 logger.error("Error closing ZIP file: %s", str(e))
             finally:
                 self._is_open = False

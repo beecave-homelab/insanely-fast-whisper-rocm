@@ -1,3 +1,5 @@
+"""Utilities for processing and merging transcription results."""
+
 from typing import List, Dict
 
 

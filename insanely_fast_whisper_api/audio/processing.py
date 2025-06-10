@@ -1,3 +1,5 @@
+"""Audio processing utilities for chunking and manipulation."""
+
 import os
 import tempfile
 from typing import List
