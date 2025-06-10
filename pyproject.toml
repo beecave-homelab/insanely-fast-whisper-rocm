@@ -1,7 +1,7 @@
 [project]
 name = "insanely-fast-whisper-api"
 version = "0.4.1"
-description = "A FastAPI wrapper around a custom Whisper-based ASR pipeline"
+description = "A FastAPI wrapper around a custom Whisper-based ASR pipeline (ROCM version)"
 authors = [
     {name = "elvee", email = "lowie@beecave.nl"},
 ]
@@ -16,7 +16,7 @@ dependencies = [
     "flask>=3.1.0",
     "gradio>=5.20.1",
     "pydub>=0.25.1",
-    "numpy>=1.24.0",
+    "numpy==1.26.4",
     "datasets>=2.14.0",
     "accelerate>=0.21.0",
 ]
@@ -34,9 +34,30 @@ build-backend = "hatchling.build"
 [tool.hatch.metadata]
 allow-direct-references = true
 
-[tool.rye]
-managed = true
-dev-dependencies = []
+[tool.pdm]
+distribution = true
+
+[tool.pdm.scripts]
+start-webui = "insanely-fast-whisper-webui"
+start-webui-debug = "insanely-fast-whisper-webui --debug"
+start-api = "insanely-fast-whisper-api"
+start-api-verbose = "insanely-fast-whisper-api -v"
+cli = "insanely-fast-whisper-cli"
+
+[[tool.pdm.source]]
+name = "pypi"
+url = "https://pypi.org/simple/"
+verify_ssl = true
+type = "index"
+exclude_packages = ["torch", "onnxruntime-rocm", "pytorch-triton-rocm"]
+include_packages = ["*"]
+
+[[tool.pdm.source]]
+name = "rocm-wheels"
+url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/"
+verify_ssl = true
+type = "find_links"
+include_packages = ["torch", "onnxruntime-rocm", "pytorch-triton-rocm"]
 
 [project.optional-dependencies]
 dev = [
@@ -54,36 +75,12 @@ dev = [
     "types-PyYAML>=6.0.12",
     "typing-extensions>=4.8.0",
 ]
-# PyTorch variants with specific hardware support
-# Note: These are handled via separate requirements files due to index URL requirements
-torch-cpu = [
-    "torch>=2.0.0",
+rocm = [
+    "torch==2.5.1+rocm6.4.1.git47a02624",
+    # "onnxruntime-rocm @ https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/onnxruntime_rocm-1.21.0-cp310-cp310-manylinux_2_28_x86_64.whl"
+    # "onnxruntime-rocm==1.21.0"
+    "onnxruntime-rocm"
 ]
-torch-cuda = [
-    "torch>=2.0.0",
-]
-torch-rocm = [
-    # ROCm-specific PyTorch is installed via requirements-rocm.txt
-    # due to the need for custom index URLs
-]
-
-# UV-based dependency source configuration (requires uv as installer)
-# Uncomment when using uv as the package installer for dependency-specific index URLs
-# [tool.uv.sources]
-# torch = [
-#     { index = "pytorch-rocm", marker = "sys_platform == 'linux'" },
-# ]
-# 
-# [[tool.uv.index]]
-# name = "pytorch-rocm"
-# url = "https://download.pytorch.org/whl/rocm6.1"
-# explicit = true
-
-# Hatch configuration
-[tool.hatch.envs.default]
-# To use uv for dependency resolution with index-specific sources:
-# installer = "uv"
-dependencies = []
 
 # Tool configurations for development
 [tool.mypy]
