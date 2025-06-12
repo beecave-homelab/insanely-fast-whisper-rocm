@@ -4,8 +4,9 @@ This module contains middleware functions for cross-cutting concerns
 such as request timing and logging.
 """
 
-import time
 import logging
+import time
+
 from fastapi import FastAPI, Request
 
 logger = logging.getLogger(__name__)

@@ -9,17 +9,17 @@ import logging
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
-from insanely_fast_whisper_api.api.routes import router as api_router
+from insanely_fast_whisper_api import __version__
 from insanely_fast_whisper_api.api.middleware import add_middleware
-from insanely_fast_whisper_api.utils.download_hf_model import download_model_if_needed
+from insanely_fast_whisper_api.api.routes import router as api_router
 from insanely_fast_whisper_api.utils.constants import (
-    API_TITLE,
     API_DESCRIPTION,
+    API_TITLE,
     API_VERSION,
     DEFAULT_MODEL,
     HF_TOKEN,
 )
-from insanely_fast_whisper_api import __version__
+from insanely_fast_whisper_api.utils.download_hf_model import download_model_if_needed
 
 logger = logging.getLogger(__name__)
 

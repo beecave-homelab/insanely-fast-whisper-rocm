@@ -6,18 +6,18 @@ and other shared resources used by the API endpoints.
 
 from fastapi import Form
 
-from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )
+from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_api.utils import (
-    FileHandler,
-    DEFAULT_MODEL,
-    DEFAULT_DEVICE,
     DEFAULT_BATCH_SIZE,
     DEFAULT_BETTER_TRANSFORMER,
     DEFAULT_CHUNK_LENGTH,
+    DEFAULT_DEVICE,
+    DEFAULT_MODEL,
+    FileHandler,
 )
 
 

@@ -4,6 +4,7 @@ This module contains Pydantic models for request and response handling.
 """
 
 from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 

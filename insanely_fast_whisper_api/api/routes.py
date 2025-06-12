@@ -5,22 +5,22 @@ injection for ASR pipeline instances and file handling.
 """
 
 import logging
-from typing import Optional, Union, Literal
+from typing import Literal, Optional, Union
 
-from fastapi import APIRouter, File, Form, UploadFile, Depends
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 
 from insanely_fast_whisper_api.api.dependencies import (
     get_asr_pipeline,
     get_file_handler,
 )
+from insanely_fast_whisper_api.api.models import TranscriptionResponse
 from insanely_fast_whisper_api.api.responses import ResponseFormatter
 from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
-from insanely_fast_whisper_api.utils import FileHandler
-from insanely_fast_whisper_api.api.models import TranscriptionResponse
 from insanely_fast_whisper_api.utils import (
     DEFAULT_TIMESTAMP_TYPE,
     RESPONSE_FORMAT_JSON,
     RESPONSE_FORMAT_TEXT,
+    FileHandler,
 )
 
 logger = logging.getLogger(__name__)

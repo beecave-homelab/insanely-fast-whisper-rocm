@@ -4,7 +4,8 @@ This module implements the Strategy pattern for formatting different
 types of responses (JSON, text) from ASR processing results.
 """
 
-from typing import Dict, Any, Union
+from typing import Any, Dict, Union
+
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from insanely_fast_whisper_api.utils import (
