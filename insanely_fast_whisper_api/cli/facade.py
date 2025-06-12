@@ -4,12 +4,12 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from insanely_fast_whisper_api.utils import constants
 from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )
 from insanely_fast_whisper_api.core.utils import convert_device_string
+from insanely_fast_whisper_api.utils import constants
 
 logger = logging.getLogger(__name__)
 

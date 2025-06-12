@@ -13,12 +13,12 @@ from typing import Optional
 
 import click
 
-from insanely_fast_whisper_api.utils import constants
+from insanely_fast_whisper_api.cli.facade import cli_facade
 from insanely_fast_whisper_api.core.errors import (
     DeviceNotFoundError,
     TranscriptionError,
 )
-from insanely_fast_whisper_api.cli.facade import cli_facade
+from insanely_fast_whisper_api.utils import constants
 from insanely_fast_whisper_api.utils.filename_generator import (
     FilenameGenerator,
     StandardFilenameStrategy,
