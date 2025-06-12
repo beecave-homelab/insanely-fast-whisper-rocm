@@ -1,6 +1,6 @@
 """Utilities for processing and merging transcription results."""
 
-from typing import List, Dict
+from typing import Dict, List
 
 
 def merge_chunk_results(chunk_results: List[Dict]) -> Dict:
