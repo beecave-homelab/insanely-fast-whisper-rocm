@@ -43,6 +43,7 @@ start-webui-debug = "insanely-fast-whisper-webui --debug"
 start-api = "insanely-fast-whisper-api"
 start-api-verbose = "insanely-fast-whisper-api -v"
 cli = "insanely-fast-whisper-cli"
+setup-config = "scripts.setup_config:main"
 
 [[tool.pdm.source]]
 name = "pypi"
