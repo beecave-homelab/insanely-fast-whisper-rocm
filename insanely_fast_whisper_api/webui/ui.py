@@ -10,21 +10,20 @@ from typing import List
 import gradio as gr
 
 from insanely_fast_whisper_api.utils.constants import (
-    DEFAULT_MODEL,
-    DEFAULT_DEVICE,
     DEFAULT_BATCH_SIZE,
-    DEFAULT_TIMESTAMP_TYPE,
+    DEFAULT_DEVICE,
     DEFAULT_LANGUAGE,
+    DEFAULT_MODEL,
+    DEFAULT_TIMESTAMP_TYPE,
     DEFAULT_TRANSCRIPTS_DIR,
-    MIN_BATCH_SIZE,
     MAX_BATCH_SIZE,
+    MIN_BATCH_SIZE,
     SUPPORTED_AUDIO_FORMATS,
 )
-
 from insanely_fast_whisper_api.webui.handlers import (
-    process_transcription_request,
-    TranscriptionConfig,
     FileHandlingConfig,
+    TranscriptionConfig,
+    process_transcription_request,
 )
 
 # Configure logger

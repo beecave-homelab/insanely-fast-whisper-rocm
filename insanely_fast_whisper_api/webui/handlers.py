@@ -5,13 +5,13 @@ and exporting results in the WebUI. It serves as an intermediary between
 the UI components and the ASR pipeline.
 """
 
-import logging
-from typing import Any, Dict, Optional, Tuple, List, Literal
 import json
+import logging
 import zipfile
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import gradio as gr
 
@@ -20,23 +20,23 @@ from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )
+from insanely_fast_whisper_api.core.errors import TranscriptionError
 from insanely_fast_whisper_api.core.pipeline import ProgressEvent
 from insanely_fast_whisper_api.utils import (
-    DEFAULT_MODEL,
-    DEFAULT_LANGUAGE,
     DEFAULT_BATCH_SIZE,
-    DEFAULT_TIMESTAMP_TYPE,
     DEFAULT_DEVICE,
+    DEFAULT_LANGUAGE,
+    DEFAULT_MODEL,
+    DEFAULT_TIMESTAMP_TYPE,
     DEFAULT_TRANSCRIPTS_DIR,
+    constants,
 )
-from insanely_fast_whisper_api.utils import constants
-from insanely_fast_whisper_api.webui.formatters import FORMATTERS
 from insanely_fast_whisper_api.utils.filename_generator import (
     FilenameGenerator,
     StandardFilenameStrategy,
     TaskType,
 )
-from insanely_fast_whisper_api.core.errors import TranscriptionError
+from insanely_fast_whisper_api.webui.formatters import FORMATTERS
 from insanely_fast_whisper_api.webui.zip_creator import (
     BatchZipBuilder,
     ZipConfiguration,

@@ -7,9 +7,9 @@ for TXT, SRT, and VTT formats.
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 from insanely_fast_whisper_api.webui.formatters import FORMATTERS
 
