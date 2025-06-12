@@ -3,7 +3,7 @@
 A FastAPI wrapper around a custom Whisper-based ASR pipeline with audio chunking support.
 """
 
-__version__ = "0.4.1"
+__version__ = "0.5.0"
 __author__ = "elvee"
 __email__ = "lowie@beecave.nl"
 
