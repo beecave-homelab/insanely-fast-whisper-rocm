@@ -3,7 +3,7 @@
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
 [![Current Version](https://img.shields.io/badge/Current-v0.4.1-blue)](#v041-current---june-2025)
-[![Latest Release](https://img.shields.io/badge/Latest%20Release-June%202025-green)](#v040-current---june-2025)
+[![Latest Release](https://img.shields.io/badge/Latest%20Release-June%202025-green)](#v041-current---june-2025)
 [![Development Status](https://img.shields.io/badge/Status-Active%20Development-orange)](#roadmap)
 
 ---
@@ -11,6 +11,7 @@
 ## 🔄 Semantic Versioning (SemVer)
 
 This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.MINOR.PATCH`
+
 - **MAJOR**: Breaking changes or architectural overhauls
 - **MINOR**: New features and enhancements (backward compatible)
 - **PATCH**: Bug fixes and small improvements
@@ -20,9 +21,11 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 ## 🏷️ Release Timeline
 
 ### **v0.4.1** (Current) - *June 2025*
-**🐛 WebUI Download Fixes & Stability**
+
+- **🐛 WebUI Download Fixes & Stability**
 
 #### 🐛 **Bug Fixes**
+
 - **Fixed**: `TypeError` in Gradio `DownloadButton` when updating visibility/value.
   - **Issue**: Returning `gr.DownloadButton()` instances instead of `gr.update()` dictionaries caused `TypeError: expected str, bytes or os.PathLike object, not function`.
   - **Root Cause**: Incorrect usage of Gradio update mechanisms for `gr.DownloadButton`.
@@ -33,6 +36,7 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
   - **Solution**: Appended unique suffixes (e.g., `_all_formats`, `_txt_only`) to the `batch_id` when constructing filenames for `BatchZipBuilder.create`, ensuring distinct archive names.
 
 #### 🔧 **Improvements**
+
 - **Docs**: Added documentation for Gradio `DownloadButton` `TypeError` fix and ZIP archive overwrite fix (`c3eba0c`).
 - **Chore**: Updated Dockerfile labels and added source URL (`a2f2ac2`).
 - **Chore**: Enhanced support for long audio files (`e1ea7c3`).
@@ -43,9 +47,11 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 ---
 
 ### **v0.4.0** - *June 2025*
-**✨ Enhanced Versioning & Logging**
+
+- **✨ Enhanced Versioning & Logging**
 
 #### ✨ **New Features**
+
 - **Enhanced**: Improved versioning system
 - **Enhanced**: Standardized logging format across the application
 
@@ -54,14 +60,17 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 ---
 
 ### **v0.3.1** - *June 4, 2025*
-**🐛 Stability & Multi-file Processing**
+
+- **🐛 Stability & Multi-file Processing**
 
 #### ✨ **New Features**
+
 - Native Gradio multi-file processing features
 - Enhanced transcription processing with improved error handling
 - Improved configuration test robustness and clarity
 
 #### 🐛 **Bug Fixes**
+
 - **Fixed**: Empty ZIP file downloads in WebUI batch processing
   - **Issue**: WebUI ZIP downloads were missing transcription content
   - **Root Cause**: `result_dict` was incorrectly accessed in `handlers.py`
@@ -74,6 +83,7 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
   - **Solution**: Refactored centralized configuration tests for improved robustness
 
 #### 🔧 **Improvements**
+
 - Updated supported audio format validation
 - Enhanced error messages for better debugging
 - Improved ZIP handling functionality
@@ -83,9 +93,11 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 ---
 
 ### **v0.3.0** - *May 27-31, 2025*
-**✨ WebUI Modularization & Advanced Features**
+
+- **✨ WebUI Modularization & Advanced Features**
 
 #### 🏗️ **Major Changes**
+
 - **Complete WebUI refactor** into modular components:
   - `ui.py`: Gradio interface components
   - `handlers.py`: Upload and result management
@@ -93,6 +105,7 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
   - `errors.py`: UI-specific error handling
 
 #### ✨ **New Features**
+
 - CLI entrypoint for WebUI (`insanely-fast-whisper-webui`)
 - Batch file processing with real-time progress tracking
 - ZIP archive downloads for batch results
@@ -102,6 +115,7 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 - Enhanced audio chunking with configurable overlap and duration
 
 #### 🔧 **Improvements**
+
 - Centralized configuration tests and enhanced `.env` file support
 - Docker Compose configurations for Hugging Face cache
 - Dependency management enhancements in `pyproject.toml`
@@ -112,10 +126,13 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 ---
 
 ### **v0.2.1** - *May 29-30, 2025*
-**♻️ Import Standardization & Core Refinements**
+
+- **♻️ Import Standardization & Core Refinements**
 
 #### 🏗️ **Major Changes**
+
 - **Refactored all imports** to absolute paths for improved IDE support:
+
   ```python
   # ✅ New absolute imports
   from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
@@ -125,12 +142,14 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
   ```
 
 #### ✨ **New Features**
+
 - Comprehensive error handling with custom exception classes
 - Storage backend abstraction for ASR results
 - Core utility functions and pipeline base classes
 - Enhanced ASR pipeline with improved parameters and backend support
 
 #### 🔧 **Improvements**
+
 - Better code organization and maintainability
 - Improved dependency tracking
 - Enhanced IDE auto-completion and navigation
@@ -141,14 +160,17 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 ---
 
 ### **v0.2.0** - *May 20-21, 2025*
-**🔄 Architectural Revolution** ⚠️ **BREAKING CHANGES**
+
+- **🔄 Architectural Revolution** ⚠️ **BREAKING CHANGES**
 
 #### 💥 **Breaking Changes**
+
 - **Migrated from subprocess-based `insanely-fast-whisper`** to direct Hugging Face Transformers integration
 - Removed external CLI tool dependencies
 - Changed core pipeline architecture
 
 #### ✨ **New Features**
+
 - Native `transformers.pipeline` support for Whisper models
 - Progress callbacks for chunk-level processing
 - Configurable batch sizes and chunk processing for different hardware
@@ -156,6 +178,7 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 - Docker support and containerization improvements
 
 #### 🔧 **Improvements**
+
 - Simplified dependencies by removing external tools
 - Improved error handling and logging throughout ASR pipeline
 - Better performance with direct model integration
@@ -165,15 +188,16 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ---
 
-### **v0.1.2** - *March 8, 2025*
-**🎨 WebUI Introduction**
+### **v0.1.2** - 🎨 WebUI Introduction - *March 8, 2025*
 
 #### ✨ **New Features**
+
 - **First Gradio-based web interface** (`webui.py`)
 - Interactive audio file upload and transcription
 - Real-time transcription results display
 
 #### 🔧 **Improvements**
+
 - Enhanced ASR pipeline with task parameter support
 - Added custom exceptions for better error handling
 - Improved CLI options and environment variable support
@@ -184,21 +208,25 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 ---
 
 ### **v0.1.1** - *January 19, 2025*
-**🔧 Enhanced Functionality**
+
+- **🔧 Enhanced Functionality**
 
 #### ✨ **New Features**
+
 - Comprehensive logging configuration with timezone support
 - PyYAML support for configuration files
 - Environment variable support for enhanced configuration
 - Enhanced ASR pipeline with custom exceptions
 
 #### 🔧 **Improvements**
+
 - Enhanced FastAPI application with detailed documentation
 - Improved device string conversion and transcription commands
 - Better error handling and user feedback
 - Enhanced CLI options and functionality
 
 #### 🐛 **Bug Fixes**
+
 - Fixed requirements-rocm.txt by removing unused torchaudio
 - Improved logging configuration for Uvicorn server
 
@@ -207,9 +235,11 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 ---
 
 ### **v0.1.0** - *January 18, 2025*
-**🎉 Initial Release**
+
+- **🎉 Initial Release**
 
 #### ✨ **Initial Features**
+
 - FastAPI wrapper for Whisper-based ASR pipeline
 - Modular project structure with organized components
 - OpenAI-compatible API endpoints:
@@ -222,6 +252,7 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 - Environment-based configuration system
 
 #### 🏗️ **Project Structure**
+
 - Organized codebase with clear separation of concerns
 - Comprehensive testing setup
 - Documentation and README
@@ -233,19 +264,15 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## 🎯 Roadmap
 
-### **v0.4.0** (Planned - Q3 2025)
-- **Multi-language support** expansion beyond current capabilities
-- **Real-time streaming** transcription for live audio
-- **Advanced audio preprocessing** options and filters
-- **Plugin system** for custom backend integrations
-
 ### **v0.5.0** (Planned - Q4 2025)
+
 - **Speaker diarization** integration for multi-speaker audio
 - **Advanced batch processing** optimizations and queue management
 - **Cloud storage** integration options (S3, GCS, Azure)
 - **Performance monitoring** dashboard and analytics
 
 ### **v1.0.0** (Future)
+
 - **Production-ready** stability and performance guarantees
 - **Enterprise features** (authentication, rate limiting, monitoring)
 - **API versioning** and backward compatibility guarantees
@@ -276,4 +303,4 @@ When contributing features or fixes:
 
 ---
 
-*For project overview and quick start guide, see [project-overview.md](project-overview.md)* 
+*For project overview and quick start guide, see [project-overview.md](project-overview.md)*
