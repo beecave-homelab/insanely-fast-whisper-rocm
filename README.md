@@ -21,7 +21,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **Standardized Filenames**: Consistent, timestamped output naming across all interfaces
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v0.4.1-informational)](#insanely-fast-whisper-api-rocm)
+[![Version](https://img.shields.io/badge/Version-v0.5.0-informational)](#insanely-fast-whisper-api-rocm)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface)
@@ -81,7 +81,7 @@ The recommended way to run the application is using Docker Compose:
     cd insanely-fast-whisper-rocm
     ```
 
-2. Set up configuration:
+2. Set up configuration (see [Configuration](#configuration)) for more details:
 
     ```bash
     cp .env.example .env
@@ -115,11 +115,10 @@ For local development, PDM (Python Development Master) is used to manage depende
 
 3. Install project dependencies using PDM:
 
-    ```bash
-    pdm install
-    ```
+> [!IMPORTANT]  
+> This application is specifically designed to provide **AMD GPU (ROCm) support** for Whisper models. The `rocm` dependency group in [`pyproject.toml`](./pyproject.toml) ensures proper PyTorch and ONNX runtime installation for AMD GPUs. While it should technically also works on CPU and NVIDIA GPUs, ROCm support was the primary motivation for this package.
 
-    This command installs the project's core dependencies. To install optional groups for development or specific hardware support (like ROCm), use the `-G` flag:
+This command installs the project's core dependencies. To install optional groups for development or specific hardware support (like ROCm), use the `-G` flag:
 
     ```bash
     # To install ROCm support
@@ -129,11 +128,9 @@ For local development, PDM (Python Development Master) is used to manage depende
     pdm install -G dev -G rocm 
     ```
 
-    > **Important**: This application is specifically designed to provide **AMD GPU (ROCm) support** for Whisper models. The `rocm` dependency group in `pyproject.toml` ensures proper PyTorch and ONNX runtime installation for AMD GPUs. While it also works on CPU and NVIDIA GPUs, ROCm support was the primary motivation for this package.
-
 ### Model Download
 
-The application will automatically download the specified Whisper model on first use. You can also pre-download models using the included script (add these commands to the `docker-compose.yaml` file to run them on startup):
+The application will automatically download the specified Whisper model on first use. You can also pre-download models using the included script (add these commands to the [`docker-compose.yaml`](./docker-compose.yaml) file to run them on startup):
 
 ```bash
 # Download the default model (specified in .env or WHISPER_MODEL env var)

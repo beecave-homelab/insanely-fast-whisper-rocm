@@ -3,7 +3,7 @@
 A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture. This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v0.4.1)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v0.5.0)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -74,14 +74,15 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v0.4.1** *(June 2025)*
+### 🏷️ **Current Version: v0.5.0** *(June 2025)*
 
-**Latest improvements**: Fixed Gradio DownloadButton TypeError and ZIP archive overwrite issues.
+**Latest improvements**: Major architectural refactoring, migration to `pdm`, and a new modular CLI.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
 |---------|------|------|--------------|
+| **v0.5.0** | Jun 2025 | ✨ Minor | Major import refactor, `pdm` migration, modular CLI |
 | **v0.4.1** | Jun 2025 | 🐛 Patch | WebUI download fixes, stability |
 | **v0.4.0** | Jun 2025 | ✨ Minor | Versioning improvements, logging enhancements |
 | **v0.3.1** | Jun 2025 | 🐛 Patch | ZIP fixes, audio validation, stability |
@@ -417,7 +418,7 @@ Consult `python -m insanely_fast_whisper_api.cli.cli --help` for a full list of 
 
 This project uses [PDM (Python Development Master)](https://pdm-project.org/) for dependency management and package building, adhering to PEP 517, PEP 518, and PEP 621 standards. All project metadata, dependencies, and scripts are defined in the [`pyproject.toml`](./pyproject.toml) file.
 
-### `pyproject.toml` Structure
+### [`pyproject.toml`](./pyproject.toml) Structure
 
 - **`[project]`**: Contains core project metadata such as name, version, authors, description, and classifiers.
   - **`dependencies`**: Lists core runtime dependencies required for the application to function.
@@ -463,19 +464,19 @@ This project uses [PDM (Python Development Master)](https://pdm-project.org/) fo
 
 ### Common PDM Commands
 
-- **`pdm install`**: Install all dependencies as specified in `pdm.lock` (if it exists) or `pyproject.toml`.
+- **`pdm install`**: Install all dependencies as specified in `pdm.lock` (if it exists) or [`pyproject.toml`](./pyproject.toml).
   - `pdm install -G <group>`: Install dependencies from a specific optional group.
-- **`pdm add <package>`**: Add a new dependency to `pyproject.toml` and install it.
+- **`pdm add <package>`**: Add a new dependency to [`pyproject.toml`](./pyproject.toml) and install it.
   - `pdm add -dG <group> <package>`: Add a package to a specific optional group.
 - **`pdm remove <package>`**: Remove a dependency.
-- **`pdm update`**: Update dependencies to their latest allowed versions according to `pyproject.toml` and update `pdm.lock`.
-- **`pdm run <script_name>`**: Execute a script defined in `[tool.pdm.scripts]` in `pyproject.toml`.
+- **`pdm update`**: Update dependencies to their latest allowed versions according to [`pyproject.toml`](./pyproject.toml) and update `pdm.lock`.
+- **`pdm run <script_name>`**: Execute a script defined in `[tool.pdm.scripts]` in [`pyproject.toml`](./pyproject.toml).
 - **`pdm lock`**: Resolve dependencies and write to `pdm.lock` without installing.
 - **`pdm shell`**: Activate the PDM-managed virtual environment in the current shell.
 
 ### Relationship with `requirements-*.txt` Files
 
-While PDM manages dependencies through `pyproject.toml`, the `requirements-*.txt` files (e.g., `requirements.txt`, `requirements-rocm.txt`, `requirements-dev.txt`) are currently maintained primarily for Docker builds and specific environment setups where PDM might not be directly used for the build process itself, or for environments that predate full PDM integration.
+While PDM manages dependencies through [`pyproject.toml`](./pyproject.toml), the `requirements-*.txt` files (e.g., `requirements.txt`, `requirements-rocm.txt`, `requirements-dev.txt`) are currently maintained primarily for Docker builds and specific environment setups where PDM might not be directly used for the build process itself, or for environments that predate full PDM integration.
 
 Ideally, these `requirements.txt` files can be generated from `pdm.lock` using `pdm export` to ensure consistency:
 
@@ -492,7 +493,7 @@ pdm export -G dev -o requirements-dev.txt --without-hashes
 
 This practice helps keep them synchronized with the PDM-managed dependencies.
 
-> **PyTorch Note**: Due to PyTorch's specific index URL requirements for different compute platforms (CPU, CUDA, ROCm), its installation is carefully managed within PDM's dependency groups or via the `requirements-*.txt` files to ensure the correct version is fetched. PDM can handle custom source URLs if needed, which should be configured in `pyproject.toml`.
+> **PyTorch Note**: Due to PyTorch's specific index URL requirements for different compute platforms (CPU, CUDA, ROCm), its installation is carefully managed within PDM's dependency groups or via the `requirements-*.txt` files to ensure the correct version is fetched. PDM can handle custom source URLs if needed, which should be configured in [`pyproject.toml`](./pyproject.toml).
 
 ---
 
@@ -651,13 +652,23 @@ python -m insanely_fast_whisper_api.cli.cli transcribe tests/conversion-test-fil
 python -m insanely_fast_whisper_api.cli.cli translate audio_file.mp3
 ```
 
-### Docker Compose
+### Docker Deployment
 
-```bash
-docker compose up --build -d
-```
+The project includes Docker configurations for both production and development environments, managed via Docker Compose.
 
-**Default behavior**: Launches WebUI with debug logging on port 7860
+- **Production (`docker-compose.yaml`)**: The [`docker-compose.yaml`](./docker-compose.yaml) file is optimized for production use. It builds a clean, minimal image and runs the application in a stable configuration. Use this for deployments or for running the application as a standalone service.
+
+  ```bash
+  # Build and run the production container
+  docker compose up --build -d
+  ```
+
+- **Development (`docker-compose.dev.yaml`)**: The [`docker-compose.dev.yaml`](./docker-compose.dev.yaml) file is tailored for local development. It mounts the local source code into the container, enabling hot-reloading for immediate feedback on code changes. Use this file to work on the application without needing to rebuild the image for every change.
+
+  ```bash
+  # Build and run the development container
+  docker compose -f docker-compose.dev.yaml up --build -d
+  ```
 
 **Access URLs:**
 
