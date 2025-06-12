@@ -4,11 +4,11 @@ This module provides backend implementations for different ASR engines,
 focusing on the Hugging Face Transformers integration.
 """
 
-from abc import ABC, abstractmethod
 import logging
-from typing import Dict, Any, Optional, Union
-from dataclasses import dataclass
 import time
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any, Dict, Optional, Union
 
 import torch
 from transformers import pipeline
