@@ -1,10 +1,10 @@
 """Utility functions for the Insanely Fast Whisper API."""
 
+import logging
 import os
-import uuid
 import shutil
 import tempfile
-import logging
+import uuid
 
 from fastapi import HTTPException, UploadFile
 

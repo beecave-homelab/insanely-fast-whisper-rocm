@@ -35,9 +35,17 @@ When adding new environment variables:
 
 ## Configuration File Locations
 
-The module automatically loads `.env` files from these locations (in order):
-1. `~/.config/insanely-fast-whisper-api/.env` (user-specific configuration)
-2. Project root `.env` file (development configuration)
+The module automatically loads `.env` files. The loading order and precedence is:
+1. **Project root `.env` file**: Loaded first. This file is typically used for
+   development-specific configurations or base defaults for the project.
+   Variables from this file will override any pre-existing shell environment variables.
+2. **`~/.config/insanely-fast-whisper-api/.env`**: Loaded second. This file is for
+   user-specific configurations. If the same variable exists in both this file
+   and the project root `.env` (or in the shell environment), the value from this
+   user-specific file will **take precedence** (override).
+
+This allows users to override project defaults and shell settings without modifying
+the project's version-controlled `.env` file.
 
 ## Type Conversion Patterns
 
@@ -65,19 +73,55 @@ The module automatically loads `.env` files from these locations (in order):
 
 import os
 from pathlib import Path
-from typing import Set, Literal
+from typing import Literal, Set
 
 from dotenv import load_dotenv
 
-# Configuration paths
-CONFIG_DIR = Path.home() / ".config" / "insanely-fast-whisper-api"
-ENV_FILE = CONFIG_DIR / ".env"
+from .env_loader import (
+    PROJECT_ROOT_ENV_EXISTS,
+    PROJECT_ROOT_ENV_FILE,
+    SHOW_DEBUG_PRINTS,
+    USER_CONFIG_DIR,
+    USER_ENV_EXISTS,
+    USER_ENV_FILE,
+    debug_print,
+)
 
-if not CONFIG_DIR.exists():
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+# --- Determine Project Root ---
+# This is now handled by env_loader.py for initial LOG_LEVEL check, but constants.py still defines it for its own use.
+# Assumes this file is in insanely_fast_whisper_api/utils/
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+# PROJECT_ROOT_ENV_FILE, USER_CONFIG_DIR, USER_ENV_FILE are imported from env_loader
 
-if ENV_FILE.exists():
-    load_dotenv(ENV_FILE)
+# --- Initial debug message based on SHOW_DEBUG_PRINTS from env_loader ---
+debug_print("constants.py: Starting .env loading process...")
+debug_print(
+    f"constants.py: SHOW_DEBUG_PRINTS={SHOW_DEBUG_PRINTS} (derived from CLI args and initial .env LOG_LEVEL scan)"
+)
+# Project root .env is now loaded by env_loader.py before constants.py is fully processed.
+# constants.py will now load the user-specific .env file.
+
+# 2. Load user-specific .env next.
+#    Variables here will override anything from project root or shell.
+# User config dir is already created if it didn't exist.
+# User config dir creation is handled in debug_helpers.py if it doesn't exist
+debug_print(f"constants.py: Checking for user .env at: {USER_ENV_FILE}")
+if USER_ENV_EXISTS:
+    debug_print("constants.py: Found user .env file. Loading...")
+    load_dotenv(USER_ENV_FILE, override=True)
+else:
+    debug_print("constants.py: User .env file NOT found.")
+debug_print("constants.py: Finished .env loading process.")
+debug_print(
+    f"constants.py: WHISPER_MODEL from os.environ: {os.getenv('WHISPER_MODEL')}"
+)
+debug_print(
+    f"constants.py: WHISPER_BATCH_SIZE from os.environ: {os.getenv('WHISPER_BATCH_SIZE')}"
+)
+debug_print(
+    f"constants.py: HUGGINGFACE_TOKEN from os.environ: {'SET' if os.getenv('HUGGINGFACE_TOKEN') else 'NOT SET'}"
+)
+debug_print(f"constants.py: Final LOG_LEVEL from os.environ: {os.getenv('LOG_LEVEL')}")
 
 # Model configuration
 DEFAULT_MODEL = os.getenv("WHISPER_MODEL", "distil-whisper/distil-large-v3")
@@ -86,11 +130,11 @@ DEFAULT_DEVICE = os.getenv(
 )  # Use "0" for CUDA, "mps" for Apple Silicon
 DEFAULT_BATCH_SIZE = int(os.getenv("WHISPER_BATCH_SIZE", "4"))
 
-_timestamp_type_env = os.getenv("WHISPER_TIMESTAMP_TYPE", "chunk")
-if _timestamp_type_env not in ("chunk", "word"):
+_TIMESTAMP_TYPE_ENV = os.getenv("WHISPER_TIMESTAMP_TYPE", "chunk")
+if _TIMESTAMP_TYPE_ENV not in ("chunk", "word"):
     # Fallback to "chunk" if the environment variable has an invalid value
-    _timestamp_type_env = "chunk"
-DEFAULT_TIMESTAMP_TYPE: Literal["chunk", "word"] = _timestamp_type_env
+    _TIMESTAMP_TYPE_ENV = "chunk"
+DEFAULT_TIMESTAMP_TYPE: Literal["chunk", "word"] = _TIMESTAMP_TYPE_ENV
 
 DEFAULT_LANGUAGE = os.getenv("WHISPER_LANGUAGE", "None")  # None means auto-detect
 DEFAULT_DTYPE = os.getenv("WHISPER_DTYPE", "float16")  # Data type for model inference
@@ -124,9 +168,9 @@ TEMP_FILE_TTL_SECONDS = 3600  # Time-to-live for temporary files (1 hour)
 DEFAULT_TRANSCRIPTS_DIR = os.getenv(
     "WHISPER_TRANSCRIPTS_DIR", "transcripts"
 )  # Default directory for saving transcripts
-FILENAME_TIMEZONE = os.getenv(
-    "FILENAME_TIMEZONE", "UTC"
-)  # Timezone for filename timestamps
+APP_TIMEZONE = os.getenv(
+    "TZ", "Europe/Amsterdam"
+)  # Application runtime timezone, also used for filename timestamps
 SAVE_TRANSCRIPTIONS = (
     os.getenv("SAVE_TRANSCRIPTIONS", "true").lower() == "true"
 )  # Whether to save transcriptions to disk
@@ -154,13 +198,14 @@ HIP_LAUNCH_BLOCKING = (
 # API configuration
 API_TITLE = "Insanely Fast Whisper API"
 API_DESCRIPTION = "A FastAPI wrapper around the insanely-fast-whisper tool."
-API_VERSION = "0.3.1"
+API_VERSION = "0.4.1"
 API_HOST = os.getenv("API_HOST", "0.0.0.0")  # API server host
 API_PORT = int(os.getenv("API_PORT", "8000"))  # API server port
 DEFAULT_RESPONSE_FORMAT = "json"
 
 # Logging configuration
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")  # Logging level
+
 
 # Response formats
 RESPONSE_FORMAT_JSON = "json"

@@ -3,8 +3,8 @@
 import datetime
 import os
 from abc import ABC, abstractmethod
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from insanely_fast_whisper_api.utils.constants import APP_TIMEZONE
