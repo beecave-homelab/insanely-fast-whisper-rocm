@@ -1,7 +1,9 @@
 """Tests for the core ASR pipeline functionality."""
 
-import pytest
 from pathlib import Path
+
+import pytest
+
 from insanely_fast_whisper_api import ASRPipeline
 
 

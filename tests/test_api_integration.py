@@ -4,11 +4,12 @@ This module tests that the refactored routes work correctly with
 dependency injection and maintain the same functionality as before.
 """
 
-import pytest
 import os
-from unittest.mock import Mock, patch, MagicMock
-from fastapi.testclient import TestClient
 from io import BytesIO
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+from fastapi.testclient import TestClient
 
 from insanely_fast_whisper_api.api.app import create_app
 

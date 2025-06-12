@@ -1,9 +1,9 @@
 """Tests for the FastAPI endpoints."""
 
-from fastapi.testclient import TestClient
 import pytest
-from insanely_fast_whisper_api.main import app
+from fastapi.testclient import TestClient
 
+from insanely_fast_whisper_api.main import app
 
 client = TestClient(app)
 

@@ -1,5 +1,6 @@
-import torch
 import time
+
+import torch
 
 while True:
     if torch.cuda.is_available():

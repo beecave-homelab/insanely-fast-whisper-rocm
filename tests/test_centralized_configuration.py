@@ -5,12 +5,13 @@ instead of direct environment variable access, and verifies default values
 and .env file overrides work properly.
 """
 
-import pytest
 import os
 import tempfile
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 from importlib import reload
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 import insanely_fast_whisper_api.utils.constants as constants_module
 
@@ -172,8 +173,8 @@ class TestModuleCentralizedConfigurationUsage:
 
     def test_filename_generator_uses_centralized_config(self):
         """Test that filename_generator.py uses constants from constants.py."""
-        from insanely_fast_whisper_api.utils.filename_generator import FilenameGenerator
         from insanely_fast_whisper_api.utils.constants import FILENAME_TIMEZONE
+        from insanely_fast_whisper_api.utils.filename_generator import FilenameGenerator
 
         # Verify the constant is available and properly typed
         assert FILENAME_TIMEZONE is not None
@@ -181,10 +182,10 @@ class TestModuleCentralizedConfigurationUsage:
 
     def test_download_hf_model_uses_centralized_config(self):
         """Test that download_hf_model.py uses constants from constants.py."""
+        from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL, HF_TOKEN
         from insanely_fast_whisper_api.utils.download_hf_model import (
             download_model_if_needed,
         )
-        from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL, HF_TOKEN
 
         # Verify the constants are available
         assert DEFAULT_MODEL is not None

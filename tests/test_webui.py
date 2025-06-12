@@ -8,11 +8,11 @@ This script tests the WebUI functionality by:
 4. Verifying the output formats
 """
 
+import json
 import os
+import subprocess
 import sys
 import time
-import json
-import subprocess
 from pathlib import Path
 
 import pytest

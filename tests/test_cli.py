@@ -8,14 +8,14 @@ from unittest.mock import Mock, patch
 import pytest
 from click.testing import CliRunner
 
+from insanely_fast_whisper_api import constants
 from insanely_fast_whisper_api.cli.cli import cli, main
 from insanely_fast_whisper_api.cli.facade import CLIFacade, cli_facade
-from insanely_fast_whisper_api.core.errors import (
-    TranscriptionError,
-    DeviceNotFoundError,
-)
 from insanely_fast_whisper_api.core.asr_backend import HuggingFaceBackendConfig
-from insanely_fast_whisper_api import constants
+from insanely_fast_whisper_api.core.errors import (
+    DeviceNotFoundError,
+    TranscriptionError,
+)
 
 
 class TestCLIFacade:

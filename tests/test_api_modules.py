@@ -4,13 +4,14 @@ This module tests the app factory, dependencies, response formatting,
 and file handling components of the refactored API layer.
 """
 
-import pytest
-import tempfile
 import os
-from unittest.mock import Mock, patch, MagicMock
+import tempfile
+from io import BytesIO
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 from fastapi import FastAPI, UploadFile
 from fastapi.testclient import TestClient
-from io import BytesIO
 
 from insanely_fast_whisper_api.api.app import create_app
 from insanely_fast_whisper_api.api.dependencies import (
@@ -18,13 +19,13 @@ from insanely_fast_whisper_api.api.dependencies import (
     get_file_handler,
 )
 from insanely_fast_whisper_api.api.responses import ResponseFormatter
+from insanely_fast_whisper_api.core.pipeline import TranscriptionResult, WhisperPipeline
+from insanely_fast_whisper_api.main import app  # Assuming your FastAPI app is here
 from insanely_fast_whisper_api.utils import (
-    FileHandler,
     RESPONSE_FORMAT_JSON,
     RESPONSE_FORMAT_TEXT,
+    FileHandler,
 )
-from insanely_fast_whisper_api.main import app  # Assuming your FastAPI app is here
-from insanely_fast_whisper_api.core.pipeline import WhisperPipeline, TranscriptionResult
 
 
 class TestAppFactory:

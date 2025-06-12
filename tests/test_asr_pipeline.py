@@ -1,25 +1,26 @@
-import pytest
 import wave
-import numpy as np
 from pathlib import Path
-from typing import List, Tuple, Any, Callable, Optional
+from typing import Any, Callable, List, Optional, Tuple
 from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pytest
 
 from insanely_fast_whisper_api.core import (
     ASRPipeline,
-    TranscriptionError,
     DeviceNotFoundError,
-)
-from insanely_fast_whisper_api.core.pipeline import (
-    WhisperPipeline,
-    PipelineConfig,
-    TranscriptionResult,
+    TranscriptionError,
 )
 from insanely_fast_whisper_api.core.asr_backend import (
     ASRBackend,
     HuggingFaceBackendConfig,
 )
-from insanely_fast_whisper_api.utils import DEFAULT_MODEL, DEFAULT_DEVICE
+from insanely_fast_whisper_api.core.pipeline import (
+    PipelineConfig,
+    TranscriptionResult,
+    WhisperPipeline,
+)
+from insanely_fast_whisper_api.utils import DEFAULT_DEVICE, DEFAULT_MODEL
 
 # A smaller model for faster testing if available, otherwise default.
 # You might need to adjust this if 'openai/whisper-tiny' is not suitable or always available.
