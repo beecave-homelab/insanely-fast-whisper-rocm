@@ -78,9 +78,7 @@ dev = [
 ]
 rocm = [
     "torch==2.5.1+rocm6.4.1.git47a02624",
-    # "onnxruntime-rocm @ https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/onnxruntime_rocm-1.21.0-cp310-cp310-manylinux_2_28_x86_64.whl"
-    # "onnxruntime-rocm==1.21.0"
-    "onnxruntime-rocm"
+    "onnxruntime-rocm",
 ]
 
 # Tool configurations for development
