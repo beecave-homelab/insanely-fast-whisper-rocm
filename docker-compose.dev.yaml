@@ -1,5 +1,5 @@
 services:
-  insanely-fast-whisper-rocm:
+  insanely-fast-whisper-rocm-dev:
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -29,7 +29,7 @@ services:
 
     ports:
       - "8888:8888"  # API port
-      - "7860:7860"  # WebUI port
+      - "7861:7861"  # WebUI port
     
     volumes:
       - "./transcripts:/app/transcripts"
