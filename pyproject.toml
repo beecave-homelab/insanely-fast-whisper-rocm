@@ -1,0 +1,142 @@
+[project]
+name = "insanely-fast-whisper-api"
+version = "0.5.0"
+description = "A FastAPI wrapper around a custom Whisper-based ASR pipeline (ROCM version)"
+authors = [
+    {name = "elvee", email = "lowie@beecave.nl"},
+]
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "python-multipart>=0.0.6",
+    "transformers>=4.35.0",
+    "python-dotenv>=1.0.0",
+    "PyYAML>=6.0.1",
+    "click>=8.1.3",
+    "flask>=3.1.0",
+    "gradio>=5.20.1",
+    "pydub>=0.25.1",
+    "numpy==1.26.4",
+    "datasets>=2.14.0",
+    "accelerate>=0.21.0",
+]
+requires-python = "~=3.10"
+
+[project.scripts]
+insanely-fast-whisper-cli = "insanely_fast_whisper_api.cli.cli:main"
+insanely-fast-whisper-webui = "insanely_fast_whisper_api.webui.cli:launch_webui"
+insanely-fast-whisper-api = "insanely_fast_whisper_api.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.pdm]
+distribution = true
+
+[tool.pdm.scripts]
+start-webui = "insanely-fast-whisper-webui"
+start-webui-debug = "insanely-fast-whisper-webui --debug"
+start-api = "insanely-fast-whisper-api"
+start-api-verbose = "insanely-fast-whisper-api -v"
+cli = "insanely-fast-whisper-cli"
+setup-config = "scripts.setup_config:main"
+
+[[tool.pdm.source]]
+name = "pypi"
+url = "https://pypi.org/simple/"
+verify_ssl = true
+type = "index"
+exclude_packages = ["torch", "onnxruntime-rocm", "pytorch-triton-rocm"]
+include_packages = ["*"]
+
+[[tool.pdm.source]]
+name = "rocm-wheels"
+url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/"
+verify_ssl = true
+type = "find_links"
+include_packages = ["torch", "onnxruntime-rocm", "pytorch-triton-rocm"]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    # Code Quality
+    "ruff>=0.1.0",
+    "black>=23.12.0",
+    "isort>=5.13.2",
+    "mypy>=1.7.0",
+    "pydocstyle>=6.3.0",
+    "pylint>=3.0.3",
+    # Type stubs for better static analysis
+    "types-PyYAML>=6.0.12",
+    "typing-extensions>=4.8.0",
+]
+rocm = [
+    "torch==2.5.1+rocm6.4.1.git47a02624",
+    "onnxruntime-rocm",
+]
+
+# Tool configurations for development
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+show_error_codes = true
+exclude = [
+    "temp_uploads/",
+    "transcripts/",
+    "transcripts_zips/"
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | __pycache__
+  | temp_uploads
+  | transcripts
+  | transcripts_zips
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["insanely_fast_whisper_api"]
+skip = ["temp_uploads", "transcripts", "transcripts_zips"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "temp_uploads",
+    "transcripts",
+    "transcripts_zips"
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]  # Line too long (handled by black)
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
