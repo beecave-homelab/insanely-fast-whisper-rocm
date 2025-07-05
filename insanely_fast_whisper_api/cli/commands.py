@@ -253,7 +253,9 @@ def _run_task(**kwargs):
         )
         click.secho(f"📁 Audio file: {audio_file}", fg="blue")
 
-        processed_language = language if language and language.lower() != "none" else None
+        processed_language = (
+            language if language and language.lower() != "none" else None
+        )
 
         click.secho(f"\n⏳ Starting {task_display_name}...", fg="yellow")
         start_time = time.time()
