@@ -117,8 +117,8 @@ pdm run cli transcribe audio.mp3  # CLI
 ### Core Capabilities
 
 - **Transcription**: Audio to text in source language
-
 - **Translation**: Audio to English
+- **Native SDPA Acceleration**: Hugging Face `sdpa` attention implementation for faster processing on compatible hardware.
 - **Multiple Audio Formats**: Support for .wav, .flac, and .mp3 formats
 - **Filename Standardization**: Predictable and configurable output naming
 
@@ -130,11 +130,14 @@ pdm run cli transcribe audio.mp3  # CLI
 - **CLI Interface**: Command-line tool for single-file processing
 - **Model Management**: Automatic Hugging Face model downloading and caching
 - **Docker Support**: Full containerization with development and production configurations
+- **Direct Hugging Face Integration**: Native `transformers.pipeline` support
+- **Configurable Processing**: Batch size, device, model selection
+- **ROCm Integration**: Optimized PyTorch and ONNX runtime configurations for AMD GPUs
+- **Native Attention Acceleration**: Uses `attn_implementation="sdpa"` for optimized performance without requiring `BetterTransformer`.
 
 ### Architecture
 
 - **Modular Design**: Split core, audio, API, CLI, WebUI, and utils
-
 - **Error Handling**: Layered, type-specific, with full trace logging
 - **Direct Hugging Face Integration**: Native `transformers.pipeline` support
 - **Configurable Processing**: Batch size, device, model selection
@@ -199,6 +202,18 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Architecture Highlights
 
+### Native SDPA Acceleration vs. BetterTransformer
+
+This project uses the native Scaled Dot Product Attention (SDPA) available in PyTorch 2.0+ and `transformers` as its primary method for accelerating the Whisper model's attention mechanism. This is achieved by setting `attn_implementation="sdpa"` when loading the model.
+
+**Why SDPA?**
+
+- **Modern Standard**: SDPA is the official, built-in acceleration method in PyTorch. It is the successor to older, patch-based approaches like Hugging Face's `BetterTransformer`.
+- **Performance**: It provides significant speed improvements for attention-heavy models like Whisper, often matching or exceeding the performance of `BetterTransformer`.
+- **Simplicity**: As a native feature, it doesn't require an extra dependency like `optimum` or manual model patching (`BetterTransformer.transform(model)`). Integration is cleaner and more robust.
+
+The codebase automatically enables `sdpa` for any GPU-based device (`cuda`, `mps`) and disables it for CPU, ensuring optimal performance where available without manual configuration. While the `optimum` package is still a dependency for potential future ONNX optimizations, `sdpa` is the current and recommended acceleration method.
+
 ### Core Refactor (v0.2.0+)
 
 - Direct integration with Hugging Face `pipeline`
@@ -220,6 +235,16 @@ pdm run cli transcribe audio.mp3  # CLI
 - Native batching + ZIP archive output
 - Chunk-level processing progress
 - *See [v0.3.1 changelog](VERSIONS.md#v031---june-2025) for latest enhancements*
+
+### Recent Enhancements
+
+| Date     | ID                                     | Type | Description                                                                                             |
+|----------|----------------------------------------|------|---------------------------------------------------------------------------------------------------------|
+| Jun 2025 | [#5](https://github.com/issue/5)       | ✨    | **Native SDPA Acceleration**: Integrated `attn_implementation="sdpa"` for faster attention, replacing the need for BetterTransformer. |
+| Jun 2025 | [#4](https://github.com/issue/4)       | ✨    | **Modular CLI**: Refactored the CLI into a modular structure with `click` commands and a `facade` for cleaner logic. |
+| Jun 2025 | [#3](https://github.com/issue/3)       | 🔧    | **`pdm` Migration**: Replaced `requirements.txt` with `pdm` for robust dependency management. See [Dependency Management](#dependency-management-with-pdm). |
+| Jun 2025 | [#2](https://github.com/issue/2)       | 🔧    | **Import Refactor**: Standardized all imports to be absolute, improving clarity and maintainability. See [Import Standardization](#import-standardization). |
+| Jun 2025 | [#1](https://github.com/issue/1)       | 🐛    | **WebUI Stability**: Fixed issues with multi-file downloads and improved error handling in the Gradio interface. |
 
 ---
 
@@ -409,8 +434,6 @@ python -m insanely_fast_whisper_api.cli.cli translate audio_file.mp3
 ```
 
 Consult `python -m insanely_fast_whisper_api.cli.cli --help` for a full list of commands and options.
-
----
 
 ---
 
@@ -735,6 +758,10 @@ from insanely_fast_whisper_api.utils.constants import WHISPER_MODEL
 - Native `transformers.pipeline` support
 - Performance optimizations with configurable batching
 
+### Native SDPA Acceleration (v0.5.0)
+
+- Integrated `attn_implementation="sdpa"` for faster attention, replacing the need for BetterTransformer.
+
 ---
 
 ## Bug Fixes
@@ -766,6 +793,10 @@ from insanely_fast_whisper_api.utils.constants import WHISPER_MODEL
 - **Fix**: Ensured `value` parameter receives a file path instead of a function
 - **Result**: Fixed `TypeError` in WebUI batch download functionality
 
+### ✅ Native SDPA Acceleration (v0.5.0)
+
+- Integrated `attn_implementation="sdpa"` for faster attention, replacing the need for BetterTransformer.
+
 ---
 
 ## 📄 License
@@ -774,4 +805,4 @@ MIT License – see `LICENSE` file.
 
 ---
 
-> 📌 For any changes, always update this file to reflect the current behavior of the codebase.
+**Always update this file when code or configuration changes.**

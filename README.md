@@ -48,6 +48,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 
 ## 🌟 Additional Features
 
+- **Modern Acceleration**: Uses native PyTorch 2.0 Scaled Dot Product Attention (`sdpa`) for optimized performance, which is the modern successor to `BetterTransformer`.
 - **Multi-format Audio Support**: Process various audio file formats seamlessly (.wav, .flac and .mp3)
 - **OpenAI-Compatible API**: Drop-in replacement for OpenAI's audio endpoints (v1)
 - **Environment-based Configuration**: Flexible configuration via `.env` files.
