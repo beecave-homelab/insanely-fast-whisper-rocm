@@ -309,7 +309,7 @@ class WhisperPipeline(BasePipeline):
             )
         )
 
-        asr_raw_result = self.asr_backend.transcribe(
+        asr_raw_result = self.asr_backend.process_audio(
             audio_file_path=prepared_data,
             language=language,
             task=task,

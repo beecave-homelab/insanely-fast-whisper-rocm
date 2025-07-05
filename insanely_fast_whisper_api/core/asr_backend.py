@@ -11,7 +11,12 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union
 
 import torch
-from transformers import pipeline
+from transformers import (
+    AutoModelForSpeechSeq2Seq,
+    AutoTokenizer,
+    AutoFeatureExtractor,
+    pipeline,
+)
 
 from insanely_fast_whisper_api.core.errors import (
     DeviceNotFoundError,
@@ -31,7 +36,6 @@ class HuggingFaceBackendConfig:
     device: str
     dtype: str
     batch_size: int
-    better_transformer: bool
     chunk_length: int
 
 
@@ -39,7 +43,7 @@ class ASRBackend(ABC):  # pylint: disable=too-few-public-methods
     """Abstract base class for ASR backends."""
 
     @abstractmethod
-    def transcribe(
+    def process_audio(
         self,
         audio_file_path: str,
         language: Optional[str],
@@ -47,7 +51,7 @@ class ASRBackend(ABC):  # pylint: disable=too-few-public-methods
         return_timestamps_value: Union[bool, str],
         # Potentially other common config options can go here
     ) -> Dict[str, Any]:
-        """Transcribes the audio file and returns the result."""
+        """Processes the audio file and returns the result."""
 
 
 class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
@@ -80,26 +84,41 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 self.config.model_name,
                 self.config.dtype,
             )
-            model_kwargs = {
-                "model": self.config.model_name,
-                "device": self.effective_device,
+
+            model_load_kwargs = {
                 "torch_dtype": (
                     torch.float16 if self.config.dtype == "float16" else torch.float32
                 ),
+                "use_safetensors": True,
             }
-            try:
-                logger.info("Loading ASR model '%s'...", self.config.model_name)
-                self.asr_pipe = pipeline("automatic-speech-recognition", **model_kwargs)
 
-                if self.config.better_transformer:
-                    logger.info("Applying BetterTransformer optimization.")
-                    try:
-                        self.asr_pipe.model = self.asr_pipe.model.to_bettertransformer()
-                    except (RuntimeError, AttributeError, ImportError) as e_bt:
-                        logger.warning(
-                            "Could not apply BetterTransformer: %s. Continuing without it.",
-                            e_bt,
-                        )
+            # For newer transformers versions, SDPA is the native way to get
+            # BetterTransformer-like optimizations.
+            if self.effective_device != "cpu":
+                model_load_kwargs["attn_implementation"] = "sdpa"
+
+            try:
+                logger.info(
+                    "Loading ASR model '%s' with kwargs: %s",
+                    self.config.model_name,
+                    model_load_kwargs,
+                )
+                model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                    self.config.model_name, **model_load_kwargs
+                )
+                tokenizer = AutoTokenizer.from_pretrained(self.config.model_name)
+                feature_extractor = AutoFeatureExtractor.from_pretrained(
+                    self.config.model_name
+                )
+
+                self.asr_pipe = pipeline(
+                    "automatic-speech-recognition",
+                    model=model,
+                    tokenizer=tokenizer,
+                    feature_extractor=feature_extractor,
+                    device=self.effective_device,
+                )
+
             except (OSError, ValueError, RuntimeError, ImportError) as e:
                 logger.error(
                     "Failed to load ASR model '%s': %s",
@@ -109,7 +128,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 )
                 raise TranscriptionError(f"Failed to load ASR model: {str(e)}") from e
 
-    def transcribe(
+    def process_audio(
         self,
         audio_file_path: str,
         language: Optional[str],
@@ -160,7 +179,8 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 try:
                     outputs = self.asr_pipe(str(audio_file_path), **fallback_kwargs)
                     logger.info(
-                        "Successfully completed transcription with chunk-level timestamps fallback for %s",
+                        "Successfully completed transcription with chunk-level "
+                        "timestamps fallback for %s",
                         audio_file_path,
                     )
                 except (RuntimeError, OSError, ValueError, MemoryError) as fallback_e:
@@ -206,7 +226,6 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 "device": self.effective_device,
                 "batch_size": self.config.batch_size,
                 "language": language or "auto",
-                "better_transformer": self.config.better_transformer,
                 "dtype": self.config.dtype,
                 "chunk_length_s": self.config.chunk_length,
                 "task": task,
