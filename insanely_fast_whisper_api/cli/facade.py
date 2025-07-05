@@ -53,7 +53,7 @@ class CLIFacade:
             chunk_length=chunk_length,
         )
 
-    def transcribe_audio(
+    def process_audio(
         self,
         audio_file_path: Path,
         model: Optional[str] = None,
@@ -66,7 +66,7 @@ class CLIFacade:
         return_timestamps: bool = True,
     ) -> Dict[str, Any]:
         """
-        Transcribe audio file using the core ASR backend.
+        Process an audio file using the core ASR backend (transcription or translation).
 
         Args:
             audio_file_path: Path to the audio file
@@ -75,15 +75,15 @@ class CLIFacade:
             dtype: Data type for inference
             batch_size: Batch size for processing
             chunk_length: Audio chunk length in seconds
-            language: Language code for transcription
-            task: Task to perform (transcribe/translate)
+            language: Language code for processing
+            task: Task to perform ("transcribe" or "translate")
             return_timestamps: Whether to return timestamps
 
         Returns:
-            Dictionary containing transcription results
+            Dictionary containing results (transcription or translation)
 
         Raises:
-            TranscriptionError: If transcription fails
+            TranscriptionError: If processing fails
             DeviceNotFoundError: If device is not available
         """
         # Get config from environment with defaults
@@ -146,5 +146,5 @@ class CLIFacade:
         )
 
 
-# Global facade instance for CLI use
+# Global facade instance for CLI use (exposes process_audio for both transcription and translation)
 cli_facade = CLIFacade()

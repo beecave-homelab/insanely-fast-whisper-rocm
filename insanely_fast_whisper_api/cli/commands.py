@@ -260,7 +260,7 @@ def _run_task(**kwargs):
         click.secho(f"\n⏳ Starting {task_display_name}...", fg="yellow")
         start_time = time.time()
 
-        result = cli_facade.transcribe_audio(
+        result = cli_facade.process_audio(
             audio_file_path=audio_file,
             language=processed_language,
             task=task,
@@ -332,13 +332,13 @@ def _run_task(**kwargs):
     except TranscriptionError as e:
         click.secho(f"\n❌ {task_display_name} Error: {e}", fg="red", err=True)
         if debug:
-            logger.exception(f"{task_display_name} error details")
+            logger.exception("%s error details", task_display_name)
         sys.exit(1)
 
     except (OSError, IOError, ValueError, TypeError, RuntimeError) as e:
         click.secho(f"\n❌ Unexpected error: {e}", fg="red", err=True)
         if debug:
-            logger.exception(f"Unexpected error during {task}")
+            logger.exception("Unexpected error during %s", task)
         else:
             click.secho(
                 "💡 Use --debug flag for more detailed error information",

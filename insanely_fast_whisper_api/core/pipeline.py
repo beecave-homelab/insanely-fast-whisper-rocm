@@ -215,7 +215,8 @@ class BasePipeline(ABC):
         # The extension is implicitly handled by JsonStorage, so we pass "json"
         # to the generator for completeness, though JsonStorage might re-append it.
         # Or, storage.save could be made to not append if filename already has one.
-        # For now, this ensures the generator creates a complete name like 'file_transcribe_time.json'.
+        # For now, this ensures the generator creates a complete name like
+        # 'file_transcribe_time.json'.
         filename_str = self._filename_generator.create_filename(
             audio_path=filename_path,
             task=current_task_type,
