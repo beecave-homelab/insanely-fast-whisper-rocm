@@ -30,10 +30,6 @@ def get_asr_pipeline(
     dtype: str = Form(
         "float16", description="Data type for model inference ('float16' or 'float32')"
     ),
-    better_transformer: bool = Form(
-        DEFAULT_BETTER_TRANSFORMER,
-        description="Whether to apply BetterTransformer optimization",
-    ),
     model_chunk_length: int = Form(
         DEFAULT_CHUNK_LENGTH,
         description="Internal chunk length for the Whisper model (seconds)",
@@ -49,7 +45,6 @@ def get_asr_pipeline(
         device: Device ID for processing (e.g., "0" for first GPU)
         batch_size: Number of parallel audio segments to process
         dtype: Data type for model inference ('float16' or 'float32')
-        better_transformer: Whether to apply BetterTransformer optimization
         model_chunk_length: Internal chunk length for the Whisper model (seconds)
 
     Returns:
@@ -60,7 +55,6 @@ def get_asr_pipeline(
         device=device,
         dtype=dtype,
         batch_size=batch_size,
-        better_transformer=better_transformer,
         chunk_length=model_chunk_length,
     )
     backend = HuggingFaceBackend(config=backend_config)
