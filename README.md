@@ -21,7 +21,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **Standardized Filenames**: Consistent, timestamped output naming across all interfaces
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v0.5.0-informational)](#insanely-fast-whisper-api-rocm)
+[![Version](https://img.shields.io/badge/Version-v0.6.0-informational)](#insanely-fast-whisper-api-rocm)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface)

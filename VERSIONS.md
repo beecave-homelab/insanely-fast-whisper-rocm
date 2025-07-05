@@ -20,7 +20,25 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## 🏷️ Release Timeline
 
-### `v0.5.0` (Current) - *June 2025*
+### `v0.6.0` (Current) - *05-07-2025*
+
+**✨ Minor Release: Translation CLI, SDPA attention, ASR refactors**
+
+#### ✨ **New Features**
+- **Added**: Translation functionality to CLI tool
+- **Enhanced**: CLI with text/SRT flags
+- **Enhanced**: Replaced BetterTransformer with native PyTorch SDPA attention
+
+#### 🔧 **Improvements**
+- **Refactored**: ASR pipeline and backend for improved model loading and processing
+- **Refactored**: Removed BetterTransformer configuration
+- **Improved**: Language processing logic
+
+#### 📝 **Commits**: `496f49a`, `bbd78e4`, `e16511b`, `3e78fe4`, `ec08c5e`
+
+---
+
+### `v0.5.0` - *June 2025*
 
 #### ✨ Feature Release: Major Restructure & ROCm Support
 
