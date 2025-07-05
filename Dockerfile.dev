@@ -54,7 +54,7 @@ RUN pip install --no-cache-dir .
 ENV GRADIO_SERVER_NAME="0.0.0.0"
 
 # Make port 8888 available to the world outside this container (standard for uvicorn)
-EXPOSE 8888
+EXPOSE 8889
 EXPOSE 7861
 
 # Define the command to run the application using uvicorn.
