@@ -38,28 +38,60 @@ class CLIFacade:
 
     def _create_backend_config(
         self,
+        model: str,
+        device: str,
+        dtype: str,
+        batch_size: int,
+        chunk_length: int,
+    ) -> HuggingFaceBackendConfig:
+        """Create a HuggingFaceBackendConfig from CLI args."""
+        return HuggingFaceBackendConfig(
+            model_name=model,
+            device=device,
+            dtype=dtype,
+            batch_size=batch_size,
+            chunk_length=chunk_length,
+        )
+
+    def transcribe_audio(
+        self,
+        audio_file_path: Path,
         model: Optional[str] = None,
         device: Optional[str] = None,
         dtype: str = "float16",
         batch_size: Optional[int] = None,
-        better_transformer: bool = False,
         chunk_length: int = 30,
-        force_cpu: bool = False,
-    ) -> HuggingFaceBackendConfig:
-        """Create backend configuration from CLI parameters."""
+        language: Optional[str] = None,
+        task: str = "transcribe",
+        return_timestamps: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Transcribe audio file using the core ASR backend.
+
+        Args:
+            audio_file_path: Path to the audio file
+            model: Model name to use
+            device: Device for inference
+            dtype: Data type for inference
+            batch_size: Batch size for processing
+            chunk_length: Audio chunk length in seconds
+            language: Language code for transcription
+            task: Task to perform (transcribe/translate)
+            return_timestamps: Whether to return timestamps
+
+        Returns:
+            Dictionary containing transcription results
+
+        Raises:
+            TranscriptionError: If transcription fails
+            DeviceNotFoundError: If device is not available
+        """
         # Get config from environment with defaults
         config = self.get_env_config()
 
         # Use provided parameters or fall back to config values
         model = model or config["model"]
-
-        # Force CPU if requested
-        if force_cpu:
-            device = "cpu"
-            dtype = "float32"  # Use float32 for CPU for better stability
-            logger.warning("Forcing CPU execution as requested")
-        else:
-            device = convert_device_string(device) if device else config["device"]
+        device = convert_device_string(device) if device else config["device"]
 
         batch_size = min(
             max(batch_size or config["batch_size"], constants.MIN_BATCH_SIZE),
@@ -72,61 +104,13 @@ class CLIFacade:
             chunk_length = min(chunk_length, 15)  # Use smaller chunks on CPU
             batch_size = min(batch_size, 2)  # Reduce batch size for CPU
 
-        return HuggingFaceBackendConfig(
-            model_name=model,
-            device=device,
-            dtype=dtype,
-            batch_size=batch_size,
-            better_transformer=better_transformer,
-            chunk_length=chunk_length,
-        )
-
-    def transcribe_audio(
-        self,
-        audio_file_path: Path,
-        model: Optional[str] = None,
-        device: Optional[str] = None,
-        dtype: str = "float16",
-        batch_size: Optional[int] = None,
-        better_transformer: bool = False,
-        chunk_length: int = 30,
-        language: Optional[str] = None,
-        task: str = "transcribe",
-        return_timestamps: bool = True,
-        force_cpu: bool = False,
-    ) -> Dict[str, Any]:
-        """
-        Transcribe audio file using the core ASR backend.
-
-        Args:
-            audio_file_path: Path to the audio file
-            model: Model name to use
-            device: Device for inference
-            dtype: Data type for inference
-            batch_size: Batch size for processing
-            better_transformer: Whether to use BetterTransformer
-            chunk_length: Audio chunk length in seconds
-            language: Language code for transcription
-            task: Task to perform (transcribe/translate)
-            return_timestamps: Whether to return timestamps
-            force_cpu: Force CPU usage
-
-        Returns:
-            Dictionary containing transcription results
-
-        Raises:
-            TranscriptionError: If transcription fails
-            DeviceNotFoundError: If device is not available
-        """
         # Create backend configuration
         backend_config = self._create_backend_config(
             model=model,
             device=device,
             dtype=dtype,
             batch_size=batch_size,
-            better_transformer=better_transformer,
             chunk_length=chunk_length,
-            force_cpu=force_cpu,
         )
 
         # Log final configuration
@@ -148,14 +132,13 @@ class CLIFacade:
 
         # Get language from config if not provided
         if language is None:
-            config = self.get_env_config()
             language = config["language"]
 
         # Determine timestamp format
         return_timestamps_value = "word" if return_timestamps else False
 
         # Perform transcription
-        return self.backend.transcribe(
+        return self.backend.process_audio(
             audio_file_path=str(audio_file_path),
             language=language,
             task=task,

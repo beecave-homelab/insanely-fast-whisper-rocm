@@ -11,7 +11,7 @@ import warnings
 import click
 from transformers import logging as transformers_logging
 
-from insanely_fast_whisper_api.cli.commands import transcribe
+from insanely_fast_whisper_api.cli.commands import transcribe, translate
 from insanely_fast_whisper_api.utils import constants
 
 # Configure logging
@@ -34,12 +34,13 @@ def cli():
     """
     🎵 Insanely Fast Whisper API - CLI Tool
 
-    A high-performance CLI tool for audio transcription using Whisper models.
+    A high-performance CLI tool for audio transcription and translation using Whisper models.
     """
 
 
 # Add commands to the CLI group
 cli.add_command(transcribe)
+cli.add_command(translate)
 
 
 def main():
