@@ -54,11 +54,6 @@ def _create_processing_options_ui():
             label="Precision",
             info="Lower precision (float16) is faster but may be less accurate",
         )
-        better_transformer = gr.Checkbox(
-            value=False,
-            label="Use BetterTransformer",
-            info="May improve performance on some systems",
-        )
         chunk_length = gr.Slider(
             minimum=10,
             maximum=60,
@@ -70,7 +65,7 @@ def _create_processing_options_ui():
                 "Longer chunks may be more accurate but use more memory"
             ),
         )
-    return dtype, better_transformer, chunk_length
+    return dtype, chunk_length
 
 
 def _create_task_config_ui():
@@ -117,7 +112,6 @@ def _process_transcription_request_wrapper(  # pylint: disable=too-many-argument
     language: str,
     task: str,
     dtype: str,
-    better_transformer: bool,
     whisper_chunk_length: int,
     save_transcriptions: bool,
     temp_uploads_dir: str,
@@ -132,7 +126,6 @@ def _process_transcription_request_wrapper(  # pylint: disable=too-many-argument
         language=language,
         task=task,
         dtype=dtype,
-        better_transformer=better_transformer,
         chunk_length=whisper_chunk_length,
         chunk_duration=None,
         chunk_overlap=None,
@@ -170,9 +163,7 @@ def create_ui_components():  # pylint: disable=too-many-locals
                 model, device, batch_size = _create_model_config_ui()
 
                 # Processing options
-                dtype, better_transformer, chunk_length = (
-                    _create_processing_options_ui()
-                )
+                dtype, chunk_length = _create_processing_options_ui()
 
                 # Task configuration
                 timestamp_type, language, task = _create_task_config_ui()
@@ -224,7 +215,6 @@ def create_ui_components():  # pylint: disable=too-many-locals
                 language,
                 task,
                 dtype,
-                better_transformer,
                 chunk_length,
                 save_transcriptions,
                 temp_uploads_dir,

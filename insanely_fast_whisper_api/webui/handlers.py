@@ -65,7 +65,6 @@ class TranscriptionConfig:  # pylint: disable=too-many-instance-attributes
     language: str = DEFAULT_LANGUAGE
     task: Literal["transcribe", "translate"] = "transcribe"
     dtype: str = "float16"
-    better_transformer: bool = False
     chunk_length: int = 30
     chunk_duration: Optional[float] = None
     chunk_overlap: Optional[float] = None
@@ -171,8 +170,7 @@ def transcribe(
             device=config.device,
             dtype=config.dtype,
             batch_size=config.batch_size,
-            better_transformer=config.better_transformer,
-            chunk_length=config.chunk_length,  # This is model's chunk_length_s
+            chunk_length=config.chunk_length,
         )
         backend = HuggingFaceBackend(config=backend_config)
 
