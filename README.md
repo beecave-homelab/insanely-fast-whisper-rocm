@@ -121,13 +121,13 @@ For local development, PDM (Python Development Master) is used to manage depende
 
 This command installs the project's core dependencies. To install optional groups for development or specific hardware support (like ROCm), use the `-G` flag:
 
-    ```bash
-    # To install ROCm support
-    pdm install -G rocm
+```bash
+# To install ROCm support
+pdm install -G rocm
 
-    # To include development tools and ROCm support
-    pdm install -G dev -G rocm 
-    ```
+# To include development tools and ROCm support
+pdm install -G dev -G rocm 
+```
 
 ### Model Download
 
