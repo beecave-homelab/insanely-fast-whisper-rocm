@@ -21,7 +21,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **Standardized Filenames**: Consistent, timestamped output naming across all interfaces
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v0.6.0-informational)](#insanely-fast-whisper-api-rocm)
+[![Version](https://img.shields.io/badge/Version-v0.7.0-informational)](#insanely-fast-whisper-api-rocm)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface)
@@ -85,8 +85,9 @@ The recommended way to run the application is using Docker Compose:
 2. Set up configuration (see [Configuration](#configuration)) for more details:
 
     ```bash
-    cp .env.example .env
-    # Edit .env as needed
+    # Create your user configuration file (interactive)
+    # This generates `~/.config/insanely-fast-whisper-api/.env` with sensible defaults
+    pdm run setup-config  # or `python scripts/setup_config.py` if you do not use PDM
     ```
 
 3. Start the application:
@@ -135,23 +136,23 @@ The application will automatically download the specified Whisper model on first
 
 ```bash
 # Download the default model (specified in .env or WHISPER_MODEL env var)
-python -m insanely_fast_whisper_api.download_hf_model
+python -m insanely_fast_whisper_api.utils.download_hf_model
 
 # Download a specific model
-python -m insanely_fast_whisper_api.download_hf_model --model openai/whisper-large-v3
+python -m insanely_fast_whisper_api.utils.download_hf_model --model openai/whisper-large-v3
 
 # Force re-download of the model
-python -m insanely_fast_whisper_api.download_hf_model --force
+python -m insanely_fast_whisper_api.utils.download_hf_model --force
 
 # Use a custom cache directory
-python -m insanely_fast_whisper_api.download_hf_model --cache_dir /path/to/cache
+python -m insanely_fast_whisper_api.utils.download_hf_model --cache_dir /path/to/cache
 ```
 
 For private or gated models, set the `HUGGINGFACE_TOKEN` environment variable with your API token.
 
 ## Configuration
 
-The API can be configured using environment variables in `~/.config/insanely-fast-whisper-api/.env`. A comprehensive example with all available options and their descriptions is provided in [`.env.example`](./.env.example).
+The API can be configured using environment variables in `~/.config/insanely-fast-whisper-api/.env`. A template with all available options is generated automatically by the configuration setup script mentioned above.
 
 For a detailed explanation of the configuration system, including hierarchical loading and key files, please see the [`Configuration System` section in `project-overview.md`](./project-overview.md#configuration-system).
 
@@ -193,7 +194,7 @@ The FastAPI server can be started with:
 python -m insanely_fast_whisper_api
 ```
 
-This launches the server (typically at `http://0.0.0.0:8888`). Interactive API documentation is available at `/docs`.
+This launches the server (typically at `http://0.0.0.0:8000`). Interactive API documentation is available at `/docs`.
 
 Key Endpoints:
 
@@ -254,7 +255,7 @@ The API uses standardized filename conventions for all output files to ensure co
 
 #### Timestamp Configuration
 
-The timestamp format can be customized using the `FILENAME_TIMEZONE` environment variable:
+The timestamp format can be customized using the `APP_TIMEZONE` environment variable:
 
 ```bash
 # Use local timezone

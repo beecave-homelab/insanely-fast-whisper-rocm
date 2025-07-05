@@ -1,9 +1,12 @@
 # Project Overview | Insanely Fast Whisper API (ROCm)
 
-A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture. This overview is the **single source of truth** for developers working on this codebase.
+A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture. 
+
+> [!NOTE]
+> This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v0.5.0)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v0.7.0-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -30,7 +33,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - [Deployment Options](#deployment-options)
 - [Monitoring & Security](#monitoring--security)
 - [Import Standardization](#import-standardization)
-- [Recent Enhancements](#recent-enhancements)
+- [Enhancement Highlights](#enhancement-highlights)
 - [Bug Fixes](#bug-fixes)
 
 ---
@@ -46,8 +49,8 @@ cd insanely-fast-whisper-rocm
 **Use Docker (recommended):**
 
 ```bash
-cp .env.example .env
-# Edit .env as needed
+# Create your user configuration file (interactive)
+pdm run setup-config  # or `python scripts/setup_config.py`
 
 docker compose up --build -d
 ```
@@ -74,7 +77,7 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v0.5.0** *(June 2025)*
+### 🏷️ **Current Version: v0.7.0** *(June 2025)*
 
 **Latest improvements**: Major architectural refactoring, migration to `pdm`, and a new modular CLI.
 
@@ -82,7 +85,7 @@ pdm run cli transcribe audio.mp3  # CLI
 
 | Version | Date | Type | Key Features |
 |---------|------|------|--------------|
-| **v0.5.0** | Jun 2025 | ✨ Minor | Major import refactor, `pdm` migration, modular CLI |
+| **v0.7.0** | Jun 2025 | ✨ Minor | Major import refactor, `pdm` migration, modular CLI |
 | **v0.4.1** | Jun 2025 | 🐛 Patch | WebUI download fixes, stability |
 | **v0.4.0** | Jun 2025 | ✨ Minor | Versioning improvements, logging enhancements |
 | **v0.3.1** | Jun 2025 | 🐛 Patch | ZIP fixes, audio validation, stability |
@@ -236,7 +239,7 @@ The codebase automatically enables `sdpa` for any GPU-based device (`cuda`, `mps
 - Chunk-level processing progress
 - *See [v0.3.1 changelog](VERSIONS.md#v031---june-2025) for latest enhancements*
 
-### Recent Enhancements
+### Enhancement Highlights
 
 | Date     | ID                                     | Type | Description                                                                                             |
 |----------|----------------------------------------|------|---------------------------------------------------------------------------------------------------------|
@@ -265,7 +268,7 @@ The codebase automatically enables `sdpa` for any GPU-based device (`cuda`, `mps
 # Example with UTC (default)
 interview_audio_translate_20250601T091234Z.txt
 
-# Example with FILENAME_TIMEZONE=Europe/Amsterdam (assuming +02:00 offset)
+# Example with APP_TIMEZONE=Europe/Amsterdam (assuming +02:00 offset)
 interview_audio_translate_20250609T212928+0200.txt
 ```
 
@@ -300,7 +303,7 @@ The application uses a hierarchical approach for loading `.env` files, managed b
 
 **Key Configuration Files:**
 
-- **[`.env.example`](./.env.example)**: A template file in the project root. Users should copy this to create their configuration files.
+- **[setup script](./scripts/setup_config.py)**: A template file in the project root. Users should copy this to create their configuration files.
 - **`~/.config/insanely-fast-whisper-api/.env`**: The primary user-specific configuration file. This is the recommended place for all user customizations.
 - **Project `.env`** (Optional): Can be used for development-specific settings or non-sensitive project defaults.
 - **[insanely_fast_whisper_api/utils/constants.py](./insanely_fast_whisper_api/utils/constants.py)**: Defines and provides centralized access to all configuration variables after they are loaded from the environment and `.env` files.
@@ -309,18 +312,19 @@ The application uses a hierarchical approach for loading `.env` files, managed b
 
 **User Configuration Setup Script:**
 
-A utility script [scripts/setup_config.py](./scripts/setup_config.py) is provided to help users create their user-specific configuration file. It copies [`.env.example`](./.env.example) (located in the project root) to `~/.config/insanely-fast-whisper-api/.env`.
+A utility script [scripts/setup_config.py](./scripts/setup_config.py) is provided to help users create their user-specific configuration file. It copies [setup script](./scripts/setup_config.py) (located in the project root) to `~/.config/insanely-fast-whisper-api/.env`.
 
 The script performs the following actions:
 
-- Checks if [`.env.example`](./.env.example) exists in the project root.
+- Checks if [setup script](./scripts/setup_config.py) exists in the project root.
 - Creates the `~/.config/insanely-fast-whisper-api/` directory if it doesn't already exist.
-- Copies the content of [`.env.example`](./.env.example) to `~/.config/insanely-fast-whisper-api/.env`.
+- Copies the [`scripts/setup_config.py`](./scripts/setup_config.py) to `~/.config/insanely-fast-whisper-api/.env`.
 - Prompts the user for confirmation if a configuration file already exists at the destination, to prevent accidental overwrites.
 - Informs the user to edit the newly created or updated file to input their specific settings, such as `HUGGINGFACE_TOKEN` for gated models.
 
-Refer to the [`.env.example`](./.env.example) file in the project root for a comprehensive list of all available configuration options and their descriptions (e.g., model settings, device selection, file handling parameters, timezone configuration).
+Refer to the [setup script](./scripts/setup_config.py) file in the project root for a comprehensive list of all available configuration options and their descriptions (e.g., model settings, device selection, file handling parameters, timezone configuration).
 
+{{ ... }}
 Run it using PDM:
 
 ```bash
@@ -350,7 +354,7 @@ The FastAPI server provides a robust and scalable way to integrate the speech re
 You can start the API server with various options to customize its behavior:
 
 ```bash
-# Launch with default settings (host: 0.0.0.0, port: 8888, workers: 1, log-level: info)
+# Launch with default settings (http://0.0.0.0:8000, port: 8000, workers: 1, log-level: info)
 python -m [insanely_fast_whisper_api](./insanely_fast_whisper_api/__main__.py)
 
 # See all available options and help
@@ -624,7 +628,7 @@ black . && isort .
 **API Server (FastAPI):**
 
 ```bash
-# Launch with default settings (host: 0.0.0.0, port: 8888, workers: 1, log-level: info)
+# Launch with default settings (http://0.0.0.0:8000, port: 8000, workers: 1, log-level: info)
 python -m insanely_fast_whisper_api
 
 # See all available options and help
@@ -696,7 +700,7 @@ The project includes Docker configurations for both production and development e
 **Access URLs:**
 
 - WebUI: [http://localhost:7860](http://localhost:7860)
-- API (when enabled): [http://localhost:8888/docs](http://localhost:8888/docs)
+- API (when enabled): [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
@@ -733,7 +737,7 @@ from insanely_fast_whisper_api.utils.constants import WHISPER_MODEL
 
 ---
 
-## Recent Enhancements
+## Enhancement Timeline
 
 *For complete feature details and changelog, see [VERSIONS.md](VERSIONS.md).*
 
@@ -758,7 +762,7 @@ from insanely_fast_whisper_api.utils.constants import WHISPER_MODEL
 - Native `transformers.pipeline` support
 - Performance optimizations with configurable batching
 
-### Native SDPA Acceleration (v0.5.0)
+### Native SDPA Acceleration (v0.7.0)
 
 - Integrated `attn_implementation="sdpa"` for faster attention, replacing the need for BetterTransformer.
 
@@ -793,7 +797,7 @@ from insanely_fast_whisper_api.utils.constants import WHISPER_MODEL
 - **Fix**: Ensured `value` parameter receives a file path instead of a function
 - **Result**: Fixed `TypeError` in WebUI batch download functionality
 
-### ✅ Native SDPA Acceleration (v0.5.0)
+### ✅ Native SDPA Acceleration (v0.7.0)
 
 - Integrated `attn_implementation="sdpa"` for faster attention, replacing the need for BetterTransformer.
 

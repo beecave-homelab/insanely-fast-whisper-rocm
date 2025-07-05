@@ -2,13 +2,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v0.6.0-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v0.7.0-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v0.6.0` (Current) - *05-07-2025*](#v060-current---05-07-2025)
+- [`v0.7.0` (Current) - *05-07-2025*](#v070-current---05-07-2025)
+- [`v0.6.0` - *05-07-2025*](#v060---05-07-2025)
 - [`v0.5.0` - *June 2025*](#v050---june-2025)
 - [`v0.4.1` - *June 2025*](#v041---june-2025)
 - [`v0.4.0` - *June 2025*](#v040---june-2025)
@@ -34,7 +35,28 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v0.6.0` (Current) - *05-07-2025*
+### `v0.7.0` (Current) - *05-07-2025*
+
+#### **♻️ Refactor Release: Unified Audio Processing for CLI**
+
+#### ✨ **New Features & Improvement in v0.7.0s**
+
+- **Unified CLI Audio Processing**: `transcribe_audio` replaced by `process_audio` in CLI facade, supporting both transcription and translation with a single interface.
+- **Consistent CLI Commands**: Both `transcribe` and `translate` commands now use the unified method for improved maintainability.
+- **Improved Documentation & Logging**: Updated docstrings, CLI help, and logging best practices.
+
+#### 🔧 **Refactor & Maintenance in v0.7.0**
+
+- **Refactored**: CLI and core pipeline to use a single audio processing method, reducing code duplication and confusion.
+- **Updated**: Version badges and documentation for v0.7.0.
+
+#### 📝 **Key Commits in v0.7.0**
+
+`f09d3ce`, `2297174`, `ff4b69f`, `9db2efc`, `496f49a`
+
+---
+
+### `v0.6.0` - *05-07-2025*
 
 #### ✨ Minor Release: Translation CLI, SDPA attention, ASR refactors
 
@@ -49,7 +71,9 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 - **Refactored**: Removed BetterTransformer configuration
 - **Improved**: Language processing logic
 
-#### 📝 **Commits**: `496f49a`, `bbd78e4`, `e16511b`, `3e78fe4`, `ec08c5e`
+#### 📝 **Commits**: 
+
+`496f49a`, `bbd78e4`, `e16511b`, `3e78fe4`, `ec08c5e`
 
 ---
 
@@ -76,7 +100,9 @@ This release marks a significant architectural overhaul:
 - **Audio Processing**: Enhanced audio utilities and improved error handling. (Commit `5d7b306`)
 - **Docker Configuration**: Updated `Dockerfile` and `docker-compose.yaml` to align with the new project structure and remove `pipx` dependency. (Commit `6ad709c`)
 
-#### 📝 Commits: `d999f8d`, `8af2858`, `b4d7791`, `112b627`, `f237624`
+#### 📝 Key Commits in v0.5.0
+
+`d999f8d`, `8af2858`, `b4d7791`, `112b627`, `f237624`
 
 ---
 
