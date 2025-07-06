@@ -36,7 +36,7 @@ from insanely_fast_whisper_api.utils.filename_generator import (
     StandardFilenameStrategy,
     TaskType,
 )
-from insanely_fast_whisper_api.webui.formatters import FORMATTERS
+from insanely_fast_whisper_api.core.formatters import FORMATTERS
 from insanely_fast_whisper_api.webui.zip_creator import (
     BatchZipBuilder,
     ZipConfiguration,
