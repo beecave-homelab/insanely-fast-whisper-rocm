@@ -180,8 +180,14 @@ class BenchmarkCollector:
                 device_idx = torch.cuda.current_device()  # type: ignore[attr-defined]
                 return {
                     "name": torch.cuda.get_device_name(device_idx),  # type: ignore[attr-defined]
-                    "total_vram_mb": round(torch.cuda.get_device_properties(device_idx).total_memory / 1024**2, 2),  # type: ignore[attr-defined]
-                    "vram_used_mb": round(torch.cuda.memory_allocated(device_idx) / 1024**2, 2),  # type: ignore[attr-defined]
+                    "total_vram_mb": round(
+                        torch.cuda.get_device_properties(device_idx).total_memory
+                        / 1024**2,
+                        2,
+                    ),  # type: ignore[attr-defined]
+                    "vram_used_mb": round(
+                        torch.cuda.memory_allocated(device_idx) / 1024**2, 2
+                    ),  # type: ignore[attr-defined]
                 }
             except Exception:  # pragma: no cover
                 pass

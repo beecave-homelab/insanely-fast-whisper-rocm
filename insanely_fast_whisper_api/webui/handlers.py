@@ -365,7 +365,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             if progress_tracker is not None:
                 progress_tracker(
                     (idx + 1) / num_files,
-                    desc=f"Completed file {idx+1}/{num_files}: {file_name_for_log}",
+                    desc=f"Completed file {idx + 1}/{num_files}: {file_name_for_log}",
                 )
 
         except TranscriptionError as e:
@@ -377,7 +377,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             if progress_tracker is not None:
                 progress_tracker(
                     (idx + 1) / num_files,
-                    desc=f"Error processing file {idx+1}/{num_files}: {file_name_for_log}",
+                    desc=f"Error processing file {idx + 1}/{num_files}: {file_name_for_log}",
                 )
             if num_files > 1:
                 continue
@@ -418,7 +418,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             if progress_tracker is not None:
                 progress_tracker(
                     (idx + 1) / num_files,
-                    desc=f"Critical error file {idx+1}/{num_files}: {file_name_for_log}",
+                    desc=f"Critical error file {idx + 1}/{num_files}: {file_name_for_log}",
                 )
             if num_files > 1:
                 continue
@@ -494,12 +494,10 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             else "Could not format text output."
         )
         json_output_val = first_success["raw_result"]
-        raw_result_state_val = (
-            {  # State for potential re-use, not directly for downloads now
-                "raw_result": first_success["raw_result"],
-                "json_file_path": first_success["json_file_path"],
-            }
-        )
+        raw_result_state_val = {  # State for potential re-use, not directly for downloads now
+            "raw_result": first_success["raw_result"],
+            "json_file_path": first_success["json_file_path"],
+        }
 
         # Individual file downloads
         txt_btn_update = gr.update(

@@ -196,8 +196,7 @@ def download_model_if_needed(
     default=None,
     show_default="Hugging Face default",
     help=(
-        "Path to a custom cache directory. If not set, Hugging Face "
-        "defaults are used."
+        "Path to a custom cache directory. If not set, Hugging Face defaults are used."
     ),
 )
 @click.option(

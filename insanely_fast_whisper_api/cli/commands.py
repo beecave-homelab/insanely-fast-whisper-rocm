@@ -367,6 +367,7 @@ def _run_task(**kwargs) -> None:
     no_ts_explicit = False
     if ctx_internal is not None:
         from click.core import ParameterSource as _PS
+
         no_ts_explicit = (
             ctx_internal.get_parameter_source("no_timestamps") == _PS.COMMANDLINE
         )
@@ -534,9 +535,16 @@ def _run_task(**kwargs) -> None:
             try:
                 with open(output_path, "w", encoding="utf-8") as f:
                     f.write(content)
-                click.secho(f"\n💾 Results in {fmt.upper()} format saved to: {output_path}", fg="green")
+                click.secho(
+                    f"\n💾 Results in {fmt.upper()} format saved to: {output_path}",
+                    fg="green",
+                )
             except (OSError, IOError, UnicodeError) as e:
-                click.secho(f"\n❌ Failed to save {fmt.upper()} results: {e}", fg="red", err=True)
+                click.secho(
+                    f"\n❌ Failed to save {fmt.upper()} results: {e}",
+                    fg="red",
+                    err=True,
+                )
 
         # Print benchmark path at bottom for visibility
         if benchmark_path:

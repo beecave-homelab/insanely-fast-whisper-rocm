@@ -61,9 +61,6 @@ def save_temp_file(
         raise
 
 
-
-
-
 def convert_device_string(device_id: str) -> str:
     """Wrapper for core.utils.convert_device_string for webui internal use."""
     return core_convert_device_string(device_id)

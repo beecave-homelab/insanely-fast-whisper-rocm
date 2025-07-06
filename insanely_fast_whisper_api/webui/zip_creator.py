@@ -74,9 +74,9 @@ class BatchZipBuilder:
         self._batch_data: Dict[str, Any] = {}
 
         # Content tracking
-        self._individual_files: Dict[str, Dict[str, Any]] = (
-            {}
-        )  # file_path -> result_data
+        self._individual_files: Dict[
+            str, Dict[str, Any]
+        ] = {}  # file_path -> result_data
         self._merged_content: Dict[str, str] = {}  # format -> merged_content
         self._custom_files: List[tuple] = []  # [(archive_path, content)]
 
@@ -640,7 +640,9 @@ class BatchZipBuilder:
                 "organization_strategy": (
                     "by_format"
                     if self.config.organize_by_format
-                    else "by_file" if self.config.organize_by_file else "flat"
+                    else "by_file"
+                    if self.config.organize_by_file
+                    else "flat"
                 ),
                 "archive_structure": {
                     "formats/": (

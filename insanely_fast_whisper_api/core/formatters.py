@@ -63,8 +63,9 @@ class SrtFormatter(BaseFormatter):
                 continue
 
             timestamps = chunk.get("timestamp", [None, None])
-            start, end = timestamps[0] if len(timestamps) > 0 else None, (
-                timestamps[1] if len(timestamps) > 1 else None
+            start, end = (
+                timestamps[0] if len(timestamps) > 0 else None,
+                (timestamps[1] if len(timestamps) > 1 else None),
             )
 
             srt_content.append(
