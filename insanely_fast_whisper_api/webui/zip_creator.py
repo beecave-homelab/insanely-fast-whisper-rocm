@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from insanely_fast_whisper_api.webui.formatters import FORMATTERS
+from insanely_fast_whisper_api.core.formatters import FORMATTERS
 
 # Configure logger
 logger = logging.getLogger("insanely_fast_whisper_api.webui.zip_creator")

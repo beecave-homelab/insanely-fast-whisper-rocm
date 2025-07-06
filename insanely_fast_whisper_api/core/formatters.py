@@ -1,4 +1,4 @@
-"""Formatter classes for Insanely Fast Whisper API WebUI.
+"""Formatter classes for Insanely Fast Whisper API.
 
 This module contains classes for formatting transcription results
 in different output formats (text, SRT subtitles, JSON).
@@ -7,7 +7,7 @@ in different output formats (text, SRT subtitles, JSON).
 import json
 from typing import Any, Dict
 
-from insanely_fast_whisper_api.webui.utils import format_seconds as util_format_seconds
+from insanely_fast_whisper_api.utils.formatting import format_seconds as util_format_seconds
 
 
 class BaseFormatter:
