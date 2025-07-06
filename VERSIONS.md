@@ -1,5 +1,8 @@
 # 📋 Version History & Changelog
 
+> **Note:** Key Commits sections were updated on 2025-07-06 to reflect normalized tags and true release commits.
+
+
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
 [![Version](https://img.shields.io/badge/Version-v0.9.0-informational)](#release-timeline)
@@ -44,22 +47,25 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 This release introduces CLI benchmarking and performance monitoring, export format options for CLI, and translation via CLI. Numerous refactors and bug fixes improve reliability and maintainability.
 
 #### ✨ **New Features in v0.9.0**
+
 - **Added**: CLI benchmarking and performance monitoring utilities
 - **Added**: Export format options for CLI (TXT, SRT, JSON)
 - **Added**: Translation functionality via CLI
 
 #### 🐛 **Bug Fixes in v0.9.0**
+
 - **Fixed**: Formatter/import issues in WebUI handlers
   - **Issue**: Incorrect import and usage of formatters in WebUI
   - **Root Cause**: Outdated import paths and handler logic
   - **Solution**: Refactored imports and updated handler logic
 
 #### 🔧 **Improvements in v0.9.0**
+
 - **Refactored**: CLI command structure and benchmarking integration
 - **Refactored**: Modularized formatters and audio processing
 
 #### 📝 **Key Commits in v0.9.0**
-`32c6d73`, `3521e92`, `ca0ca15`, `537e788`, `594827a`
+`32c6d73`
 
 ---
 
@@ -87,7 +93,7 @@ This release focuses on standardizing application entrypoints, enhancing the CLI
 
 #### 📝 Key Commits in v0.8.0
 
-`9d1611b`, `ca0ca15`, `537e788`, `594827a`, `b02b330`
+`537e788`
 
 ---
 
@@ -108,7 +114,7 @@ This release focuses on standardizing application entrypoints, enhancing the CLI
 
 #### 📝 **Key Commits in v0.7.0**
 
-`f09d3ce`, `2297174`, `ff4b69f`, `9db2efc`, `496f49a`
+`f09d3ce`
 
 ---
 
@@ -158,7 +164,7 @@ This release marks a significant architectural overhaul:
 
 #### 📝 Key Commits in v0.5.0
 
-`d999f8d`, `8af2858`, `b4d7791`, `112b627`, `f237624`
+`2154bdf`
 
 ---
 
@@ -186,7 +192,7 @@ This release marks a significant architectural overhaul:
 
 #### 📝 Commits in v0.4.1
 
-`c3eba0c`, `76252e4`, `a2f2ac2`, `e1ea7c3`, `b447757`
+`76252e4`
 
 ---
 
@@ -201,7 +207,7 @@ This release marks a significant architectural overhaul:
 
 #### 📝 Commits in v0.4.0
 
-`8874ad1`, `687bb2f`, `65157c8`, `0a3659f`
+`6ad709c`
 
 ---
 
@@ -236,7 +242,7 @@ This release marks a significant architectural overhaul:
 
 #### 📝 Commits in v0.3.1
 
-`35f3584`, `a61d52f`, `9615350`, `138e14e`, `eb53217`, `0174de8`, `bc9b9d4`
+`a4bbe37`
 
 ---
 
@@ -271,7 +277,7 @@ This release marks a significant architectural overhaul:
 
 #### 📝 Key Commits in v0.3.0
 
-`d6c1d74`, `73ef337`, `a162bcd`, `2a46385`, `f643be6`, `b366b4d`
+`3e78875`
 
 ---
 
@@ -338,7 +344,7 @@ This release marks a significant architectural overhaul:
 
 #### 📝 Key Commits in v0.2.0
 
- `b8514a9`, `53051d2`
+`9dfb30f`
 
 ---
 
@@ -361,7 +367,7 @@ This release marks a significant architectural overhaul:
 
 #### 📝 Key Commits in v0.1.2
 
-`7d1191d`, `272f3f8`, `08a1604`
+`3cd8552`
 
 ---
 
@@ -388,7 +394,7 @@ This release marks a significant architectural overhaul:
 
 #### 📝 Key Commits in v0.1.1
 
-`9524596`, `ea3abe4`, `455e33b`, `d950fb3`, `1bdd079`, `323d763`, `434bf39`
+`6e41010`
 
 ---
 
@@ -418,6 +424,6 @@ This release marks a significant architectural overhaul:
 
 #### 📝 Key Commits in v0.1.0
 
-`3dd155e`, `7fb6672`, `306a702` (Initial commit)
+`67667cd`
 
 ---

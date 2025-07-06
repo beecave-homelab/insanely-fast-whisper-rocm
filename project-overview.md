@@ -108,6 +108,8 @@ pdm run cli transcribe audio.mp3  # CLI
 ---
 
 > 📖 **For complete version history, changelog, and detailed release notes, see [VERSIONS.md](VERSIONS.md)**
+> 
+> **Note:** As of 2025-07-06, all release tags (v0.1.0 ... v0.9.0) have normalized commit mappings. The canonical mapping for each release is now found in VERSIONS.md under the 'Key Commits' section.
 
 ---
 
