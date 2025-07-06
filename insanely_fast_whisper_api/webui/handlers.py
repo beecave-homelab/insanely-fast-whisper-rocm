@@ -21,6 +21,7 @@ from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackendConfig,
 )
 from insanely_fast_whisper_api.core.errors import TranscriptionError
+from insanely_fast_whisper_api.core.formatters import FORMATTERS
 from insanely_fast_whisper_api.core.pipeline import ProgressEvent
 from insanely_fast_whisper_api.utils import (
     DEFAULT_BATCH_SIZE,
@@ -36,7 +37,6 @@ from insanely_fast_whisper_api.utils.filename_generator import (
     StandardFilenameStrategy,
     TaskType,
 )
-from insanely_fast_whisper_api.core.formatters import FORMATTERS
 from insanely_fast_whisper_api.webui.zip_creator import (
     BatchZipBuilder,
     ZipConfiguration,

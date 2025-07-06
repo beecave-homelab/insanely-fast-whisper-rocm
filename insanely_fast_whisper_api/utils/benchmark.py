@@ -11,15 +11,14 @@ from __future__ import annotations
 import platform
 import time
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 from insanely_fast_whisper_api.utils.filename_generator import (
     FilenameGenerator,
     StandardFilenameStrategy,
     TaskType,
 )
-
-from pathlib import Path
-from typing import Any, Dict, Optional
 
 try:
     import psutil  # type: ignore

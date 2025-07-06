@@ -13,7 +13,6 @@ from insanely_fast_whisper_api.core.asr_backend import (
 from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_api.utils import (
     DEFAULT_BATCH_SIZE,
-    DEFAULT_BETTER_TRANSFORMER,
     DEFAULT_CHUNK_LENGTH,
     DEFAULT_DEVICE,
     DEFAULT_MODEL,

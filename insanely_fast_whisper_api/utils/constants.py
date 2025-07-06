@@ -77,14 +77,8 @@ from typing import Literal, Set
 
 from dotenv import load_dotenv
 
-from insanely_fast_whisper_api import __version__ as API_VERSION
-
-
 from insanely_fast_whisper_api.utils.env_loader import (
-    PROJECT_ROOT_ENV_EXISTS,
-    PROJECT_ROOT_ENV_FILE,
     SHOW_DEBUG_PRINTS,
-    USER_CONFIG_DIR,
     USER_ENV_EXISTS,
     USER_ENV_FILE,
     debug_print,

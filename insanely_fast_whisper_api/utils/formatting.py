@@ -5,6 +5,7 @@ This module contains utility functions for formatting data, such as timestamps.
 
 from typing import Optional
 
+
 def format_seconds(seconds: Optional[float]) -> str:
     """
     Format seconds to a human-readable time string (HH:MM:SS.mmm).

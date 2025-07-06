@@ -7,7 +7,9 @@ in different output formats (text, SRT subtitles, JSON).
 import json
 from typing import Any, Dict
 
-from insanely_fast_whisper_api.utils.formatting import format_seconds as util_format_seconds
+from insanely_fast_whisper_api.utils.formatting import (
+    format_seconds as util_format_seconds,
+)
 
 
 class BaseFormatter:

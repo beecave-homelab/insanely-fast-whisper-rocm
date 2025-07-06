@@ -12,9 +12,9 @@ from typing import Any, Dict, Optional, Union
 
 import torch
 from transformers import (
+    AutoFeatureExtractor,
     AutoModelForSpeechSeq2Seq,
     AutoTokenizer,
-    AutoFeatureExtractor,
     pipeline,
 )
 
