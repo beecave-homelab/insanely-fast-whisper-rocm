@@ -27,6 +27,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
   - [API Server Details](#api-server-details)
   - [WebUI (Gradio Interface) Details](#webui-gradio-interface-details)
   - [CLI (Command Line Interface) Details](#cli-command-line-interface-details)
+- [Performance Benchmarking](#performance-benchmarking)
 - [Dependency Management](#dependency-management-with-pdm)
 - [Error Handling](#error-handling)
 - [Development Guidelines](#development-guidelines)
@@ -415,6 +416,41 @@ python -m insanely_fast_whisper_api.webui --port 7860 --host 0.0.0.0 --debug
 ```
 
 ### CLI (Command Line Interface) Details
+
+#### Performance Benchmarking
+
+Use the `--benchmark` flag to measure processing speed and collect hardware stats.
+
+> **Install dependencies**: Benchmarking relies on optional packages (`psutil`, `pyamdgpuinfo`, etc.). Install them with:
+>
+> ```bash
+> pdm install -G bench
+> ```
+
+```bash
+# Quick benchmark (JSON only; timestamps auto-disabled)
+python -m insanely_fast_whisper_api.cli transcribe audio.mp3 --benchmark
+
+# Benchmark and also export transcript as TXT
+python -m insanely_fast_whisper_api.cli transcribe audio.mp3 --benchmark --export-format txt
+
+# Pass arbitrary metadata
+python -m insanely_fast_whisper_api.cli transcribe audio.mp3 --benchmark --benchmark-extra precision=fp16 tokenizer=fast
+```
+
+**Key behaviors**:
+
+| Feature | Description |
+|---------|-------------|
+| Transcript export suppression | When `--benchmark` is set, transcript files are *not* saved unless you explicitly provide `--export-format`. |
+| Auto `--no-timestamps` | Timestamps are disabled by default during benchmarking to measure raw model speed. Override by adding `--no-timestamps` on the CLI. |
+| Output location | A JSON file is written to `benchmarks/` with name pattern `benchmark_<audio>_<task>_<timestamp>.json`. |
+| Extra metadata | Use repeated `--benchmark-extra key=value` pairs to inject custom fields into the JSON. |
+| Completion message | The benchmark path is printed **at the end** of the CLI output (📈 line) for quick copy-paste. |
+
+The JSON includes runtime stats, total elapsed time, system info (OS, Python, Torch version), and GPU metrics (VRAM, temperature, power for AMD/CUDA when available).
+
+---
 
 The Command Line Interface is ideal for single-file processing, scripting, or quick tests. It supports multiple output formats and provides clear feedback on the transcription process.
 
