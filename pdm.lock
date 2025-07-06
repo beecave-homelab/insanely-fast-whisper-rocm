@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default", "dev", "rocm"]
+groups = ["default", "bench", "dev", "rocm"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:61d2f440f4fe6de04c94c46ff42e5a3d15eb64d817b61d8ef9ad4be18387da85"
+content_hash = "sha256:8b871502f3c8b6c22413ba0f63ba34eebe3dc7f4d55cbf71333dd77de3c4be0f"
 
 [[metadata.targets]]
 requires_python = "~=3.10"
@@ -1749,6 +1749,26 @@ files = [
 ]
 
 [[package]]
+name = "pyamdgpuinfo"
+version = "2.1.7"
+requires_python = ">=3.9"
+summary = "AMD GPU stats"
+groups = ["bench"]
+files = [
+    {file = "pyamdgpuinfo-2.1.7-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a60d24336d660cfe8b04ca20719639af1ac51ddb596df44ea583ebec33e2c1dc"},
+    {file = "pyamdgpuinfo-2.1.7-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:8026d853f6634035c552afc68fa08a2403c7ba1103fd90fcb77f33e449935148"},
+    {file = "pyamdgpuinfo-2.1.7-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2a714e58f3eb706dc8583fc1247240c2de2522b622973661b36d859bd708957e"},
+    {file = "pyamdgpuinfo-2.1.7-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:d3e00838479a77c9e5c532e38e08957e9cbcbfbae2819ef7bad767acf7a151c4"},
+    {file = "pyamdgpuinfo-2.1.7-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:74e7db2f58f74d0c9a66709fe7a16410ccc442bcbb204a1e593bfd575a6184f5"},
+    {file = "pyamdgpuinfo-2.1.7-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:d067afe60abd4ea87914391bcf0710c8e867a2bdade7df2291287ff95d0caccb"},
+    {file = "pyamdgpuinfo-2.1.7-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:86aa72b64d9a483e5a05aea8424f88145b1d5494a3239402a347a016d77149a7"},
+    {file = "pyamdgpuinfo-2.1.7-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:943b7d7e3a143dda0ea4d198c9ff4d4e4a55ef32f4b2643de9eb4b2d5f14f6e4"},
+    {file = "pyamdgpuinfo-2.1.7-pp310-pypy310_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d01d1bf8cc144a4c2c0ab2fa07bed47e96be576972cd70a7a7a16065d02e28c5"},
+    {file = "pyamdgpuinfo-2.1.7-pp311-pypy311_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:32826c0386c8266f02d88bd12eeb9c4aad73d2673014d9673f6d6ecda22dc9e9"},
+    {file = "pyamdgpuinfo-2.1.7.tar.gz", hash = "sha256:95b4f5618c3271f95edef8e10ddaf89a13a0d1edbb03bdd05d8f4a930aa125b0"},
+]
+
+[[package]]
 name = "pyarrow"
 version = "20.0.0"
 requires_python = ">=3.9"
@@ -2492,19 +2512,6 @@ files = [
     {file = "torch-2.5.1+rocm6.4.1.git47a02624-cp310-cp310-linux_x86_64.whl", hash = "sha256:bc6df39aa559ac46e1b564021e6945984df843ee8c8a349d37b0295b1df37604"},
     {file = "torch-2.5.1+rocm6.4.1.git47a02624-cp312-cp312-linux_x86_64.whl", hash = "sha256:ad403e295830925abb71459b04d838ffd9bab4411d6b6c684ef5beba34a56732"},
     {file = "torch-2.5.1+rocm6.4.1.git47a02624-cp313-cp313-linux_x86_64.whl", hash = "sha256:f7ca8887d1e3f0ffb7a4a21a3b266886ecc53b9195ad077ed3b9ccd81a434c71"},
-    {file = "torch-2.5.1-cp310-cp310-manylinux1_x86_64.whl", hash = "sha256:71328e1bbe39d213b8721678f9dcac30dfc452a46d586f1d514a6aa0a99d4744"},
-    {file = "torch-2.5.1-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:34bfa1a852e5714cbfa17f27c49d8ce35e1b7af5608c4bc6e81392c352dbc601"},
-    {file = "torch-2.5.1-cp310-cp310-win_amd64.whl", hash = "sha256:32a037bd98a241df6c93e4c789b683335da76a2ac142c0973675b715102dc5fa"},
-    {file = "torch-2.5.1-cp310-none-macosx_11_0_arm64.whl", hash = "sha256:23d062bf70776a3d04dbe74db950db2a5245e1ba4f27208a87f0d743b0d06e86"},
-    {file = "torch-2.5.1-cp311-cp311-manylinux1_x86_64.whl", hash = "sha256:de5b7d6740c4b636ef4db92be922f0edc425b65ed78c5076c43c42d362a45457"},
-    {file = "torch-2.5.1-cp311-cp311-manylinux2014_aarch64.whl", hash = "sha256:340ce0432cad0d37f5a31be666896e16788f1adf8ad7be481196b503dad675b9"},
-    {file = "torch-2.5.1-cp311-cp311-win_amd64.whl", hash = "sha256:603c52d2fe06433c18b747d25f5c333f9c1d58615620578c326d66f258686f9a"},
-    {file = "torch-2.5.1-cp311-none-macosx_11_0_arm64.whl", hash = "sha256:31f8c39660962f9ae4eeec995e3049b5492eb7360dd4f07377658ef4d728fa4c"},
-    {file = "torch-2.5.1-cp312-cp312-manylinux1_x86_64.whl", hash = "sha256:ed231a4b3a5952177fafb661213d690a72caaad97d5824dd4fc17ab9e15cec03"},
-    {file = "torch-2.5.1-cp312-cp312-manylinux2014_aarch64.whl", hash = "sha256:3f4b7f10a247e0dcd7ea97dc2d3bfbfc90302ed36d7f3952b0008d0df264e697"},
-    {file = "torch-2.5.1-cp312-cp312-win_amd64.whl", hash = "sha256:73e58e78f7d220917c5dbfad1a40e09df9929d3b95d25e57d9f8558f84c9a11c"},
-    {file = "torch-2.5.1-cp312-none-macosx_11_0_arm64.whl", hash = "sha256:8c712df61101964eb11910a846514011f0b6f5920c55dbf567bff8a34163d5b1"},
-    {file = "torch-2.5.1-cp313-cp313-manylinux1_x86_64.whl", hash = "sha256:9b61edf3b4f6e3b0e0adda8b3960266b9009d02b37555971f4d1c8f7a05afed7"},
 ]
 
 [[package]]

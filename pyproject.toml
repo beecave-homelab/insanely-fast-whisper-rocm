@@ -76,12 +76,17 @@ dev = [
     "types-PyYAML>=6.0.12",
     "typing-extensions>=4.8.0",
 ]
+
 rocm = [
     "torch==2.5.1",
     "onnxruntime-rocm",
 ]
 
 # Tool configurations for development
+bench = [
+    "pyamdgpuinfo>=2.1.7",
+]
+
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
