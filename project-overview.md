@@ -1,6 +1,6 @@
 # Project Overview | Insanely Fast Whisper API (ROCm)
 
-A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture. 
+A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture.
 
 > [!NOTE]
 > This overview is the **single source of truth** for developers working on this codebase.
@@ -355,31 +355,31 @@ You can start the API server with various options to customize its behavior:
 
 ```bash
 # Launch with default settings (http://0.0.0.0:8000, port: 8000, workers: 1, log-level: info)
-python -m [insanely_fast_whisper_api](./insanely_fast_whisper_api/__main__.py)
+python -m insanely_fast_whisper_api.api
 
 # See all available options and help
-python -m [insanely_fast_whisper_api](./insanely_fast_whisper_api/__main__.py) --help
+python -m insanely_fast_whisper_api.api --help
 
 # Launch with a custom port
-python -m [insanely_fast_whisper_api](./insanely_fast_whisper_api/__main__.py) --port 8001
+python -m insanely_fast_whisper_api.api --port 8001
 
 # Launch with a custom host and port
-python -m [insanely_fast_whisper_api](./insanely_fast_whisper_api/__main__.py) --host 127.0.0.1 --port 9000
+python -m insanely_fast_whisper_api.api --host 127.0.0.1 --port 9000
 
 # Launch with multiple workers (disables reload)
-python -m [insanely_fast_whisper_api](./insanely_fast_whisper_api/__main__.py) --workers 4 --no-reload
+python -m insanely_fast_whisper_api.api --workers 4 --no-reload
 
 # Launch with auto-reload enabled (for development)
-python -m [insanely_fast_whisper_api](./insanely_fast_whisper_api/__main__.py) --reload
+python -m insanely_fast_whisper_api.api --reload
 
 # Launch with a specific log level (e.g., debug)
-python -m [insanely_fast_whisper_api](./insanely_fast_whisper_api/__main__.py) --log-level debug
+python -m insanely_fast_whisper_api.api --log-level debug
 
 # Launch in debug mode (enables debug logging for app and Uvicorn)
-python -m [insanely_fast_whisper_api](./insanely_fast_whisper_api/__main__.py) --debug
+python -m insanely_fast_whisper_api.api --debug
 
 # Launch with SSL (ensure dummy.key and dummy.crt exist or provide paths)
-# python -m [insanely_fast_whisper_api](./insanely_fast_whisper_api/__main__.py) --ssl-keyfile dummy.key --ssl-certfile dummy.crt
+# python -m insanely_fast_whisper_api.api --ssl-keyfile dummy.key --ssl-certfile dummy.crt
 ```
 
 **API Parameters:**
@@ -404,40 +404,50 @@ The Gradio WebUI offers an interactive, browser-based experience, particularly u
 
 ```bash
 # Basic WebUI launch
-python -m [insanely_fast_whisper_api.webui.cli](./insanely_fast_whisper_api/webui/cli.py)
+python -m insanely_fast_whisper_api.webui
 
 # With debug logging (recommended for development or troubleshooting)
-python -m [insanely_fast_whisper_api.webui.cli](./insanely_fast_whisper_api/webui/cli.py) --debug
+python -m insanely_fast_whisper_api.webui --debug
 
 # Custom host and port
-python -m [insanely_fast_whisper_api.webui.cli](./insanely_fast_whisper_api/webui/cli.py) --port 7860 --host 0.0.0.0 --debug
+python -m insanely_fast_whisper_api.webui --port 7860 --host 0.0.0.0 --debug
 ```
 
 ### CLI (Command Line Interface) Details
 
-The Command Line Interface is ideal for single-file processing, scripting, or quick tests.
+The Command Line Interface is ideal for single-file processing, scripting, or quick tests. It supports multiple output formats and provides clear feedback on the transcription process.
 
-**Command Examples and Options:**
+#### Export Formats
+
+The `--export-format` option controls the output file type. The following formats are available:
+
+| Format | Description                                       | Output Directory      |
+|--------|---------------------------------------------------|-----------------------|
+| `json` | (Default) Standard JSON output with transcription | `transcripts/`        |
+| `txt`  | Plain text                                        | `transcripts-txt/`    |
+| `srt`  | SubRip subtitle format (requires timestamps)      | `transcripts-srt/`    |
+| `all`  | Exports all three formats simultaneously          | (Respective above)    |
+
+#### Command Examples and Options
 
 ```bash
-# Transcribe audio file (basic)
-python -m [insanely_fast_whisper_api.cli.cli](./insanely_fast_whisper_api/cli/cli.py) transcribe audio_file.mp3
+# Transcribe and get a JSON file (default)
+python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3
 
-# Transcribe with word-level timestamps (if supported by model/config)
-# Note: Check if 'timestamp_type' or similar option is available via CLI help
-# python -m [insanely_fast_whisper_api.cli.cli](./insanely_fast_whisper_api/cli/cli.py) transcribe audio_file.mp3 --timestamp-type word
+# Transcribe and get a TXT file
+python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --export-format txt
 
-# Transcribe without timestamps in the output (produces cleaner text if timestamps are not needed)
-python -m [insanely_fast_whisper_api.cli.cli](./insanely_fast_whisper_api/cli/cli.py) transcribe audio_file.mp3 --no-timestamps
+# Transcribe and get all formats (JSON, SRT, TXT)
+python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --export-format all
+
+# Translate and get an SRT file
+python -m insanely_fast_whisper_api.cli translate audio_file.mp3 --export-format srt
 
 # Transcribe with debug logging enabled
-python -m insanely_fast_whisper_api.cli.cli transcribe audio_file.mp3 --debug
-
-# Translate audio to English
-python -m insanely_fast_whisper_api.cli.cli translate audio_file.mp3
+python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --debug
 ```
 
-Consult `python -m insanely_fast_whisper_api.cli.cli --help` for a full list of commands and options.
+Consult `python -m insanely_fast_whisper_api.cli --help` for a full list of commands and options.
 
 ---
 
@@ -629,54 +639,54 @@ black . && isort .
 
 ```bash
 # Launch with default settings (http://0.0.0.0:8000, port: 8000, workers: 1, log-level: info)
-python -m insanely_fast_whisper_api
+python -m insanely_fast_whisper_api.api
 
 # See all available options and help
-python -m insanely_fast_whisper_api --help
+python -m insanely_fast_whisper_api.api --help
 
 # Launch with a custom port
-python -m insanely_fast_whisper_api --port 8001
+python -m insanely_fast_whisper_api.api --port 8001
 
 # Launch with a custom host and port
-python -m insanely_fast_whisper_api --host 127.0.0.1 --port 9000
+python -m insanely_fast_whisper_api.api --host 127.0.0.1 --port 9000
 
 # Launch with multiple workers (disables reload)
-python -m insanely_fast_whisper_api --workers 4 --no-reload
+python -m insanely_fast_whisper_api.api --workers 4 --no-reload
 
 # Launch with auto-reload enabled (for development)
-python -m insanely_fast_whisper_api --reload
+python -m insanely_fast_whisper_api.api --reload
 
 # Launch with a specific log level (e.g., debug)
-python -m insanely_fast_whisper_api --log-level debug
+python -m insanely_fast_whisper_api.api --log-level debug
 
 # Launch in debug mode (enables debug logging for app and Uvicorn)
-python -m insanely_fast_whisper_api --debug
+python -m insanely_fast_whisper_api.api --debug
 
 # Launch with SSL (ensure dummy.key and dummy.crt exist or provide paths)
-# python -m insanely_fast_whisper_api --ssl-keyfile dummy.key --ssl-certfile dummy.crt
+# python -m insanely_fast_whisper_api.api --ssl-keyfile dummy.key --ssl-certfile dummy.crt
 ```
 
 **WebUI (Gradio Interface):**
 
 ```bash
 # Launch WebUI with debug logging
-python -m insanely_fast_whisper_api.webui.cli --debug
+python -m insanely_fast_whisper_api.webui --debug
 
 # With custom host and port
-python -m insanely_fast_whisper_api.webui.cli --port 7860 --host 0.0.0.0 --debug
+python -m insanely_fast_whisper_api.webui --port 7860 --host 0.0.0.0 --debug
 ```
 
 **CLI (Command Line Interface):**
 
 ```bash
 # Transcribe audio file
-python -m insanely_fast_whisper_api.cli.cli transcribe audio_file.mp3
+python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3
 
 # Transcribe with options
-python -m insanely_fast_whisper_api.cli.cli transcribe tests/conversion-test-file.mp3 --no-timestamps --debug
+python -m insanely_fast_whisper_api.cli transcribe tests/conversion-test-file.mp3 --no-timestamps --debug
 
 # Translate audio to English
-python -m insanely_fast_whisper_api.cli.cli translate audio_file.mp3
+python -m insanely_fast_whisper_api.cli translate audio_file.mp3
 ```
 
 ### Docker Deployment

@@ -191,7 +191,7 @@ The application provides three main interfaces: **API**, **WebUI**, and **CLI**.
 The FastAPI server can be started with:
 
 ```bash
-python -m insanely_fast_whisper_api
+python -m insanely_fast_whisper_api.api
 ```
 
 This launches the server (typically at `http://0.0.0.0:8000`). Interactive API documentation is available at `/docs`.
@@ -208,7 +208,7 @@ For detailed launch options and API parameters, see [`project-overview.md`](./pr
 The Gradio WebUI provides a user-friendly interface for batch processing. Start it with:
 
 ```bash
-python -m insanely_fast_whisper_api.webui.cli
+python -m insanely_fast_whisper_api.webui
 ```
 
 Access it at `http://localhost:7860` (default). Features include:
@@ -226,11 +226,17 @@ The CLI is suitable for single-file transcription and translation.
 Basic usage:
 
 ```bash
-# Transcribe
-python -m insanely_fast_whisper_api.cli.cli transcribe audio_file.mp3
+# Transcribe and get a JSON file (default)
+python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3
 
-# Translate
-python -m insanely_fast_whisper_api.cli.cli translate audio_file.mp3
+# Transcribe and get a TXT file
+python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --export-format txt
+
+# Transcribe and get all formats (JSON, SRT, TXT)
+python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --export-format all
+
+# Translate and get an SRT file
+python -m insanely_fast_whisper_api.cli translate audio_file.mp3 --export-format srt
 ```
 
 For detailed commands and options, see [`project-overview.md`](./project-overview.md#cli-command-line-interface-details).
