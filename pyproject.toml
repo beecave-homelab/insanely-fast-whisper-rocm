@@ -24,7 +24,7 @@ requires-python = "~=3.10"
 
 [project.scripts]
 insanely-fast-whisper-cli = "insanely_fast_whisper_api.cli.cli:main"
-insanely-fast-whisper-webui = "insanely_fast_whisper_api.webui.cli:launch_webui"
+insanely-fast-whisper-webui = "insanely_fast_whisper_api.webui.app:launch_webui"
 insanely-fast-whisper-api = "insanely_fast_whisper_api.__main__:main"
 
 [build-system]
@@ -77,7 +77,7 @@ dev = [
     "typing-extensions>=4.8.0",
 ]
 rocm = [
-    "torch==2.3.0",
+    "torch==2.5.1",
     "onnxruntime-rocm",
 ]
 
