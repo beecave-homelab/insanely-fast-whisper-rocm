@@ -18,6 +18,7 @@ from insanely_fast_whisper_api.core.errors import (
     DeviceNotFoundError,
     TranscriptionError,
 )
+from insanely_fast_whisper_api.core.formatters import FORMATTERS
 from insanely_fast_whisper_api.utils import constants
 from insanely_fast_whisper_api.utils.filename_generator import (
     FilenameGenerator,
@@ -97,6 +98,37 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     help="Disable timestamp extraction (may fix tensor size errors)",
 )
+@click.option(
+    "--export-format",
+    type=click.Choice(["all", "json", "srt", "txt"], case_sensitive=False),
+    default="json",
+    help="Export format for the transcription.",
+    show_default=True,
+)
+@click.option(
+    "--export-json",
+    is_flag=True,
+    help="[DEPRECATED] Use --export-format json instead.",
+    hidden=True,
+)
+@click.option(
+    "--export-srt",
+    is_flag=True,
+    help="[DEPRECATED] Use --export-format srt instead.",
+    hidden=True,
+)
+@click.option(
+    "--export-txt",
+    is_flag=True,
+    help="[DEPRECATED] Use --export-format txt instead.",
+    hidden=True,
+)
+@click.option(
+    "--export-all",
+    is_flag=True,
+    help="[DEPRECATED] Use --export-format all instead.",
+    hidden=True,
+)
 def transcribe(
     audio_file: Path,
     model: str,
@@ -108,6 +140,11 @@ def transcribe(
     output: Optional[Path],
     debug: bool,
     no_timestamps: bool,
+    export_format: str,
+    export_json: bool,
+    export_srt: bool,
+    export_txt: bool,
+    export_all: bool,
 ) -> None:
     """
     Transcribe an audio file using Whisper models.
@@ -127,6 +164,11 @@ def transcribe(
         output=output,
         debug=debug,
         no_timestamps=no_timestamps,
+        export_format=export_format,
+        export_json=export_json,
+        export_srt=export_srt,
+        export_txt=export_txt,
+        export_all=export_all,
     )
 
 
@@ -199,6 +241,37 @@ def transcribe(
     is_flag=True,
     help="Disable timestamp extraction (may fix tensor size errors)",
 )
+@click.option(
+    "--export-format",
+    type=click.Choice(["all", "json", "srt", "txt"], case_sensitive=False),
+    default="json",
+    help="Export format for the translation.",
+    show_default=True,
+)
+@click.option(
+    "--export-json",
+    is_flag=True,
+    help="[DEPRECATED] Use --export-format json instead.",
+    hidden=True,
+)
+@click.option(
+    "--export-srt",
+    is_flag=True,
+    help="[DEPRECATED] Use --export-format srt instead.",
+    hidden=True,
+)
+@click.option(
+    "--export-txt",
+    is_flag=True,
+    help="[DEPRECATED] Use --export-format txt instead.",
+    hidden=True,
+)
+@click.option(
+    "--export-all",
+    is_flag=True,
+    help="[DEPRECATED] Use --export-format all instead.",
+    hidden=True,
+)
 def translate(
     audio_file: Path,
     model: str,
@@ -210,6 +283,11 @@ def translate(
     output: Optional[Path],
     debug: bool,
     no_timestamps: bool,
+    export_format: str,
+    export_json: bool,
+    export_srt: bool,
+    export_txt: bool,
+    export_all: bool,
 ) -> None:
     """
     Translate an audio file to English using Whisper models.
@@ -228,17 +306,39 @@ def translate(
         output=output,
         debug=debug,
         no_timestamps=no_timestamps,
+        export_format=export_format,
+        export_json=export_json,
+        export_srt=export_srt,
+        export_txt=export_txt,
+        export_all=export_all,
     )
 
 
-def _run_task(**kwargs):
+def _run_task(**kwargs) -> None:
     """Generic handler for running transcription or translation tasks."""
-    task = kwargs.pop("task")
-    audio_file = kwargs.pop("audio_file")
     debug = kwargs.pop("debug")
     no_timestamps = kwargs.pop("no_timestamps")
+    task = kwargs.pop("task")
+    audio_file = kwargs.pop("audio_file")
     output = kwargs.pop("output")
     language = kwargs.pop("language")
+    export_format = kwargs.pop("export_format", "json")
+
+    # Handle deprecated flags
+    deprecated_flags = {
+        "export_json": "json",
+        "export_srt": "srt",
+        "export_txt": "txt",
+        "export_all": "all",
+    }
+    for flag, format_val in deprecated_flags.items():
+        if kwargs.pop(flag, False):
+            export_format = format_val
+            click.secho(
+                f"Warning: --{flag.replace('_', '-')} is deprecated. Use --export-format {format_val} instead.",
+                fg="yellow",
+            )
+            break
 
     task_display_name = task.capitalize()
 
@@ -279,40 +379,67 @@ def _run_task(**kwargs):
         click.secho(f"\n📝 {task_display_name}:", fg="cyan", bold=True)
         click.echo(result["text"])
 
-        if output is None:
-            transcripts_dir = Path(constants.DEFAULT_TRANSCRIPTS_DIR)
-            transcripts_dir.mkdir(exist_ok=True)
-            strategy = StandardFilenameStrategy()
-            filename_gen = FilenameGenerator(strategy=strategy)
-            output_filename_str = filename_gen.create_filename(
-                audio_path=str(audio_file.absolute()),
-                task=TaskType(task),
-                extension="json",
-            )
-            output = transcripts_dir / output_filename_str
+        # Determine which formats to export
+        if export_format == "all":
+            formats_to_export = ["json", "srt", "txt"]
         else:
-            output = Path(output)
-            output.parent.mkdir(parents=True, exist_ok=True)
+            formats_to_export = [export_format]
 
-        try:
-            detailed_result = {
-                task: result["text"],
-                "chunks": result.get("chunks", []),
-                "metadata": {
-                    "audio_file": str(audio_file),
-                    "total_time_seconds": round(total_time, 2),
-                    "processing_time_seconds": result.get("runtime_seconds"),
-                    "config_used": result.get("config_used", {}),
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                },
-            }
-            with open(output, "w", encoding="utf-8") as f:
-                json.dump(detailed_result, f, indent=2, ensure_ascii=False)
-            click.secho(f"\n💾 Results saved to: {output}", fg="green")
+        # Prepare detailed result structure once
+        detailed_result = {
+            task: result["text"],
+            "text": result["text"],  # For TxtFormatter
+            "chunks": result.get("chunks", []),
+            "metadata": {
+                "audio_file": str(audio_file.resolve()),
+                "total_time_seconds": round(total_time, 2),
+                "processing_time_seconds": result.get("runtime_seconds"),
+                "config_used": result.get("config_used", {}),
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            },
+        }
 
-        except (OSError, IOError, UnicodeError) as e:
-            click.secho(f"\n❌ Failed to save results: {e}", fg="red", err=True)
-            sys.exit(1)
+        # Export each requested format
+        for fmt in formats_to_export:
+            formatter = FORMATTERS.get(fmt)
+            if not formatter:
+                click.secho(f"\n❌ Unknown format: {fmt}", fg="red", err=True)
+                continue
+
+            content = formatter.format(detailed_result)
+            file_extension = formatter.get_file_extension()
+
+            if output:
+                # If an explicit output file is given, use it only for the primary format
+                if fmt == export_format and export_format != "all":
+                    output_path = Path(output)
+                else:
+                    # For 'all' or secondary formats, create a sibling file
+                    output_path = Path(output).with_suffix(f".{file_extension}")
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+            else:
+                # Default directory structure
+                if fmt == "json":
+                    output_dir = Path(constants.DEFAULT_TRANSCRIPTS_DIR)
+                else:
+                    output_dir = Path(f"transcripts-{fmt}")
+
+                output_dir.mkdir(exist_ok=True)
+                strategy = StandardFilenameStrategy()
+                filename_gen = FilenameGenerator(strategy=strategy)
+                output_filename_str = filename_gen.create_filename(
+                    audio_path=str(audio_file.absolute()),
+                    task=TaskType(task),
+                    extension=file_extension,
+                )
+                output_path = output_dir / output_filename_str
+
+            try:
+                with open(output_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                click.secho(f"\n💾 Results in {fmt.upper()} format saved to: {output_path}", fg="green")
+            except (OSError, IOError, UnicodeError) as e:
+                click.secho(f"\n❌ Failed to save {fmt.upper()} results: {e}", fg="red", err=True)
 
         chunks = result.get("chunks")
         if chunks:

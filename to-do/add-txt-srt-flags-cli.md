@@ -4,38 +4,39 @@ This plan outlines the steps to let the CLI optionally export plain-text (`.txt`
 
 ## Tasks
 
-- [ ] **Analysis Phase:**
-  - [ ] Investigate existing text/SRT generation logic used in WebUI
+- [x] **Analysis Phase:**
+  - [x] Investigate existing text/SRT generation logic used in WebUI
     - Path: `[insanely_fast_whisper_api/webui/handlers.py]`
     - Action: Identify helper functions/classes that convert the JSON result to `.txt` and `.srt` files (likely via `BatchZipBuilder` or similar)
     - Analysis Results:
-      - [ ] List reusable utilities or note gaps where new converter functions need writing
+      - [x] List reusable utilities or note gaps where new converter functions need writing
     - Accept Criteria: Clear decision whether to reuse or implement new converters
 
-- [ ] **Implementation Phase:**
-  - [ ] Extend CLI export flags
+- [x] **Implementation Phase:**
+  - [x] Extend CLI export flags
     - Path: `[insanely_fast_whisper_api/cli/commands.py]`
     - Action: Add mutually-exclusive options:
-      - `--export-json` (default)
-      - `--export-txt`
-      - `--export-srt`
-      - `--export-all` (writes json, txt, and srt)
+      - `--export-json` (default. Saved to `transcripts/`)
+      - `--export-txt` (Saved to `transcripts-txt/`)
+      - `--export-srt` (Saved to `transcripts-srt/`)
+      - `--export-all` (writes json to `transcripts/`, txt to `transcripts-txt/`, and srt to `transcripts-srt/`)
       Use a `click.Choice` or `click.Option` group so the user can only choose one, unless `--export-all` is selected.
-    - Status: Pending
-  - [ ] Generate files based on selected export format(s)
+    - Status: Done
+  - [x] Generate files based on selected export format(s)
     - Path: `[insanely_fast_whisper_api/cli/commands.py]`
     - Action: Implement helpers to write `.json` (existing logic), `.txt` (plain text), and `.srt` (using chunk timestamps). Ensure consistent filenames via `FilenameGenerator`.
-    - Status: Pending
-  - [ ] Ensure `_run_task()` returns paths of created files or logs them.
+    - Status: Done
+  - [x] Ensure `_run_task()` returns paths of created files or logs them.
 
-- [ ] **Testing Phase:**
-  - [ ] CLI e2e tests
+- [x] **Testing Phase:**
+  - [x] CLI e2e tests
     - Path: `[tests/test_cli_exports.py]`
     - Action: Run CLI with the new flags on a short sample and assert that `.txt`/`.srt` files exist and non-empty.
+    - **Status: Complete** - The test suite was fixed and now successfully validates the export functionality.
     - Accept Criteria: Tests pass in CI.
 
-- [ ] **Documentation Phase:**
-  - [ ] Update `project-overview.md` and README
+- [x] **Documentation Phase:**
+  - [x] Update `project-overview.md` and README
     - Path: `[project-overview.md]`, `[README.md]`
     - Action: Mention new flags and show usage examples.
     - Accept Criteria: Docs reflect new functionality.

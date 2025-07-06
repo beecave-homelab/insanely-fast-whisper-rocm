@@ -90,7 +90,7 @@ class CLIFacade:
         config = self.get_env_config()
 
         # Use provided parameters or fall back to config values
-        model = model or config["model"]
+        model_name = model or config["model"]
         device = convert_device_string(device) if device else config["device"]
 
         batch_size = min(
@@ -106,7 +106,7 @@ class CLIFacade:
 
         # Create backend configuration
         backend_config = self._create_backend_config(
-            model=model,
+            model=model_name,
             device=device,
             dtype=dtype,
             batch_size=batch_size,
