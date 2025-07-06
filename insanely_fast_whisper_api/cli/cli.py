@@ -34,7 +34,9 @@ def cli():
     """
     🎵 Insanely Fast Whisper API - CLI Tool
 
-    A high-performance CLI tool for audio transcription and translation using Whisper models.
+    A high-performance CLI for audio transcription and translation.
+
+    For a full list of options for each command, add `--help` after the command name.
     """
 
 
@@ -46,7 +48,3 @@ cli.add_command(translate)
 def main():
     """Main entry point for the CLI application."""
     cli()
-
-
-if __name__ == "__main__":
-    main()

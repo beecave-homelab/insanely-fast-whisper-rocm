@@ -4,7 +4,7 @@ This module provides a Gradio-based web interface for audio transcription
 with support for file uploads, real-time progress updates, and result downloads.
 """
 
-from insanely_fast_whisper_api.webui.cli import launch_webui
+from insanely_fast_whisper_api.webui.app import launch_webui
 from insanely_fast_whisper_api.webui.merge_handler import (
     MergeConfiguration,
     MergeHandler,

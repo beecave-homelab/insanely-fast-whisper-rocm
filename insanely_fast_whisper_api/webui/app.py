@@ -1,11 +1,9 @@
-"""CLI entrypoint for Insanely Fast Whisper API WebUI.
+"""WebUI application logic for Insanely Fast Whisper API.
 
-This module provides a simple command-line interface for launching the WebUI.
+This module contains the core function for launching the Gradio WebUI.
 """
 
 import logging
-
-# Standard library imports
 import sys
 
 import click
@@ -13,11 +11,8 @@ import click
 from insanely_fast_whisper_api.utils.download_hf_model import download_model_if_needed
 from insanely_fast_whisper_api.webui.ui import create_ui_components
 
-# import gradio as gr # This was unused
-
-
 # Configure logger
-logger = logging.getLogger("insanely_fast_whisper_api.webui.cli")
+logger = logging.getLogger("insanely_fast_whisper_api.webui.app")
 
 
 @click.command()
@@ -60,7 +55,6 @@ def launch_webui(host: str, port: int, share: bool, model: str, debug: bool):
 
     # Ensure model is downloaded/verified before UI setup
     logger.info("Attempting to download/verify Whisper model for WebUI...")
-    # download_model_if_needed will use WHISPER_MODEL and HUGGINGFACE_TOKEN env vars by default
     download_model_if_needed(model_name=model, custom_logger=logger)
     logger.info("Model download/verification process for WebUI complete.")
 
@@ -74,9 +68,3 @@ def launch_webui(host: str, port: int, share: bool, model: str, debug: bool):
         server_port=port,
         share=share,
     )
-
-
-if __name__ == "__main__":
-    # Call with default parameters when run directly
-    # launch_webui(host="0.0.0.0", port=7860, share=False, model=None, debug=False)
-    launch_webui()  # pylint: disable=no-value-for-parameter
