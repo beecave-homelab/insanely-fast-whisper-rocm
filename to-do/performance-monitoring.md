@@ -79,7 +79,7 @@ This plan outlines the steps to establish a baseline for performance and monitor
 ---
 
 - [x] **Phase 3: Conditional Transcript Export**
-  - [x] Modify CLI so that when `--benchmark` is used and the user did *not* explicitly supply `--export-format`, transcript files in `transcripts/` are **not** written; only the benchmark JSON is saved.
+  - [x] Modify CLI so that when `--benchmark` is used and the user did _not_ explicitly supply `--export-format`, transcript files in `transcripts/` are **not** written; only the benchmark JSON is saved.
   - Accept Criteria: Running `cli … --benchmark` alone writes only the JSON in `benchmarks/`; running with `--benchmark --export-format json` (or other) behaves like current export.
 
 - [x] **Documentation Phase: Document Benchmarking Process**
