@@ -4,14 +4,14 @@ This module contains the implementation of CLI commands that use the facade
 to access core ASR functionality, eliminating code duplication.
 """
 
-import json
 import logging
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 import click
+from click.core import ParameterSource
 
 from insanely_fast_whisper_api.cli.facade import cli_facade
 from insanely_fast_whisper_api.core.errors import (
@@ -124,6 +124,17 @@ logger = logging.getLogger(__name__)
     hidden=True,
 )
 @click.option(
+    "--benchmark-extra",
+    multiple=True,
+    metavar="KEY=VALUE",
+    help="Additional benchmark metrics (can be repeated, KEY=VALUE)",
+)
+@click.option(
+    "--benchmark",
+    is_flag=True,
+    help="Record benchmark metrics (writes JSON to benchmarks/ directory)",
+)
+@click.option(
     "--export-all",
     is_flag=True,
     help="[DEPRECATED] Use --export-format all instead.",
@@ -145,6 +156,8 @@ def transcribe(
     export_srt: bool,
     export_txt: bool,
     export_all: bool,
+    benchmark: bool,
+    benchmark_extra: tuple[str, ...],
 ) -> None:
     """
     Transcribe an audio file using Whisper models.
@@ -152,6 +165,12 @@ def transcribe(
     This command uses the core ASR backend through the CLI facade,
     eliminating code duplication and ensuring consistency.
     """
+    # Determine if --export-format was explicitly provided
+    ctx = click.get_current_context()
+    export_format_explicit = (
+        ctx.get_parameter_source("export_format") == ParameterSource.COMMANDLINE
+    )
+
     _run_task(
         task="transcribe",
         audio_file=audio_file,
@@ -169,6 +188,9 @@ def transcribe(
         export_srt=export_srt,
         export_txt=export_txt,
         export_all=export_all,
+        benchmark=benchmark,
+        benchmark_extra=benchmark_extra,
+        export_format_explicit=export_format_explicit,
     )
 
 
@@ -267,6 +289,17 @@ def transcribe(
     hidden=True,
 )
 @click.option(
+    "--benchmark-extra",
+    multiple=True,
+    metavar="KEY=VALUE",
+    help="Additional benchmark metrics (can be repeated, KEY=VALUE)",
+)
+@click.option(
+    "--benchmark",
+    is_flag=True,
+    help="Record benchmark metrics (writes JSON to benchmarks/ directory)",
+)
+@click.option(
     "--export-all",
     is_flag=True,
     help="[DEPRECATED] Use --export-format all instead.",
@@ -288,12 +321,20 @@ def translate(
     export_srt: bool,
     export_txt: bool,
     export_all: bool,
+    benchmark: bool,
+    benchmark_extra: tuple[str, ...],
 ) -> None:
     """
     Translate an audio file to English using Whisper models.
 
     This command uses the core ASR backend through the CLI facade.
     """
+    # Determine if --export-format was explicitly provided
+    ctx = click.get_current_context()
+    export_format_explicit = (
+        ctx.get_parameter_source("export_format") == ParameterSource.COMMANDLINE
+    )
+
     _run_task(
         task="translate",
         audio_file=audio_file,
@@ -311,6 +352,9 @@ def translate(
         export_srt=export_srt,
         export_txt=export_txt,
         export_all=export_all,
+        benchmark=benchmark,
+        benchmark_extra=benchmark_extra,
+        export_format_explicit=export_format_explicit,
     )
 
 
@@ -318,11 +362,26 @@ def _run_task(**kwargs) -> None:
     """Generic handler for running transcription or translation tasks."""
     debug = kwargs.pop("debug")
     no_timestamps = kwargs.pop("no_timestamps")
+    # Determine if --no-timestamps was explicitly provided
+    ctx_internal = click.get_current_context(silent=True)
+    no_ts_explicit = False
+    if ctx_internal is not None:
+        from click.core import ParameterSource as _PS
+        no_ts_explicit = (
+            ctx_internal.get_parameter_source("no_timestamps") == _PS.COMMANDLINE
+        )
     task = kwargs.pop("task")
     audio_file = kwargs.pop("audio_file")
     output = kwargs.pop("output")
     language = kwargs.pop("language")
     export_format = kwargs.pop("export_format", "json")
+    benchmark_enabled = kwargs.pop("benchmark", False)
+    benchmark_extra = kwargs.pop("benchmark_extra", ())
+
+    # Auto-enable no_timestamps during benchmarking unless explicitly provided
+    if benchmark_enabled and not no_ts_explicit:
+        no_timestamps = True
+    export_format_explicit = kwargs.pop("export_format_explicit", False)
 
     # Handle deprecated flags
     deprecated_flags = {
@@ -360,6 +419,20 @@ def _run_task(**kwargs) -> None:
         click.secho(f"\n⏳ Starting {task_display_name}...", fg="yellow")
         start_time = time.time()
 
+        # Benchmark support
+        collector = None
+        if benchmark_enabled:
+            try:
+                from insanely_fast_whisper_api.utils.benchmark import (
+                    BenchmarkCollector,  # noqa: WPS433
+                )
+
+                collector = BenchmarkCollector()
+            except Exception:  # pragma: no cover
+                collector = None
+        if collector:
+            collector.start()
+
         result = cli_facade.process_audio(
             audio_file_path=audio_file,
             language=processed_language,
@@ -370,17 +443,41 @@ def _run_task(**kwargs) -> None:
 
         total_time = time.time() - start_time
 
-        click.secho(f"\n✅ {task_display_name} completed!", fg="green", bold=True)
-        click.secho(f"⏱️  Total time: {total_time:.2f}s", fg="yellow")
-        click.secho(
-            f"🚀 Processing time: {result.get('runtime_seconds', 'N/A')}s", fg="yellow"
-        )
+        # Save benchmark file if requested
+        # parse extra into dict
+        extra_dict: Dict[str, str] | None = None
+        if benchmark_extra:
+            extra_dict = {}
+            for item in benchmark_extra:
+                if "=" in item:
+                    key, val = item.split("=", 1)
+                    extra_dict[key.strip()] = val.strip()
+        benchmark_path: Path | None = None
+        if collector:
+            try:
+                benchmark_path = collector.collect(
+                    audio_path=str(audio_file),
+                    task=task,
+                    config=result.get("config_used"),
+                    runtime_seconds=result.get("runtime_seconds"),
+                    total_time=total_time,
+                    extra=extra_dict,
+                )
+            except Exception as bench_err:  # pragma: no cover
+                click.secho(f"⚠️  Failed to save benchmark: {bench_err}", fg="yellow")
 
         click.secho(f"\n📝 {task_display_name}:", fg="cyan", bold=True)
         click.echo(result["text"])
 
         # Determine which formats to export
-        if export_format == "all":
+        # Decide whether to skip exporting transcripts when benchmarking
+        # Auto-enable no_timestamps during benchmarking, unless user explicitly set it
+        if benchmark_enabled and not no_ts_explicit:
+            no_timestamps = True
+
+        if benchmark_enabled and not export_format_explicit:
+            formats_to_export = []
+        elif export_format == "all":
             formats_to_export = ["json", "srt", "txt"]
         else:
             formats_to_export = [export_format]
@@ -440,6 +537,10 @@ def _run_task(**kwargs) -> None:
                 click.secho(f"\n💾 Results in {fmt.upper()} format saved to: {output_path}", fg="green")
             except (OSError, IOError, UnicodeError) as e:
                 click.secho(f"\n❌ Failed to save {fmt.upper()} results: {e}", fg="red", err=True)
+
+        # Print benchmark path at bottom for visibility
+        if benchmark_path:
+            click.secho(f"\n📈 Benchmark saved to: {benchmark_path}", fg="green")
 
         chunks = result.get("chunks")
         if chunks:
