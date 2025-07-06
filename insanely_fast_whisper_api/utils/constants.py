@@ -77,7 +77,10 @@ from typing import Literal, Set
 
 from dotenv import load_dotenv
 
-from .env_loader import (
+from insanely_fast_whisper_api import __version__ as API_VERSION
+
+
+from insanely_fast_whisper_api.utils.env_loader import (
     PROJECT_ROOT_ENV_EXISTS,
     PROJECT_ROOT_ENV_FILE,
     SHOW_DEBUG_PRINTS,
@@ -88,7 +91,8 @@ from .env_loader import (
 )
 
 # --- Determine Project Root ---
-# This is now handled by env_loader.py for initial LOG_LEVEL check, but constants.py still defines it for its own use.
+# This is now handled by env_loader.py for initial LOG_LEVEL check, but constants.py
+# still defines it for its own use.
 # Assumes this file is in insanely_fast_whisper_api/utils/
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # PROJECT_ROOT_ENV_FILE, USER_CONFIG_DIR, USER_ENV_FILE are imported from env_loader
@@ -96,7 +100,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # --- Initial debug message based on SHOW_DEBUG_PRINTS from env_loader ---
 debug_print("constants.py: Starting .env loading process...")
 debug_print(
-    f"constants.py: SHOW_DEBUG_PRINTS={SHOW_DEBUG_PRINTS} (derived from CLI args and initial .env LOG_LEVEL scan)"
+    f"constants.py: SHOW_DEBUG_PRINTS={SHOW_DEBUG_PRINTS}"
+    "(derived from CLI args and initial .env LOG_LEVEL scan)"
 )
 # Project root .env is now loaded by env_loader.py before constants.py is fully processed.
 # constants.py will now load the user-specific .env file.
@@ -198,7 +203,6 @@ HIP_LAUNCH_BLOCKING = (
 # API configuration
 API_TITLE = "Insanely Fast Whisper API"
 API_DESCRIPTION = "A FastAPI wrapper around the insanely-fast-whisper tool."
-API_VERSION = "0.4.1"
 API_HOST = os.getenv("API_HOST", "0.0.0.0")  # API server host
 API_PORT = int(os.getenv("API_PORT", "8000"))  # API server port
 DEFAULT_RESPONSE_FORMAT = "json"

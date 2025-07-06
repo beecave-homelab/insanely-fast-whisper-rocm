@@ -135,28 +135,51 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         task: str,
         return_timestamps_value: Union[bool, str],
     ) -> Dict[str, Any]:
-        self._initialize_pipeline()
-        if self.asr_pipe is None:  # Should not happen if _initialize_pipeline works
-            logger.error("ASR pipeline not initialized before transcription attempt.")
-            raise TranscriptionError("ASR pipeline not initialized.")
-
-        logger.info("Starting transcription for: %s", audio_file_path)
+        """Processes an audio file and returns the transcription result."""
+        if self.asr_pipe is None:
+            self._initialize_pipeline()
 
         start_time = time.perf_counter()
 
+        # distil-whisper models do not support timestamp generation, so we disable it.
+        _return_timestamps_value = return_timestamps_value
+        if "distil-whisper" in self.config.model_name and _return_timestamps_value:
+            logger.warning(
+                "Timestamp generation is not supported for distil-whisper models. "
+                "Disabling timestamps for this transcription."
+            )
+            _return_timestamps_value = False
+
+        # These are the arguments that will be passed to the pipeline
         pipeline_kwargs = {
             "chunk_length_s": self.config.chunk_length,
             "batch_size": self.config.batch_size,
-            "return_timestamps": return_timestamps_value,
+            "return_timestamps": _return_timestamps_value,
             "generate_kwargs": {
-                "task": task,
                 "no_repeat_ngram_size": 3,  # from original script
                 "temperature": 0,  # from original script
             },
         }
 
-        if language and language.lower() != "none":
-            pipeline_kwargs["generate_kwargs"]["language"] = language
+        # Determine if the model is multilingual
+        lang_to_id = getattr(self.asr_pipe.model.config, "lang_to_id", {})
+        is_multilingual = len(lang_to_id) > 1
+
+        # Validate task for English-only models
+        if not is_multilingual and task == "translate":
+            logger.error(
+                "Cannot translate with an English-only model: %s",
+                self.config.model_name,
+            )
+            raise ValueError(
+                f"Cannot translate with an English-only model: {self.config.model_name}"
+            )
+
+        # Conditionally add task and language for multilingual models
+        if is_multilingual:
+            pipeline_kwargs["generate_kwargs"]["task"] = task
+            if language and language.lower() != "none":
+                pipeline_kwargs["generate_kwargs"]["language"] = language
 
         try:
             outputs = self.asr_pipe(str(audio_file_path), **pipeline_kwargs)
@@ -202,7 +225,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                     exc_info=True,
                 )
                 raise TranscriptionError(f"Failed to transcribe audio: {str(e)}") from e
-        except (OSError, ValueError, MemoryError, TypeError) as e:
+        except (OSError, ValueError, MemoryError, TypeError, IndexError) as e:
             logger.error(
                 "Transcription failed for %s: %s",
                 audio_file_path,
