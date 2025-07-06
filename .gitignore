@@ -76,10 +76,12 @@ uploads/
 # Test directory
 tests/*.mp3
 transcripts/*.json
-transcripts/*
-transcripts-srt/*
-transcripts-txt/*
+transcripts-srt/*.srt
+transcripts-txt/*.txt
 temp_uploads/*
+
+# Benchmarks output
+benchmarks/*.json
 
 .env
 # to-do/*.md
