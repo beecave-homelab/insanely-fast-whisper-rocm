@@ -1,6 +1,6 @@
 [project]
 name = "insanely-fast-whisper-api"
-version = "0.7.0"
+version = "0.8.0"
 description = "A FastAPI wrapper around a custom Whisper-based ASR pipeline (ROCM version)"
 authors = [
     {name = "elvee", email = "lowie@beecave.nl"},

@@ -2,13 +2,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v0.7.0-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v0.8.0-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v0.7.0` (Current) - *05-07-2025*](#v070-current---05-07-2025)
+- [`v0.8.0` (Current) - *06-07-2025*](#v080-current---06-07-2025)
+- [`v0.7.0` - *05-07-2025*](#v070---05-07-2025)
 - [`v0.6.0` - *05-07-2025*](#v060---05-07-2025)
 - [`v0.5.0` - *June 2025*](#v050---june-2025)
 - [`v0.4.1` - *June 2025*](#v041---june-2025)
@@ -35,7 +36,35 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v0.7.0` (Current) - *05-07-2025*
+### `v0.8.0` (Current) - *06-07-2025*
+
+#### ✨ **Feature Release: Entrypoints, CLI Export Formats & Translation**
+
+This release focuses on standardizing application entrypoints, enhancing the CLI with new export options, and adding translation capabilities.
+
+#### ✨ **New Features in v0.8.0**
+
+- **Added**: Export format options (`--export-txt`, `--export-srt`, `--export-json`) to the CLI for saving transcription results.
+- **Added**: Translation functionality to the CLI via the `translate` command.
+- **Enhanced**: Replaced `BetterTransformer` with native PyTorch `SDPA` for attention optimization, improving performance.
+
+#### 🐛 **Bug Fixes in v0.8.0**
+
+- **Fixed**: Corrected formatter imports and usage within the WebUI handlers to resolve import errors and ensure proper functionality.
+
+#### 🔧 **Improvements in v0.8.0**
+
+- **Refactored**: Standardized entrypoints for the API, WebUI, and CLI to use `__main__.py` modules, simplifying execution.
+- **Refactored**: Moved `formatters.py` to `insanely_fast_whisper_api/core/` and updated all relevant imports.
+- **Refactored**: Unified audio processing logic to support both transcription and translation seamlessly.
+
+#### 📝 Key Commits in v0.8.0
+
+`9d1611b`, `ca0ca15`, `537e788`, `594827a`, `b02b330`
+
+---
+
+### `v0.7.0` - *05-07-2025*
 
 #### **♻️ Refactor Release: Unified Audio Processing for CLI**
 
@@ -71,7 +100,7 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 - **Refactored**: Removed BetterTransformer configuration
 - **Improved**: Language processing logic
 
-#### 📝 **Commits**: 
+#### 📝 **Commits**
 
 `496f49a`, `bbd78e4`, `e16511b`, `3e78fe4`, `ec08c5e`
 

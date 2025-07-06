@@ -6,7 +6,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 > This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v0.7.0-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v0.8.0-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -77,14 +77,15 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v0.7.0** *(June 2025)*
+### 🏷️ **Current Version: v0.8.0** *(July 2025)*
 
-**Latest improvements**: Major architectural refactoring, migration to `pdm`, and a new modular CLI.
+**Latest improvements**: Entrypoint refactoring, export format options for CLI, and translation functionality.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
 |---------|------|------|--------------|
+| **v0.8.0** | Jul 2025 | ✨ Minor | Entrypoint refactoring, CLI export formats, translation feature |
 | **v0.7.0** | Jun 2025 | ✨ Minor | Major import refactor, `pdm` migration, modular CLI |
 | **v0.4.1** | Jun 2025 | 🐛 Patch | WebUI download fixes, stability |
 | **v0.4.0** | Jun 2025 | ✨ Minor | Versioning improvements, logging enhancements |
