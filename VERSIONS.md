@@ -2,13 +2,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v0.8.0-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v0.9.0-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v0.8.0` (Current) - *06-07-2025*](#v080-current---06-07-2025)
+- [`v0.9.0` (Current) - *06-07-2025*](#v090-current---06-07-2025)
+- [`v0.8.0` - *06-07-2025*](#v080---06-07-2025)
 - [`v0.7.0` - *05-07-2025*](#v070---05-07-2025)
 - [`v0.6.0` - *05-07-2025*](#v060---05-07-2025)
 - [`v0.5.0` - *June 2025*](#v050---june-2025)
@@ -36,7 +37,33 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v0.8.0` (Current) - *06-07-2025*
+### `v0.9.0` (Current) - *06-07-2025*
+
+#### ✨ **Feature Release: CLI Benchmarking, Export Options & Translation**
+
+This release introduces CLI benchmarking and performance monitoring, export format options for CLI, and translation via CLI. Numerous refactors and bug fixes improve reliability and maintainability.
+
+#### ✨ **New Features in v0.9.0**
+- **Added**: CLI benchmarking and performance monitoring utilities
+- **Added**: Export format options for CLI (TXT, SRT, JSON)
+- **Added**: Translation functionality via CLI
+
+#### 🐛 **Bug Fixes in v0.9.0**
+- **Fixed**: Formatter/import issues in WebUI handlers
+  - **Issue**: Incorrect import and usage of formatters in WebUI
+  - **Root Cause**: Outdated import paths and handler logic
+  - **Solution**: Refactored imports and updated handler logic
+
+#### 🔧 **Improvements in v0.9.0**
+- **Refactored**: CLI command structure and benchmarking integration
+- **Refactored**: Modularized formatters and audio processing
+
+#### 📝 **Key Commits in v0.9.0**
+`32c6d73`, `3521e92`, `ca0ca15`, `537e788`, `594827a`
+
+---
+
+### `v0.8.0` - *06-07-2025*
 
 #### ✨ **Feature Release: Entrypoints, CLI Export Formats & Translation**
 
