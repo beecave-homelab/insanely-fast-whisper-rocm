@@ -1,11 +1,11 @@
 services:
-  insanely-fast-whisper:
+  insanely-fast-whisper-rocm:
     build:
       context: .
       dockerfile: Dockerfile
 
-    # image: ghrc.io/beecave-homelab/insanely-fast-whisper-rocm:main
-    image: beecave/insanely-fast-whisper-rocm:main
+    image: ghrc.io/beecave-homelab/insanely-fast-whisper-rocm:main
+    # image: beecave/insanely-fast-whisper-rocm:main
     container_name: insanely-fast-whisper-rocm
     restart: unless-stopped
 
@@ -28,21 +28,36 @@ services:
       - .env
 
     ports:
-      - 7862:7860
+      - "8888:8888"  # API port
+      - "7860:7860"  # WebUI port
     
     volumes:
-      - "./uploads:/app/uploads"
       - "./transcripts:/app/transcripts"
-      - "./transcripts-srt:/app/transcripts-srt"
-      - "./transcripts-txt:/app/transcripts-txt"
-      - "./logs:/app/logs"
-      - "./src:/app/src"
-      - "./testing:/app/testing"
+      - "./temp_uploads:/app/temp_uploads"
+      - "./insanely_fast_whisper_api:/app/insanely_fast_whisper_api"
+      - "./tests:/app/tests"
+      - "$HOME/.cache/huggingface/hub:/root/.cache/huggingface/hub"
 
-    # Choose one of the commands below
-    # - ["src/app.py"] # For a simple Gradio webui for uploading files.
-    # - ["src/main.py"] # For automatically processing any file placed in the ./uploads directory.
-    # - ["src/convert_output.py"] # insanely-fast-whisper creates .json files. Convert them to .txt and .srt file with this script.
-    # - ["testing/test_cuda.py"] # Test CUDA availability.
-
-    command: ["src/app.py"] # For a simple Gradio webui for uploading files.
+    #################################################
+    ## Default: Gradio WebUI without debug logging ##
+    #################################################
+    command: ["python", "-m", "insanely_fast_whisper_api.webui.cli"]
+    
+    ##############################################
+    ## Alternative commands (uncomment to use): ##
+    ##############################################
+    #
+    # Gradio WebUI with debug logging:
+    # command: ["python", "-m", "insanely_fast_whisper_api.webui.cli",  "--debug"]
+    #
+    # API only:
+    # command: ["python", "-m", "insanely_fast_whisper_api"]
+    #
+    # API with verbose output:
+    # command: ["python", "-m", "insanely_fast_whisper_api", "-v"]
+    #
+    # Custom WebUI with extra args:
+    # command: ["python", "-m", "insanely_fast_whisper_api.webui.cli", "--port", "7860", "--host", "0.0.0.0", "--debug"]
+    #
+    # CLI tool transcription example:
+    # command: ["python", "-m", "insanely_fast_whisper_api.cli.cli", "transcribe", "tests/file.mp3", "--debug"]

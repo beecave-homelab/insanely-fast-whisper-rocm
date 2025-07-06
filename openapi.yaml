@@ -1,0 +1,109 @@
+openapi: 3.0.3
+info:
+  title: Insanely Fast Whisper API (ROCm)
+  description: A FastAPI wrapper around a custom Whisper-based ASR pipeline.
+  version: 0.4.0
+paths:
+  /v1/audio/transcriptions:
+    post:
+      summary: Transcribe an audio file
+      description: |
+        Upload an audio file to get a transcription in the source language.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                model:
+                  type: string
+                  default: openai/whisper-base
+                response_format:
+                  type: string
+                  default: json
+                prompt:
+                  type: string
+                  nullable: true
+                device:
+                  type: string
+                  default: cpu
+                dtype:
+                  type: string
+                  default: float32
+                batch_size:
+                  type: integer
+                  default: 8
+                better_transformer:
+                  type: boolean
+                  default: false
+                chunk_length:
+                  type: integer
+                  default: 30
+      responses:
+        '200':
+          description: Successful transcription
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text:
+                    type: string
+        '400':
+          description: Bad request
+
+  /v1/audio/translations:
+    post:
+      summary: Translate audio to English
+      description: |
+        Upload an audio file in any supported language and receive text output.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                model:
+                  type: string
+                  default: openai/whisper-base
+                response_format:
+                  type: string
+                  default: json
+                prompt:
+                  type: string
+                  nullable: true
+                device:
+                  type: string
+                  default: cpu
+                dtype:
+                  type: string
+                  default: float32
+                batch_size:
+                  type: integer
+                  default: 8
+                better_transformer:
+                  type: boolean
+                  default: false
+                chunk_length:
+                  type: integer
+                  default: 30
+      responses:
+        '200':
+          description: Successful translation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text:
+                    type: string
+        '400':
+          description: Bad request

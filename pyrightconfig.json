@@ -1,0 +1,35 @@
+{
+    "include": [
+        "insanely_fast_whisper_api",
+        "tests"
+    ],
+    "exclude": [
+        "**/__pycache__",
+        "**/.venv",
+        "**/venv",
+        "**/node_modules",
+        "**/temp_uploads",
+        "**/transcripts",
+        "**/transcripts_zips"
+    ],
+    "extraPaths": [
+        "./insanely_fast_whisper_api"
+    ],
+    "pythonVersion": "3.10",
+    "pythonPlatform": "Linux",
+    "reportMissingImports": "warning",
+    "reportMissingTypeStubs": "information",
+    "reportImportCycles": "error",
+    "reportUnusedImport": "information",
+    "reportUnusedClass": "information",
+    "reportUnusedFunction": "information",
+    "reportUnusedVariable": "information",
+    "reportDuplicateImport": "error",
+    "reportUndefinedVariable": "error",
+    "reportAssertAlwaysTrue": "warning",
+    "reportSelfClsParameterName": "warning",
+    "reportImplicitStringConcatenation": "warning",
+    "strictListInference": true,
+    "strictDictionaryInference": true,
+    "strictParameterNoneValue": true
+} 
