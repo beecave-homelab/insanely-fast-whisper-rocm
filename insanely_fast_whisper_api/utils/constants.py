@@ -81,6 +81,7 @@ from insanely_fast_whisper_api.utils.env_loader import (
     SHOW_DEBUG_PRINTS,
     USER_ENV_EXISTS,
     USER_ENV_FILE,
+    USER_CONFIG_DIR,
     debug_print,
 )
 
@@ -200,6 +201,12 @@ API_DESCRIPTION = "A FastAPI wrapper around the insanely-fast-whisper tool."
 API_HOST = os.getenv("API_HOST", "0.0.0.0")  # API server host
 API_PORT = int(os.getenv("API_PORT", "8000"))  # API server port
 DEFAULT_RESPONSE_FORMAT = "json"
+
+# API version, sourced from main package __init__.py
+try:
+    from insanely_fast_whisper_api import __version__ as API_VERSION
+except ImportError:
+    API_VERSION = "unknown"
 
 # Logging configuration
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")  # Logging level

@@ -87,6 +87,22 @@ bench = [
     "pyamdgpuinfo>=2.1.7",
 ]
 
+bench-torch-2-0-1 = [
+    "torch==2.0.1",
+]
+bench-torch-2-3-0 = [
+    "torch==2.3.0"
+]
+bench-torch-2-4-1 = [
+    "torch==2.4.1"
+]
+bench-torch-2-6-0 = [
+    "torch==2.6.0"
+]
+
+[tool.pdm.resolution]
+excludes = ["torch==2.0.1", "torch==2.3.0", "torch==2.4.1", "torch==2.6.0"]
+
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
