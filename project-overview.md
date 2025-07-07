@@ -108,7 +108,7 @@ pdm run cli transcribe audio.mp3  # CLI
 ---
 
 > 📖 **For complete version history, changelog, and detailed release notes, see [VERSIONS.md](VERSIONS.md)**
-> 
+>
 > **Note:** As of 2025-07-06, all release tags (v0.1.0 ... v0.9.0) have normalized commit mappings. The canonical mapping for each release is now found in VERSIONS.md under the 'Key Commits' section.
 
 ---
@@ -502,8 +502,40 @@ This project uses [PDM (Python Development Master)](https://pdm-project.org/) fo
   - **`optional-dependencies`**: Defines groups of dependencies that are not required for the core functionality but can be installed for specific purposes. Key groups include:
     - `dev`: Tools for development, such as linters (`black`, `isort`, `flake8`, `mypy`), testing frameworks (`pytest`, `pytest-cov`), and other utilities.
     - `rocm`: Dependencies specific to AMD ROCm GPU support, including the appropriate PyTorch build and ONNX runtime for ROCm.
+    - `bench-torch-2_0_1`, `bench-torch-2_3_0`, `bench-torch-2_4_1`, `bench-torch-2_5_1`, `bench-torch-2_6_0`: Benchmarking groups for ROCm, each pinning a specific torch version (from the ROCm wheels source) and including `pyamdgpuinfo` for GPU metrics.
     - `cpu`: Dependencies for CPU-only PyTorch execution.
     - `cuda`: Dependencies for NVIDIA CUDA GPU execution.
+
+#### Benchmarking with Multiple ROCm Torch Versions
+
+To facilitate benchmarking across different ROCm-compatible PyTorch versions, the following optional dependency groups are available:
+
+- `bench-torch-2_0_1`
+- `bench-torch-2_3_0`
+- `bench-torch-2_4_1`
+- `bench-torch-2_5_1`
+- `bench-torch-2_6_0`
+
+Each group includes:
+
+- The corresponding `torch` version from the ROCm wheels source
+- `pyamdgpuinfo` for collecting GPU metrics during benchmarking
+
+**Install a specific benchmarking group:**
+
+```bash
+pdm install -G bench-torch-2_3_0
+```
+
+**Example**: Benchmarking CLI with a specific torch version
+
+```bash
+pdm install -G bench-torch-2_4_1
+python -m insanely_fast_whisper_api.cli transcribe audio.mp3 --benchmark
+```
+
+This allows reproducible benchmarking and easy switching between supported ROCm torch versions for performance comparison.
+
 - **`[tool.pdm]`**: Configures PDM-specific settings.
   - **`scripts`**: Defines shortcuts for common commands (e.g., `lint`, `format`, `test`, `api`, `webui`, `cli`). These can be run using `pdm run <script_name>`.
   - **`dev-dependencies`**: PDM's way to specify development-only dependencies, often mirrored or managed via the `dev` group in `optional-dependencies` for broader compatibility.

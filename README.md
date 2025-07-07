@@ -118,6 +118,16 @@ For local development, PDM (Python Development Master) is used to manage depende
 3. Install project dependencies using PDM:
 
 > [!IMPORTANT]  
+> **Benchmarking with Multiple ROCm Torch Versions:**
+>
+> To benchmark with a specific ROCm-compatible torch version, install the matching optional group (e.g., `bench-torch-2_3_0`):
+>
+> ```bash
+> pdm install -G bench-torch-2_3_0
+> ```
+>
+> This will install the specified torch version and benchmarking tools. See [`project-overview.md`](./project-overview.md#benchmarking-with-multiple-rocm-torch-versions) for details and the full list of available groups.
+>
 > This application is specifically designed to provide **AMD GPU (ROCm) support** for Whisper models. The `rocm` dependency group in [`pyproject.toml`](./pyproject.toml) ensures proper PyTorch and ONNX runtime installation for AMD GPUs. While it should technically also works on CPU and NVIDIA GPUs, ROCm support was the primary motivation for this package.
 
 This command installs the project's core dependencies. To install optional groups for development or specific hardware support (like ROCm), use the `-G` flag:
