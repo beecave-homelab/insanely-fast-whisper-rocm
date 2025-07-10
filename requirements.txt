@@ -1,19 +1,15 @@
 fastapi>=0.104.0
 uvicorn>=0.24.0
 python-multipart>=0.0.6
-transformers>=4.35.0
+transformers>=4.41.0
 python-dotenv>=1.0.0
 PyYAML>=6.0.1
 click>=8.1.3
 gradio>=5.20.1
 pydub>=0.25.1
 numpy==1.26.4
-optimum>=1.16.0
-accelerate>=0.21.0
 datasets>=2.14.0
-
-
-# Note: PyTorch is installed via hardware-specific requirements files:
-# - requirements-rocm.txt for AMD ROCm support
-# - requirements-onnxruntime-rocm.txt for ONNX Runtime with ROCm
-# This ensures the correct PyTorch variant is installed from the appropriate index
+accelerate>=0.29.0
+optimum>=1.19.0
+ffmpeg-python>=0.2.0
+gradio-client>=1.10.4
