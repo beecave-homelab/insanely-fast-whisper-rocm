@@ -1,6 +1,6 @@
 # Insanely Fast Whisper API (ROCm)
 
-A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm) support** for high-performance audio transcription and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces and ROCm compatibility.
+A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm) support** for high-performance (video to) audio transcription and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces and ROCm compatibility.
 
 ## 🚀 What's Included
 
@@ -49,7 +49,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 ## 🌟 Additional Features
 
 - **Modern Acceleration**: Uses native PyTorch 2.0 Scaled Dot Product Attention (`sdpa`) for optimized performance, which is the modern successor to `BetterTransformer`.
-- **Multi-format Audio Support**: Process various audio file formats seamlessly (.wav, .flac and .mp3)
+- **Video & Audio Support**: Process standard audio formats (.wav, .flac, .mp3) **and** video files (.mp4, .mkv, .webm, .mov) thanks to automatic audio extraction via FFmpeg
 - **OpenAI-Compatible API**: Drop-in replacement for OpenAI's audio endpoints (v1)
 - **Environment-based Configuration**: Flexible configuration via `.env` files.
 - **Real-time Progress**: Live progress tracking in WebUI for batch operations

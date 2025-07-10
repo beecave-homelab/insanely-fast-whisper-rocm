@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackend,
@@ -63,7 +63,7 @@ class CLIFacade:
         chunk_length: int = 30,
         language: Optional[str] = None,
         task: str = "transcribe",
-        return_timestamps: bool = True,
+        return_timestamps_value: Union[bool, str] = True,
     ) -> Dict[str, Any]:
         """
         Process an audio file using the core ASR backend (transcription or translation).
@@ -133,9 +133,6 @@ class CLIFacade:
         # Get language from config if not provided
         if language is None:
             language = config["language"]
-
-        # Determine timestamp format
-        return_timestamps_value = "word" if return_timestamps else False
 
         # Perform transcription
         return self.backend.process_audio(

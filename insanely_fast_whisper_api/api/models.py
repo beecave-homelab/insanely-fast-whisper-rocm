@@ -22,7 +22,14 @@ class TranscriptionResponse(BaseModel):
 
     text: str = Field(..., description="The complete transcribed/translated text")
     chunks: Optional[List[TranscriptionChunk]] = Field(
-        None, description="Individual chunks with timestamps"
+        None, description="Individual chunks with timestamps (legacy minimal format)"
+    )
+    segments: Optional[list[dict]] = Field(
+        None,
+        description="Detailed segments following OpenAI Whisper specification (verbose_json)",
+    )
+    language: Optional[str] = Field(
+        None, description="Detected language for the transcription/translation"
     )
     runtime_seconds: Optional[float] = Field(
         None, description="Processing time in seconds"

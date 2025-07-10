@@ -17,9 +17,9 @@ from insanely_fast_whisper_api.audio import (
 
 # Core functionality
 # from .core import ASRPipeline, run_asr_pipeline # Old import
-from insanely_fast_whisper_api.core.pipeline import (
-    WhisperPipeline as ASRPipeline,  # New import
-)
+from insanely_fast_whisper_api.core import ASRPipeline
+
+import insanely_fast_whisper_api.utils.constants as constants
 
 __all__ = [
     "ASRPipeline",

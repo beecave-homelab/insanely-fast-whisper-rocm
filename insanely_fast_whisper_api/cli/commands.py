@@ -20,6 +20,8 @@ from insanely_fast_whisper_api.core.errors import (
 )
 from insanely_fast_whisper_api.core.formatters import FORMATTERS
 from insanely_fast_whisper_api.utils import constants
+from insanely_fast_whisper_api.audio.processing import extract_audio_from_video
+from insanely_fast_whisper_api.utils.file_utils import cleanup_temp_files
 from insanely_fast_whisper_api.utils.filename_generator import (
     FilenameGenerator,
     StandardFilenameStrategy,
@@ -89,6 +91,13 @@ logger = logging.getLogger(__name__)
     help="Save detailed results to JSON file (default: transcripts/[audio_filename].json)",
 )
 @click.option(
+    "--timestamp-type",
+    type=click.Choice(["word", "chunk"]),
+    default=constants.DEFAULT_TIMESTAMP_TYPE,
+    help="Timestamp granularity when enabled",
+    show_default=True,
+)
+@click.option(
     "--debug",
     is_flag=True,
     help="Enable debug logging for troubleshooting",
@@ -149,6 +158,7 @@ def transcribe(
     chunk_length: int,
     language: str,
     output: Optional[Path],
+    timestamp_type: str,
     debug: bool,
     no_timestamps: bool,
     export_format: str,
@@ -183,6 +193,7 @@ def transcribe(
         output=output,
         debug=debug,
         no_timestamps=no_timestamps,
+        timestamp_type=timestamp_type,
         export_format=export_format,
         export_json=export_json,
         export_srt=export_srt,
@@ -254,6 +265,13 @@ def transcribe(
     help="Save detailed results to JSON file (default: transcripts/[audio_filename].json)",
 )
 @click.option(
+    "--timestamp-type",
+    type=click.Choice(["word", "chunk"]),
+    default=constants.DEFAULT_TIMESTAMP_TYPE,
+    help="Timestamp granularity when enabled",
+    show_default=True,
+)
+@click.option(
     "--debug",
     is_flag=True,
     help="Enable debug logging for troubleshooting",
@@ -316,6 +334,7 @@ def translate(
     output: Optional[Path],
     debug: bool,
     no_timestamps: bool,
+    timestamp_type: str,
     export_format: str,
     export_json: bool,
     export_srt: bool,
@@ -347,6 +366,7 @@ def translate(
         output=output,
         debug=debug,
         no_timestamps=no_timestamps,
+        timestamp_type=timestamp_type,
         export_format=export_format,
         export_json=export_json,
         export_srt=export_srt,
@@ -362,6 +382,7 @@ def _run_task(**kwargs) -> None:
     """Generic handler for running transcription or translation tasks."""
     debug = kwargs.pop("debug")
     no_timestamps = kwargs.pop("no_timestamps")
+    timestamp_type = kwargs.pop("timestamp_type")
     # Determine if --no-timestamps was explicitly provided
     ctx_internal = click.get_current_context(silent=True)
     no_ts_explicit = False
@@ -411,6 +432,25 @@ def _run_task(**kwargs) -> None:
         click.secho(
             f"\n🎵 {constants.API_TITLE} v{constants.API_VERSION}", fg="cyan", bold=True
         )
+        temp_files: list[str] = []  # Track temporary files we create
+        original_input_path = audio_file
+        # Detect if input is a video file (simple extension check)
+        video_exts = {".mp4", ".mkv", ".webm", ".mov"}
+        if audio_file.suffix.lower() in video_exts:
+            click.secho("🎞️ Detected video input – extracting audio...", fg="yellow")
+            try:
+                audio_extracted_path = Path(
+                    extract_audio_from_video(str(audio_file))
+                )
+                audio_file = audio_extracted_path
+                temp_files.append(str(audio_extracted_path))
+                click.secho(
+                    f"✅ Audio extracted to temporary file: {audio_file}", fg="green"
+                )
+            except RuntimeError as conv_err:
+                click.secho(f"❌ Video conversion failed: {conv_err}", fg="red", err=True)
+                sys.exit(1)
+
         click.secho(f"📁 Audio file: {audio_file}", fg="blue")
 
         processed_language = (
@@ -434,11 +474,17 @@ def _run_task(**kwargs) -> None:
         if collector:
             collector.start()
 
+        # Determine return_timestamps_value based on flags
+        if no_timestamps:
+            return_timestamps_value = False
+        else:
+            return_timestamps_value = "word" if timestamp_type == "word" else True
+
         result = cli_facade.process_audio(
             audio_file_path=audio_file,
             language=processed_language,
             task=task,
-            return_timestamps=not no_timestamps,
+            return_timestamps_value=return_timestamps_value,
             **kwargs,
         )
 
@@ -545,6 +591,10 @@ def _run_task(**kwargs) -> None:
                     fg="red",
                     err=True,
                 )
+
+        # Cleanup any temp files we generated
+        if temp_files:
+            cleanup_temp_files(temp_files)
 
         # Print benchmark path at bottom for visibility
         if benchmark_path:
