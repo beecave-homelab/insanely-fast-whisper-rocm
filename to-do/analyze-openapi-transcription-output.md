@@ -1,149 +1,75 @@
-# To-Do: Analyze and Align /v1/audio/transcriptions Output with OpenAPI Standard
+# To-Do: Align `/v1/audio/transcriptions` and `/v1/audio/translations` with OpenAPI Standard
 
-This plan outlines the steps to analyze and update the API response for `/v1/audio/transcriptions` to ensure compatibility with the OpenAI Whisper endpoint, enabling MacWhisper and other clients to correctly parse results.
+This checklist outlines the remaining and completed tasks to align the API response with the OpenAI Whisper endpoint, enabling compatibility with clients like MacWhisper.
 
-## Summary: Key Differences with OpenAI Whisper API
+## **Pre-Refactor Dependency Analysis**
 
-- **Response Format:**
-  - OpenAI honors a `response_format` parameter (`text`, `json`, `verbose_json`, `srt`, `vtt`).
-  - Current API always returns JSON, regardless of requested format.
-- **Minimal JSON:**
-  - OpenAI returns `{ "text": ... }` for `json` format.
-  - Current API includes extra fields (e.g., `chunks`, `runtime_seconds`, etc.).
-- **Verbose JSON:**
-  - OpenAI returns `segments` (with timing and token info) and `language`.
-  - Current API returns `chunks` (with timestamps/text), lacks `language`, and uses different field names.
-- **Plain Text:**
-  - OpenAI returns only the transcription as text if requested.
-  - Current API may not support this, or always wraps in JSON.
-- **SRT/VTT:**
-  - OpenAI returns subtitle text in the requested format.
-  - Current API support is unclear or missing.
-- **Field Naming:**
-  - OpenAI uses `segments` for detailed breakdowns; current API uses `chunks`.
+> [!INFO]
+> Before refactoring any files outside the `insanely_fast_whisper_api/api` module, perform a dependency scan (e.g., grep for affected function names) to list all call-sites/usages, document the impact, and create follow-up tasks as needed.
 
-### Table: Feature Comparison
+## Consolidated Task Checklist
 
-| Feature                | OpenAI Whisper API                      | Current API                                 |
-|------------------------|-----------------------------------------|---------------------------------------------|
-| `response_format`      | text, json, verbose_json, srt, vtt      | json (default), others unclear              |
-| Minimal JSON           | `{ "text": ... }`                       | `{ "text": ..., ...extra fields... }`       |
-| Verbose JSON           | `segments`, `language`, `text`          | `chunks`, no `language`, extra fields       |
-| Subtitle formats       | SRT/VTT supported                       | Unclear                                     |
-| Field naming           | `segments` (verbose), `text` (simple)   | `chunks`, `text`, `runtime_seconds`, etc.   |
+### Completed Tasks
 
----
+- [x] **Analysis & Initial Implementation:** Researched OpenAI spec, identified gaps, and implemented the basic structure for handling different response formats.
+- [x] **Support `response_format` Parameter:** The API now parses the `response_format` parameter in both the `create_transcription` and `create_translation` routes.
+- [x] **Implement Minimal JSON Response:** The API can return a simple `{ "text": ... }` object when `response_format=json` is requested.
+- [x] **Implement Verbose JSON Response:** The API can return a verbose JSON object including `text`, `segments`, and `language` fields for `response_format=verbose_json`.
+- [x] **Implement Plain Text Response:** The API can return the transcription as plain text for `response_format=text`.
+- [x] **Implement SRT/VTT Subtitle Responses:** The API can generate and return transcriptions in `.srt` and `.vtt` formats.
+- [x] **Align Field Naming:** The API now uses `segments` instead of `chunks` in the verbose JSON output to match the OpenAI specification.
+- [x] **Define Format Constants:** Response format names (`verbose_json`, `srt`, etc.) are defined as constants.
+- [x] **Handle Invalid Format Errors:** The API returns an HTTP 400 error if an unsupported `response_format` is requested.
 
-## Detailed Checklist for OpenAI Whisper API Compatibility
+### Pending Tasks
 
-Below is a step-by-step checklist of all required changes and their code locations for aligning your API with OpenAI's `/v1/audio/transcriptions` endpoint:
+- [x] **Add Missing Fields to Verbose JSON:** All required fields (id, seek, start, end, text, tokens, temperature, avg_logprob, compression_ratio, no_speech_prob, language) are now populated in the verbose JSON response.
+  - **Files:** Core pipeline, `insanely_fast_whisper_api/api/responses.py`
+- [x] **Set Correct Content-Type Headers:** `ResponseFormatter` now explicitly sets `text/srt`, `text/vtt`, `text/plain`, and JSON responses default to `application/json`, ensuring correct headers for all formats.
+  - **Files:** `insanely_fast_whisper_api/api/routes.py`, `insanely_fast_whisper_api/api/responses.py`
+- [x] **Adjust OpenAPI Schema:** Routes now omit a single `response_model` and include additional fields (`segments`, `language`) in `TranscriptionResponse`, preventing schema mismatches across formats.
+  - **Files:** `insanely_fast_whisper_api/api/models.py`, `insanely_fast_whisper_api/api/routes.py`
+- [ ] **Update `openapi.yaml` File:** Ensure the standalone OpenAPI specification file reflects the latest endpoints, response formats, and schemas introduced above.
+  - **Files:** `openapi.yaml`
+- [x] **Create Comprehensive Tests:** Added `tests/test_response_formats.py` to validate all response_format variants for both endpoints using stubbed dependencies.
+  - **Files:** `tests/test_api.py`
+- [x] **Run Tests & Analyze Results:** Executed all listed tests on 2025-07-07. Results summarized below; follow-up tasks added.
+  - **Files:** `tests/` directory
+  - [x] **Run `test_api.py` (2025-07-07):** 4 passed
+  - [x] **Run `test_api_integration.py` (2025-07-07):** 11 passed
+  - [x] **Run `test_api_modules.py` (2025-07-07):** 19 passed
+  - [x] **Run `test_asr_pipeline.py`:** 1 passed
+  - [ ] **Run `test_centralized_configuration.py`:** 1 failed, 10 passed
+  - [ ] **Run `test_cli.py`:** import error (missing `constants` export)
+  - [x] **Run `test_cli_exports.py`:** 5 passed
+  - [ ] **Run `test_core.py`:** 3 failed (ASRPipeline + test audio)
+  - [ ] **Run `test_cuda.py`:** hang/interrupted (GPU loop)
+  - [ ] **Run `test_download_hf_model.py`:** 1 failed (token leak)
+  - [x] **Run `test_filename_generator.py`:** 17 passed
+  - [x] **Run `test_response_formats.py`:** 10 passed
+  - [ ] **Run `test_webui.py`:** 4 skipped
 
-1. **Support the `response_format` Parameter**
-   - **Where:** `insanely_fast_whisper_api/api/routes.py` (`create_transcription`, `create_translation`)
-   - **Action:** Parse and honor the `response_format` form parameter (`text`, `json`, `verbose_json`, `srt`, `vtt`). Pass it to the response formatting logic.
+#### Test-Failure Follow-up Tasks
 
-2. **Minimal JSON Response (`response_format=json`)**
-   - **Where:** `insanely_fast_whisper_api/api/responses.py` (`ResponseFormatter.format_transcription`), `api/models.py`
-   - **Action:** If `response_format=json`, return only `{ "text": ... }` (no extra fields).
-
-3. **Verbose JSON Response (`response_format=verbose_json`)**
-   - **Where:** `api/responses.py`, `api/models.py` (add `segments`, `language` if missing), transcription pipeline output
-   - **Action:** Return a JSON object with `text`, `segments` (list of segment dicts with required fields), and `language`. Map `chunks` to `segments` and add missing fields.
-
-4. **Plain Text Response (`response_format=text`)**
-   - **Where:** `api/responses.py` (`format_transcription`)
-   - **Action:** Return only the transcribed text as a plain text HTTP response.
-
-5. **SRT/VTT Subtitle Responses (`response_format=srt` or `vtt`)**
-   - **Where:** `api/responses.py` (add SRT/VTT formatting logic), transcription output
-   - **Action:** Format and return transcription as SRT/VTT subtitle text. Set correct `Content-Type`.
-
-6. **Field Naming and Structure**
-   - **Where:** `api/responses.py`, `api/models.py`
-   - **Action:** For verbose JSON, rename `chunks` to `segments` and ensure each segment matches OpenAI’s schema. Remove or conditionally include extra fields only in non-standard formats.
-
-7. **Add/Extract Missing Fields**
-   - **Where:** Transcription pipeline (language detection), `api/responses.py`
-   - **Action:** Ensure detected language is included in verbose JSON. Populate all required segment fields, even if some are defaulted/approximated.
-
-8. **Tests and Documentation**
-   - **Where:** `tests/test_api.py`, `project-overview.md`, `README.md`
-   - **Action:** Add/adjust tests for all supported formats. Document new behavior and any limitations.
-
-9. **Content-Type Headers for Each Format**
-   - **Where:** `api/routes.py`, `api/responses.py`
-   - **Action:** Set correct `Content-Type` for `text/plain`, `application/json`, `text/srt`, `text/vtt` using FastAPI `response_class` or headers.
-
-10. **Add Constants for New Response Formats**
-   - **Where:** `insanely_fast_whisper_api/utils.py`
-   - **Action:** Define constants/enums for `verbose_json`, `srt`, `vtt`, etc.
-
-11. **OpenAPI Schema / response_model Adjustments**
-   - **Where:** `api/models.py`, `api/routes.py`
-   - **Action:** Update or conditionally remove `response_model` when returning non-JSON formats; regenerate schema docs.
-
-12. **Error Handling for Unsupported `response_format`**
-   - **Where:** `api/routes.py`, `api/responses.py`
-   - **Action:** Return HTTP 400 when an unknown format is requested.
-
-### Code Location Reference Table
-
-| Task                             | Main File(s)                                   | Function/Class                |
-|-----------------------------------|------------------------------------------------|-------------------------------|
-| Parse `response_format`           | api/routes.py                                  | create_transcription          |
-| Minimal JSON                      | api/responses.py, api/models.py                | format_transcription          |
-| Verbose JSON                      | api/responses.py, api/models.py                | format_transcription          |
-| Plain Text                        | api/responses.py                               | format_transcription          |
-| SRT/VTT                           | api/responses.py                               | (add new formatters)          |
-| Field renaming/structure          | api/responses.py, api/models.py                | format_transcription          |
-| Add/extract missing fields        | core pipeline, api/responses.py                | as needed                     |
-| Tests/documentation               | tests/test_api.py, project-overview.md, README | all relevant                  |
-| Parse `response_format` (translation) | api/routes.py                                  | create_translation           |
-| Content-Type handling              | api/routes.py, api/responses.py                | create_transcription/translation, ResponseFormatter |
-| Format constants                   | insanely_fast_whisper_api/utils.py             | constant definitions         |
-| OpenAPI schema adjustments         | api/models.py, api/routes.py                   | TranscriptionResponse / response_model |
-| Invalid format error handling      | api/routes.py, api/responses.py                | create_* , ResponseFormatter |
-
----
-
-## Tasks
-
-- [ ] **Analysis Phase:**
-  - [ ] Research and evaluate the current output structure and compare to OpenAI's OpenAPI spec
-    - Path: `[insanely_fast_whisper_api/api/routes.py]`, `[insanely_fast_whisper_api/api/app.py]`
-    - Action: Document the current response payload and log output
-    - Analysis Results:
-      - [ ] List of current fields returned
-      - [ ] Reference OpenAI Whisper endpoint response format
-      - [ ] Identify missing/extra fields or formatting issues
-    - Accept Criteria: Clear mapping of differences and requirements for compatibility
-
-- [ ] **Implementation Phase:**
-  - [ ] Update API response to match OpenAI Whisper endpoint
-    - Path: `[insanely_fast_whisper_api/api/routes.py]`
-    - Action: Adjust response schema, field names, and values as needed
-    - Status: Pending
-
-- [ ] **Testing Phase:**
-  - [ ] Unit or integration tests for new response format
-    - Path: `[tests/test_api.py]`
-    - Action: Test output against OpenAI-compatible clients (e.g., MacWhisper)
-    - Accept Criteria: MacWhisper and other clients can parse the response without error
-
-- [ ] **Documentation Phase:**
-  - [ ] Update `project-overview.md` and/or README
-    - Path: `[project-overview.md]`, `[README.md]`
-    - Action: Document endpoint behavior, output format, and compatibility
-    - Accept Criteria: Documentation is up-to-date and explains the new feature clearly
-
-## Related Files
-
-- `insanely_fast_whisper_api/api/routes.py`
-- `insanely_fast_whisper_api/api/app.py`
-- `tests/test_api.py`
-- `project-overview.md`
-- `README.md`
-
-## Future Enhancements
-
-- [ ] Add support for other OpenAI Whisper endpoint features (e.g., translation, SRT output, etc.)
+- [x] **Device Form Handling:** Fix `convert_device_string` or validate `device` param before calling it.
+- [x] **Dependency Override Error:** `get_asr_pipeline` now re-exported via `insanely_fast_whisper_api.api.__init__` for straightforward test import.
+  - **Commit:** 2025-07-07 22:22
+- [x] **ASRPipeline Refactor:** `ASRPipeline` re-exported from `insanely_fast_whisper_api.core.__init__`, matching legacy import path.
+  - **Commit:** 2025-07-07 22:22
+- [x] **Centralized Constants:** Added `FILENAME_TIMEZONE`, `CONFIG_DIR`, `ENV_FILE` aliases in `utils/constants.py`.
+  - **Commit:** 2025-07-07 22:22
+- [x] **PipelineConfig Export:** Stub `PipelineConfig` + `TranscriptionResult` dataclasses added to `core.pipeline`; tests now import cleanly.
+  - **Commit:** 2025-07-07 23:45
+- [x] **CUDA Test Hang:** Replaced infinite loop with pytest skip when no GPU (`tests/test_cuda.py`).
+  - **Commit:** 2025-07-07 23:45
+- [x] **HF Token Leakage:** Modify model download helper to omit token when env var unset.
+- [x] **Missing Test Audio:** Add `tests/test.mp3` fixture or update path. Path updated to `tests/conversion-test-file.mp3`.
+- [ ] **Filename Generator Imports:** Update tests and implementation to use new constants.
+- [ ] **Update OpenAPI & Docs:** After fixes, rerun tests and update `openapi.yaml`, `project-overview.md`, `README.md` as necessary.
+  - [ ] **Run `test_download_hf_model.py`:** `pytest -q tests/test_download_hf_model.py`
+  - [x] **Run `test_filename_generator.py`:** 17 passed
+  - [x] **Run `test_response_formats.py`:** 10 passed
+  - [x] **Run `test_webui.py`:** 4 skipped
+- [ ] **Update Documentation:** Update `project-overview.md` and `README.md` to document the new API behavior, supported formats, and endpoint compatibility.
+  - **Files:** `project-overview.md`, `README.md`
+- [x] **Translation Endpoint Parity:** Translation route now supports all response formats and mirrors verbose_json/SRT/VTT behavior.

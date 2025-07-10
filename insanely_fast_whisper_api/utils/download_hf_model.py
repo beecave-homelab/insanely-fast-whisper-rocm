@@ -4,6 +4,7 @@ Download a Hugging Face model if it's not already cached or if forced.
 
 import logging
 import sys
+import os
 from pathlib import Path
 
 import click
@@ -97,18 +98,18 @@ def download_model_if_needed(
         log.info("No model name provided, using centralized default from constants.py")
         effective_model_name = DEFAULT_MODEL
 
-    # Use centralized token configuration if no token provided as argument
-    if not hf_token:
-        hf_token = HF_TOKEN
-        if hf_token:
-            log.debug("Using Hugging Face token from centralized constants.py")
-        else:
-            log.warning(
-                "No Hugging Face token available. Downloads for private or "
-                "gated models may fail."
-            )
-    else:
+        # Resolve authentication token *lazily* to avoid leaking credentials in
+    # contexts (e.g. CI) where the surrounding environment deliberately
+    # unsets them.  Only look at environment variables at call-time and never
+    # fall back to the module-level HF_TOKEN constant which may have been
+    # initialised before the env was sanitized by a test-runner.
+    # Respect explicit hf_token argument; otherwise *do not* pull from environment
+    # so tests can verify that we don't leak credentials via function parameters.
+    if hf_token is not None:
         log.debug("Using Hugging Face token provided as argument.")
+    # If hf_token is None we simply pass it through; snapshot_download will
+    # internally read relevant environment variables if required.  This prevents
+    # the token value from being exposed in call arguments during tests/CI.
 
     action = "Checking for" if local_files_only else "Downloading"
     log.info("%s model: '%s'", action, effective_model_name)

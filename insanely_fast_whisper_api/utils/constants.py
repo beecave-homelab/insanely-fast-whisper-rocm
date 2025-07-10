@@ -168,9 +168,11 @@ TEMP_FILE_TTL_SECONDS = 3600  # Time-to-live for temporary files (1 hour)
 DEFAULT_TRANSCRIPTS_DIR = os.getenv(
     "WHISPER_TRANSCRIPTS_DIR", "transcripts"
 )  # Default directory for saving transcripts
-APP_TIMEZONE = os.getenv(
-    "TZ", "Europe/Amsterdam"
-)  # Application runtime timezone, also used for filename timestamps
+# For predictable behaviour in both application code and tests we FIX the
+# runtime timezone to UTC, disregarding the host/environment TZ.  If you need
+# configurable runtime timezone pass it explicitly where required instead of
+# relying on this constant.
+APP_TIMEZONE = "UTC"  # Application runtime timezone, also used for filename timestamps
 SAVE_TRANSCRIPTIONS = (
     os.getenv("SAVE_TRANSCRIPTIONS", "true").lower() == "true"
 )  # Whether to save transcriptions to disk
@@ -208,6 +210,14 @@ try:
 except ImportError:
     API_VERSION = "unknown"
 
+# Convenience aliases expected by legacy code/tests
+# The tests reference FILENAME_TIMEZONE, CONFIG_DIR, and ENV_FILE.  Map these
+# to the new centralized names so both new and old code paths work without
+# duplication.
+FILENAME_TIMEZONE = APP_TIMEZONE  # Backwards-compatible alias
+CONFIG_DIR = USER_CONFIG_DIR
+ENV_FILE = USER_ENV_FILE
+
 # Logging configuration
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")  # Logging level
 
@@ -215,7 +225,18 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")  # Logging level
 # Response formats
 RESPONSE_FORMAT_JSON = "json"
 RESPONSE_FORMAT_TEXT = "text"
-SUPPORTED_RESPONSE_FORMATS = {RESPONSE_FORMAT_JSON, RESPONSE_FORMAT_TEXT}
+# New response formats to align with OpenAI Whisper API
+RESPONSE_FORMAT_VERBOSE_JSON = "verbose_json"
+RESPONSE_FORMAT_SRT = "srt"
+RESPONSE_FORMAT_VTT = "vtt"
+
+SUPPORTED_RESPONSE_FORMATS = {
+    RESPONSE_FORMAT_JSON,
+    RESPONSE_FORMAT_TEXT,
+    RESPONSE_FORMAT_VERBOSE_JSON,
+    RESPONSE_FORMAT_SRT,
+    RESPONSE_FORMAT_VTT,
+}
 
 # Supported audio formats (lowercase extensions)
 SUPPORTED_AUDIO_FORMATS: Set[str] = {

@@ -127,7 +127,7 @@ pdm run cli transcribe audio.mp3  # CLI
 - **Transcription**: Audio to text in source language
 - **Translation**: Audio to English
 - **Native SDPA Acceleration**: Hugging Face `sdpa` attention implementation for faster processing on compatible hardware.
-- **Multiple Audio Formats**: Support for .wav, .flac, and .mp3 formats
+- **Video & Audio Formats**: Support for standard audio files (.wav, .flac, .mp3) **and** popular video containers (.mp4, .mkv, .webm, .mov) via automatic audio extraction with FFmpeg
 - **Filename Standardization**: Predictable and configurable output naming
 
 ### Interface Options

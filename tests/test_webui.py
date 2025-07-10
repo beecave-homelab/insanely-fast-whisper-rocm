@@ -22,7 +22,7 @@ import requests
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Configuration
-TEST_AUDIO_FILE = "tests/test.mp3"  # Path to the test audio file
+TEST_AUDIO_FILE = "tests/conversion-test-file.mp3"  # Path to the test audio file
 LONG_TEST_AUDIO_FILE = "tests/test-long.mp3"  # Path to the longer test audio file
 WEBUI_URL = "http://localhost:7860"
 API_URL = "http://localhost:8888"

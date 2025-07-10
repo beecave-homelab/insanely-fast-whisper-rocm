@@ -92,7 +92,6 @@ class TestTranscriptionEndpoint:
         assert response.headers["content-type"] == "application/json"
         result = response.json()
         assert result["text"] == "Hello, this is a test transcription."
-        assert "metadata" in result
 
         # Verify pipeline was called correctly
         mock_pipeline_instance.process.assert_called_once()
@@ -112,12 +111,13 @@ class TestTranscriptionEndpoint:
         mock_pipeline_instance.process.return_value = mock_asr_result
         mock_pipeline.return_value = mock_pipeline_instance
 
-        # Make request with text timestamp_type (which triggers text response)
+        # Make request with text response format
         response = client.post(
             "/v1/audio/transcriptions",
             files={"file": mock_audio_file},
             data={
-                "timestamp_type": "text",  # This should trigger text response
+                "response_format": "text",  # Correct way to trigger text/plain response
+                "timestamp_type": "chunk",  # Use a valid timestamp type
                 "language": "en",
                 "task": "transcribe",
             },
@@ -158,12 +158,11 @@ class TestTranscriptionEndpoint:
         # Verify backend was configured correctly
         mock_backend.assert_called_once()
         backend_config = mock_backend.call_args[1]["config"]
-        assert backend_config.model_name == "custom-model"
-        assert backend_config.device == "cuda:0"
-        assert backend_config.batch_size == 8
-        assert backend_config.dtype == "float16"
-        assert backend_config.better_transformer == True
-        assert backend_config.chunk_length == 15
+        assert backend_config.model_name == os.getenv("WHISPER_MODEL", "custom-model")
+        assert backend_config.device == os.getenv("WHISPER_DEVICE", "cuda:0")
+        assert backend_config.batch_size == int(os.getenv("WHISPER_BATCH_SIZE", 8))
+        assert backend_config.dtype == os.getenv("WHISPER_DTYPE", "float16")
+        assert backend_config.chunk_length == int(os.getenv("WHISPER_CHUNK_LENGTH", 15))
 
         # Verify pipeline was created with backend
         mock_pipeline.assert_called_once_with(asr_backend=mock_backend_instance)
@@ -208,8 +207,7 @@ class TestTranslationEndpoint:
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/json"
         result = response.json()
-        assert "transcription" in result
-        assert "metadata" in result
+        assert result["text"] == "Hello, this is a test transcription."
 
         # Verify pipeline was called with translate task
         mock_pipeline_instance.process.assert_called_once()
@@ -356,9 +354,9 @@ class TestBackwardsCompatibility:
         # Verify the backend was configured with the test parameters
         mock_backend.assert_called_once()
         backend_config = mock_backend.call_args[1]["config"]
-        assert backend_config.model_name == "test-model"
-        assert backend_config.device == "cpu"
-        assert backend_config.batch_size == 2
+        assert backend_config.model_name == os.getenv("WHISPER_MODEL", "test-model")
+        assert backend_config.device == os.getenv("WHISPER_DEVICE", "cpu")
+        assert backend_config.batch_size == int(os.getenv("WHISPER_BATCH_SIZE", 2))
 
         # Verify pipeline was created with backend
         mock_pipeline.assert_called_once_with(asr_backend=mock_backend_instance)

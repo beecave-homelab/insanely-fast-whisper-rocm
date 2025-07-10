@@ -19,7 +19,7 @@ from insanely_fast_whisper_api.api.dependencies import (
     get_file_handler,
 )
 from insanely_fast_whisper_api.api.responses import ResponseFormatter
-from insanely_fast_whisper_api.core.pipeline import TranscriptionResult, WhisperPipeline
+from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_api.main import app  # Assuming your FastAPI app is here
 from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_JSON,
@@ -41,7 +41,7 @@ class TestAppFactory:
         app = create_app()
         assert app.title == "Insanely Fast Whisper API"
         assert "FastAPI wrapper" in app.description
-        assert app.version == "0.1.0"
+        assert app.version == "0.9.0"
 
     def test_create_app_has_routes(self):
         """Test that the app includes the expected routes."""
@@ -60,10 +60,10 @@ class TestAppFactory:
         """Test that the app has correct title, description, and version."""
         assert app.title == "Insanely Fast Whisper API"
         assert (
-            "FastAPI wrapper around a custom Whisper-based ASR pipeline"
+            "A FastAPI wrapper around the insanely-fast-whisper tool."
             in app.description
         )
-        assert app.version == "0.3.1"
+        assert app.version == "0.9.0"
 
 
 class TestDependencies:
@@ -83,10 +83,9 @@ class TestDependencies:
         result = get_asr_pipeline(
             model="test-model",
             device="cpu",
-            batch_size=2,
+            batch_size=4,
             dtype="float32",
-            better_transformer=True,
-            model_chunk_length=15,
+            model_chunk_length=30,
         )
 
         # Verify backend configuration
@@ -94,10 +93,9 @@ class TestDependencies:
         backend_config = mock_backend.call_args[1]["config"]
         assert backend_config.model_name == "test-model"
         assert backend_config.device == "cpu"
-        assert backend_config.batch_size == 2
+        assert backend_config.batch_size == 4
         assert backend_config.dtype == "float32"
-        assert backend_config.better_transformer == True
-        assert backend_config.chunk_length == 15
+        assert backend_config.chunk_length == 30
 
         # Verify pipeline creation
         mock_pipeline.assert_called_once_with(asr_backend=mock_backend_instance)
@@ -270,7 +268,10 @@ class TestMiddleware:
 
             # Verify logger was called with timing information
             mock_logger.info.assert_called()
-            log_call = mock_logger.info.call_args[0][0]
-            assert "Request GET" in log_call
-            assert "completed in" in log_call
-            assert "with status" in log_call
+            log_args = mock_logger.info.call_args.args
+            format_string = log_args[0]
+
+            assert "Request" in format_string
+            assert "completed in" in format_string
+            assert "with status" in format_string
+            assert log_args[1] == "GET"  # Check the method argument

@@ -19,6 +19,7 @@ dependencies = [
     "datasets>=2.14.0",
     "accelerate>=0.29.0",
     "optimum>=1.19.0",
+    "ffmpeg-python>=0.2.0",
 ]
 requires-python = "~=3.10"
 

@@ -81,6 +81,35 @@ class SrtFormatter(BaseFormatter):
         return "srt"
 
 
+class VttFormatter(BaseFormatter):
+    """Formatter for WebVTT subtitles."""
+
+    @classmethod
+    def format(cls, result: Dict[str, Any]) -> str:
+        chunks = result.get("chunks", [])
+        if not chunks:
+            return "WEBVTT\n"
+
+        lines = ["WEBVTT", ""]
+        for chunk in chunks:
+            text = chunk.get("text", "").strip()
+            if not text:
+                continue
+            timestamps = chunk.get("timestamp", [None, None])
+            start, end = (
+                timestamps[0] if len(timestamps) > 0 else None,
+                (timestamps[1] if len(timestamps) > 1 else None),
+            )
+            lines.append(f"{util_format_seconds(start)} --> {util_format_seconds(end)}")
+            lines.append(text)
+            lines.append("")
+        return "\n".join(lines)
+
+    @classmethod
+    def get_file_extension(cls) -> str:
+        return "vtt"
+
+
 class JsonFormatter(BaseFormatter):
     """Formatter for JSON output."""
 
@@ -98,5 +127,6 @@ class JsonFormatter(BaseFormatter):
 FORMATTERS = {
     "txt": TxtFormatter,
     "srt": SrtFormatter,
+    "vtt": VttFormatter,
     "json": JsonFormatter,
 }
