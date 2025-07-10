@@ -68,7 +68,7 @@ Next action: Review REST endpoint routing (still pending) and implement integrat
 
 ---
 
-- [ ] **Documentation Phase:**
+- [x] **Documentation Phase:**
   - [ ] Update `project-overview.md` and README
     - Path: `project-overview.md`
     - Action: Note WebUI now supports video uploads analogous to CLI.
