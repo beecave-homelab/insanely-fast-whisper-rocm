@@ -4,8 +4,6 @@ This module implements dependency injection for ASR pipeline instances
 and other shared resources used by the API endpoints.
 """
 
-from fastapi import Form
-
 from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
@@ -42,13 +40,16 @@ def get_asr_pipeline(
     Returns:
         WhisperPipeline: Configured ASR pipeline instance
     """
+
     # FastAPI's dependency-injection may sometimes pass param Placeholders (e.g. Form)
     # if this function is used incorrectly as a dependency with `Form` params.  Make
     # the function robust by extracting the `.default` attribute when a parameter is
     # a FastAPI param instance.
     def _normalize(value, default=None):
         # Detect fastapi.params.Param types without importing fastapi here.
-        if hasattr(value, "__class__") and value.__class__.__module__.startswith("fastapi."):
+        if hasattr(value, "__class__") and value.__class__.__module__.startswith(
+            "fastapi."
+        ):
             return getattr(value, "default", default)
         return value
 
@@ -72,9 +73,9 @@ def _get_asr_pipeline_unwrapped():
     """Placeholder for tests to monkeypatch. Returns WhisperPipeline when patched."""
     raise RuntimeError("This placeholder should be monkeypatched in tests.")
 
+
 # Assign to avoid FastAPI/inspect wrapper loop issues while providing the attribute.
 get_asr_pipeline.__wrapped__ = _get_asr_pipeline_unwrapped  # type: ignore[attr-defined]
-
 
 
 def get_file_handler() -> FileHandler:
@@ -85,6 +86,7 @@ def get_file_handler() -> FileHandler:
     """
     return FileHandler()
 
+
 # Expose ``__wrapped__`` to allow pytest monkeypatching of dependency overrides.
 # FastAPI wraps callables passed to Depends internally, but when tests import the
 # original function directly they may expect this attribute for easy stubbing.
@@ -93,6 +95,7 @@ def get_file_handler() -> FileHandler:
 def _get_file_handler_unwrapped():
     """Placeholder for tests to monkeypatch. Returns FileHandler when patched."""
     raise RuntimeError("This placeholder should be monkeypatched in tests.")
+
 
 # Assign to avoid FastAPI/inspect wrapper loop issues while providing the attribute.
 get_file_handler.__wrapped__ = _get_file_handler_unwrapped  # type: ignore[attr-defined]

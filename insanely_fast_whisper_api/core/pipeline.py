@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 # Lightweight configuration/result dataclasses for test compatibility
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PipelineConfig:  # pylint: disable=too-many-instance-attributes
     """Stub config passed around by some higher-level APIs/tests."""

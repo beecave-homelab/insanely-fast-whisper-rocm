@@ -15,14 +15,14 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import gradio as gr
 
-from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
+from insanely_fast_whisper_api.audio.processing import extract_audio_from_video
 from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )
 from insanely_fast_whisper_api.core.errors import TranscriptionError
 from insanely_fast_whisper_api.core.formatters import FORMATTERS
-from insanely_fast_whisper_api.core.pipeline import ProgressEvent
+from insanely_fast_whisper_api.core.pipeline import ProgressEvent, WhisperPipeline
 from insanely_fast_whisper_api.utils import (
     DEFAULT_BATCH_SIZE,
     DEFAULT_DEVICE,
@@ -41,8 +41,6 @@ from insanely_fast_whisper_api.webui.zip_creator import (
     BatchZipBuilder,
     ZipConfiguration,
 )
-from insanely_fast_whisper_api.audio.processing import extract_audio_from_video
-from insanely_fast_whisper_api.utils.file_utils import cleanup_temp_files
 
 # Configure logger
 logger = logging.getLogger("insanely_fast_whisper_api.webui.handlers")
@@ -607,9 +605,6 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         # Prepare data for BatchZipBuilder: Dict[str, Dict[str, Any]]
         # Key: path/to/original_audio.mp3 (used by builder for internal naming)
         # Value: raw_transcription_result
-        batch_data_for_builder = {
-            res["audio_original_path"]: res["raw_result"] for res in successful_results
-        }
 
         # Summary message
         if successful_transcriptions == num_files:

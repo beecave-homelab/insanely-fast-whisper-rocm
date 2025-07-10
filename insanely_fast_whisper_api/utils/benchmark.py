@@ -10,21 +10,21 @@ from __future__ import annotations
 
 import logging
 import platform
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, List
-import threading
 from statistics import median
-
-
-logger = logging.getLogger(__name__)
+from typing import Any, Dict, List, Optional
 
 from insanely_fast_whisper_api.utils.filename_generator import (
     FilenameGenerator,
     StandardFilenameStrategy,
     TaskType,
 )
+
+logger = logging.getLogger(__name__)
+
 
 try:
     import psutil  # type: ignore
@@ -99,7 +99,9 @@ class BenchmarkCollector:
         # initialise sampler
         self._stop_event = threading.Event()
         self._sampling_thread = threading.Thread(target=self._sample_loop, daemon=True)
-        logger.debug("Starting live GPU/RAM sampling (interval %.2fs)", self._sample_interval)
+        logger.debug(
+            "Starting live GPU/RAM sampling (interval %.2fs)", self._sample_interval
+        )
         self._sampling_thread.start()
 
     def stop(self) -> float:
@@ -180,7 +182,9 @@ class BenchmarkCollector:
             gpu_avg = {k: round(v / count, 2) for k, v in gpu_acc.items()}
         return sys_avg, gpu_avg
 
-    def _gpu_vram_stats(self) -> tuple[Optional[float], Optional[float], Optional[float]]:
+    def _gpu_vram_stats(
+        self,
+    ) -> tuple[Optional[float], Optional[float], Optional[float]]:
         """Return (min_non_zero, max, median) for vram_used_mb across samples."""
         min_val: Optional[float] = None
         max_val: Optional[float] = None
@@ -260,7 +264,11 @@ class BenchmarkCollector:
             runtime_seconds=runtime_seconds,
             total_wall_time_seconds=total_time,
             model_load_seconds=self._model_load_time,
-            system={k: v for k, v in self._collect_system_metrics().items() if k not in {"ram_total_mb", "ram_used_mb"}},  # final snapshot
+            system={
+                k: v
+                for k, v in self._collect_system_metrics().items()
+                if k not in {"ram_total_mb", "ram_used_mb"}
+            },  # final snapshot
             gpu=gpu_dict,
             memory=memory_dict,
             extra=extra,

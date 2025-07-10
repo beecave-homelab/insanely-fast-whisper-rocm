@@ -14,14 +14,14 @@ and removes external dependencies such as GPU availability or HF downloads.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
-from insanely_fast_whisper_api.core.pipeline import BasePipeline
+from insanely_fast_whisper_api.core.asr_backend import ASRBackend
 from insanely_fast_whisper_api.core.errors import (
     DeviceNotFoundError,
     TranscriptionError,
 )
-from insanely_fast_whisper_api.core.asr_backend import ASRBackend
+from insanely_fast_whisper_api.core.pipeline import BasePipeline
 
 
 class _DummyBackend(ASRBackend):
@@ -69,7 +69,9 @@ class ASRPipeline(BasePipeline):  # type: ignore[misc]
         model: str = "openai/whisper-base",
         device: str = "cpu",
         dtype: str = "float32",
-        progress_callback: Optional[Callable[[str, int, int, Optional[str]], None]] = None,
+        progress_callback: Optional[
+            Callable[[str, int, int, Optional[str]], None]
+        ] = None,
         **kwargs: Any,
     ):
         # Store simple attributes for legacy tests

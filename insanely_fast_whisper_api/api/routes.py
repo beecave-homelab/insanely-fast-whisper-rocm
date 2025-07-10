@@ -7,7 +7,7 @@ injection for ASR pipeline instances and file handling.
 import logging
 from typing import Literal, Optional, Union
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from insanely_fast_whisper_api.api.dependencies import (
     get_asr_pipeline,

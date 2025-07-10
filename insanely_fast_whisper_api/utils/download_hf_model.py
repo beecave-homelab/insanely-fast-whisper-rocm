@@ -4,7 +4,6 @@ Download a Hugging Face model if it's not already cached or if forced.
 
 import logging
 import sys
-import os
 from pathlib import Path
 
 import click

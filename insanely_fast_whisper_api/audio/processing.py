@@ -4,8 +4,8 @@ import os
 import tempfile
 from typing import List
 
-from pydub import AudioSegment
 import ffmpeg
+from pydub import AudioSegment
 
 from insanely_fast_whisper_api.utils.file_utils import cleanup_temp_files
 

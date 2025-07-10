@@ -13,6 +13,7 @@ from typing import Dict, Optional
 import click
 from click.core import ParameterSource
 
+from insanely_fast_whisper_api.audio.processing import extract_audio_from_video
 from insanely_fast_whisper_api.cli.facade import cli_facade
 from insanely_fast_whisper_api.core.errors import (
     DeviceNotFoundError,
@@ -20,7 +21,6 @@ from insanely_fast_whisper_api.core.errors import (
 )
 from insanely_fast_whisper_api.core.formatters import FORMATTERS
 from insanely_fast_whisper_api.utils import constants
-from insanely_fast_whisper_api.audio.processing import extract_audio_from_video
 from insanely_fast_whisper_api.utils.file_utils import cleanup_temp_files
 from insanely_fast_whisper_api.utils.filename_generator import (
     FilenameGenerator,
@@ -433,22 +433,21 @@ def _run_task(**kwargs) -> None:
             f"\n🎵 {constants.API_TITLE} v{constants.API_VERSION}", fg="cyan", bold=True
         )
         temp_files: list[str] = []  # Track temporary files we create
-        original_input_path = audio_file
         # Detect if input is a video file (simple extension check)
         video_exts = {".mp4", ".mkv", ".webm", ".mov"}
         if audio_file.suffix.lower() in video_exts:
             click.secho("🎞️ Detected video input – extracting audio...", fg="yellow")
             try:
-                audio_extracted_path = Path(
-                    extract_audio_from_video(str(audio_file))
-                )
+                audio_extracted_path = Path(extract_audio_from_video(str(audio_file)))
                 audio_file = audio_extracted_path
                 temp_files.append(str(audio_extracted_path))
                 click.secho(
                     f"✅ Audio extracted to temporary file: {audio_file}", fg="green"
                 )
             except RuntimeError as conv_err:
-                click.secho(f"❌ Video conversion failed: {conv_err}", fg="red", err=True)
+                click.secho(
+                    f"❌ Video conversion failed: {conv_err}", fg="red", err=True
+                )
                 sys.exit(1)
 
         click.secho(f"📁 Audio file: {audio_file}", fg="blue")
@@ -465,7 +464,7 @@ def _run_task(**kwargs) -> None:
         if benchmark_enabled:
             try:
                 from insanely_fast_whisper_api.utils.benchmark import (
-                    BenchmarkCollector,  # noqa: WPS433
+                    BenchmarkCollector,
                 )
 
                 collector = BenchmarkCollector()

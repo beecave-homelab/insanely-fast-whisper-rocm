@@ -18,7 +18,6 @@ from insanely_fast_whisper_api.utils.constants import (
     DEFAULT_TRANSCRIPTS_DIR,
     MAX_BATCH_SIZE,
     MIN_BATCH_SIZE,
-    SUPPORTED_AUDIO_FORMATS,
     SUPPORTED_UPLOAD_FORMATS,
 )
 from insanely_fast_whisper_api.webui.handlers import (

@@ -76,7 +76,9 @@ class ResponseFormatter:
         # Plain text response
         if response_format == RESPONSE_FORMAT_TEXT:
             text_output = result.get("text", "")
-            return PlainTextResponse(text_output, media_type="text/plain; charset=utf-8")
+            return PlainTextResponse(
+                text_output, media_type="text/plain; charset=utf-8"
+            )
 
         # Minimal JSON – only top-level text
         if response_format == RESPONSE_FORMAT_JSON:
@@ -153,7 +155,9 @@ class ResponseFormatter:
         if response_format == RESPONSE_FORMAT_TEXT:
             transcription_output = result.get("transcription", result)
             text_output = transcription_output.get("text", "")
-            return PlainTextResponse(text_output, media_type="text/plain; charset=utf-8")
+            return PlainTextResponse(
+                text_output, media_type="text/plain; charset=utf-8"
+            )
 
         # Minimal JSON response
         if response_format == RESPONSE_FORMAT_JSON:

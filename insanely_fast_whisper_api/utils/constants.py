@@ -79,9 +79,9 @@ from dotenv import load_dotenv
 
 from insanely_fast_whisper_api.utils.env_loader import (
     SHOW_DEBUG_PRINTS,
+    USER_CONFIG_DIR,
     USER_ENV_EXISTS,
     USER_ENV_FILE,
-    USER_CONFIG_DIR,
     debug_print,
 )
 

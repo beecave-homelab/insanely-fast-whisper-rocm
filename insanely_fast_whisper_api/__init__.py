@@ -8,6 +8,7 @@ __author__ = "elvee"
 __email__ = "lowie@beecave.nl"
 
 # Audio utilities
+import insanely_fast_whisper_api.utils.constants as constants
 from insanely_fast_whisper_api.audio import (
     cleanup_temp_files,
     get_audio_duration,
@@ -19,10 +20,9 @@ from insanely_fast_whisper_api.audio import (
 # from .core import ASRPipeline, run_asr_pipeline # Old import
 from insanely_fast_whisper_api.core import ASRPipeline
 
-import insanely_fast_whisper_api.utils.constants as constants
-
 __all__ = [
     "ASRPipeline",
+    "constants",
     "get_audio_duration",
     "split_audio",
     "cleanup_temp_files",
