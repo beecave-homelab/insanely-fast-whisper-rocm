@@ -511,10 +511,10 @@ This project uses [PDM (Python Development Master)](https://pdm-project.org/) fo
 To facilitate benchmarking across different ROCm-compatible PyTorch versions, the following optional dependency groups are available:
 
 - `bench-torch-2_0_1`
-- `bench-torch-2_3_0`
-- `bench-torch-2_4_1`
-- `bench-torch-2_5_1`
-- `bench-torch-2_6_0`
+- `bench-torch-2-3-0
+- `bench-torch-2-4-1
+- `bench-torch-2-5-1
+- `bench-torch-2-6-0
 
 Each group includes:
 
@@ -660,9 +660,35 @@ Translates audio to English.
 
 ### Testing
 
+Unit & API test suite:
+
 ```bash
 pytest tests/
 ```
+
+#### WebUI integration tests (Gradio)
+
+These tests target the Gradio WebUI using `gradio_client`.
+
+```bash
+# Only run WebUI tests (marked `webui`)
+pytest -m webui
+```
+
+Details:
+
+- Requires `gradio-client>=0.7.0` (already part of the core deps).
+- Session-scoped fixture `webui_server` (see `tests/conftest.py`) launches the WebUI once on port 7861 with the tiny Whisper model for speed.
+- Tests auto-skip when the sample media files are absent.
+- Custom marker `webui` is registered via `pytest.ini`:
+
+```ini
+[pytest]
+markers =
+    webui: integration tests that spin up the Gradio WebUI
+```
+
+Average runtime < 10 s on a laptop-class GPU.
 
 ### Code Quality Checks (Docker-based)
 
