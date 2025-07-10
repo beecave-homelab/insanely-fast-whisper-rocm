@@ -29,7 +29,7 @@ services:
 
     ports:
       - "8888:8888"  # API port
-      - "7860:7860"  # WebUI port
+      - "7861:7860"  # WebUI port
     
     volumes:
       - "./transcripts:/app/transcripts"
