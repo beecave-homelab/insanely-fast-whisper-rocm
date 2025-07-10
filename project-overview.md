@@ -510,11 +510,11 @@ This project uses [PDM (Python Development Master)](https://pdm-project.org/) fo
 
 To facilitate benchmarking across different ROCm-compatible PyTorch versions, the following optional dependency groups are available:
 
-- `bench-torch-2_0_1`
-- `bench-torch-2-3-0
-- `bench-torch-2-4-1
-- `bench-torch-2-5-1
-- `bench-torch-2-6-0
+- `bench-torch-2-0-1`
+- `bench-torch-2-3-0`
+- `bench-torch-2-4-1`
+- `bench-torch-2-5-1`
+- `bench-torch-2-6-0`
 
 Each group includes:
 

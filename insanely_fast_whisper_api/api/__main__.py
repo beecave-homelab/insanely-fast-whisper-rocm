@@ -11,6 +11,6 @@ if __name__ == "__main__":
         "insanely_fast_whisper_api.api.app:create_app",
         factory=True,
         host="0.0.0.0",
-        port=8000,
+        port=8888,
         reload=True,
     )
