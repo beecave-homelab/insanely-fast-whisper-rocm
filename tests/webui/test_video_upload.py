@@ -1,4 +1,5 @@
 """Video upload integration test using gradio_client.Client."""
+
 from pathlib import Path
 
 import pytest
