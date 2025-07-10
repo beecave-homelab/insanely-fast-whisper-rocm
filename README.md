@@ -15,7 +15,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 
 - **AMD GPU (ROCm) Support**: Primary focus on enabling Whisper models on AMD GPUs
 - **Multiple Interfaces**: Choose between API, WebUI, or CLI based on your workflow
-- **Batch Processing**: Handle multiple audio files simultaneously via WebUI
+- **Batch Processing**: Handle multiple audio **and video** files simultaneously via WebUI
 - **High Performance**: Optimized processing with configurable batch sizes and model parameters
 - **Multiple Output Formats**: Support for JSON, TXT, and SRT subtitle formats
 - **Standardized Filenames**: Consistent, timestamped output naming across all interfaces
@@ -223,7 +223,7 @@ python -m insanely_fast_whisper_api.webui
 
 Access it at `http://localhost:7860` (default). Features include:
 
-- Multi-file batch processing
+- Multi-file batch processing (audio & video)
 - Real-time progress tracking
 - ZIP downloads (TXT, JSON, SRT)
 

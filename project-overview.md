@@ -740,6 +740,8 @@ python -m insanely_fast_whisper_api.api --debug
 
 **WebUI (Gradio Interface):**
 
+The WebUI file uploader now accepts both audio **and** video files (`.wav`, `.flac`, `.mp3`, `.mp4`, `.mkv`, `.webm`, `.mov`). Video inputs are automatically converted to audio via FFmpeg before transcription—no extra flags required.
+
 ```bash
 # Launch WebUI with debug logging
 python -m insanely_fast_whisper_api.webui --debug
