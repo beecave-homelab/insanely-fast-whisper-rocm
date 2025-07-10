@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import gradio as gr
 
-from insanely_fast_whisper_api import ASRPipeline
+from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
@@ -41,6 +41,8 @@ from insanely_fast_whisper_api.webui.zip_creator import (
     BatchZipBuilder,
     ZipConfiguration,
 )
+from insanely_fast_whisper_api.audio.processing import extract_audio_from_video
+from insanely_fast_whisper_api.utils.file_utils import cleanup_temp_files
 
 # Configure logger
 logger = logging.getLogger("insanely_fast_whisper_api.webui.handlers")
@@ -156,6 +158,19 @@ def transcribe(
         )
         original_file_name_for_desc = Path(audio_file_path).name
 
+        # --- Video detection & audio extraction ---
+        temp_files: list[str] = []
+        if Path(audio_file_path).suffix.lower() in constants.SUPPORTED_VIDEO_FORMATS:
+            logger.info("Detected video input – extracting audio track…")
+            try:
+                extracted_path = extract_audio_from_video(audio_file_path)
+                temp_files.append(extracted_path)
+                audio_file_path = extracted_path  # Use extracted WAV for processing
+                logger.info("Audio extracted to temporary file: %s", extracted_path)
+            except RuntimeError as conv_err:
+                logger.error("Video conversion failed: %s", conv_err)
+                raise TranscriptionError(str(conv_err)) from conv_err
+
         # Initial progress update for this file's segment
         base_progress = current_file_idx / total_files_for_session
         if progress_tracker_instance is not None:
@@ -175,7 +190,7 @@ def transcribe(
         backend = HuggingFaceBackend(config=backend_config)
 
         # Initialize the ASR pipeline
-        asr_pipeline = ASRPipeline(
+        asr_pipeline = WhisperPipeline(
             asr_backend=backend,
             save_transcriptions=file_config.save_transcriptions,
             output_dir=file_config.temp_uploads_dir,

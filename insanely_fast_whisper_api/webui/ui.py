@@ -19,6 +19,7 @@ from insanely_fast_whisper_api.utils.constants import (
     MAX_BATCH_SIZE,
     MIN_BATCH_SIZE,
     SUPPORTED_AUDIO_FORMATS,
+    SUPPORTED_UPLOAD_FORMATS,
 )
 from insanely_fast_whisper_api.webui.handlers import (
     FileHandlingConfig,
@@ -156,7 +157,7 @@ def create_ui_components():  # pylint: disable=too-many-locals
                     label="Upload Audio File(s)",
                     type="filepath",
                     file_count="multiple",
-                    file_types=list(SUPPORTED_AUDIO_FORMATS),
+                    file_types=list(SUPPORTED_UPLOAD_FORMATS),
                 )
 
                 # Model configuration

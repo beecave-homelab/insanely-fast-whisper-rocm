@@ -244,3 +244,14 @@ SUPPORTED_AUDIO_FORMATS: Set[str] = {
     ".flac",
     ".wav",
 }
+
+# Supported video formats (lowercase extensions)
+SUPPORTED_VIDEO_FORMATS: Set[str] = {
+    ".mp4",
+    ".mkv",
+    ".webm",
+    ".mov",
+}
+
+# Combined upload formats for WebUI and CLI
+SUPPORTED_UPLOAD_FORMATS: Set[str] = SUPPORTED_AUDIO_FORMATS | SUPPORTED_VIDEO_FORMATS
