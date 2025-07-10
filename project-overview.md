@@ -585,7 +585,7 @@ This allows reproducible benchmarking and easy switching between supported ROCm 
 
 ### Relationship with `requirements-*.txt` Files
 
-While PDM manages dependencies through [`pyproject.toml`](./pyproject.toml), the `requirements-*.txt` files (e.g., `requirements.txt`, `requirements-rocm.txt`, `requirements-dev.txt`) are currently maintained primarily for Docker builds and specific environment setups where PDM might not be directly used for the build process itself, or for environments that predate full PDM integration.
+The Docker build now uses PDM to install all project dependencies directly from [`pyproject.toml`](./pyproject.toml) via `pdm install --prod`. The `requirements-*.txt` files (e.g., `requirements.txt`, `requirements-rocm.txt`, `requirements-dev.txt`) are maintained only for legacy or special environments where PDM is not available, but are no longer used in the Docker build.
 
 Ideally, these `requirements.txt` files can be generated from `pdm.lock` using `pdm export` to ensure consistency:
 

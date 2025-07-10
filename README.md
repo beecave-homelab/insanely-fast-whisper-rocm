@@ -8,7 +8,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **🎛️ Gradio WebUI**: Web-based interface for batch file processing with live progress tracking
 - **⚡ CLI Tools**: Command-line interface for single-file processing
 - **📦 Model Management**: Automatic Hugging Face model downloading and caching
-- **🏗️ Docker Support**: Full containerization with development and production configurations
+- **🏗️ Docker Support**: Full containerization with development and production configurations (now using PDM for dependency management in Docker builds)
 - **🎯 ROCm Integration**: AMD GPU (ROCm v6.1) support for accelerated inference
 
 ## Key Features
