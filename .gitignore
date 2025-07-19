@@ -76,6 +76,9 @@ uploads/
 # Test directory
 tests/*.mp3
 transcripts/*.json
+transcripts/*.txt
+transcripts/*.zip
+transcripts/*.srt
 transcripts-srt/*.srt
 transcripts-txt/*.txt
 temp_uploads/*
