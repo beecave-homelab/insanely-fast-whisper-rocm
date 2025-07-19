@@ -7,6 +7,7 @@ import logging
 import sys
 
 import click
+from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL
 
 from insanely_fast_whisper_api.utils.download_hf_model import download_model_if_needed
 from insanely_fast_whisper_api.webui.ui import create_ui_components
@@ -58,8 +59,11 @@ def launch_webui(host: str, port: int, share: bool, model: str, debug: bool):
     download_model_if_needed(model_name=model, custom_logger=logger)
     logger.info("Model download/verification process for WebUI complete.")
 
-    # Create the interface
-    iface = create_ui_components()
+    # Determine which model value should be shown in the UI
+    ui_default_model = model if model else DEFAULT_MODEL
+
+    # Create the interface with the chosen default model
+    iface = create_ui_components(default_model=ui_default_model)
 
     # Launch the interface
     logger.info("Launching WebUI on %s:%s", host, port)

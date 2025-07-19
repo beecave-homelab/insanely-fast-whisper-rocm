@@ -6,6 +6,8 @@ focusing on the Hugging Face Transformers integration.
 
 import logging
 import time
+import warnings
+from transformers.utils import logging as hf_logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union
@@ -151,35 +153,54 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             _return_timestamps_value = False
 
         # These are the arguments that will be passed to the pipeline
+        # Suppress noisy warnings from HF transformers related to experimental chunk_length and deprecations.
+        warnings.filterwarnings(
+            "ignore",
+            message="Using `chunk_length_s` is very experimental*",
+            category=UserWarning,
+        )
+        warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
+        hf_logging.set_verbosity_error()
+
         pipeline_kwargs = {
             "chunk_length_s": self.config.chunk_length,
             "batch_size": self.config.batch_size,
             "return_timestamps": _return_timestamps_value,
+            "ignore_warning": True,
             "generate_kwargs": {
                 "no_repeat_ngram_size": 3,  # from original script
                 "temperature": 0,  # from original script
             },
         }
 
-        # Determine if the model is multilingual
-        lang_to_id = getattr(self.asr_pipe.model.config, "lang_to_id", {})
-        is_multilingual = len(lang_to_id) > 1
+        # Determine if the model is multilingual.  
+        # Newer Transformers versions expose language/task maps via `task_to_id`,
+        # older checkpoints used `lang_to_id`. We treat presence of either as a
+        # sign the model supports multilingual/translation tasks.
+        lang_to_id = getattr(self.asr_pipe.model.config, "lang_to_id", None)
+        task_to_id = getattr(self.asr_pipe.model.config, "task_to_id", None)
 
-        # Validate task for English-only models
+        is_multilingual = False
+        if task_to_id is not None:
+            is_multilingual = True
+        elif isinstance(lang_to_id, dict) and len(lang_to_id) > 1:
+            is_multilingual = True
+
+        # Previously we blocked translate for English-only models. With the updated
+        # check, only warn (do not raise) so the underlying pipeline can handle it.
         if not is_multilingual and task == "translate":
-            logger.error(
-                "Cannot translate with an English-only model: %s",
+            logger.warning(
+                "Translate requested but multilingual markers not found for model %s; proceeding anyway.",
                 self.config.model_name,
             )
-            raise ValueError(
-                f"Cannot translate with an English-only model: {self.config.model_name}"
-            )
 
-        # Conditionally add task and language for multilingual models
-        if is_multilingual:
-            pipeline_kwargs["generate_kwargs"]["task"] = task
-            if language and language.lower() != "none":
-                pipeline_kwargs["generate_kwargs"]["language"] = language
+        # Always add task and language parameters so Whisper knows we want translation.
+        pipeline_kwargs["generate_kwargs"]["task"] = task
+        # If translate task and no explicit language provided, default to English
+        if language and language.lower() != "none":
+            pipeline_kwargs["generate_kwargs"]["language"] = language
+        elif task == "translate":
+            pipeline_kwargs["generate_kwargs"]["language"] = "en"
 
         try:
             outputs = self.asr_pipe(str(audio_file_path), **pipeline_kwargs)

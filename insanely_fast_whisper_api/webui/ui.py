@@ -30,10 +30,10 @@ from insanely_fast_whisper_api.webui.handlers import (
 logger = logging.getLogger("insanely_fast_whisper_api.webui.ui")
 
 
-def _create_model_config_ui():
-    """Helper function to create model configuration UI components."""
+def _create_model_config_ui(default_model: str = DEFAULT_MODEL):
+    """Helper to create model configuration UI components with a default model."""
     with gr.Accordion("Model Configuration", open=True):
-        model = gr.Textbox(value=DEFAULT_MODEL, label="Model")
+        model = gr.Textbox(value=default_model, label="Model")
         device = gr.Textbox(value=DEFAULT_DEVICE, label="Device (e.g., 0, cpu, mps)")
         batch_size = gr.Slider(
             minimum=MIN_BATCH_SIZE,
@@ -141,7 +141,7 @@ def _process_transcription_request_wrapper(  # pylint: disable=too-many-argument
     )
 
 
-def create_ui_components():  # pylint: disable=too-many-locals
+def create_ui_components(default_model: str = DEFAULT_MODEL):  # pylint: disable=too-many-locals
     """Create and return Gradio UI components with all parameters."""
     with gr.Blocks(title="Insanely Fast Whisper - Local WebUI") as demo:
         gr.Markdown("# 🎙️ Insanely Fast Whisper - Local WebUI")
@@ -160,7 +160,7 @@ def create_ui_components():  # pylint: disable=too-many-locals
                 )
 
                 # Model configuration
-                model, device, batch_size = _create_model_config_ui()
+                model, device, batch_size = _create_model_config_ui(default_model)
 
                 # Processing options
                 dtype, chunk_length = _create_processing_options_ui()
