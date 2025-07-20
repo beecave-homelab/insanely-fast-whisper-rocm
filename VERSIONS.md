@@ -2,7 +2,6 @@
 
 > **Note:** Key Commits sections were updated on 2025-07-06 to reflect normalized tags and true release commits.
 
-
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
 [![Version](https://img.shields.io/badge/Version-v0.9.1-informational)](#release-timeline)
@@ -59,6 +58,7 @@ This patch fixes translation to English across all Whisper models and ensures CL
 - **Improved**: Added automatic timestamp disable for distil models.
 
 #### 📝 **Key Commits in v0.9.1**
+
 `70d744d`
 
 ---
@@ -88,6 +88,7 @@ This release introduces CLI benchmarking and performance monitoring, export form
 - **Refactored**: Modularized formatters and audio processing
 
 #### 📝 **Key Commits in v0.9.0**
+
 `32c6d73`
 
 ---
