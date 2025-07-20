@@ -5,13 +5,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v0.9.0-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v0.9.1-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v0.9.0` (Current) - *06-07-2025*](#v090-current---06-07-2025)
+- [`v0.9.1` (Current) - *19-07-2025*](#v091-current---19-07-2025)
+- [`v0.9.0` - *06-07-2025*](#v090---06-07-2025)
 - [`v0.8.0` - *06-07-2025*](#v080---06-07-2025)
 - [`v0.7.0` - *05-07-2025*](#v070---05-07-2025)
 - [`v0.6.0` - *05-07-2025*](#v060---05-07-2025)
@@ -40,7 +41,29 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v0.9.0` (Current) - *06-07-2025*
+### `v0.9.1` (Current) - *19-07-2025*
+
+#### 🐛 **Bug Fix Release: Translation & Model Override**
+
+This patch fixes translation to English across all Whisper models and ensures CLI `--model` overrides the `.env` default in the WebUI.
+
+#### 🐛 **Bug Fixes in v0.9.1**
+
+- **Fixed**: Multilingual detection logic causing translation block.
+- **Fixed**: CLI model override not respected by WebUI.
+- **Fixed**: Excessive warnings during translation now suppressed.
+
+#### 🔧 **Improvements in v0.9.1**
+
+- **Improved**: Warning handling to single concise notice.
+- **Improved**: Added automatic timestamp disable for distil models.
+
+#### 📝 **Key Commits in v0.9.1**
+`70d744d`
+
+---
+
+### `v0.9.0` - *06-07-2025*
 
 #### ✨ **Feature Release: CLI Benchmarking, Export Options & Translation**
 
