@@ -41,13 +41,13 @@ services:
     #################################################
     ## Default: Gradio WebUI without debug logging ##
     #################################################
-    command: ["python", "-m", "insanely_fast_whisper_api.webui"]    
+    # command: ["python", "-m", "insanely_fast_whisper_api.webui"]    
     ##############################################
     ## Alternative commands (uncomment to use): ##
     ##############################################
     #
     # Gradio WebUI with debug logging:
-    # command: ["python", "-m", "insanely_fast_whisper_api.webui",  "--debug"]
+    command: ["python", "-m", "insanely_fast_whisper_api.webui",  "--debug"]
     #
     # API only:
     # command: ["python", "-m", "insanely_fast_whisper_api"]
