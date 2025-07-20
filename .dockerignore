@@ -30,7 +30,6 @@ parts/
 # Added based on to-do list suggestions
 .venv/
 *.log
-*.lock
 *.egg-info/
 to-do/
 *.md
@@ -51,7 +50,6 @@ pip-log.txt
 pip-delete-this-directory.txt
 celerybeat-schedule
 *.log
-*.lock
 *.pot
 *.py[cod]
 
@@ -67,8 +65,3 @@ transcripts/
 .cursor
 .windsurf
 to-do/
-
-
-# Rye specific
-.rye/
-*.lock # if rye generates a lock file other than pyproject.toml related ones

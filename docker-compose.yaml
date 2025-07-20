@@ -41,14 +41,13 @@ services:
     #################################################
     ## Default: Gradio WebUI without debug logging ##
     #################################################
-    command: ["python", "-m", "insanely_fast_whisper_api.webui.cli"]
-    
+    command: ["python", "-m", "insanely_fast_whisper_api.webui"]    
     ##############################################
     ## Alternative commands (uncomment to use): ##
     ##############################################
     #
     # Gradio WebUI with debug logging:
-    # command: ["python", "-m", "insanely_fast_whisper_api.webui.cli",  "--debug"]
+    # command: ["python", "-m", "insanely_fast_whisper_api.webui",  "--debug"]
     #
     # API only:
     # command: ["python", "-m", "insanely_fast_whisper_api"]
@@ -57,7 +56,7 @@ services:
     # command: ["python", "-m", "insanely_fast_whisper_api", "-v"]
     #
     # Custom WebUI with extra args:
-    # command: ["python", "-m", "insanely_fast_whisper_api.webui.cli", "--port", "7860", "--host", "0.0.0.0", "--debug"]
+    # command: ["python", "-m", "insanely_fast_whisper_api.webui", "--port", "7860", "--host", "0.0.0.0", "--debug"]
     #
     # CLI tool transcription example:
-    # command: ["python", "-m", "insanely_fast_whisper_api.cli.cli", "transcribe", "tests/file.mp3", "--debug"]
+    # command: ["python", "-m", "insanely_fast_whisper_api.cli", "transcribe", "tests/file.mp3", "--debug"]

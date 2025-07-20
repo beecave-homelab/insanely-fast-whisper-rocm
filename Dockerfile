@@ -19,14 +19,12 @@ RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive ap
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the project config file for installing dependencies
-COPY pyproject.toml /app/
+# Copy requirements file for installing dependencies
+COPY requirements-all.txt .
+COPY .python-version .
 
-# Install pdm (Python Development Master) via pip
-RUN pip install --no-cache-dir pdm
-
-# Use pdm to install all project dependencies (prod only)
-RUN pdm install --prod
+# Install project dependencies using pip
+RUN pip install --no-cache-dir -r requirements-all.txt
 
 # Copy the OpenAPI spec file
 COPY openapi.yaml /app/
@@ -34,12 +32,12 @@ COPY openapi.yaml /app/
 # Copy the application source code
 # This is needed for `pdm install` to build and install the local package.
 # It assumes your main package source is in the 'insanely_fast_whisper_api' directory.
+# Copy the application source code and project metadata
+COPY pyproject.toml /app/
 COPY ./insanely_fast_whisper_api /app/insanely_fast_whisper_api/
 
-# Now, install the local package itself (handled by pdm above)
-# RUN pip install -U pip
-# RUN pip install --no-cache-dir .
-# (Handled by pdm install above)
+# Install the local package itself
+RUN pip install --no-cache-dir .
 
 # After `pip install .`, the package `insanely_fast_whisper_api` and its CLI/modules
 # should be available in the Python environment.
