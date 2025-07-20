@@ -5,11 +5,14 @@ in different output formats (text, SRT subtitles, JSON).
 """
 
 import json
+import logging
 from typing import Any, Dict
 
 from insanely_fast_whisper_api.utils.formatting import (
     format_seconds as util_format_seconds,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class BaseFormatter:
@@ -39,7 +42,16 @@ class TxtFormatter(BaseFormatter):
     @classmethod
     def format(cls, result: Dict[str, Any]) -> str:
         """Format as plain text."""
-        return result.get("text", "")
+        logger.debug(f"[TxtFormatter] Formatting result: keys={list(result.keys())}")
+        try:
+            text = result.get("text", "")
+            if not isinstance(text, str):
+                logger.error("[TxtFormatter] 'text' field is not a string.")
+                return ""
+            return text
+        except Exception as e:
+            logger.exception(f"[TxtFormatter] Failed to format TXT: {e}")
+            return ""
 
     @classmethod
     def get_file_extension(cls) -> str:
@@ -52,29 +64,26 @@ class SrtFormatter(BaseFormatter):
     @classmethod
     def format(cls, result: Dict[str, Any]) -> str:
         """Format as SRT subtitles with timestamps."""
-        chunks = result.get("chunks", [])
-        if not chunks:
+        logger.debug(f"[SrtFormatter] Formatting result: keys={list(result.keys())}")
+        try:
+            chunks = result.get("chunks", [])
+            if not chunks:
+                logger.warning("[SrtFormatter] No 'chunks' found in result.")
+                return ""
+
+            srt_content = []
+            for i, chunk in enumerate(chunks, 1):
+                try:
+                    start = util_format_seconds(chunk["start"])
+                    end = util_format_seconds(chunk["end"])
+                    text = chunk["text"].replace("\n", " ").strip()
+                    srt_content.append(f"{i}\n{start} --> {end}\n{text}\n")
+                except Exception as chunk_e:
+                    logger.error(f"[SrtFormatter] Failed to format chunk #{i}: {chunk_e}")
+            return "\n".join(srt_content)
+        except Exception as e:
+            logger.exception(f"[SrtFormatter] Failed to format SRT: {e}")
             return ""
-
-        srt_content = []
-        for i, chunk in enumerate(chunks, 1):
-            text = chunk.get("text", "").strip()
-            if not text:
-                continue
-
-            timestamps = chunk.get("timestamp", [None, None])
-            start, end = (
-                timestamps[0] if len(timestamps) > 0 else None,
-                (timestamps[1] if len(timestamps) > 1 else None),
-            )
-
-            srt_content.append(
-                f"{i}\n"
-                f"{util_format_seconds(start)} --> {util_format_seconds(end)}\n"
-                f"{text}\n"
-            )
-
-        return "\n".join(srt_content)
 
     @classmethod
     def get_file_extension(cls) -> str:
@@ -86,24 +95,28 @@ class VttFormatter(BaseFormatter):
 
     @classmethod
     def format(cls, result: Dict[str, Any]) -> str:
-        chunks = result.get("chunks", [])
-        if not chunks:
-            return "WEBVTT\n"
+        """Format as WebVTT subtitles with timestamps."""
+        logger.debug(f"[VttFormatter] Formatting result: keys={list(result.keys())}")
+        try:
+            chunks = result.get("chunks", [])
+            if not chunks:
+                logger.warning("[VttFormatter] No 'chunks' found in result.")
+                return "WEBVTT\n\n"
 
-        lines = ["WEBVTT", ""]
-        for chunk in chunks:
-            text = chunk.get("text", "").strip()
-            if not text:
-                continue
-            timestamps = chunk.get("timestamp", [None, None])
-            start, end = (
-                timestamps[0] if len(timestamps) > 0 else None,
-                (timestamps[1] if len(timestamps) > 1 else None),
-            )
-            lines.append(f"{util_format_seconds(start)} --> {util_format_seconds(end)}")
-            lines.append(text)
-            lines.append("")
-        return "\n".join(lines)
+            vtt_content = ["WEBVTT\n"]
+            for i, chunk in enumerate(chunks, 1):
+                try:
+                    start = util_format_seconds(chunk["start"])
+                    end = util_format_seconds(chunk["end"])
+                    text = chunk["text"].replace("\n", " ").strip()
+                    vtt_content.append(f"{start} --> {end}\n{text}\n")
+                except Exception as chunk_e:
+                    logger.error(f"[VttFormatter] Failed to format chunk #{i}: {chunk_e}")
+            return "\n".join(vtt_content)
+        except Exception as e:
+            logger.exception(f"[VttFormatter] Failed to format VTT: {e}")
+            return "WEBVTT\n\n"
+
 
     @classmethod
     def get_file_extension(cls) -> str:
@@ -116,7 +129,13 @@ class JsonFormatter(BaseFormatter):
     @classmethod
     def format(cls, result: Dict[str, Any]) -> str:
         """Format as pretty-printed JSON."""
-        return json.dumps(result, indent=2, ensure_ascii=False)
+        logger.debug(f"[JsonFormatter] Formatting result: type={type(result)}")
+        try:
+            return json.dumps(result, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.exception(f"[JsonFormatter] Failed to format JSON: {e}")
+            return "{}"
+
 
     @classmethod
     def get_file_extension(cls) -> str:
