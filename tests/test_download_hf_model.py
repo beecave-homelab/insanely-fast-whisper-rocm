@@ -1,23 +1,17 @@
 import logging
 import os
 from pathlib import Path  # Used for Path object
-from unittest.mock import MagicMock, patch  # Used for @patch decorator
+from unittest.mock import patch  # Used for @patch decorator
 
 import pytest
-from huggingface_hub.utils import HfHubHTTPError, HFValidationError
 
 # Import centralized constants instead of local ones
-from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL, HF_TOKEN
+from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL
 
 # Adjust the import path based on your project structure
 # This assumes 'insanely_fast_whisper_api' is a package in the project root
 from insanely_fast_whisper_api.utils.download_hf_model import (
-    ENV_VAR_HF_TOKEN,
-    ENV_VAR_MODEL_NAME,
     download_model_if_needed,
-)
-from insanely_fast_whisper_api.utils.download_hf_model import (
-    main as download_hf_model_main,
 )
 
 # Constants for testing, mirroring values or concepts from the main script

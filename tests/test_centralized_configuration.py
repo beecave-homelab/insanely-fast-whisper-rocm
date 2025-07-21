@@ -161,12 +161,11 @@ class TestModuleCentralizedConfigurationUsage:
     def test_app_module_uses_centralized_config(self):
         """Test that app.py uses constants from constants.py."""
         # Import the app module and verify it imports from constants
-        from insanely_fast_whisper_api.api import app
 
         # Check that app module imports are using centralized config
         # We can't directly test the imports without more complex mocking,
         # but we can verify the constants are available
-        from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL, HF_TOKEN
+        from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL
 
         assert DEFAULT_MODEL is not None
         assert isinstance(DEFAULT_MODEL, str)
@@ -174,7 +173,6 @@ class TestModuleCentralizedConfigurationUsage:
     def test_filename_generator_uses_centralized_config(self):
         """Test that filename_generator.py uses constants from constants.py."""
         from insanely_fast_whisper_api.utils.constants import FILENAME_TIMEZONE
-        from insanely_fast_whisper_api.utils.filename_generator import FilenameGenerator
 
         # Verify the constant is available and properly typed
         assert FILENAME_TIMEZONE is not None
@@ -182,10 +180,7 @@ class TestModuleCentralizedConfigurationUsage:
 
     def test_download_hf_model_uses_centralized_config(self):
         """Test that download_hf_model.py uses constants from constants.py."""
-        from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL, HF_TOKEN
-        from insanely_fast_whisper_api.utils.download_hf_model import (
-            download_model_if_needed,
-        )
+        from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL
 
         # Verify the constants are available
         assert DEFAULT_MODEL is not None

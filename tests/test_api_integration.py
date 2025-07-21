@@ -6,7 +6,7 @@ dependency injection and maintain the same functionality as before.
 
 import os
 from io import BytesIO
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient

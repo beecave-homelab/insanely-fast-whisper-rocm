@@ -5,9 +5,8 @@ and file handling components of the refactored API layer.
 """
 
 import os
-import tempfile
 from io import BytesIO
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import FastAPI, UploadFile
@@ -19,7 +18,6 @@ from insanely_fast_whisper_api.api.dependencies import (
     get_file_handler,
 )
 from insanely_fast_whisper_api.api.responses import ResponseFormatter
-from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_api.main import app  # Assuming your FastAPI app is here
 from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_JSON,

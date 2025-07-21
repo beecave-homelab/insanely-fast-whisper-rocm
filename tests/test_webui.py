@@ -146,7 +146,6 @@ def test_webui_transcription():
 import pytest
 
 
-
 def test_long_audio_transcription():
     """Test the transcription functionality with a longer audio file."""
     # Upload the longer test audio file
@@ -180,9 +179,9 @@ def test_long_audio_transcription():
             timeout=300,  # Longer timeout for the longer audio file
         )
 
-    assert (
-        response.status_code == 200
-    ), f"Long audio transcription request failed: {response.text}"
+    assert response.status_code == 200, (
+        f"Long audio transcription request failed: {response.text}"
+    )
 
     # Parse the response
     result = response.json()
@@ -199,7 +198,9 @@ def test_long_audio_transcription():
     assert "second" in processing_time.lower(), "Unexpected processing time format"
 
 
-@pytest.mark.skip(reason="Export endpoints not available in current WebUI implementation")
+@pytest.mark.skip(
+    reason="Export endpoints not available in current WebUI implementation"
+)
 def test_export_formats():
     """Test the export functionality for different formats."""
     # First, perform a transcription to get a result
@@ -244,9 +245,9 @@ def test_export_formats():
         timeout=30,
     )
     assert txt_response.status_code == 200, "TXT export failed"
-    assert (
-        "transcription_" in txt_response.json()["data"][0]
-    ), "Unexpected TXT filename format"
+    assert "transcription_" in txt_response.json()["data"][0], (
+        "Unexpected TXT filename format"
+    )
 
     # Test SRT export
     srt_response = requests.post(
@@ -259,9 +260,9 @@ def test_export_formats():
         timeout=30,
     )
     assert srt_response.status_code == 200, "SRT export failed"
-    assert (
-        "transcription_" in srt_response.json()["data"][0]
-    ), "Unexpected SRT filename format"
+    assert "transcription_" in srt_response.json()["data"][0], (
+        "Unexpected SRT filename format"
+    )
 
     # Test JSON export
     json_response = requests.post(
@@ -277,9 +278,9 @@ def test_export_formats():
         timeout=30,
     )
     assert json_response.status_code == 200, "JSON export failed"
-    assert (
-        "transcription_" in json_response.json()["data"][0]
-    ), "Unexpected JSON filename format"
+    assert "transcription_" in json_response.json()["data"][0], (
+        "Unexpected JSON filename format"
+    )
 
 
 if __name__ == "__main__":

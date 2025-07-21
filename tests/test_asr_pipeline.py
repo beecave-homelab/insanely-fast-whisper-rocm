@@ -1,26 +1,14 @@
 import wave
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Tuple
-from unittest.mock import MagicMock, patch
+from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 import pytest
 
 from insanely_fast_whisper_api.core import (
     ASRPipeline,
-    DeviceNotFoundError,
     TranscriptionError,
 )
-from insanely_fast_whisper_api.core.asr_backend import (
-    ASRBackend,
-    HuggingFaceBackendConfig,
-)
-from insanely_fast_whisper_api.core.pipeline import (
-    PipelineConfig,
-    TranscriptionResult,
-    WhisperPipeline,
-)
-from insanely_fast_whisper_api.utils import DEFAULT_DEVICE, DEFAULT_MODEL
 
 # A smaller model for faster testing if available, otherwise default.
 # You might need to adjust this if 'openai/whisper-tiny' is not suitable or always available.
@@ -111,9 +99,9 @@ def test_asr_pipeline_callback_non_chunked(short_audio_file: str):
         and update[2] == 1
         for update in progress_updates
     )
-    assert (
-        single_file_start_found
-    ), "Single file processing start not reported correctly"
+    assert single_file_start_found, (
+        "Single file processing start not reported correctly"
+    )
 
     # Stage 4: Overall Processing Complete (should be the last one)
     # This assumes transcription doesn't error out before completion.
@@ -127,9 +115,9 @@ def test_asr_pipeline_callback_non_chunked(short_audio_file: str):
             and update[2] == 1
             for update in progress_updates
         )
-        assert (
-            overall_complete_found
-        ), "Overall processing complete not reported correctly"
+        assert overall_complete_found, (
+            "Overall processing complete not reported correctly"
+        )
 
 
 # More tests will be added here
