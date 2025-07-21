@@ -66,20 +66,34 @@ class SrtFormatter(BaseFormatter):
         """Format as SRT subtitles with timestamps."""
         logger.debug(f"[SrtFormatter] Formatting result: keys={list(result.keys())}")
         try:
-            chunks = result.get("chunks", [])
+            chunks = result.get("segments") or result.get("chunks", [])
             if not chunks:
-                logger.warning("[SrtFormatter] No 'chunks' found in result.")
+                logger.warning(
+                    "[SrtFormatter] No 'segments' or 'chunks' found in result."
+                )
                 return ""
 
             srt_content = []
             for i, chunk in enumerate(chunks, 1):
                 try:
+                    if (
+                        "start" not in chunk
+                        or "end" not in chunk
+                        or chunk["start"] is None
+                        or chunk["end"] is None
+                    ):
+                        logger.warning(
+                            "[Formatter] Skipping chunk #%d with missing timestamp", i
+                        )
+                        continue
                     start = util_format_seconds(chunk["start"])
                     end = util_format_seconds(chunk["end"])
                     text = chunk["text"].replace("\n", " ").strip()
                     srt_content.append(f"{i}\n{start} --> {end}\n{text}\n")
                 except Exception as chunk_e:
-                    logger.error(f"[SrtFormatter] Failed to format chunk #{i}: {chunk_e}")
+                    logger.error(
+                        f"[SrtFormatter] Failed to format chunk #{i}: {chunk_e}"
+                    )
             return "\n".join(srt_content)
         except Exception as e:
             logger.exception(f"[SrtFormatter] Failed to format SRT: {e}")
@@ -98,25 +112,38 @@ class VttFormatter(BaseFormatter):
         """Format as WebVTT subtitles with timestamps."""
         logger.debug(f"[VttFormatter] Formatting result: keys={list(result.keys())}")
         try:
-            chunks = result.get("chunks", [])
+            chunks = result.get("segments") or result.get("chunks", [])
             if not chunks:
-                logger.warning("[VttFormatter] No 'chunks' found in result.")
+                logger.warning(
+                    "[VttFormatter] No 'segments' or 'chunks' found in result."
+                )
                 return "WEBVTT\n\n"
 
             vtt_content = ["WEBVTT\n"]
             for i, chunk in enumerate(chunks, 1):
                 try:
+                    if (
+                        "start" not in chunk
+                        or "end" not in chunk
+                        or chunk["start"] is None
+                        or chunk["end"] is None
+                    ):
+                        logger.warning(
+                            "[Formatter] Skipping chunk #%d with missing timestamp", i
+                        )
+                        continue
                     start = util_format_seconds(chunk["start"])
                     end = util_format_seconds(chunk["end"])
                     text = chunk["text"].replace("\n", " ").strip()
                     vtt_content.append(f"{start} --> {end}\n{text}\n")
                 except Exception as chunk_e:
-                    logger.error(f"[VttFormatter] Failed to format chunk #{i}: {chunk_e}")
+                    logger.error(
+                        f"[VttFormatter] Failed to format chunk #{i}: {chunk_e}"
+                    )
             return "\n".join(vtt_content)
         except Exception as e:
             logger.exception(f"[VttFormatter] Failed to format VTT: {e}")
             return "WEBVTT\n\n"
-
 
     @classmethod
     def get_file_extension(cls) -> str:
@@ -135,7 +162,6 @@ class JsonFormatter(BaseFormatter):
         except Exception as e:
             logger.exception(f"[JsonFormatter] Failed to format JSON: {e}")
             return "{}"
-
 
     @classmethod
     def get_file_extension(cls) -> str:

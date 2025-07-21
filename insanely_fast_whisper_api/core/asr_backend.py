@@ -7,7 +7,6 @@ focusing on the Hugging Face Transformers integration.
 import logging
 import time
 import warnings
-from transformers.utils import logging as hf_logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union
@@ -19,6 +18,7 @@ from transformers import (
     AutoTokenizer,
     pipeline,
 )
+from transformers.utils import logging as hf_logging
 
 from insanely_fast_whisper_api.core.errors import (
     DeviceNotFoundError,
@@ -143,14 +143,35 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
 
         start_time = time.perf_counter()
 
-        # distil-whisper models do not support timestamp generation, so we disable it.
+        # ------------------------------------------------------------------
+        # Timestamp capability detection for distil-whisper variants
+        # ------------------------------------------------------------------
         _return_timestamps_value = return_timestamps_value
-        if "distil-whisper" in self.config.model_name and _return_timestamps_value:
-            logger.warning(
-                "Timestamp generation is not supported for distil-whisper models. "
-                "Disabling timestamps for this transcription."
-            )
-            _return_timestamps_value = False
+        if _return_timestamps_value and "distil-whisper" in self.config.model_name:
+            # distil-whisper versions ≥ v2 have timestamp support; earlier ones do not.
+            # Determine this heuristically from the model name.
+            # Examples that support timestamps:
+            #   distil-whisper/distil-large-v2
+            #   distil-whisper/distil-medium.en-v2
+            # Anything ending in "-v2" or "-v3" (or greater) is considered supported.
+            supports_timestamps = False
+            try:
+                # Extract the suffix after the last "-v"
+                last_part = self.config.model_name.split("-v")[-1]
+                version_num = int(last_part.split("/")[0].split(".")[0])
+                supports_timestamps = version_num >= 2
+            except (ValueError, IndexError):
+                # Fallback: if model name explicitly contains "large-v2" etc.
+                supports_timestamps = any(
+                    token in self.config.model_name for token in ("-v2", "-v3", "-v4")
+                )
+
+            if not supports_timestamps:
+                logger.warning(
+                    "Timestamp generation not supported for model %s; disabling.",
+                    self.config.model_name,
+                )
+                _return_timestamps_value = False
 
         # These are the arguments that will be passed to the pipeline
         # Suppress noisy warnings from HF transformers related to experimental chunk_length and deprecations.
@@ -173,7 +194,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             },
         }
 
-        # Determine if the model is multilingual.  
+        # Determine if the model is multilingual.
         # Newer Transformers versions expose language/task maps via `task_to_id`,
         # older checkpoints used `lang_to_id`. We treat presence of either as a
         # sign the model supports multilingual/translation tasks.
