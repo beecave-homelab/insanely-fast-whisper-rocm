@@ -5,6 +5,7 @@ up the WebUI once per test session.
 
 Mark them with ``pytest.mark.webui`` so they can be skipped in CI when desired.
 """
+
 from pathlib import Path
 
 import pytest
@@ -53,6 +54,7 @@ def _predict(client: Client, audio_path: Path):
 def test_ui_root_accessible(webui_server):
     """Ensure the root URL responds and Gradio app is present."""
     import requests
+
     html = requests.get(webui_server, timeout=10).text.lower()
     assert "<gradio-app" in html, "gradio-app container not found"
 
@@ -70,7 +72,9 @@ def test_short_audio_transcription(webui_server):
 
     assert isinstance(transcription, str) and transcription, "Empty transcription"
     assert "second" in str(processing_time).lower(), "Processing time missing 'second'"
-    assert isinstance(config_used, dict) and config_used.get("model"), "Config missing model"
+    assert isinstance(config_used, dict) and config_used.get("model"), (
+        "Config missing model"
+    )
 
 
 @pytest.mark.skipif(not LONG_AUDIO_FILE.exists(), reason="Long test audio missing")

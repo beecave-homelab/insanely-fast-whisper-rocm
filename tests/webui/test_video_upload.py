@@ -32,4 +32,6 @@ def test_video_upload_transcription(webui_server):
     )
 
     transcription = result[0]
-    assert isinstance(transcription, str) and transcription.strip(), "Empty transcription from video"
+    assert isinstance(transcription, str) and transcription.strip(), (
+        "Empty transcription from video"
+    )
