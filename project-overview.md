@@ -420,6 +420,23 @@ python -m insanely_fast_whisper_api.webui --port 7860 --host 0.0.0.0 --debug
 
 ### CLI (Command Line Interface) Details
 
+#### Internal Refactor (v0.9.2)
+
+The CLI codebase was streamlined to eliminate hundreds of lines of duplicated `click` option declarations.
+
+* **`cli/common_options.py`** now exposes an `audio_options` decorator that injects all shared flags (model, device, batch-size, language, export settings, etc.) into any command.
+* **`cli/commands.py`** was rewritten so that `transcribe` and `translate` are *thin wrappers*:
+  ```python
+  @click.command(short_help="Transcribe an audio file")
+  @audio_options
+  def transcribe(audio_file: Path, **kwargs):
+      _run_task(task="transcribe", audio_file=audio_file, **kwargs)
+  ```
+* The business logic lives in `_run_task`, and helpers such as `_handle_output_and_benchmarks` keep the file organized.
+* New flag: `--stabilize` (timestamp post-processing via stable-ts).
+
+Nothing changes for end-users — option names and behaviour remain the same — but the code is far easier to maintain and extend.
+
 #### Performance Benchmarking
 
 Use the `--benchmark` flag to measure processing speed and collect hardware stats.
@@ -456,6 +473,10 @@ The JSON includes runtime stats, total elapsed time, system info (OS, Python, To
 ---
 
 The Command Line Interface is ideal for single-file processing, scripting, or quick tests. It supports multiple output formats and provides clear feedback on the transcription process.
+
+#### Timestamp Stabilization (`--stabilize`)
+
+Use `--stabilize` to refine timestamps with the [stable-ts](https://github.com/jianfch/stable-ts) library. When the flag is supplied, the CLI will post-process Whisper results via `stable_whisper.transcribe_any`, producing more reliable **word-level** timestamps while keeping chunk timings intact. The option works for both `transcribe` and `translate` commands and can be combined with any export or benchmarking settings.
 
 #### Export Formats
 

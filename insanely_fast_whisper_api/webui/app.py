@@ -7,8 +7,8 @@ import logging
 import sys
 
 import click
-from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL
 
+from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL
 from insanely_fast_whisper_api.utils.download_hf_model import download_model_if_needed
 from insanely_fast_whisper_api.webui.ui import create_ui_components
 
