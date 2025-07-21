@@ -20,6 +20,8 @@ dependencies = [
     "accelerate==1.9.0",
     "optimum==1.26.1",
     "ffmpeg-python==0.2.0",
+    "stable-ts==2.19.0",
+    "demucs==0.4.1",
 ]
 requires-python = "~=3.10"
 
@@ -51,7 +53,7 @@ name = "pypi"
 url = "https://pypi.org/simple/"
 verify_ssl = true
 type = "index"
-exclude_packages = ["torch", "onnxruntime-rocm", "pytorch-triton-rocm"]
+exclude_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm"]
 include_packages = ["*"]
 
 [[tool.pdm.source]]
@@ -59,7 +61,7 @@ name = "rocm-wheels"
 url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/"
 verify_ssl = true
 type = "find_links"
-include_packages = ["torch", "onnxruntime-rocm", "pytorch-triton-rocm"]
+include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm"]
 
 [project.optional-dependencies]
 dev = [
@@ -80,6 +82,7 @@ dev = [
 
 rocm = [
     "torch==2.5.1",
+    "torchaudio==2.5.0",
     "onnxruntime-rocm",
 ]
 

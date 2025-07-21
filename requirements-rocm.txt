@@ -4,5 +4,6 @@
 # torch==2.3.0
 # torch==2.4.1
 torch==2.5.1
+torchaudio==2.5.0
 # torch==2.6.0
 onnxruntime-rocm==1.21.0
