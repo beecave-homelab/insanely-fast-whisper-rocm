@@ -186,6 +186,13 @@ AUDIO_CHUNK_MIN_DURATION = float(
     os.getenv("AUDIO_CHUNK_MIN_DURATION", "5.0")
 )  # Minimum 5 seconds
 
+# --- Timestamp Stabilization defaults ---
+DEFAULT_STABILIZE = os.getenv("STABILIZE_DEFAULT", "false").lower() == "true"
+DEFAULT_DEMUCS = os.getenv("DEMUCS_DEFAULT", "false").lower() == "true"
+DEFAULT_VAD = os.getenv("VAD_DEFAULT", "false").lower() == "true"
+DEFAULT_VAD_THRESHOLD = float(os.getenv("VAD_THRESHOLD_DEFAULT", "0.35"))
+
+
 # ROCm/HIP Configuration (for AMD GPUs)
 HSA_OVERRIDE_GFX_VERSION = os.getenv(
     "HSA_OVERRIDE_GFX_VERSION"
