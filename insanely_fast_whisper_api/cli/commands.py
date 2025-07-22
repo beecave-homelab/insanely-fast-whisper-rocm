@@ -167,6 +167,14 @@ def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
             except Exception as exc:  # pragma: no cover
                 click.secho(f"⚠️  stable-ts post-processing failed: {exc}", fg="yellow")
 
+        # INFO-level summary (lazy logging)
+        logger.info(
+            "Segments: %s | Stabilized: %s (%s)",
+            result.get("segments_count"),
+            bool(result.get("stabilized")),
+            result.get("stabilization_path", "n/a"),
+        )
+
         total_time = time.time() - start_time
 
         # ------------------------------------------------------------------ #
