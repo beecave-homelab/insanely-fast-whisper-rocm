@@ -22,6 +22,7 @@ from insanely_fast_whisper_api.core.asr_backend import (
 )
 from insanely_fast_whisper_api.core.errors import TranscriptionError
 from insanely_fast_whisper_api.core.formatters import FORMATTERS
+from insanely_fast_whisper_api.core.integrations.stable_ts import stabilize_timestamps
 from insanely_fast_whisper_api.core.pipeline import ProgressEvent, WhisperPipeline
 from insanely_fast_whisper_api.utils import (
     DEFAULT_BATCH_SIZE,
@@ -68,6 +69,11 @@ class TranscriptionConfig:  # pylint: disable=too-many-instance-attributes
     chunk_length: int = 30
     chunk_duration: Optional[float] = None
     chunk_overlap: Optional[float] = None
+    # Stabilization options
+    stabilize: bool = False
+    demucs: bool = False
+    vad: bool = False
+    vad_threshold: float = 0.35
 
 
 @dataclass
@@ -333,6 +339,17 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
 
             # FIX: The asr_pipeline.process() returns the transcription data directly,
             # not wrapped in a "raw_result" field. result_dict IS the raw result.
+            # Apply word-level timestamp stabilization if requested
+            if transcription_config.stabilize:
+                try:
+                    result_dict = stabilize_timestamps(
+                        result_dict,
+                        demucs=transcription_config.demucs,
+                        vad=transcription_config.vad,
+                        vad_threshold=transcription_config.vad_threshold,
+                    )
+                except Exception as stab_err:  # pragma: no cover
+                    logger.error("Stabilization failed: %s", stab_err, exc_info=True)
             raw_transcription_result = result_dict
             # This is the path to the JSON file saved by the pipeline
             json_file_path_from_pipeline = result_dict.get("output_file_path")

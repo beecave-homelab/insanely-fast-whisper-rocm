@@ -68,6 +68,33 @@ def _create_processing_options_ui():
     return dtype, chunk_length
 
 
+def _create_stabilization_ui(
+    *,
+    default_stabilize: bool = False,
+    default_demucs: bool = False,
+    default_vad: bool = False,
+    default_vad_threshold: float = 0.35,
+):
+    """Helper function to create timestamp stabilization UI components."""
+    with gr.Accordion("Timestamp Stabilization", open=False):
+        stabilize = gr.Checkbox(
+            value=default_stabilize,
+            label="Enable word-level stabilization (--stabilize)",
+        )
+        demucs = gr.Checkbox(
+            value=default_demucs, label="Use Demucs noise reduction (--demucs)"
+        )
+        vad = gr.Checkbox(value=default_vad, label="Enable VAD (--vad)")
+        vad_threshold = gr.Slider(
+            minimum=0.1,
+            maximum=0.9,
+            step=0.05,
+            value=default_vad_threshold,
+            label="VAD Threshold (--vad-threshold)",
+        )
+    return stabilize, demucs, vad, vad_threshold
+
+
 def _create_task_config_ui():
     """Helper function to create task configuration UI components."""
     with gr.Accordion("Task Configuration", open=True):
@@ -113,6 +140,11 @@ def _process_transcription_request_wrapper(  # pylint: disable=too-many-argument
     task: str,
     dtype: str,
     whisper_chunk_length: int,
+    # Stabilization params
+    stabilize: bool,
+    demucs: bool,
+    vad: bool,
+    vad_threshold: float,
     save_transcriptions: bool,
     temp_uploads_dir: str,
     progress: gr.Progress = gr.Progress(),
@@ -133,6 +165,11 @@ def _process_transcription_request_wrapper(  # pylint: disable=too-many-argument
     file_handling_cfg = FileHandlingConfig(
         save_transcriptions=save_transcriptions, temp_uploads_dir=temp_uploads_dir
     )
+    # Inject stabilization options
+    transcription_cfg.stabilize = stabilize
+    transcription_cfg.demucs = demucs
+    transcription_cfg.vad = vad
+    transcription_cfg.vad_threshold = vad_threshold
     return process_transcription_request(
         audio_paths=audio_paths,
         transcription_config=transcription_cfg,
@@ -141,7 +178,14 @@ def _process_transcription_request_wrapper(  # pylint: disable=too-many-argument
     )
 
 
-def create_ui_components(default_model: str = DEFAULT_MODEL):  # pylint: disable=too-many-locals
+def create_ui_components(
+    *,
+    default_model: str = DEFAULT_MODEL,
+    default_stabilize: bool = False,
+    default_demucs: bool = False,
+    default_vad: bool = False,
+    default_vad_threshold: float = 0.35,
+):  # pylint: disable=too-many-locals
     """Create and return Gradio UI components with all parameters."""
     with gr.Blocks(title="Insanely Fast Whisper - Local WebUI") as demo:
         gr.Markdown("# 🎙️ Insanely Fast Whisper - Local WebUI")
@@ -164,6 +208,16 @@ def create_ui_components(default_model: str = DEFAULT_MODEL):  # pylint: disable
 
                 # Processing options
                 dtype, chunk_length = _create_processing_options_ui()
+
+                # Timestamp stabilization options
+                stabilize_opt, demucs_opt, vad_opt, vad_threshold_opt = (
+                    _create_stabilization_ui(
+                        default_stabilize=default_stabilize,
+                        default_demucs=default_demucs,
+                        default_vad=default_vad,
+                        default_vad_threshold=default_vad_threshold,
+                    )
+                )
 
                 # Task configuration
                 timestamp_type, language, task = _create_task_config_ui()
@@ -216,6 +270,11 @@ def create_ui_components(default_model: str = DEFAULT_MODEL):  # pylint: disable
                 task,
                 dtype,
                 chunk_length,
+                # Stabilization options (match wrapper order)
+                stabilize_opt,
+                demucs_opt,
+                vad_opt,
+                vad_threshold_opt,
                 save_transcriptions,
                 temp_uploads_dir,
             ],
