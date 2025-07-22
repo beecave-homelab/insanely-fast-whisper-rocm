@@ -142,8 +142,19 @@ def stabilize_timestamps(
             "stable-ts succeeded: segments=%d", len(refined_dict.get("segments", []))
         )
         merged = {**result, **refined_dict, "stabilized": True}
-        if "segments" in merged:
+
+        def _segments_have_timestamps(seg_list: list[dict]) -> bool:
+            return any(
+                (s.get("start") is not None and s.get("end") is not None)
+                for s in seg_list
+            )
+
+        if "segments" in merged and _segments_have_timestamps(merged["segments"]):
+            # Only discard original chunks if we actually obtained usable timestamps
             merged.pop("chunks", None)
+        # Enrich with metadata before returning (lazy logging ready)
+        merged.setdefault("segments_count", len(refined_dict.get("segments", [])))
+        merged.setdefault("stabilization_path", "lambda")
         return merged
     except Exception as exc:  # pragma: no cover
         logger.error("stable-ts lambda inference path failed: %s", exc, exc_info=True)
@@ -162,6 +173,8 @@ def stabilize_timestamps(
             merged = {**result, **refined_dict, "stabilized": True}
             if "segments" in merged:
                 merged.pop("chunks", None)
+            merged.setdefault("segments_count", len(refined_dict.get("segments", [])))
+            merged.setdefault("stabilization_path", "postprocess")
             return merged
         except Exception as exc:  # pragma: no cover
             logger.warning("postprocess_word_timestamps fallback failed: %s", exc)

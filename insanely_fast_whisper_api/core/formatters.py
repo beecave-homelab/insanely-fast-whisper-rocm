@@ -8,7 +8,7 @@ import json
 import logging
 from typing import Any, Dict
 
-from insanely_fast_whisper_api.utils.formatting import (
+from insanely_fast_whisper_api.utils.format_time import (
     format_seconds as util_format_seconds,
 )
 
@@ -66,7 +66,31 @@ class SrtFormatter(BaseFormatter):
         """Format as SRT subtitles with timestamps."""
         logger.debug(f"[SrtFormatter] Formatting result: keys={list(result.keys())}")
         try:
-            chunks = result.get("segments") or result.get("chunks", [])
+            segments = result.get("segments", [])
+            chunks_candidate = result.get("chunks", [])
+
+            def _has_valid_timestamp(lst: list[dict]) -> bool:
+                return any(
+                    (
+                        (c.get("start") is not None and c.get("end") is not None)
+                        or (
+                            isinstance(c.get("timestamp"), (list, tuple))
+                            and len(c.get("timestamp")) == 2
+                            and c.get("timestamp")[0] is not None
+                            and c.get("timestamp")[1] is not None
+                        )
+                    )
+                    for c in lst
+                )
+
+            # Select whichever list yields more valid entries
+            segments_valid = [c for c in segments if _has_valid_timestamp([c])]
+            chunks_valid = [c for c in chunks_candidate if _has_valid_timestamp([c])]
+            chunks = (
+                segments_valid
+                if len(segments_valid) >= len(chunks_valid)
+                else chunks_valid
+            )
             if not chunks:
                 logger.warning(
                     "[SrtFormatter] No 'segments' or 'chunks' found in result."
@@ -76,18 +100,27 @@ class SrtFormatter(BaseFormatter):
             srt_content = []
             for i, chunk in enumerate(chunks, 1):
                 try:
+                    # Support both {'start': ... , 'end': ...} and {'timestamp': [start, end]}
+                    ts_pair = (
+                        chunk.get("timestamp")
+                        if isinstance(chunk.get("timestamp"), (list, tuple))
+                        else None
+                    )
+                    start_sec = chunk.get("start")
+                    end_sec = chunk.get("end")
                     if (
-                        "start" not in chunk
-                        or "end" not in chunk
-                        or chunk["start"] is None
-                        or chunk["end"] is None
+                        (start_sec is None or end_sec is None)
+                        and ts_pair
+                        and len(ts_pair) == 2
                     ):
+                        start_sec, end_sec = ts_pair[0], ts_pair[1]
+                    if start_sec is None or end_sec is None:
                         logger.warning(
                             "[Formatter] Skipping chunk #%d with missing timestamp", i
                         )
                         continue
-                    start = util_format_seconds(chunk["start"])
-                    end = util_format_seconds(chunk["end"])
+                    start = util_format_seconds(start_sec)
+                    end = util_format_seconds(end_sec)
                     text = chunk["text"].replace("\n", " ").strip()
                     srt_content.append(f"{i}\n{start} --> {end}\n{text}\n")
                 except Exception as chunk_e:
@@ -112,7 +145,31 @@ class VttFormatter(BaseFormatter):
         """Format as WebVTT subtitles with timestamps."""
         logger.debug(f"[VttFormatter] Formatting result: keys={list(result.keys())}")
         try:
-            chunks = result.get("segments") or result.get("chunks", [])
+            segments = result.get("segments", [])
+            chunks_candidate = result.get("chunks", [])
+
+            def _has_valid_timestamp(lst: list[dict]) -> bool:
+                return any(
+                    (
+                        (c.get("start") is not None and c.get("end") is not None)
+                        or (
+                            isinstance(c.get("timestamp"), (list, tuple))
+                            and len(c.get("timestamp")) == 2
+                            and c.get("timestamp")[0] is not None
+                            and c.get("timestamp")[1] is not None
+                        )
+                    )
+                    for c in lst
+                )
+
+            # Select whichever list yields more valid entries
+            segments_valid = [c for c in segments if _has_valid_timestamp([c])]
+            chunks_valid = [c for c in chunks_candidate if _has_valid_timestamp([c])]
+            chunks = (
+                segments_valid
+                if len(segments_valid) >= len(chunks_valid)
+                else chunks_valid
+            )
             if not chunks:
                 logger.warning(
                     "[VttFormatter] No 'segments' or 'chunks' found in result."
@@ -122,18 +179,27 @@ class VttFormatter(BaseFormatter):
             vtt_content = ["WEBVTT\n"]
             for i, chunk in enumerate(chunks, 1):
                 try:
+                    # Support both {'start': ..., 'end': ...} and {'timestamp': [start, end]}
+                    ts_pair = (
+                        chunk.get("timestamp")
+                        if isinstance(chunk.get("timestamp"), (list, tuple))
+                        else None
+                    )
+                    start_sec = chunk.get("start")
+                    end_sec = chunk.get("end")
                     if (
-                        "start" not in chunk
-                        or "end" not in chunk
-                        or chunk["start"] is None
-                        or chunk["end"] is None
+                        (start_sec is None or end_sec is None)
+                        and ts_pair
+                        and len(ts_pair) == 2
                     ):
+                        start_sec, end_sec = ts_pair[0], ts_pair[1]
+                    if start_sec is None or end_sec is None:
                         logger.warning(
                             "[Formatter] Skipping chunk #%d with missing timestamp", i
                         )
                         continue
-                    start = util_format_seconds(chunk["start"])
-                    end = util_format_seconds(chunk["end"])
+                    start = util_format_seconds(start_sec)
+                    end = util_format_seconds(end_sec)
                     text = chunk["text"].replace("\n", " ").strip()
                     vtt_content.append(f"{start} --> {end}\n{text}\n")
                 except Exception as chunk_e:
