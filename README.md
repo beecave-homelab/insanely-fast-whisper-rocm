@@ -19,6 +19,8 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **High Performance**: Optimized processing with configurable batch sizes and model parameters
 - **Multiple Output Formats**: Support for JSON, TXT, and SRT subtitle formats
 - **Standardized Filenames**: Consistent, timestamped output naming across all interfaces
+- **Word-level Timestamp Stabilization (CLI & WebUI)**: Optional `--stabilize` flag (powered by [stable-ts](https://github.com/jianfch/stable-ts)) greatly refines chunk timestamps, producing accurate word-aligned SRT/VTT output
+- **Noise Reduction & Voice Activity Detection (CLI & WebUI)**: Optional `--demucs` and `--vad` flags provide Demucs-based denoising and intelligent speech-region detection (adjustable `--vad-threshold`) for cleaner, more accurate transcripts
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
 [![Version](https://img.shields.io/badge/Version-v0.9.1-informational)](#insanely-fast-whisper-api-rocm)
@@ -236,6 +238,9 @@ The CLI is suitable for single-file transcription and translation.
 Basic usage:
 
 ```bash
+# Transcribe with word-level timestamp stabilization
+python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --stabilize
+
 # Transcribe and get a JSON file (default)
 python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3
 

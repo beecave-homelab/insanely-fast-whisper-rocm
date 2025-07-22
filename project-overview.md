@@ -127,6 +127,7 @@ pdm run cli transcribe audio.mp3  # CLI
 - **Transcription**: Audio to text in source language
 - **Translation**: Audio to English
 - **Native SDPA Acceleration**: Hugging Face `sdpa` attention implementation for faster processing on compatible hardware.
+- **Word-level Timestamp Stabilization**: Optional integration with [`stable-ts`](https://github.com/jianfch/stable-ts). Enable via `--stabilize` (CLI) or corresponding API/WebUI options to obtain refined word-aligned segments.
 - **Video & Audio Formats**: Support for standard audio files (.wav, .flac, .mp3) **and** popular video containers (.mp4, .mkv, .webm, .mov) via automatic audio extraction with FFmpeg
 - **Filename Standardization**: Predictable and configurable output naming
 
@@ -403,7 +404,11 @@ The API endpoints have distinct parameters. Core model settings (`model`, `devic
 
 ### WebUI (Gradio Interface) Details
 
-The Gradio WebUI offers an interactive, browser-based experience, particularly useful for batch processing multiple audio files.
+The Gradio WebUI offers an interactive, browser-based experience—ideal for batch processing multiple audio/video files—and now **parity with the CLI for advanced audio-preprocessing features**:
+
+- **Word-level timestamp stabilization** (`--stabilize`, powered by stable-ts)
+- **Demucs noise reduction** (`--demucs`)
+- **Voice Activity Detection** (`--vad`, with adjustable `--vad-threshold`)
 
 **Launch Options:**
 
@@ -424,16 +429,19 @@ python -m insanely_fast_whisper_api.webui --port 7860 --host 0.0.0.0 --debug
 
 The CLI codebase was streamlined to eliminate hundreds of lines of duplicated `click` option declarations.
 
-* **`cli/common_options.py`** now exposes an `audio_options` decorator that injects all shared flags (model, device, batch-size, language, export settings, etc.) into any command.
-* **`cli/commands.py`** was rewritten so that `transcribe` and `translate` are *thin wrappers*:
+- **`cli/common_options.py`** now exposes an `audio_options` decorator that injects all shared flags (model, device, batch-size, language, export settings, etc.) into any command.
+- **`cli/commands.py`** was rewritten so that `transcribe` and `translate` are *thin wrappers*:
+
   ```python
   @click.command(short_help="Transcribe an audio file")
   @audio_options
   def transcribe(audio_file: Path, **kwargs):
       _run_task(task="transcribe", audio_file=audio_file, **kwargs)
   ```
-* The business logic lives in `_run_task`, and helpers such as `_handle_output_and_benchmarks` keep the file organized.
-* New flag: `--stabilize` (timestamp post-processing via stable-ts).
+
+- The business logic lives in `_run_task`, and helpers such as `_handle_output_and_benchmarks` keep the file organized.
+
+- New flag: `--stabilize` (timestamp post-processing via stable-ts).
 
 Nothing changes for end-users — option names and behaviour remain the same — but the code is far easier to maintain and extend.
 
@@ -802,6 +810,9 @@ python -m insanely_fast_whisper_api.webui --port 7860 --host 0.0.0.0 --debug
 ```bash
 # Transcribe audio file
 python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3
+
+# Transcribe with word-level stabilization
+python -m insanely_fast_whisper_api.cli transcribe tests/conversion-test-file.mp3 --stabilize
 
 # Transcribe with options
 python -m insanely_fast_whisper_api.cli transcribe tests/conversion-test-file.mp3 --no-timestamps --debug

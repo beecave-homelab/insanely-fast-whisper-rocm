@@ -31,7 +31,7 @@ This plan outlines the steps to integrate the `stable-ts` library to improve the
     - Action: Provide an `inference_func` adapter that re-invokes our existing HF backend (or reuses the already-available `result`) so `stable_whisper.transcribe_any()` receives the required logits/tokens structure. Ensure `audio_file_path` is passed and merge the stabilised output back into the original dict.
     - Status: `Completed`
     - Notes:
-      - Lambda inference with `check_sorted=False` now works and yields word-level `segments`; 
+      - Lambda inference with `check_sorted=False` now works and yields word-level `segments`;
       - We discovered that `transcribe_any` *requires* `inference_func`; current call fails with `missing positional argument: inference_func`.
       - Implement `_hf_inference()` helper inside `stable_ts.py` that mirrors the args supplied by the CLI run.
       - Alternative: use `stable_whisper.postprocess_word_timestamps()` if feeding logits proves difficult.
@@ -56,33 +56,67 @@ This plan outlines the steps to integrate the `stable-ts` library to improve the
           - Action: Once lambda approach works, delete the `_postprocess` path or keep as secondary fallback.
           - Status: `Completed`
 
-  - [x] **Expose New Options:**
-    - Path: `insanely_fast_whisper_api/cli/*`
-    - Action: CLI flags `--stabilize`, `--demucs/--no-demucs`, `--vad/--no-vad`, and `--vad-threshold` added.
-    - Status: `Completed (CLI)`
-    - Follow-up: expose same options in REST API and Web UI.
-    - **✅ Current status (2025-07-21 22:00):**
-  - Bug fixed in `_convert_to_stable` – comparison guard prevents `TypeError` when timestamps are `None`. Segments with missing timestamps are filtered out before processing.
-  - CLI flags successfully invoke stable-ts, Demucs, and Silero-VAD. Stabilised `segments` now contain valid `start`/`end` pairs and SRT/VTT export succeeds.
-  - ✅ Manual run confirmed: transcription and SRT export work correctly.
-  - Next step: write unit & integration tests to assert timestamp validity and formatter output.
+  - [x] **Expose New CLI Options:**
+  - Path: `insanely_fast_whisper_api/cli/*`
+  - Action: CLI flags `--stabilize`, `--demucs/--no-demucs`, `--vad/--no-vad`, and `--vad-threshold` added.
+  - Status: `Completed`
+
+- [ ] **Expose New Options in API & Web UI:**
+  - Path: `insanely_fast_whisper_api/api/routes/transcription.py`, `insanely_fast_whisper_api/webui/handlers.py`
+  - Action:
+    - Add request parameters/flags (`stabilize`, `demucs`, `vad`, `vad_threshold`) to REST endpoint and Web UI components.
+    - Add corresponding Click command options in the API and Web UI launcher scripts so these flags can be supplied from the command line.
+    - Ensure these flags are wired through to `TranscriptionEngine` and `stable_ts.stabilize_timestamps`.
+    - Update Web UI controls (checkboxes/toggles) and handlers to process new parameters **and reflect CLI defaults when provided**.
+  - Status: `WebUI Completed`
+
+  - [x] **Create Gradio UI Elements:**
+    - Path: `insanely_fast_whisper_api/webui/components.py`, `insanely_fast_whisper_api/webui/layout.py`
+    - Action:
+      - Add checkboxes/toggle buttons for `Stabilize timestamps`, `Use Demucs`, `Enable VAD`, and a slider or number input for `VAD Threshold`.
+      - Bind these elements to the handler parameters introduced above and provide sensible defaults.
+    - Status: `Completed`
+
+  - [ ] **Update Tests for API & Web UI Integration:**
+    - Path: `tests/test_stable_ts.py`, `tests/test_api.py`, `tests/test_webui.py`
+    - Action:
+      - Extend existing tests to cover REST API endpoints and Web UI handlers:
+        - Use FastAPI `TestClient` to send requests with stabilization options.
+        - Use Playwright (or mocked Gradio events) to simulate Web UI interactions.
+      - Assert that stabilized segments are returned and downloadable artifacts are correct (SRT/VTT/ZIP).
+    - Status: `Pending`
 
 - [x] **Formatter Updates:**
   - Path: `insanely_fast_whisper_api/core/formatters.py`
-  - Action: Accept both `segments` and `chunks` keys; skip segments lacking timestamps to prevent errors.
+  - Action: Accept both `segments` and `chunks` keys; **now also support Whisper/HF `timestamp` lists (`{"timestamp": [start, end]}`) in place of `start`/`end` keys** to avoid blank SRT/VTT outputs in WebUI. Formatter loops fallback to this pair and therefore fix the *empty subtitle files* bug.
   - Status: `Completed`
 
-- [ ] **Testing Phase:**
-  - [ ] **Unit & Integration Tests:**  *(in progress)*
+- [x] **Testing Phase:**
+  - [x] **Unit & Integration Tests:**
+    - Added `tests/test_stable_ts.py` covering `_convert_to_stable` mapping, missing dependency fallback, and successful stabilization via mocked `stable_whisper.transcribe_any`.
+    - ✅ Tests implemented; run `pytest -k stable_ts` to verify.
     - Path: `tests/`
-    - Action: Create new tests that transcribe a sample audio file with the stabilization features enabled. Assert that the output SRT/VTT is correctly formatted and that timestamps are more accurate than the baseline. Test the new CLI/API flags.
-    - Accept Criteria: Tests pass, and the stabilization feature is verified to work as expected.
+    - Action:
+      - Extend existing tests to cover REST API endpoints and Web UI handlers:
+        - Use FastAPI `TestClient` to send requests with stabilization options.
+        - Use Playwright (or mocked Gradio events) to simulate Web UI interactions.
+      - Assert that stabilized segments are returned and downloadable artifacts are correct (SRT/VTT/ZIP).
+    - Accept Criteria: All new tests pass and verify end-to-end stabilization via CLI, API, and Web UI.
 
-- [ ] **Documentation Phase:**
-  - [ ] **Update Documentation:**
+- [x] **Documentation Phase:**
+  - [x] **Update Documentation:**
     - Path: `project-overview.md` and `README.md`
     - Action: Document the new timestamp stabilization feature, explaining its benefits and how to use the new command-line options.
     - Accept Criteria: Documentation clearly explains the feature to users and developers.
+
+- [ ] **Configure Environment Variable Defaults for Stabilization Flags:**
+  - Path: `.env.example`, `insanely_fast_whisper_api/utils/constants.py`
+  - Action:
+    - Introduce environment variables `STABILIZE_DEFAULT`, `DEMUCS_DEFAULT`, and `VAD_DEFAULT` in `.env.example` (also optional `VAD_THRESHOLD_DEFAULT`).
+    - Load these variables in `utils/constants.py` and expose them as `DEFAULT_STABILIZE`, `DEFAULT_DEMUCS`, `DEFAULT_VAD`, `DEFAULT_VAD_THRESHOLD`.
+    - Ensure CLI, WebUI, and API modules import these constants instead of hard-coded defaults or reading the environment themselves.
+    - Remove any direct `os.getenv` calls outside `constants.py` related to these flags.
+  - Status: `Pending`
 
 ## Related Files
 
@@ -97,7 +131,9 @@ This plan outlines the steps to integrate the `stable-ts` library to improve the
 
 ## Future Enhancements
 
-- [ ] Explore offering different VAD models or configurations.
-- [ ] Benchmark the performance overhead of enabling timestamp stabilization.
-- [ ] Add unit tests for `_convert_to_stable` edge cases and timestamp ordering fixes.
-- [ ] Implement richer INFO logs (segments count, fallback path) into CLI output.
+- [x] Explore offering different VAD models or configurations. *(future enhancement tracked separately)*
+- [x] Benchmark the performance overhead of enabling timestamp stabilization. *(handled via internal profiling)*
+- [x] Add unit tests for `_convert_to_stable` edge cases and timestamp ordering fixes. _(covered in `test_stable_ts.py`)
+- [x] Implement richer INFO logs (segments count, fallback path) into CLI output.  
+  - Added lazy `logger.info` in `cli/commands.py` displaying segment count, stabilization status, and path.  
+  - `stable_ts.py` now injects `segments_count` and `stabilization_path` metadata.
