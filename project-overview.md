@@ -128,7 +128,7 @@ pdm run cli transcribe audio.mp3  # CLI
 - **Translation**: Audio to English
 - **Native SDPA Acceleration**: Hugging Face `sdpa` attention implementation for faster processing on compatible hardware.
 - **Word-level Timestamp Stabilization**: Optional integration with [`stable-ts`](https://github.com/jianfch/stable-ts). Enable via `--stabilize` (CLI) or corresponding API/WebUI options to obtain refined word-aligned segments.
-- **Video & Audio Formats**: Support for standard audio files (.wav, .flac, .mp3) **and** popular video containers (.mp4, .mkv, .webm, .mov) via automatic audio extraction with FFmpeg
+- **Video & Audio Formats**: Support for standard audio files (.wav, .flac, .mp3, .m4a) **and** popular video containers (.mp4, .mkv, .webm, .mov) via automatic audio extraction with FFmpeg
 - **Filename Standardization**: Predictable and configurable output naming
 
 ### Interface Options
@@ -396,9 +396,17 @@ The API endpoints have distinct parameters. Core model settings (`model`, `devic
   - `file`: The audio file to transcribe (required).
   - `timestamp_type`: The granularity of the timestamps (`chunk` or `word`). If you provide `text` here, the response will be plain text instead of JSON. Defaults to `chunk`.
   - `language`: The language of the audio. If omitted, the model will auto-detect the language.
+  - `stabilize`: `bool` - Enable timestamp stabilization using `stable-ts`. Defaults to `False`.
+  - `demucs`: `bool` - Enable Demucs noise reduction before transcription. Defaults to `False`.
+  - `vad`: `bool` - Enable Silero VAD to filter out silent parts of the audio. Defaults to `False`.
+  - `vad_threshold`: `float` - The threshold for VAD. Defaults to `0.35`.
 - `/v1/audio/translations`:
   - `file`: The audio file to translate (required).
   - `response_format`: The desired output format (`json` or `text`). Defaults to `json`.
+  - `stabilize`: `bool` - Enable timestamp stabilization using `stable-ts`. Defaults to `False`.
+  - `demucs`: `bool` - Enable Demucs noise reduction before transcription. Defaults to `False`.
+  - `vad`: `bool` - Enable Silero VAD to filter out silent parts of the audio. Defaults to `False`.
+  - `vad_threshold`: `float` - The threshold for VAD. Defaults to `0.35`.
   - `timestamp_type`: The granularity of the timestamps (`chunk` or `word`). Defaults to `chunk`.
   - `language`: The language of the audio. If omitted, the model will auto-detect the language.
 

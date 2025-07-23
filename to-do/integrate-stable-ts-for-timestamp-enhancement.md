@@ -61,14 +61,14 @@ This plan outlines the steps to integrate the `stable-ts` library to improve the
   - Action: CLI flags `--stabilize`, `--demucs/--no-demucs`, `--vad/--no-vad`, and `--vad-threshold` added.
   - Status: `Completed`
 
-- [ ] **Expose New Options in API & Web UI:**
-  - Path: `insanely_fast_whisper_api/api/routes/transcription.py`, `insanely_fast_whisper_api/webui/handlers.py`
+- [x] **Expose New Options in API & Web UI:**
+  - Path: `insanely_fast_whisper_api/api/routes.py`, `insanely_fast_whisper_api/webui/handlers.py`
   - Action:
     - Add request parameters/flags (`stabilize`, `demucs`, `vad`, `vad_threshold`) to REST endpoint and Web UI components.
     - Add corresponding Click command options in the API and Web UI launcher scripts so these flags can be supplied from the command line.
     - Ensure these flags are wired through to `TranscriptionEngine` and `stable_ts.stabilize_timestamps`.
     - Update Web UI controls (checkboxes/toggles) and handlers to process new parameters **and reflect CLI defaults when provided**.
-  - Status: `WebUI Completed`
+  - Status: `Completed`
 
   - [x] **Create Gradio UI Elements:**
     - Path: `insanely_fast_whisper_api/webui/components.py`, `insanely_fast_whisper_api/webui/layout.py`
@@ -77,7 +77,8 @@ This plan outlines the steps to integrate the `stable-ts` library to improve the
       - Bind these elements to the handler parameters introduced above and provide sensible defaults.
     - Status: `Completed`
 
-  - [ ] **Update Tests for API & Web UI Integration:**
+  - [x] **Update Tests for API & Web UI Integration:**
+  - Status: `Completed (WebUI tested, API skipped per user)`
     - Path: `tests/test_stable_ts.py`, `tests/test_api.py`, `tests/test_webui.py`
     - Action:
       - Extend existing tests to cover REST API endpoints and Web UI handlers:
@@ -103,20 +104,21 @@ This plan outlines the steps to integrate the `stable-ts` library to improve the
       - Assert that stabilized segments are returned and downloadable artifacts are correct (SRT/VTT/ZIP).
     - Accept Criteria: All new tests pass and verify end-to-end stabilization via CLI, API, and Web UI.
 
-- [x] **Documentation Phase:**
+- [ ] **Documentation Phase:**
   - [x] **Update Documentation:**
+  - Status: `Completed`
     - Path: `project-overview.md` and `README.md`
     - Action: Document the new timestamp stabilization feature, explaining its benefits and how to use the new command-line options.
     - Accept Criteria: Documentation clearly explains the feature to users and developers.
 
-- [ ] **Configure Environment Variable Defaults for Stabilization Flags:**
+- [x] **Configure Environment Variable Defaults for Stabilization Flags:**
   - Path: `.env.example`, `insanely_fast_whisper_api/utils/constants.py`
   - Action:
     - Introduce environment variables `STABILIZE_DEFAULT`, `DEMUCS_DEFAULT`, and `VAD_DEFAULT` in `.env.example` (also optional `VAD_THRESHOLD_DEFAULT`).
     - Load these variables in `utils/constants.py` and expose them as `DEFAULT_STABILIZE`, `DEFAULT_DEMUCS`, `DEFAULT_VAD`, `DEFAULT_VAD_THRESHOLD`.
     - Ensure CLI, WebUI, and API modules import these constants instead of hard-coded defaults or reading the environment themselves.
     - Remove any direct `os.getenv` calls outside `constants.py` related to these flags.
-  - Status: `Pending`
+  - Status: `Completed`
 
 ## Related Files
 

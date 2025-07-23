@@ -19,8 +19,8 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **High Performance**: Optimized processing with configurable batch sizes and model parameters
 - **Multiple Output Formats**: Support for JSON, TXT, and SRT subtitle formats
 - **Standardized Filenames**: Consistent, timestamped output naming across all interfaces
-- **Word-level Timestamp Stabilization (CLI & WebUI)**: Optional `--stabilize` flag (powered by [stable-ts](https://github.com/jianfch/stable-ts)) greatly refines chunk timestamps, producing accurate word-aligned SRT/VTT output
-- **Noise Reduction & Voice Activity Detection (CLI & WebUI)**: Optional `--demucs` and `--vad` flags provide Demucs-based denoising and intelligent speech-region detection (adjustable `--vad-threshold`) for cleaner, more accurate transcripts
+- **Word-level Timestamp Stabilization (CLI, API & WebUI)**: Optional `--stabilize` flag (powered by [stable-ts](https://github.com/jianfch/stable-ts)) greatly refines chunk timestamps, producing accurate word-aligned SRT/VTT output
+- **Noise Reduction & Voice Activity Detection (CLI, API & WebUI)**: Optional `--demucs` and `--vad` flags provide Demucs-based denoising and intelligent speech-region detection (adjustable `--vad-threshold`) for cleaner, more accurate transcripts
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
 [![Version](https://img.shields.io/badge/Version-v0.9.1-informational)](#insanely-fast-whisper-api-rocm)
@@ -295,6 +295,10 @@ The API endpoints have distinct parameters. Core model settings (`model`, `devic
 - `file`: The audio file to transcribe (required).
 - `timestamp_type`: The granularity of the timestamps (`chunk` or `word`). If you provide `text` here, the response will be plain text instead of JSON. Defaults to `chunk`.
 - `language`: The language of the audio. If omitted, the model will auto-detect the language.
+- `stabilize`: `bool` - Enable timestamp stabilization using `stable-ts`. Defaults to `False`.
+- `demucs`: `bool` - Enable Demucs noise reduction before transcription. Defaults to `False`.
+- `vad`: `bool` - Enable Silero VAD to filter out silent parts of the audio. Defaults to `False`.
+- `vad_threshold`: `float` - The threshold for VAD. Defaults to `0.35`.
 
 #### `/v1/audio/translations`
 
@@ -302,6 +306,10 @@ The API endpoints have distinct parameters. Core model settings (`model`, `devic
 - `response_format`: The desired output format (`json` or `text`). Defaults to `json`.
 - `timestamp_type`: The granularity of the timestamps (`chunk` or `word`). Defaults to `chunk`.
 - `language`: The language of the audio. If omitted, the model will auto-detect the language.
+- `stabilize`: `bool` - Enable timestamp stabilization using `stable-ts`. Defaults to `False`.
+- `demucs`: `bool` - Enable Demucs noise reduction before transcription. Defaults to `False`.
+- `vad`: `bool` - Enable Silero VAD to filter out silent parts of the audio. Defaults to `False`.
+- `vad_threshold`: `float` - The threshold for VAD. Defaults to `0.35`.
 
 ## Development
 
