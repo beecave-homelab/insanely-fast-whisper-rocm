@@ -19,7 +19,7 @@ dependencies = [
     "datasets==4.0.0",
     "accelerate==1.9.0",
     "optimum==1.26.1",
-    "ffmpeg-python==0.2.0",
+    "ffmpeg-python>=0.2.0",
     "stable-ts==2.19.0",
     "demucs==4.0.1",
 ]
