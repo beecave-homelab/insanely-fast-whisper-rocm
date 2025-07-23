@@ -96,26 +96,27 @@ def audio_options(func: Callable[..., None]) -> Callable[..., None]:  # noqa: D4
         ),
         # Stable-ts related options
         click.option(
-            "--stabilize",
-            is_flag=True,
+            "--stabilize/--no-stabilize",
+            default=constants.DEFAULT_STABILIZE,
             help="Post-process results with stable-ts for improved timestamps",
+            show_default=True,
         ),
         click.option(
             "--demucs/--no-demucs",
-            default=False,
+            default=constants.DEFAULT_DEMUCS,
             help="Enable Demucs-based noise reduction in stable-ts",
             show_default=True,
         ),
         click.option(
             "--vad/--no-vad",
-            default=False,
+            default=constants.DEFAULT_VAD,
             help="Enable Voice Activity Detection (VAD) in stable-ts",
             show_default=True,
         ),
         click.option(
             "--vad-threshold",
             type=click.FloatRange(0.0, 1.0),
-            default=0.35,
+            default=constants.DEFAULT_VAD_THRESHOLD,
             help="VAD probability threshold used when --vad is enabled",
             show_default=True,
         ),

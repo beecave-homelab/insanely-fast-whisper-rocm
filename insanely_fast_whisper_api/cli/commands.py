@@ -90,10 +90,10 @@ def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
     output: Optional[Path] = kwargs.pop("output", None)
     timestamp_type: str = kwargs.pop("timestamp_type")
     # Stable-ts options
-    stabilize: bool = kwargs.pop("stabilize", False)
-    demucs: bool = kwargs.pop("demucs", False)
-    vad: bool = kwargs.pop("vad", False)
-    vad_threshold: float = kwargs.pop("vad_threshold", 0.35)
+    stabilize: bool = kwargs.pop("stabilize")
+    demucs: bool = kwargs.pop("demucs")
+    vad: bool = kwargs.pop("vad")
+    vad_threshold: float = kwargs.pop("vad_threshold")
 
     debug: bool = kwargs.pop("debug", False)
     no_timestamps: bool = kwargs.pop("no_timestamps", False)

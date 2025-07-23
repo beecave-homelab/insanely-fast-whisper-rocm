@@ -16,7 +16,11 @@ from insanely_fast_whisper_api.api.dependencies import (
 from insanely_fast_whisper_api.api.responses import ResponseFormatter
 from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_api.utils import (
+    DEFAULT_DEMUCS,
+    DEFAULT_STABILIZE,
     DEFAULT_TIMESTAMP_TYPE,
+    DEFAULT_VAD,
+    DEFAULT_VAD_THRESHOLD,
     RESPONSE_FORMAT_JSON,
     SUPPORTED_RESPONSE_FORMATS,
     FileHandler,
@@ -62,6 +66,14 @@ async def create_transcription(
         None, description="Source language code (auto-detect if None)"
     ),
     task: Literal["transcribe"] = Form("transcribe", description="ASR task type"),
+    stabilize: bool = Form(
+        DEFAULT_STABILIZE, description="Enable timestamp stabilization"
+    ),
+    demucs: bool = Form(DEFAULT_DEMUCS, description="Enable Demucs noise reduction"),
+    vad: bool = Form(DEFAULT_VAD, description="Enable Voice Activity Detection"),
+    vad_threshold: float = Form(
+        DEFAULT_VAD_THRESHOLD, description="VAD threshold for speech detection"
+    ),
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),
     file_handler: FileHandler = Depends(get_file_handler),
 ) -> Union[str, dict]:
@@ -104,6 +116,10 @@ async def create_transcription(
             task=task,
             timestamp_type=timestamp_type,
             original_filename=file.filename,
+            stabilize=stabilize,
+            demucs=demucs,
+            vad=vad,
+            vad_threshold=vad_threshold,
         )
         logger.info("Transcription completed successfully")
 
@@ -153,6 +169,14 @@ async def create_translation(
     language: Optional[str] = Form(
         None, description="Source language code (auto-detect if None)"
     ),
+    stabilize: bool = Form(
+        DEFAULT_STABILIZE, description="Enable timestamp stabilization"
+    ),
+    demucs: bool = Form(DEFAULT_DEMUCS, description="Enable Demucs noise reduction"),
+    vad: bool = Form(DEFAULT_VAD, description="Enable Voice Activity Detection"),
+    vad_threshold: float = Form(
+        DEFAULT_VAD_THRESHOLD, description="VAD threshold for speech detection"
+    ),
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),
     file_handler: FileHandler = Depends(get_file_handler),
 ) -> Union[str, dict]:
@@ -195,6 +219,10 @@ async def create_translation(
             task="translate",
             timestamp_type=timestamp_type,
             original_filename=file.filename,
+            stabilize=stabilize,
+            demucs=demucs,
+            vad=vad,
+            vad_threshold=vad_threshold,
         )
         logger.info("Translation completed successfully")
         logger.debug("Translation result: %s", result)

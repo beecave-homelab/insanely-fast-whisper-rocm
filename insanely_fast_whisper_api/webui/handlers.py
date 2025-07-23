@@ -26,11 +26,15 @@ from insanely_fast_whisper_api.core.integrations.stable_ts import stabilize_time
 from insanely_fast_whisper_api.core.pipeline import ProgressEvent, WhisperPipeline
 from insanely_fast_whisper_api.utils import (
     DEFAULT_BATCH_SIZE,
+    DEFAULT_DEMUCS,
     DEFAULT_DEVICE,
     DEFAULT_LANGUAGE,
     DEFAULT_MODEL,
+    DEFAULT_STABILIZE,
     DEFAULT_TIMESTAMP_TYPE,
     DEFAULT_TRANSCRIPTS_DIR,
+    DEFAULT_VAD,
+    DEFAULT_VAD_THRESHOLD,
     constants,
 )
 from insanely_fast_whisper_api.utils.filename_generator import (
@@ -70,10 +74,10 @@ class TranscriptionConfig:  # pylint: disable=too-many-instance-attributes
     chunk_duration: Optional[float] = None
     chunk_overlap: Optional[float] = None
     # Stabilization options
-    stabilize: bool = False
-    demucs: bool = False
-    vad: bool = False
-    vad_threshold: float = 0.35
+    stabilize: bool = DEFAULT_STABILIZE
+    demucs: bool = DEFAULT_DEMUCS
+    vad: bool = DEFAULT_VAD
+    vad_threshold: float = DEFAULT_VAD_THRESHOLD
 
 
 @dataclass
@@ -278,6 +282,16 @@ def transcribe(
             task=config.task,
             timestamp_type=config.timestamp_type,
         )
+
+        # Conditionally apply timestamp stabilization
+        if config.stabilize:
+            logger.info("Applying timestamp stabilization...")
+            result = stabilize_timestamps(
+                result,
+                demucs=config.demucs,
+                vad=config.vad,
+                vad_threshold=config.vad_threshold,
+            )
 
         logger.info("Transcription completed successfully for %s", audio_file_path)
 

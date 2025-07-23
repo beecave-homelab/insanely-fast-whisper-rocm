@@ -223,8 +223,15 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         elif task == "translate":
             pipeline_kwargs["generate_kwargs"]["language"] = "en"
 
+        # Convert to WAV if extension not among standard Whisper-friendly set
+        from insanely_fast_whisper_api.audio.conversion import (
+            ensure_wav,  # local import to avoid heavy deps at import time
+        )
+
+        converted_path = ensure_wav(audio_file_path)
+
         try:
-            outputs = self.asr_pipe(str(audio_file_path), **pipeline_kwargs)
+            outputs = self.asr_pipe(str(converted_path), **pipeline_kwargs)
         except RuntimeError as e:
             # Check if this is the specific tensor size mismatch error in timestamp extraction
             if "expanded size of the tensor" in str(

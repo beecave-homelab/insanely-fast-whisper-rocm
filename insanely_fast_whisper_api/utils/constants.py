@@ -250,6 +250,7 @@ SUPPORTED_AUDIO_FORMATS: Set[str] = {
     ".mp3",
     ".flac",
     ".wav",
+    ".m4a",
 }
 
 # Supported video formats (lowercase extensions)

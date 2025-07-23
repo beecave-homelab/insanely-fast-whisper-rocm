@@ -132,7 +132,7 @@ def stabilize_timestamps(
         refined = stable_whisper.transcribe_any(
             inference_func,
             audio=str(audio_path),
-            demucs=demucs,
+            denoiser="demucs" if demucs else None,
             vad=vad,
             vad_threshold=vad_threshold,
             check_sorted=False,
