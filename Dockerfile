@@ -19,31 +19,25 @@ RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive ap
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy requirement files first
-COPY requirements.txt /app/
-COPY requirements-onnxruntime-rocm.txt /app/
-COPY requirements-rocm.txt /app/
-# COPY requirements-dev.txt /app/
+# Copy requirements file for installing dependencies
+COPY requirements-all.txt .
+COPY .python-version .
 
-# Install project dependencies from requirements files.
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir -r requirements-onnxruntime-rocm.txt
-RUN pip install --no-cache-dir -r requirements-rocm.txt
-# RUN pip install --no-cache-dir -r requirements-dev.txt
+# Install project dependencies using pip
+RUN pip install --no-cache-dir -r requirements-all.txt
 
-# Copy the project definition file to leverage Docker layer caching for dependencies
-COPY pyproject.toml /app/
+# Copy the OpenAPI spec file
 COPY openapi.yaml /app/
 
 # Copy the application source code
-# This is needed for `pip install .` to build and install the local package.
+# This is needed for `pdm install` to build and install the local package.
 # It assumes your main package source is in the 'insanely_fast_whisper_api' directory.
+# Copy the application source code and project metadata
+COPY pyproject.toml /app/
 COPY ./insanely_fast_whisper_api /app/insanely_fast_whisper_api/
 
-# Now, install the local package itself
-# This command reads pyproject.toml (already copied) and installs the current project.
-RUN pip install -U pip
-# RUN pip install --no-cache-dir .
+# Install the local package itself
+RUN pip install --no-cache-dir .
 
 # After `pip install .`, the package `insanely_fast_whisper_api` and its CLI/modules
 # should be available in the Python environment.
@@ -57,4 +51,4 @@ EXPOSE 7860
 
 # Define the command to run the application using uvicorn.
 # This points to the `app` instance in your `main.py` inside the installed package.
-CMD ["uvicorn", "insanely_fast_whisper_api.main:app", "--host", "0.0.0.0", "--port", "8888"]
+CMD ["insanely-fast-whisper-api", "--host", "0.0.0.0", "--port", "8888"]

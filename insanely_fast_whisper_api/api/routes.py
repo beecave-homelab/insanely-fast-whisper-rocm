@@ -7,31 +7,32 @@ injection for ASR pipeline instances and file handling.
 import logging
 from typing import Literal, Optional, Union
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from insanely_fast_whisper_api.api.dependencies import (
     get_asr_pipeline,
     get_file_handler,
 )
-from insanely_fast_whisper_api.api.models import TranscriptionResponse
 from insanely_fast_whisper_api.api.responses import ResponseFormatter
 from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_api.utils import (
+    DEFAULT_DEMUCS,
+    DEFAULT_STABILIZE,
     DEFAULT_TIMESTAMP_TYPE,
+    DEFAULT_VAD,
+    DEFAULT_VAD_THRESHOLD,
     RESPONSE_FORMAT_JSON,
-    RESPONSE_FORMAT_TEXT,
+    SUPPORTED_RESPONSE_FORMATS,
     FileHandler,
 )
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-file_handler = FileHandler()
 
 
 @router.post(
     "/v1/audio/transcriptions",
-    response_model=TranscriptionResponse,
     tags=["Transcription"],
     summary="Transcribe Audio",
     description="Convert speech in an audio file to text using the Whisper model",
@@ -53,6 +54,10 @@ file_handler = FileHandler()
 )
 async def create_transcription(
     file: UploadFile = File(..., description="The audio file to transcribe"),
+    response_format: str = Form(
+        RESPONSE_FORMAT_JSON,
+        description="Response format (json, verbose_json, text, srt, vtt)",
+    ),
     timestamp_type: str = Form(
         DEFAULT_TIMESTAMP_TYPE,
         description="Type of timestamp to generate ('chunk' or 'word')",
@@ -61,6 +66,14 @@ async def create_transcription(
         None, description="Source language code (auto-detect if None)"
     ),
     task: Literal["transcribe"] = Form("transcribe", description="ASR task type"),
+    stabilize: bool = Form(
+        DEFAULT_STABILIZE, description="Enable timestamp stabilization"
+    ),
+    demucs: bool = Form(DEFAULT_DEMUCS, description="Enable Demucs noise reduction"),
+    vad: bool = Form(DEFAULT_VAD, description="Enable Voice Activity Detection"),
+    vad_threshold: float = Form(
+        DEFAULT_VAD_THRESHOLD, description="VAD threshold for speech detection"
+    ),
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),
     file_handler: FileHandler = Depends(get_file_handler),
 ) -> Union[str, dict]:
@@ -103,16 +116,19 @@ async def create_transcription(
             task=task,
             timestamp_type=timestamp_type,
             original_filename=file.filename,
+            stabilize=stabilize,
+            demucs=demucs,
+            vad=vad,
+            vad_threshold=vad_threshold,
         )
         logger.info("Transcription completed successfully")
+
+        # Validate response_format
+        if response_format not in SUPPORTED_RESPONSE_FORMATS:
+            raise HTTPException(status_code=400, detail="Unsupported response_format")
         logger.debug("Transcription result: %s", result)
 
-        # Format response - for transcription, use timestamp_type to determine format
-        response_format = (
-            RESPONSE_FORMAT_TEXT
-            if timestamp_type == RESPONSE_FORMAT_TEXT
-            else RESPONSE_FORMAT_JSON
-        )
+        # Format response according to requested response_format
         return ResponseFormatter.format_transcription(result, response_format)
 
     finally:
@@ -121,7 +137,6 @@ async def create_transcription(
 
 @router.post(
     "/v1/audio/translations",
-    response_model=TranscriptionResponse,
     tags=["Translation"],
     summary="Translate Audio",
     description="Translate speech in an audio file to English using the Whisper model",
@@ -144,7 +159,8 @@ async def create_transcription(
 async def create_translation(
     file: UploadFile = File(..., description="The audio file to translate"),
     response_format: str = Form(
-        RESPONSE_FORMAT_JSON, description="Response format (json or text)"
+        RESPONSE_FORMAT_JSON,
+        description="Response format (json, verbose_json, text, srt, vtt)",
     ),
     timestamp_type: str = Form(
         DEFAULT_TIMESTAMP_TYPE,
@@ -152,6 +168,14 @@ async def create_translation(
     ),
     language: Optional[str] = Form(
         None, description="Source language code (auto-detect if None)"
+    ),
+    stabilize: bool = Form(
+        DEFAULT_STABILIZE, description="Enable timestamp stabilization"
+    ),
+    demucs: bool = Form(DEFAULT_DEMUCS, description="Enable Demucs noise reduction"),
+    vad: bool = Form(DEFAULT_VAD, description="Enable Voice Activity Detection"),
+    vad_threshold: float = Form(
+        DEFAULT_VAD_THRESHOLD, description="VAD threshold for speech detection"
     ),
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),
     file_handler: FileHandler = Depends(get_file_handler),
@@ -195,9 +219,17 @@ async def create_translation(
             task="translate",
             timestamp_type=timestamp_type,
             original_filename=file.filename,
+            stabilize=stabilize,
+            demucs=demucs,
+            vad=vad,
+            vad_threshold=vad_threshold,
         )
         logger.info("Translation completed successfully")
         logger.debug("Translation result: %s", result)
+
+        # Validate response_format
+        if response_format not in SUPPORTED_RESPONSE_FORMATS:
+            raise HTTPException(status_code=400, detail="Unsupported response_format")
 
         # Format response
         return ResponseFormatter.format_translation(result, response_format)

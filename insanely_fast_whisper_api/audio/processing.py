@@ -4,9 +4,10 @@ import os
 import tempfile
 from typing import List
 
+import ffmpeg
 from pydub import AudioSegment
 
-from insanely_fast_whisper_api.utils import cleanup_temp_files
+from insanely_fast_whisper_api.utils.file_utils import cleanup_temp_files
 
 
 def get_audio_duration(audio_path: str) -> float:
@@ -25,6 +26,58 @@ def get_audio_duration(audio_path: str) -> float:
     except (OSError, IOError, RuntimeError) as e:
         raise RuntimeError(
             f"Failed to get audio duration for {audio_path}: {str(e)}"
+        ) from e
+
+
+def extract_audio_from_video(
+    video_path: str,
+    output_format: str = "wav",
+    sample_rate: int = 16000,
+    channels: int = 1,
+) -> str:
+    """Extract audio from a video file using FFmpeg.
+
+    Args:
+        video_path: Path to the input video file.
+        output_format: Desired audio format (e.g., "wav").
+        sample_rate: Target sample rate in Hz.
+        channels: Number of audio channels (1 = mono, 2 = stereo).
+
+    Returns:
+        str: Path to the extracted audio file.
+
+    Raises:
+        RuntimeError: If extraction fails.
+    """
+    try:
+        if not os.path.isfile(video_path):
+            raise FileNotFoundError(f"Video file not found: {video_path}")
+
+        tmp_dir = tempfile.mkdtemp(prefix="extracted_audio_")
+        output_path = os.path.join(
+            tmp_dir,
+            f"{os.path.splitext(os.path.basename(video_path))[0]}.{output_format}",
+        )
+
+        (
+            ffmpeg.input(video_path)
+            .output(
+                output_path,
+                acodec="pcm_s16le",  # uncompressed WAV PCM 16-bit
+                ac=channels,
+                ar=sample_rate,
+                vn=None,
+            )
+            .overwrite_output()
+            .run(quiet=True)
+        )
+        return output_path
+    except ffmpeg.Error as e:
+        # Clean up potentially partially-written file
+        if "output_path" in locals() and os.path.exists(output_path):
+            cleanup_temp_files([output_path])
+        raise RuntimeError(
+            f"Failed to extract audio from video {video_path}: {e.stderr.decode() if hasattr(e, 'stderr') else str(e)}"
         ) from e
 
 

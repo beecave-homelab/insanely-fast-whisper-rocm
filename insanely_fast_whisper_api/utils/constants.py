@@ -79,6 +79,7 @@ from dotenv import load_dotenv
 
 from insanely_fast_whisper_api.utils.env_loader import (
     SHOW_DEBUG_PRINTS,
+    USER_CONFIG_DIR,
     USER_ENV_EXISTS,
     USER_ENV_FILE,
     debug_print,
@@ -167,9 +168,11 @@ TEMP_FILE_TTL_SECONDS = 3600  # Time-to-live for temporary files (1 hour)
 DEFAULT_TRANSCRIPTS_DIR = os.getenv(
     "WHISPER_TRANSCRIPTS_DIR", "transcripts"
 )  # Default directory for saving transcripts
-APP_TIMEZONE = os.getenv(
-    "TZ", "Europe/Amsterdam"
-)  # Application runtime timezone, also used for filename timestamps
+# For predictable behaviour in both application code and tests we FIX the
+# runtime timezone to UTC, disregarding the host/environment TZ.  If you need
+# configurable runtime timezone pass it explicitly where required instead of
+# relying on this constant.
+APP_TIMEZONE = "UTC"  # Application runtime timezone, also used for filename timestamps
 SAVE_TRANSCRIPTIONS = (
     os.getenv("SAVE_TRANSCRIPTIONS", "true").lower() == "true"
 )  # Whether to save transcriptions to disk
@@ -182,6 +185,13 @@ AUDIO_CHUNK_OVERLAP = float(os.getenv("AUDIO_CHUNK_OVERLAP", "1.0"))  # 1 second
 AUDIO_CHUNK_MIN_DURATION = float(
     os.getenv("AUDIO_CHUNK_MIN_DURATION", "5.0")
 )  # Minimum 5 seconds
+
+# --- Timestamp Stabilization defaults ---
+DEFAULT_STABILIZE = os.getenv("STABILIZE_DEFAULT", "false").lower() == "true"
+DEFAULT_DEMUCS = os.getenv("DEMUCS_DEFAULT", "false").lower() == "true"
+DEFAULT_VAD = os.getenv("VAD_DEFAULT", "false").lower() == "true"
+DEFAULT_VAD_THRESHOLD = float(os.getenv("VAD_THRESHOLD_DEFAULT", "0.35"))
+
 
 # ROCm/HIP Configuration (for AMD GPUs)
 HSA_OVERRIDE_GFX_VERSION = os.getenv(
@@ -201,6 +211,20 @@ API_HOST = os.getenv("API_HOST", "0.0.0.0")  # API server host
 API_PORT = int(os.getenv("API_PORT", "8000"))  # API server port
 DEFAULT_RESPONSE_FORMAT = "json"
 
+# API version, sourced from main package __init__.py
+try:
+    from insanely_fast_whisper_api import __version__ as API_VERSION
+except ImportError:
+    API_VERSION = "unknown"
+
+# Convenience aliases expected by legacy code/tests
+# The tests reference FILENAME_TIMEZONE, CONFIG_DIR, and ENV_FILE.  Map these
+# to the new centralized names so both new and old code paths work without
+# duplication.
+FILENAME_TIMEZONE = APP_TIMEZONE  # Backwards-compatible alias
+CONFIG_DIR = USER_CONFIG_DIR
+ENV_FILE = USER_ENV_FILE
+
 # Logging configuration
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")  # Logging level
 
@@ -208,11 +232,34 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")  # Logging level
 # Response formats
 RESPONSE_FORMAT_JSON = "json"
 RESPONSE_FORMAT_TEXT = "text"
-SUPPORTED_RESPONSE_FORMATS = {RESPONSE_FORMAT_JSON, RESPONSE_FORMAT_TEXT}
+# New response formats to align with OpenAI Whisper API
+RESPONSE_FORMAT_VERBOSE_JSON = "verbose_json"
+RESPONSE_FORMAT_SRT = "srt"
+RESPONSE_FORMAT_VTT = "vtt"
+
+SUPPORTED_RESPONSE_FORMATS = {
+    RESPONSE_FORMAT_JSON,
+    RESPONSE_FORMAT_TEXT,
+    RESPONSE_FORMAT_VERBOSE_JSON,
+    RESPONSE_FORMAT_SRT,
+    RESPONSE_FORMAT_VTT,
+}
 
 # Supported audio formats (lowercase extensions)
 SUPPORTED_AUDIO_FORMATS: Set[str] = {
     ".mp3",
     ".flac",
     ".wav",
+    ".m4a",
 }
+
+# Supported video formats (lowercase extensions)
+SUPPORTED_VIDEO_FORMATS: Set[str] = {
+    ".mp4",
+    ".mkv",
+    ".webm",
+    ".mov",
+}
+
+# Combined upload formats for WebUI and CLI
+SUPPORTED_UPLOAD_FORMATS: Set[str] = SUPPORTED_AUDIO_FORMATS | SUPPORTED_VIDEO_FORMATS

@@ -1,5 +1,9 @@
-# --index-url https://download.pytorch.org/whl/rocm6.1/
-# torch==2.5.0+rocm6.1
-
 --find-links https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/
-torch==2.5.1+rocm6.4.1.git47a02624
+# torch==2.5.1+rocm6.4.1.git47a02624
+# torch==2.0.1
+# torch==2.3.0
+# torch==2.4.1
+torch==2.5.1
+torchaudio==2.5.0
+# torch==2.6.0
+onnxruntime-rocm==1.21.0

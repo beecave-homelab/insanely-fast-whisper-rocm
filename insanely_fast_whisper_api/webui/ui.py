@@ -18,7 +18,7 @@ from insanely_fast_whisper_api.utils.constants import (
     DEFAULT_TRANSCRIPTS_DIR,
     MAX_BATCH_SIZE,
     MIN_BATCH_SIZE,
-    SUPPORTED_AUDIO_FORMATS,
+    SUPPORTED_UPLOAD_FORMATS,
 )
 from insanely_fast_whisper_api.webui.handlers import (
     FileHandlingConfig,
@@ -30,10 +30,10 @@ from insanely_fast_whisper_api.webui.handlers import (
 logger = logging.getLogger("insanely_fast_whisper_api.webui.ui")
 
 
-def _create_model_config_ui():
-    """Helper function to create model configuration UI components."""
+def _create_model_config_ui(default_model: str = DEFAULT_MODEL):
+    """Helper to create model configuration UI components with a default model."""
     with gr.Accordion("Model Configuration", open=True):
-        model = gr.Textbox(value=DEFAULT_MODEL, label="Model")
+        model = gr.Textbox(value=default_model, label="Model")
         device = gr.Textbox(value=DEFAULT_DEVICE, label="Device (e.g., 0, cpu, mps)")
         batch_size = gr.Slider(
             minimum=MIN_BATCH_SIZE,
@@ -66,6 +66,33 @@ def _create_processing_options_ui():
             ),
         )
     return dtype, chunk_length
+
+
+def _create_stabilization_ui(
+    *,
+    default_stabilize: bool = False,
+    default_demucs: bool = False,
+    default_vad: bool = False,
+    default_vad_threshold: float = 0.35,
+):
+    """Helper function to create timestamp stabilization UI components."""
+    with gr.Accordion("Timestamp Stabilization", open=False):
+        stabilize = gr.Checkbox(
+            value=default_stabilize,
+            label="Enable word-level stabilization (--stabilize)",
+        )
+        demucs = gr.Checkbox(
+            value=default_demucs, label="Use Demucs noise reduction (--demucs)"
+        )
+        vad = gr.Checkbox(value=default_vad, label="Enable VAD (--vad)")
+        vad_threshold = gr.Slider(
+            minimum=0.1,
+            maximum=0.9,
+            step=0.05,
+            value=default_vad_threshold,
+            label="VAD Threshold (--vad-threshold)",
+        )
+    return stabilize, demucs, vad, vad_threshold
 
 
 def _create_task_config_ui():
@@ -113,6 +140,11 @@ def _process_transcription_request_wrapper(  # pylint: disable=too-many-argument
     task: str,
     dtype: str,
     whisper_chunk_length: int,
+    # Stabilization params
+    stabilize: bool,
+    demucs: bool,
+    vad: bool,
+    vad_threshold: float,
     save_transcriptions: bool,
     temp_uploads_dir: str,
     progress: gr.Progress = gr.Progress(),
@@ -133,6 +165,11 @@ def _process_transcription_request_wrapper(  # pylint: disable=too-many-argument
     file_handling_cfg = FileHandlingConfig(
         save_transcriptions=save_transcriptions, temp_uploads_dir=temp_uploads_dir
     )
+    # Inject stabilization options
+    transcription_cfg.stabilize = stabilize
+    transcription_cfg.demucs = demucs
+    transcription_cfg.vad = vad
+    transcription_cfg.vad_threshold = vad_threshold
     return process_transcription_request(
         audio_paths=audio_paths,
         transcription_config=transcription_cfg,
@@ -141,12 +178,19 @@ def _process_transcription_request_wrapper(  # pylint: disable=too-many-argument
     )
 
 
-def create_ui_components():  # pylint: disable=too-many-locals
+def create_ui_components(
+    *,
+    default_model: str = DEFAULT_MODEL,
+    default_stabilize: bool = False,
+    default_demucs: bool = False,
+    default_vad: bool = False,
+    default_vad_threshold: float = 0.35,
+):  # pylint: disable=too-many-locals
     """Create and return Gradio UI components with all parameters."""
     with gr.Blocks(title="Insanely Fast Whisper - Local WebUI") as demo:
         gr.Markdown("# 🎙️ Insanely Fast Whisper - Local WebUI")
         gr.Markdown(
-            "Transcribe or translate audio files using Whisper models directly in your browser."
+            "Transcribe or translate audio and video files using Whisper models directly in your browser."
         )
 
         with gr.Row():
@@ -156,14 +200,24 @@ def create_ui_components():  # pylint: disable=too-many-locals
                     label="Upload Audio File(s)",
                     type="filepath",
                     file_count="multiple",
-                    file_types=list(SUPPORTED_AUDIO_FORMATS),
+                    file_types=list(SUPPORTED_UPLOAD_FORMATS),
                 )
 
                 # Model configuration
-                model, device, batch_size = _create_model_config_ui()
+                model, device, batch_size = _create_model_config_ui(default_model)
 
                 # Processing options
                 dtype, chunk_length = _create_processing_options_ui()
+
+                # Timestamp stabilization options
+                stabilize_opt, demucs_opt, vad_opt, vad_threshold_opt = (
+                    _create_stabilization_ui(
+                        default_stabilize=default_stabilize,
+                        default_demucs=default_demucs,
+                        default_vad=default_vad,
+                        default_vad_threshold=default_vad_threshold,
+                    )
+                )
 
                 # Task configuration
                 timestamp_type, language, task = _create_task_config_ui()
@@ -216,6 +270,11 @@ def create_ui_components():  # pylint: disable=too-many-locals
                 task,
                 dtype,
                 chunk_length,
+                # Stabilization options (match wrapper order)
+                stabilize_opt,
+                demucs_opt,
+                vad_opt,
+                vad_threshold_opt,
                 save_transcriptions,
                 temp_uploads_dir,
             ],

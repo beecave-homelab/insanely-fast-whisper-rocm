@@ -15,21 +15,26 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import gradio as gr
 
-from insanely_fast_whisper_api import ASRPipeline
+from insanely_fast_whisper_api.audio.processing import extract_audio_from_video
 from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )
 from insanely_fast_whisper_api.core.errors import TranscriptionError
 from insanely_fast_whisper_api.core.formatters import FORMATTERS
-from insanely_fast_whisper_api.core.pipeline import ProgressEvent
+from insanely_fast_whisper_api.core.integrations.stable_ts import stabilize_timestamps
+from insanely_fast_whisper_api.core.pipeline import ProgressEvent, WhisperPipeline
 from insanely_fast_whisper_api.utils import (
     DEFAULT_BATCH_SIZE,
+    DEFAULT_DEMUCS,
     DEFAULT_DEVICE,
     DEFAULT_LANGUAGE,
     DEFAULT_MODEL,
+    DEFAULT_STABILIZE,
     DEFAULT_TIMESTAMP_TYPE,
     DEFAULT_TRANSCRIPTS_DIR,
+    DEFAULT_VAD,
+    DEFAULT_VAD_THRESHOLD,
     constants,
 )
 from insanely_fast_whisper_api.utils.filename_generator import (
@@ -68,6 +73,11 @@ class TranscriptionConfig:  # pylint: disable=too-many-instance-attributes
     chunk_length: int = 30
     chunk_duration: Optional[float] = None
     chunk_overlap: Optional[float] = None
+    # Stabilization options
+    stabilize: bool = DEFAULT_STABILIZE
+    demucs: bool = DEFAULT_DEMUCS
+    vad: bool = DEFAULT_VAD
+    vad_threshold: float = DEFAULT_VAD_THRESHOLD
 
 
 @dataclass
@@ -156,6 +166,19 @@ def transcribe(
         )
         original_file_name_for_desc = Path(audio_file_path).name
 
+        # --- Video detection & audio extraction ---
+        temp_files: list[str] = []
+        if Path(audio_file_path).suffix.lower() in constants.SUPPORTED_VIDEO_FORMATS:
+            logger.info("Detected video input – extracting audio track…")
+            try:
+                extracted_path = extract_audio_from_video(audio_file_path)
+                temp_files.append(extracted_path)
+                audio_file_path = extracted_path  # Use extracted WAV for processing
+                logger.info("Audio extracted to temporary file: %s", extracted_path)
+            except RuntimeError as conv_err:
+                logger.error("Video conversion failed: %s", conv_err)
+                raise TranscriptionError(str(conv_err)) from conv_err
+
         # Initial progress update for this file's segment
         base_progress = current_file_idx / total_files_for_session
         if progress_tracker_instance is not None:
@@ -175,7 +198,7 @@ def transcribe(
         backend = HuggingFaceBackend(config=backend_config)
 
         # Initialize the ASR pipeline
-        asr_pipeline = ASRPipeline(
+        asr_pipeline = WhisperPipeline(
             asr_backend=backend,
             save_transcriptions=file_config.save_transcriptions,
             output_dir=file_config.temp_uploads_dir,
@@ -260,6 +283,16 @@ def transcribe(
             timestamp_type=config.timestamp_type,
         )
 
+        # Conditionally apply timestamp stabilization
+        if config.stabilize:
+            logger.info("Applying timestamp stabilization...")
+            result = stabilize_timestamps(
+                result,
+                demucs=config.demucs,
+                vad=config.vad,
+                vad_threshold=config.vad_threshold,
+            )
+
         logger.info("Transcription completed successfully for %s", audio_file_path)
 
         # Final progress update for this file's segment upon successful completion
@@ -320,6 +353,17 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
 
             # FIX: The asr_pipeline.process() returns the transcription data directly,
             # not wrapped in a "raw_result" field. result_dict IS the raw result.
+            # Apply word-level timestamp stabilization if requested
+            if transcription_config.stabilize:
+                try:
+                    result_dict = stabilize_timestamps(
+                        result_dict,
+                        demucs=transcription_config.demucs,
+                        vad=transcription_config.vad,
+                        vad_threshold=transcription_config.vad_threshold,
+                    )
+                except Exception as stab_err:  # pragma: no cover
+                    logger.error("Stabilization failed: %s", stab_err, exc_info=True)
             raw_transcription_result = result_dict
             # This is the path to the JSON file saved by the pipeline
             json_file_path_from_pipeline = result_dict.get("output_file_path")
@@ -592,9 +636,6 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         # Prepare data for BatchZipBuilder: Dict[str, Dict[str, Any]]
         # Key: path/to/original_audio.mp3 (used by builder for internal naming)
         # Value: raw_transcription_result
-        batch_data_for_builder = {
-            res["audio_original_path"]: res["raw_result"] for res in successful_results
-        }
 
         # Summary message
         if successful_transcriptions == num_files:

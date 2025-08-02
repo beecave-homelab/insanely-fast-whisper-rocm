@@ -3,11 +3,12 @@
 A FastAPI wrapper around a custom Whisper-based ASR pipeline with audio chunking support.
 """
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 __author__ = "elvee"
 __email__ = "lowie@beecave.nl"
 
 # Audio utilities
+import insanely_fast_whisper_api.utils.constants as constants
 from insanely_fast_whisper_api.audio import (
     cleanup_temp_files,
     get_audio_duration,
@@ -17,12 +18,11 @@ from insanely_fast_whisper_api.audio import (
 
 # Core functionality
 # from .core import ASRPipeline, run_asr_pipeline # Old import
-from insanely_fast_whisper_api.core.pipeline import (
-    WhisperPipeline as ASRPipeline,  # New import
-)
+from insanely_fast_whisper_api.core import ASRPipeline
 
 __all__ = [
     "ASRPipeline",
+    "constants",
     "get_audio_duration",
     "split_audio",
     "cleanup_temp_files",

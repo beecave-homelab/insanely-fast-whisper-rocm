@@ -6,6 +6,7 @@ focusing on the Hugging Face Transformers integration.
 
 import logging
 import time
+import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union
@@ -17,6 +18,7 @@ from transformers import (
     AutoTokenizer,
     pipeline,
 )
+from transformers.utils import logging as hf_logging
 
 from insanely_fast_whisper_api.core.errors import (
     DeviceNotFoundError,
@@ -141,48 +143,95 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
 
         start_time = time.perf_counter()
 
-        # distil-whisper models do not support timestamp generation, so we disable it.
+        # ------------------------------------------------------------------
+        # Timestamp capability detection for distil-whisper variants
+        # ------------------------------------------------------------------
         _return_timestamps_value = return_timestamps_value
-        if "distil-whisper" in self.config.model_name and _return_timestamps_value:
-            logger.warning(
-                "Timestamp generation is not supported for distil-whisper models. "
-                "Disabling timestamps for this transcription."
-            )
-            _return_timestamps_value = False
+        if _return_timestamps_value and "distil-whisper" in self.config.model_name:
+            # distil-whisper versions ≥ v2 have timestamp support; earlier ones do not.
+            # Determine this heuristically from the model name.
+            # Examples that support timestamps:
+            #   distil-whisper/distil-large-v2
+            #   distil-whisper/distil-medium.en-v2
+            # Anything ending in "-v2" or "-v3" (or greater) is considered supported.
+            supports_timestamps = False
+            try:
+                # Extract the suffix after the last "-v"
+                last_part = self.config.model_name.split("-v")[-1]
+                version_num = int(last_part.split("/")[0].split(".")[0])
+                supports_timestamps = version_num >= 2
+            except (ValueError, IndexError):
+                # Fallback: if model name explicitly contains "large-v2" etc.
+                supports_timestamps = any(
+                    token in self.config.model_name for token in ("-v2", "-v3", "-v4")
+                )
+
+            if not supports_timestamps:
+                logger.warning(
+                    "Timestamp generation not supported for model %s; disabling.",
+                    self.config.model_name,
+                )
+                _return_timestamps_value = False
 
         # These are the arguments that will be passed to the pipeline
+        # Suppress noisy warnings from HF transformers related to experimental chunk_length and deprecations.
+        warnings.filterwarnings(
+            "ignore",
+            message="Using `chunk_length_s` is very experimental*",
+            category=UserWarning,
+        )
+        warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
+        hf_logging.set_verbosity_error()
+
         pipeline_kwargs = {
             "chunk_length_s": self.config.chunk_length,
             "batch_size": self.config.batch_size,
             "return_timestamps": _return_timestamps_value,
+            "ignore_warning": True,
             "generate_kwargs": {
                 "no_repeat_ngram_size": 3,  # from original script
                 "temperature": 0,  # from original script
             },
         }
 
-        # Determine if the model is multilingual
-        lang_to_id = getattr(self.asr_pipe.model.config, "lang_to_id", {})
-        is_multilingual = len(lang_to_id) > 1
+        # Determine if the model is multilingual.
+        # Newer Transformers versions expose language/task maps via `task_to_id`,
+        # older checkpoints used `lang_to_id`. We treat presence of either as a
+        # sign the model supports multilingual/translation tasks.
+        lang_to_id = getattr(self.asr_pipe.model.config, "lang_to_id", None)
+        task_to_id = getattr(self.asr_pipe.model.config, "task_to_id", None)
 
-        # Validate task for English-only models
+        is_multilingual = False
+        if task_to_id is not None:
+            is_multilingual = True
+        elif isinstance(lang_to_id, dict) and len(lang_to_id) > 1:
+            is_multilingual = True
+
+        # Previously we blocked translate for English-only models. With the updated
+        # check, only warn (do not raise) so the underlying pipeline can handle it.
         if not is_multilingual and task == "translate":
-            logger.error(
-                "Cannot translate with an English-only model: %s",
+            logger.warning(
+                "Translate requested but multilingual markers not found for model %s; proceeding anyway.",
                 self.config.model_name,
             )
-            raise ValueError(
-                f"Cannot translate with an English-only model: {self.config.model_name}"
-            )
 
-        # Conditionally add task and language for multilingual models
-        if is_multilingual:
-            pipeline_kwargs["generate_kwargs"]["task"] = task
-            if language and language.lower() != "none":
-                pipeline_kwargs["generate_kwargs"]["language"] = language
+        # Always add task and language parameters so Whisper knows we want translation.
+        pipeline_kwargs["generate_kwargs"]["task"] = task
+        # If translate task and no explicit language provided, default to English
+        if language and language.lower() != "none":
+            pipeline_kwargs["generate_kwargs"]["language"] = language
+        elif task == "translate":
+            pipeline_kwargs["generate_kwargs"]["language"] = "en"
+
+        # Convert to WAV if extension not among standard Whisper-friendly set
+        from insanely_fast_whisper_api.audio.conversion import (
+            ensure_wav,  # local import to avoid heavy deps at import time
+        )
+
+        converted_path = ensure_wav(audio_file_path)
 
         try:
-            outputs = self.asr_pipe(str(audio_file_path), **pipeline_kwargs)
+            outputs = self.asr_pipe(str(converted_path), **pipeline_kwargs)
         except RuntimeError as e:
             # Check if this is the specific tensor size mismatch error in timestamp extraction
             if "expanded size of the tensor" in str(

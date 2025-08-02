@@ -21,6 +21,31 @@ from insanely_fast_whisper_api.utils.filename_generator import (
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Lightweight configuration/result dataclasses for test compatibility
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class PipelineConfig:  # pylint: disable=too-many-instance-attributes
+    """Stub config passed around by some higher-level APIs/tests."""
+
+    model: str = "openai/whisper-base"
+    device: str = "cpu"
+    dtype: str = "float32"
+    batch_size: int = 1
+    chunk_length: int = 30
+
+
+@dataclass
+class TranscriptionResult:
+    """Simplified representation of a transcription output used in tests."""
+
+    text: str
+    chunks: Optional[Any] = None
+    language: str = "en"
+
+
 @dataclass
 class ProgressEvent:
     """Dataclass to represent a progress event."""

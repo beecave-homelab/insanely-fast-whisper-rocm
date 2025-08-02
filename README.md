@@ -1,6 +1,6 @@
 # Insanely Fast Whisper API (ROCm)
 
-A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm) support** for high-performance audio transcription and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces and ROCm compatibility.
+A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm) support** for high-performance (video to) audio transcription and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces and ROCm compatibility.
 
 ## 🚀 What's Included
 
@@ -8,20 +8,22 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **🎛️ Gradio WebUI**: Web-based interface for batch file processing with live progress tracking
 - **⚡ CLI Tools**: Command-line interface for single-file processing
 - **📦 Model Management**: Automatic Hugging Face model downloading and caching
-- **🏗️ Docker Support**: Full containerization with development and production configurations
+- **🏗️ Docker Support**: Full containerization with development and production configurations (now using PDM for dependency management in Docker builds)
 - **🎯 ROCm Integration**: AMD GPU (ROCm v6.1) support for accelerated inference
 
 ## Key Features
 
 - **AMD GPU (ROCm) Support**: Primary focus on enabling Whisper models on AMD GPUs
 - **Multiple Interfaces**: Choose between API, WebUI, or CLI based on your workflow
-- **Batch Processing**: Handle multiple audio files simultaneously via WebUI
+- **Batch Processing**: Handle multiple audio **and video** files simultaneously via WebUI
 - **High Performance**: Optimized processing with configurable batch sizes and model parameters
 - **Multiple Output Formats**: Support for JSON, TXT, and SRT subtitle formats
 - **Standardized Filenames**: Consistent, timestamped output naming across all interfaces
+- **Word-level Timestamp Stabilization (CLI, API & WebUI)**: Optional `--stabilize` flag (powered by [stable-ts](https://github.com/jianfch/stable-ts)) greatly refines chunk timestamps, producing accurate word-aligned SRT/VTT output
+- **Noise Reduction & Voice Activity Detection (CLI, API & WebUI)**: Optional `--demucs` and `--vad` flags provide Demucs-based denoising and intelligent speech-region detection (adjustable `--vad-threshold`) for cleaner, more accurate transcripts
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v0.9.0-informational)](#insanely-fast-whisper-api-rocm)
+[![Version](https://img.shields.io/badge/Version-v0.10.0-informational)](#insanely-fast-whisper-api-rocm)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface)
@@ -49,7 +51,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 ## 🌟 Additional Features
 
 - **Modern Acceleration**: Uses native PyTorch 2.0 Scaled Dot Product Attention (`sdpa`) for optimized performance, which is the modern successor to `BetterTransformer`.
-- **Multi-format Audio Support**: Process various audio file formats seamlessly (.wav, .flac and .mp3)
+- **Video & Audio Support**: Process standard audio formats (.wav, .flac, .mp3) **and** video files (.mp4, .mkv, .webm, .mov) thanks to automatic audio extraction via FFmpeg
 - **OpenAI-Compatible API**: Drop-in replacement for OpenAI's audio endpoints (v1)
 - **Environment-based Configuration**: Flexible configuration via `.env` files.
 - **Real-time Progress**: Live progress tracking in WebUI for batch operations
@@ -118,6 +120,16 @@ For local development, PDM (Python Development Master) is used to manage depende
 3. Install project dependencies using PDM:
 
 > [!IMPORTANT]  
+> **Benchmarking with Multiple ROCm Torch Versions:**
+>
+> To benchmark with a specific ROCm-compatible torch version, install the matching optional group (e.g., `bench-torch-2_3_0`):
+>
+> ```bash
+> pdm install -G bench-torch-2_3_0
+> ```
+>
+> This will install the specified torch version and benchmarking tools. See [`project-overview.md`](./project-overview.md#benchmarking-with-multiple-rocm-torch-versions) for details and the full list of available groups.
+>
 > This application is specifically designed to provide **AMD GPU (ROCm) support** for Whisper models. The `rocm` dependency group in [`pyproject.toml`](./pyproject.toml) ensures proper PyTorch and ONNX runtime installation for AMD GPUs. While it should technically also works on CPU and NVIDIA GPUs, ROCm support was the primary motivation for this package.
 
 This command installs the project's core dependencies. To install optional groups for development or specific hardware support (like ROCm), use the `-G` flag:
@@ -213,7 +225,7 @@ python -m insanely_fast_whisper_api.webui
 
 Access it at `http://localhost:7860` (default). Features include:
 
-- Multi-file batch processing
+- Multi-file batch processing (audio & video)
 - Real-time progress tracking
 - ZIP downloads (TXT, JSON, SRT)
 
@@ -226,6 +238,9 @@ The CLI is suitable for single-file transcription and translation.
 Basic usage:
 
 ```bash
+# Transcribe with word-level timestamp stabilization
+python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --stabilize
+
 # Transcribe and get a JSON file (default)
 python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3
 
@@ -280,6 +295,10 @@ The API endpoints have distinct parameters. Core model settings (`model`, `devic
 - `file`: The audio file to transcribe (required).
 - `timestamp_type`: The granularity of the timestamps (`chunk` or `word`). If you provide `text` here, the response will be plain text instead of JSON. Defaults to `chunk`.
 - `language`: The language of the audio. If omitted, the model will auto-detect the language.
+- `stabilize`: `bool` - Enable timestamp stabilization using `stable-ts`. Defaults to `False`.
+- `demucs`: `bool` - Enable Demucs noise reduction before transcription. Defaults to `False`.
+- `vad`: `bool` - Enable Silero VAD to filter out silent parts of the audio. Defaults to `False`.
+- `vad_threshold`: `float` - The threshold for VAD. Defaults to `0.35`.
 
 #### `/v1/audio/translations`
 
@@ -287,6 +306,10 @@ The API endpoints have distinct parameters. Core model settings (`model`, `devic
 - `response_format`: The desired output format (`json` or `text`). Defaults to `json`.
 - `timestamp_type`: The granularity of the timestamps (`chunk` or `word`). Defaults to `chunk`.
 - `language`: The language of the audio. If omitted, the model will auto-detect the language.
+- `stabilize`: `bool` - Enable timestamp stabilization using `stable-ts`. Defaults to `False`.
+- `demucs`: `bool` - Enable Demucs noise reduction before transcription. Defaults to `False`.
+- `vad`: `bool` - Enable Silero VAD to filter out silent parts of the audio. Defaults to `False`.
+- `vad_threshold`: `float` - The threshold for VAD. Defaults to `0.35`.
 
 ## Development
 

@@ -2,16 +2,17 @@
 
 > **Note:** Key Commits sections were updated on 2025-07-06 to reflect normalized tags and true release commits.
 
-
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v0.9.0-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v0.10.0-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v0.9.0` (Current) - *06-07-2025*](#v090-current---06-07-2025)
+- [`v0.10.0` (Current) - *23-07-2025*](#v0100-current---23-07-2025)
+- [`v0.9.1` - *19-07-2025*](#v091---19-07-2025)
+- [`v0.9.0` - *06-07-2025*](#v090---06-07-2025)
 - [`v0.8.0` - *06-07-2025*](#v080---06-07-2025)
 - [`v0.7.0` - *05-07-2025*](#v070---05-07-2025)
 - [`v0.6.0` - *05-07-2025*](#v060---05-07-2025)
@@ -40,7 +41,52 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v0.9.0` (Current) - *06-07-2025*
+### `v0.10.0` (Current) - *23-07-2025*
+
+#### ✨ **Feature Release: M4A Audio Support & Stable-TS Integration**
+
+This release introduces support for `.m4a` audio files and integrates `stable-ts` for more accurate word-level timestamp generation.
+
+#### ✨ **New Features in v0.10.0**
+
+- **Added**: Support for M4A audio files via `pydub`. The application can now process `.m4a` files seamlessly alongside other supported formats.
+- **Added**: Integration with `stable-ts` for word-level timestamp stabilization. This can be enabled via the `--stabilize` flag in the CLI or corresponding options in the API and WebUI.
+
+#### 🔧 **Improvements in v0.10.0**
+
+- **Updated**: Dependencies to include `stable-ts`.
+- **Improved**: The ASR backend now conditionally applies `stable-ts` to refine timestamps when requested.
+
+#### 📝 **Key Commits in v0.10.0**
+
+`2e132f1`, `aede396`, `44492cd`, `5e48f44`, `2fc9fa0`
+
+---
+
+### `v0.9.1` - *19-07-2025*
+
+#### 🐛 **Bug Fix Release: Translation & Model Override**
+
+This patch fixes translation to English across all Whisper models and ensures CLI `--model` overrides the `.env` default in the WebUI.
+
+#### 🐛 **Bug Fixes in v0.9.1**
+
+- **Fixed**: Multilingual detection logic causing translation block.
+- **Fixed**: CLI model override not respected by WebUI.
+- **Fixed**: Excessive warnings during translation now suppressed.
+
+#### 🔧 **Improvements in v0.9.1**
+
+- **Improved**: Warning handling to single concise notice.
+- **Improved**: Added automatic timestamp disable for distil models.
+
+#### 📝 **Key Commits in v0.9.1**
+
+`70d744d`
+
+---
+
+### `v0.9.0` - *06-07-2025*
 
 #### ✨ **Feature Release: CLI Benchmarking, Export Options & Translation**
 
@@ -65,6 +111,7 @@ This release introduces CLI benchmarking and performance monitoring, export form
 - **Refactored**: Modularized formatters and audio processing
 
 #### 📝 **Key Commits in v0.9.0**
+
 `32c6d73`
 
 ---

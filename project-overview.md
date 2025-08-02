@@ -6,7 +6,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 > This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v0.9.0-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v0.10.0-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -78,15 +78,16 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v0.9.0** *(06-07-2025)*
+### 🏷️ **Current Version: v0.10.0** *(23-07-2025)*
 
-**Latest improvements**: Entrypoint refactoring, export format options for CLI, and translation functionality.
+**Latest improvements**: Added M4A audio format support and integrated `stable-ts` for enhanced word-level timestamp accuracy.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
 |---------|------|------|--------------|
-| **v0.9.0** | 06-07-2025 | ✨ Minor | CLI benchmarking, export options, translation feature |
+| **v0.10.0** | 23-07-2025 | ✨ Minor | M4A support & Stable-TS integration |
+| v0.9.1 | 19-07-2025 | 🐛 Patch | Translation & model override fixes |
 | **v0.8.0** | Jul 2025 | ✨ Minor | Entrypoint refactoring, CLI export formats, translation feature |
 | **v0.7.0** | Jun 2025 | ✨ Minor | Major import refactor, `pdm` migration, modular CLI |
 | **v0.4.1** | Jun 2025 | 🐛 Patch | WebUI download fixes, stability |
@@ -108,7 +109,7 @@ pdm run cli transcribe audio.mp3  # CLI
 ---
 
 > 📖 **For complete version history, changelog, and detailed release notes, see [VERSIONS.md](VERSIONS.md)**
-> 
+>
 > **Note:** As of 2025-07-06, all release tags (v0.1.0 ... v0.9.0) have normalized commit mappings. The canonical mapping for each release is now found in VERSIONS.md under the 'Key Commits' section.
 
 ---
@@ -127,7 +128,8 @@ pdm run cli transcribe audio.mp3  # CLI
 - **Transcription**: Audio to text in source language
 - **Translation**: Audio to English
 - **Native SDPA Acceleration**: Hugging Face `sdpa` attention implementation for faster processing on compatible hardware.
-- **Multiple Audio Formats**: Support for .wav, .flac, and .mp3 formats
+- **Word-level Timestamp Stabilization**: Optional integration with [`stable-ts`](https://github.com/jianfch/stable-ts). Enable via `--stabilize` (CLI) or corresponding API/WebUI options to obtain refined word-aligned segments.
+- **Video & Audio Formats**: Support for standard audio files (.wav, .flac, .mp3, .m4a) **and** popular video containers (.mp4, .mkv, .webm, .mov) via automatic audio extraction with FFmpeg
 - **Filename Standardization**: Predictable and configurable output naming
 
 ### Interface Options
@@ -395,15 +397,27 @@ The API endpoints have distinct parameters. Core model settings (`model`, `devic
   - `file`: The audio file to transcribe (required).
   - `timestamp_type`: The granularity of the timestamps (`chunk` or `word`). If you provide `text` here, the response will be plain text instead of JSON. Defaults to `chunk`.
   - `language`: The language of the audio. If omitted, the model will auto-detect the language.
+  - `stabilize`: `bool` - Enable timestamp stabilization using `stable-ts`. Defaults to `False`.
+  - `demucs`: `bool` - Enable Demucs noise reduction before transcription. Defaults to `False`.
+  - `vad`: `bool` - Enable Silero VAD to filter out silent parts of the audio. Defaults to `False`.
+  - `vad_threshold`: `float` - The threshold for VAD. Defaults to `0.35`.
 - `/v1/audio/translations`:
   - `file`: The audio file to translate (required).
   - `response_format`: The desired output format (`json` or `text`). Defaults to `json`.
+  - `stabilize`: `bool` - Enable timestamp stabilization using `stable-ts`. Defaults to `False`.
+  - `demucs`: `bool` - Enable Demucs noise reduction before transcription. Defaults to `False`.
+  - `vad`: `bool` - Enable Silero VAD to filter out silent parts of the audio. Defaults to `False`.
+  - `vad_threshold`: `float` - The threshold for VAD. Defaults to `0.35`.
   - `timestamp_type`: The granularity of the timestamps (`chunk` or `word`). Defaults to `chunk`.
   - `language`: The language of the audio. If omitted, the model will auto-detect the language.
 
 ### WebUI (Gradio Interface) Details
 
-The Gradio WebUI offers an interactive, browser-based experience, particularly useful for batch processing multiple audio files.
+The Gradio WebUI offers an interactive, browser-based experience—ideal for batch processing multiple audio/video files—and now **parity with the CLI for advanced audio-preprocessing features**:
+
+- **Word-level timestamp stabilization** (`--stabilize`, powered by stable-ts)
+- **Demucs noise reduction** (`--demucs`)
+- **Voice Activity Detection** (`--vad`, with adjustable `--vad-threshold`)
 
 **Launch Options:**
 
@@ -419,6 +433,26 @@ python -m insanely_fast_whisper_api.webui --port 7860 --host 0.0.0.0 --debug
 ```
 
 ### CLI (Command Line Interface) Details
+
+#### Internal Refactor (v0.9.2)
+
+The CLI codebase was streamlined to eliminate hundreds of lines of duplicated `click` option declarations.
+
+- **`cli/common_options.py`** now exposes an `audio_options` decorator that injects all shared flags (model, device, batch-size, language, export settings, etc.) into any command.
+- **`cli/commands.py`** was rewritten so that `transcribe` and `translate` are *thin wrappers*:
+
+  ```python
+  @click.command(short_help="Transcribe an audio file")
+  @audio_options
+  def transcribe(audio_file: Path, **kwargs):
+      _run_task(task="transcribe", audio_file=audio_file, **kwargs)
+  ```
+
+- The business logic lives in `_run_task`, and helpers such as `_handle_output_and_benchmarks` keep the file organized.
+
+- New flag: `--stabilize` (timestamp post-processing via stable-ts).
+
+Nothing changes for end-users — option names and behaviour remain the same — but the code is far easier to maintain and extend.
 
 #### Performance Benchmarking
 
@@ -456,6 +490,10 @@ The JSON includes runtime stats, total elapsed time, system info (OS, Python, To
 ---
 
 The Command Line Interface is ideal for single-file processing, scripting, or quick tests. It supports multiple output formats and provides clear feedback on the transcription process.
+
+#### Timestamp Stabilization (`--stabilize`)
+
+Use `--stabilize` to refine timestamps with the [stable-ts](https://github.com/jianfch/stable-ts) library. When the flag is supplied, the CLI will post-process Whisper results via `stable_whisper.transcribe_any`, producing more reliable **word-level** timestamps while keeping chunk timings intact. The option works for both `transcribe` and `translate` commands and can be combined with any export or benchmarking settings.
 
 #### Export Formats
 
@@ -502,8 +540,40 @@ This project uses [PDM (Python Development Master)](https://pdm-project.org/) fo
   - **`optional-dependencies`**: Defines groups of dependencies that are not required for the core functionality but can be installed for specific purposes. Key groups include:
     - `dev`: Tools for development, such as linters (`black`, `isort`, `flake8`, `mypy`), testing frameworks (`pytest`, `pytest-cov`), and other utilities.
     - `rocm`: Dependencies specific to AMD ROCm GPU support, including the appropriate PyTorch build and ONNX runtime for ROCm.
+    - `bench-torch-2_0_1`, `bench-torch-2_3_0`, `bench-torch-2_4_1`, `bench-torch-2_5_1`, `bench-torch-2_6_0`: Benchmarking groups for ROCm, each pinning a specific torch version (from the ROCm wheels source) and including `pyamdgpuinfo` for GPU metrics.
     - `cpu`: Dependencies for CPU-only PyTorch execution.
     - `cuda`: Dependencies for NVIDIA CUDA GPU execution.
+
+#### Benchmarking with Multiple ROCm Torch Versions
+
+To facilitate benchmarking across different ROCm-compatible PyTorch versions, the following optional dependency groups are available:
+
+- `bench-torch-2-0-1`
+- `bench-torch-2-3-0`
+- `bench-torch-2-4-1`
+- `bench-torch-2-5-1`
+- `bench-torch-2-6-0`
+
+Each group includes:
+
+- The corresponding `torch` version from the ROCm wheels source
+- `pyamdgpuinfo` for collecting GPU metrics during benchmarking
+
+**Install a specific benchmarking group:**
+
+```bash
+pdm install -G bench-torch-2_3_0
+```
+
+**Example**: Benchmarking CLI with a specific torch version
+
+```bash
+pdm install -G bench-torch-2_4_1
+python -m insanely_fast_whisper_api.cli transcribe audio.mp3 --benchmark
+```
+
+This allows reproducible benchmarking and easy switching between supported ROCm torch versions for performance comparison.
+
 - **`[tool.pdm]`**: Configures PDM-specific settings.
   - **`scripts`**: Defines shortcuts for common commands (e.g., `lint`, `format`, `test`, `api`, `webui`, `cli`). These can be run using `pdm run <script_name>`.
   - **`dev-dependencies`**: PDM's way to specify development-only dependencies, often mirrored or managed via the `dev` group in `optional-dependencies` for broader compatibility.
@@ -553,7 +623,7 @@ This project uses [PDM (Python Development Master)](https://pdm-project.org/) fo
 
 ### Relationship with `requirements-*.txt` Files
 
-While PDM manages dependencies through [`pyproject.toml`](./pyproject.toml), the `requirements-*.txt` files (e.g., `requirements.txt`, `requirements-rocm.txt`, `requirements-dev.txt`) are currently maintained primarily for Docker builds and specific environment setups where PDM might not be directly used for the build process itself, or for environments that predate full PDM integration.
+The Docker build now uses PDM to install all project dependencies directly from [`pyproject.toml`](./pyproject.toml) via `pdm install --prod`. The `requirements-*.txt` files (e.g., `requirements.txt`, `requirements-rocm.txt`, `requirements-dev.txt`) are maintained only for legacy or special environments where PDM is not available, but are no longer used in the Docker build.
 
 Ideally, these `requirements.txt` files can be generated from `pdm.lock` using `pdm export` to ensure consistency:
 
@@ -628,9 +698,35 @@ Translates audio to English.
 
 ### Testing
 
+Unit & API test suite:
+
 ```bash
 pytest tests/
 ```
+
+#### WebUI integration tests (Gradio)
+
+These tests target the Gradio WebUI using `gradio_client`.
+
+```bash
+# Only run WebUI tests (marked `webui`)
+pytest -m webui
+```
+
+Details:
+
+- Requires `gradio-client>=0.7.0` (already part of the core deps).
+- Session-scoped fixture `webui_server` (see `tests/conftest.py`) launches the WebUI once on port 7861 with the tiny Whisper model for speed.
+- Tests auto-skip when the sample media files are absent.
+- Custom marker `webui` is registered via `pytest.ini`:
+
+```ini
+[pytest]
+markers =
+    webui: integration tests that spin up the Gradio WebUI
+```
+
+Average runtime < 10 s on a laptop-class GPU.
 
 ### Code Quality Checks (Docker-based)
 
@@ -708,6 +804,8 @@ python -m insanely_fast_whisper_api.api --debug
 
 **WebUI (Gradio Interface):**
 
+The WebUI file uploader now accepts both audio **and** video files (`.wav`, `.flac`, `.mp3`, `.mp4`, `.mkv`, `.webm`, `.mov`). Video inputs are automatically converted to audio via FFmpeg before transcription—no extra flags required.
+
 ```bash
 # Launch WebUI with debug logging
 python -m insanely_fast_whisper_api.webui --debug
@@ -721,6 +819,9 @@ python -m insanely_fast_whisper_api.webui --port 7860 --host 0.0.0.0 --debug
 ```bash
 # Transcribe audio file
 python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3
+
+# Transcribe with word-level stabilization
+python -m insanely_fast_whisper_api.cli transcribe tests/conversion-test-file.mp3 --stabilize
 
 # Transcribe with options
 python -m insanely_fast_whisper_api.cli transcribe tests/conversion-test-file.mp3 --no-timestamps --debug

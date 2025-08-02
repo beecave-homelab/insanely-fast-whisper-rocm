@@ -76,6 +76,9 @@ uploads/
 # Test directory
 tests/*.mp3
 transcripts/*.json
+transcripts/*.txt
+transcripts/*.zip
+transcripts/*.srt
 transcripts-srt/*.srt
 transcripts-txt/*.txt
 temp_uploads/*
@@ -89,4 +92,4 @@ benchmarks/*.json
 commit_subdirectories.sh
 .vscode/settings.json
 project-overview.md.bak
-transcripts/
+tests/data/test.txt
