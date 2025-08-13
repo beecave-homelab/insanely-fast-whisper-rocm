@@ -45,6 +45,13 @@ def audio_options(func: Callable[..., None]) -> Callable[..., None]:  # noqa: D4
             default=constants.DEFAULT_MODEL,
         ),
         click.option(
+            "--backend",
+            type=click.Choice(["huggingface", "ctranslate2"]),
+            default=constants.DEFAULT_BACKEND,
+            help="ASR backend to use",
+            show_default=True,
+        ),
+        click.option(
             "--device",
             "-d",
             help="Device for inference (cuda:0, cpu, mps)",

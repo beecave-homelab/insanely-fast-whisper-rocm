@@ -3,6 +3,7 @@
 
 import shutil
 from pathlib import Path
+from unittest.mock import patch
 
 from click.testing import CliRunner
 
@@ -15,7 +16,11 @@ class TestCliExports:
     def setup_method(self):
         """Set up test environment."""
         self.runner = CliRunner()
-        self.audio_file = Path("tests/conversion-test-file.mp3")
+        import tempfile
+
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+        self.audio_file = Path(tmp.name)
+        tmp.close()
         self.model = "openai/whisper-tiny.en"
         self.batch_size = 6
         self.output_dirs = [
@@ -41,17 +46,28 @@ class TestCliExports:
 
     def test_export_json_default(self):
         """Test default export to JSON."""
-        result = self.runner.invoke(
-            cli,
-            [
-                "transcribe",
-                str(self.audio_file),
-                "--model",
-                self.model,
-                "--batch-size",
-                str(self.batch_size),
-            ],
-        )
+        with patch(
+            "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+        ) as mock_process:
+            mock_process.return_value = {
+                "text": "test",
+                "chunks": [
+                    {"text": "test", "timestamp": [0.0, 1.0]}
+                ],
+                "runtime_seconds": 1.0,
+                "config_used": {},
+            }
+            result = self.runner.invoke(
+                cli,
+                [
+                    "transcribe",
+                    str(self.audio_file),
+                    "--model",
+                    self.model,
+                    "--batch-size",
+                    str(self.batch_size),
+                ],
+            )
         assert result.exit_code == 0, result.output
         output_dir = Path("transcripts")
         assert output_dir.exists()
@@ -61,19 +77,30 @@ class TestCliExports:
 
     def test_export_txt(self):
         """Test --export-format txt."""
-        result = self.runner.invoke(
-            cli,
-            [
-                "transcribe",
-                str(self.audio_file),
-                "--export-format",
-                "txt",
-                "--model",
-                self.model,
-                "--batch-size",
-                str(self.batch_size),
-            ],
-        )
+        with patch(
+            "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+        ) as mock_process:
+            mock_process.return_value = {
+                "text": "test",
+                "chunks": [
+                    {"text": "test", "timestamp": [0.0, 1.0]}
+                ],
+                "runtime_seconds": 1.0,
+                "config_used": {},
+            }
+            result = self.runner.invoke(
+                cli,
+                [
+                    "transcribe",
+                    str(self.audio_file),
+                    "--export-format",
+                    "txt",
+                    "--model",
+                    self.model,
+                    "--batch-size",
+                    str(self.batch_size),
+                ],
+            )
         assert result.exit_code == 0, result.output
         output_dir = Path("transcripts-txt")
         assert output_dir.exists()
@@ -83,19 +110,30 @@ class TestCliExports:
 
     def test_export_srt(self):
         """Test --export-format srt."""
-        result = self.runner.invoke(
-            cli,
-            [
-                "transcribe",
-                str(self.audio_file),
-                "--export-format",
-                "srt",
-                "--model",
-                self.model,
-                "--batch-size",
-                str(self.batch_size),
-            ],
-        )
+        with patch(
+            "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+        ) as mock_process:
+            mock_process.return_value = {
+                "text": "test",
+                "chunks": [
+                    {"text": "test", "timestamp": [0.0, 1.0]}
+                ],
+                "runtime_seconds": 1.0,
+                "config_used": {},
+            }
+            result = self.runner.invoke(
+                cli,
+                [
+                    "transcribe",
+                    str(self.audio_file),
+                    "--export-format",
+                    "srt",
+                    "--model",
+                    self.model,
+                    "--batch-size",
+                    str(self.batch_size),
+                ],
+            )
         assert result.exit_code == 0, result.output
         output_dir = Path("transcripts-srt")
         assert output_dir.exists()
@@ -105,19 +143,30 @@ class TestCliExports:
 
     def test_export_all(self):
         """Test --export-format all."""
-        result = self.runner.invoke(
-            cli,
-            [
-                "transcribe",
-                str(self.audio_file),
-                "--export-format",
-                "all",
-                "--model",
-                self.model,
-                "--batch-size",
-                str(self.batch_size),
-            ],
-        )
+        with patch(
+            "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+        ) as mock_process:
+            mock_process.return_value = {
+                "text": "test",
+                "chunks": [
+                    {"text": "test", "timestamp": [0.0, 1.0]}
+                ],
+                "runtime_seconds": 1.0,
+                "config_used": {},
+            }
+            result = self.runner.invoke(
+                cli,
+                [
+                    "transcribe",
+                    str(self.audio_file),
+                    "--export-format",
+                    "all",
+                    "--model",
+                    self.model,
+                    "--batch-size",
+                    str(self.batch_size),
+                ],
+            )
         assert result.exit_code == 0, result.output
 
         # Check for JSON
@@ -143,21 +192,34 @@ class TestCliExports:
 
     def test_custom_output_path(self):
         """Test custom output path with --output."""
-        output_file = Path("custom_output/result.json")
-
-        result = self.runner.invoke(
-            cli,
-            [
-                "transcribe",
-                str(self.audio_file),
-                "--output",
-                str(output_file),
-                "--model",
-                self.model,
-                "--batch-size",
-                str(self.batch_size),
-            ],
-        )
-        assert result.exit_code == 0, result.output
-        assert output_file.exists()
-        assert output_file.stat().st_size > 0
+        with self.runner.isolated_filesystem():
+            output_file = Path("custom_output/result.json")
+            with patch(
+                "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+            ) as mock_process:
+                mock_process.return_value = {
+                    "text": "test",
+                    "chunks": [
+                        {"text": "test", "timestamp": [0.0, 1.0]}
+                    ],
+                    "runtime_seconds": 1.0,
+                    "config_used": {},
+                }
+                result = self.runner.invoke(
+                    cli,
+                    [
+                        "transcribe",
+                        str(self.audio_file),
+                        "--output",
+                        str(output_file),
+                        "--export-format",
+                        "json",
+                        "--model",
+                        self.model,
+                        "--batch-size",
+                        str(self.batch_size),
+                    ],
+                )
+            assert result.exit_code == 0, result.output
+            assert output_file.exists()
+            assert output_file.stat().st_size > 0

@@ -124,6 +124,7 @@ debug_print(
 debug_print(f"constants.py: Final LOG_LEVEL from os.environ: {os.getenv('LOG_LEVEL')}")
 
 # Model configuration
+DEFAULT_BACKEND = os.getenv("WHISPER_BACKEND", "huggingface")
 DEFAULT_MODEL = os.getenv("WHISPER_MODEL", "distil-whisper/distil-large-v3")
 DEFAULT_DEVICE = os.getenv(
     "WHISPER_DEVICE", "0"

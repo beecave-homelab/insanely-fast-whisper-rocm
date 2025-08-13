@@ -82,6 +82,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
     # Extract and normalise arguments                                    #
     # ------------------------------------------------------------------ #
     model: str = kwargs.pop("model")
+    backend_type: str = kwargs.pop("backend")
     device: str = kwargs.pop("device")
     dtype: str = kwargs.pop("dtype")
     batch_size: int = kwargs.pop("batch_size")
@@ -146,6 +147,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
             language=processed_language,
             task=task,
             return_timestamps_value=return_timestamps_value,
+            backend=backend_type,
         )
 
         # Optional stable-ts post-processing
