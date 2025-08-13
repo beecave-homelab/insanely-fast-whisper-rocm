@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 from insanely_fast_whisper_api.core.asr_backend import (
+    CTranslate2Backend,
+    CTranslate2BackendConfig,
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )
@@ -20,6 +22,7 @@ class CLIFacade:
     def __init__(self):
         self.backend = None
         self._current_config = None
+        self._backend_type = None
 
     def get_env_config(self) -> Dict[str, Any]:
         """Get configuration from environment variables with fallbacks to defaults."""
@@ -34,6 +37,7 @@ class CLIFacade:
                 if constants.DEFAULT_LANGUAGE.lower() == "none"
                 else constants.DEFAULT_LANGUAGE
             ),
+            "backend": constants.DEFAULT_BACKEND,
         }
 
     def _create_backend_config(
@@ -43,8 +47,17 @@ class CLIFacade:
         dtype: str,
         batch_size: int,
         chunk_length: int,
-    ) -> HuggingFaceBackendConfig:
-        """Create a HuggingFaceBackendConfig from CLI args."""
+        backend: str,
+    ) -> Union[HuggingFaceBackendConfig, CTranslate2BackendConfig]:
+        """Create a backend configuration from CLI args."""
+        if backend == "ctranslate2":
+            return CTranslate2BackendConfig(
+                model_path=model,
+                device=device,
+                compute_type=dtype,
+                batch_size=batch_size,
+                chunk_length=chunk_length,
+            )
         return HuggingFaceBackendConfig(
             model_name=model,
             device=device,
@@ -64,6 +77,7 @@ class CLIFacade:
         language: Optional[str] = None,
         task: str = "transcribe",
         return_timestamps_value: Union[bool, str] = True,
+        backend: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Process an audio file using the core ASR backend (transcription or translation).
@@ -92,6 +106,7 @@ class CLIFacade:
         # Use provided parameters or fall back to config values
         model_name = model or config["model"]
         device = convert_device_string(device) if device else config["device"]
+        backend = backend or config["backend"]
 
         batch_size = min(
             max(batch_size or config["batch_size"], constants.MIN_BATCH_SIZE),
@@ -111,24 +126,38 @@ class CLIFacade:
             dtype=dtype,
             batch_size=batch_size,
             chunk_length=chunk_length,
+            backend=backend,
         )
 
         # Log final configuration
+        config_model_name = (
+            backend_config.model_path if backend == "ctranslate2" else backend_config.model_name
+        )
+        config_device = backend_config.device
+        config_dtype = (
+            backend_config.compute_type if backend == "ctranslate2" else backend_config.dtype
+        )
         logger.info(
             "Final configuration - Model: %s, Device: %s, Dtype: %s, "
             "Batch size: %s, Chunk length: %s, Language: %s",
-            backend_config.model_name,
-            backend_config.device,
-            backend_config.dtype,
+            config_model_name,
+            config_device,
+            config_dtype,
             backend_config.batch_size,
             backend_config.chunk_length,
             language,
         )
 
         # Create or reuse backend if configuration hasn't changed
-        if self.backend is None or self._current_config != backend_config:
-            self.backend = HuggingFaceBackend(backend_config)
+        backend_cls = CTranslate2Backend if backend == "ctranslate2" else HuggingFaceBackend
+        if (
+            self.backend is None
+            or self._backend_type != backend
+            or self._current_config != backend_config
+        ):
+            self.backend = backend_cls(backend_config)
             self._current_config = backend_config
+            self._backend_type = backend
 
         # Get language from config if not provided
         if language is None:

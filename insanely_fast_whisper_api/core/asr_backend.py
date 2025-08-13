@@ -41,6 +41,17 @@ class HuggingFaceBackendConfig:
     chunk_length: int
 
 
+@dataclass
+class CTranslate2BackendConfig:
+    """Configuration for CTranslate2Backend."""
+
+    model_path: str
+    device: str
+    compute_type: str
+    batch_size: int
+    chunk_length: int
+
+
 class ASRBackend(ABC):  # pylint: disable=too-few-public-methods
     """Abstract base class for ASR backends."""
 
@@ -308,3 +319,70 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             "Transcription completed in %.2fs for %s", elapsed_time, audio_file_path
         )
         return result
+
+
+class CTranslate2Backend(ASRBackend):  # pylint: disable=too-few-public-methods
+    """ASR Backend using CTranslate2 via faster-whisper."""
+
+    def __init__(self, config: CTranslate2BackendConfig):
+        from faster_whisper import WhisperModel
+
+        self.config = config
+        self.model = WhisperModel(
+            config.model_path,
+            device=config.device,
+            compute_type=config.compute_type,
+        )
+
+    def process_audio(
+        self,
+        audio_file_path: str,
+        language: Optional[str],
+        task: str,
+        return_timestamps_value: Union[bool, str],
+    ) -> Dict[str, Any]:
+        start_time = time.perf_counter()
+
+        from insanely_fast_whisper_api.audio.conversion import ensure_wav
+
+        converted_path = ensure_wav(audio_file_path)
+
+        word_timestamps = return_timestamps_value == "word"
+
+        try:
+            segments, _info = self.model.transcribe(
+                str(converted_path),
+                language=language,
+                task=task,
+                word_timestamps=word_timestamps,
+                beam_size=5,
+            )
+        except Exception as e:  # pragma: no cover - we rewrap as TranscriptionError
+            logger.error("Transcription failed for %s: %s", audio_file_path, e, exc_info=True)
+            raise TranscriptionError(f"Failed to transcribe audio: {e}") from e
+
+        text = "".join(segment.text for segment in segments)
+        chunks = None
+        if return_timestamps_value:
+            chunks = [
+                {"text": segment.text, "timestamp": [segment.start, segment.end]}
+                for segment in segments
+            ]
+
+        elapsed_time = time.perf_counter() - start_time
+
+        return {
+            "text": text.strip(),
+            "chunks": chunks,
+            "runtime_seconds": round(elapsed_time, 2),
+            "config_used": {
+                "model": self.config.model_path,
+                "device": self.config.device,
+                "batch_size": self.config.batch_size,
+                "language": language or "auto",
+                "dtype": self.config.compute_type,
+                "chunk_length_s": self.config.chunk_length,
+                "task": task,
+                "return_timestamps": return_timestamps_value,
+            },
+        }
