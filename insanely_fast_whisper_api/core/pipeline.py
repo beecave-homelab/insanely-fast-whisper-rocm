@@ -9,6 +9,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
+from insanely_fast_whisper_api.audio.processing import split_audio
+from insanely_fast_whisper_api.audio.results import merge_chunk_results
+from insanely_fast_whisper_api.utils.file_utils import cleanup_temp_files
+
 from insanely_fast_whisper_api.core.asr_backend import ASRBackend
 from insanely_fast_whisper_api.core.errors import TranscriptionError
 from insanely_fast_whisper_api.core.storage import BaseStorage, StorageFactory
@@ -319,43 +323,62 @@ class WhisperPipeline(BasePipeline):
         else:  # Default or unknown
             return_timestamps_value = False
 
-        # This method assumes the asr_backend can handle a single file path.
-        # If pipeline-level chunking was implemented in _prepare_input,
-        # this method would loop through chunks and aggregate results.
-        self._notify_listeners(
-            ProgressEvent(
-                event_type="chunk_start",  # Assuming non-chunked or backend handles chunks
-                pipeline_id=self.pipeline_id,
-                file_path=prepared_data,
-                chunk_num=1,  # Placeholder
-                total_chunks=1,  # Placeholder
-                message=(  # Reformatted for line length
-                    f"Processing chunk 1/1 for {prepared_data}"
-                ),
-            )
+        # Split the audio into chunks so we can provide deterministic progress
+        # updates to observers (e.g. Gradio's progress bar).  ``split_audio``
+        # returns a list with the original path if chunking is unnecessary.
+        chunk_paths = split_audio(
+            prepared_data,
+            chunk_duration=float(self.asr_backend.config.chunk_length),
+            chunk_overlap=0.0,
         )
+        total_chunks = len(chunk_paths)
+        chunk_results: List[Dict[str, Any]] = []
 
-        asr_raw_result = self.asr_backend.process_audio(
-            audio_file_path=prepared_data,
-            language=language,
-            task=task,
-            return_timestamps_value=return_timestamps_value,
-        )
+        try:
+            for idx, chunk_path in enumerate(chunk_paths, start=1):
+                self._notify_listeners(
+                    ProgressEvent(
+                        event_type="chunk_start",
+                        pipeline_id=self.pipeline_id,
+                        file_path=prepared_data,
+                        chunk_num=idx,
+                        total_chunks=total_chunks,
+                        message=(
+                            f"Processing chunk {idx}/{total_chunks} for {prepared_data}"
+                        ),
+                    )
+                )
 
-        self._notify_listeners(
-            ProgressEvent(
-                event_type="chunk_complete",  # Assuming non-chunked or backend handles chunks
-                pipeline_id=self.pipeline_id,
-                file_path=prepared_data,
-                chunk_num=1,  # Placeholder
-                total_chunks=1,  # Placeholder
-                result=asr_raw_result,  # Added result
-                message=(  # Reformatted for line length
-                    f"Completed chunk 1/1 for {prepared_data}"
-                ),
-            )
-        )
-        return asr_raw_result
+                asr_raw_result = self.asr_backend.process_audio(
+                    audio_file_path=chunk_path,
+                    language=language,
+                    task=task,
+                    return_timestamps_value=return_timestamps_value,
+                )
+
+                self._notify_listeners(
+                    ProgressEvent(
+                        event_type="chunk_complete",
+                        pipeline_id=self.pipeline_id,
+                        file_path=prepared_data,
+                        chunk_num=idx,
+                        total_chunks=total_chunks,
+                        result=asr_raw_result,
+                        message=(
+                            f"Completed chunk {idx}/{total_chunks} for {prepared_data}"
+                        ),
+                    )
+                )
+                chunk_results.append(asr_raw_result)
+        finally:
+            # Only clean up generated chunk files; ``split_audio`` returns the
+            # original path untouched when no chunking was required.
+            if total_chunks > 1:
+                cleanup_temp_files(chunk_paths)
+
+        if total_chunks > 1:
+            return merge_chunk_results(chunk_results)
+        return chunk_results[0]
 
     def _postprocess_output(
         self,
