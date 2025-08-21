@@ -173,6 +173,16 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 )
                 _return_timestamps_value = False
 
+        if _return_timestamps_value:
+            gen_cfg = getattr(self.asr_pipe.model, "generation_config", None)
+            no_ts_token_id = getattr(gen_cfg, "no_timestamps_token_id", None)
+            if no_ts_token_id is None:
+                logger.warning(
+                    "Timestamp generation not properly configured for model %s; disabling.",
+                    self.config.model_name,
+                )
+                _return_timestamps_value = False
+
         # These are the arguments that will be passed to the pipeline
         # Suppress noisy warnings from HF transformers related to experimental chunk_length and deprecations.
         warnings.filterwarnings(
@@ -215,13 +225,31 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 self.config.model_name,
             )
 
-        # Always add task and language parameters so Whisper knows we want translation.
-        pipeline_kwargs["generate_kwargs"]["task"] = task
-        # If translate task and no explicit language provided, default to English
-        if language and language.lower() != "none":
-            pipeline_kwargs["generate_kwargs"]["language"] = language
-        elif task == "translate":
-            pipeline_kwargs["generate_kwargs"]["language"] = "en"
+        # Older checkpoints may ship with generation configs that predate the
+        # introduction of task/language mappings. Passing "task" or "language"
+        # to such models triggers a ValueError. Only forward these parameters
+        # when the generation config exposes the required attributes.
+        gen_cfg = getattr(self.asr_pipe.model, "generation_config", None)
+        has_task_mappings = False
+        if gen_cfg is not None:
+            has_task_mappings = any(
+                getattr(gen_cfg, attr, None) is not None
+                for attr in ("task_to_id", "lang_to_id")
+            )
+
+        if has_task_mappings:
+            pipeline_kwargs["generate_kwargs"]["task"] = task
+            # If translate task and no explicit language provided, default to English
+            if language and language.lower() != "none":
+                pipeline_kwargs["generate_kwargs"]["language"] = language
+            elif task == "translate":
+                pipeline_kwargs["generate_kwargs"]["language"] = "en"
+        elif task != "transcribe" or language:
+            logger.warning(
+                "Generation config for model %s lacks task/language mappings; "
+                "falling back to default transcription.",
+                self.config.model_name,
+            )
 
         # Convert to WAV if extension not among standard Whisper-friendly set
         from insanely_fast_whisper_api.audio.conversion import (
