@@ -173,6 +173,16 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 )
                 _return_timestamps_value = False
 
+        if _return_timestamps_value:
+            gen_cfg = getattr(self.asr_pipe.model, "generation_config", None)
+            no_ts_token_id = getattr(gen_cfg, "no_timestamps_token_id", None)
+            if no_ts_token_id is None:
+                logger.warning(
+                    "Timestamp generation not properly configured for model %s; disabling.",
+                    self.config.model_name,
+                )
+                _return_timestamps_value = False
+
         # These are the arguments that will be passed to the pipeline
         # Suppress noisy warnings from HF transformers related to experimental chunk_length and deprecations.
         warnings.filterwarnings(
