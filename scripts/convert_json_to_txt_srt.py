@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-CLI tool to convert a Whisper transcription JSON file to TXT and/or SRT formats.
+"""CLI tool to convert a Whisper transcription JSON file to TXT and/or SRT formats.
 
 Usage:
   python scripts/convert_json_to_txt_srt.py --input input.json --output-dir out/ --format txt --format srt [--debug]
@@ -71,7 +70,7 @@ def cli(input_path, output_dir, formats, debug):
 
     # Load JSON
     try:
-        with open(input_path, "r", encoding="utf-8") as f:
+        with open(input_path, encoding="utf-8") as f:
             result = json.load(f)
     except Exception as e:
         logger.error(f"Failed to load JSON: {e}")
