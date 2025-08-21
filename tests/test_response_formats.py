@@ -1,7 +1,7 @@
 """Unit tests for response_format handling on transcription and translation endpoints."""
 
 import io
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,6 +14,10 @@ from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_VERBOSE_JSON,
     RESPONSE_FORMAT_VTT,
 )
+from insanely_fast_whisper_api.api.dependencies import (
+    get_asr_pipeline,
+    get_file_handler,
+)
 
 # ---------------------------------------------------------------------------
 # Dummy dependencies --------------------------------------------------------
@@ -23,7 +27,7 @@ from insanely_fast_whisper_api.utils import (
 class _StubPipeline:  # noqa: D401 (simple class)
     """Minimal stub for WhisperPipeline that returns deterministic output."""
 
-    def process(self, *_, **__) -> Dict[str, Any]:  # noqa: D401
+    def process(self, *_, **__) -> dict[str, Any]:  # noqa: D401
         return {
             "text": "hello world",
             "chunks": [

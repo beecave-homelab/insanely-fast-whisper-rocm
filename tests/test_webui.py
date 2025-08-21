@@ -1,5 +1,4 @@
-"""
-Test script for the WebUI functionality.
+"""Test script for the WebUI functionality.
 
 This script tests the WebUI functionality by:
 1. Starting the WebUI in a separate process
@@ -81,7 +80,6 @@ def teardown_module():
 
 def test_webui_ui_elements():
     """Sanity-check that the WebUI root URL responds with valid HTML and the Gradio app container."""
-
     response = requests.get(WEBUI_URL, timeout=10)
     assert response.status_code == 200, "WebUI did not load successfully"
 
@@ -102,21 +100,19 @@ def test_webui_transcription():
             API_TRANSCRIBE_EP,
             files=files,
             data={
-                "data": json.dumps(
-                    [
-                        [TEST_AUDIO_FILE],  # audio_file_paths as list
-                        "openai/whisper-tiny",  # model
-                        "cpu",  # device
-                        16,  # batch_size
-                        "chunk",  # timestamp_type
-                        "en",  # language
-                        "transcribe",  # task
-                        "float16",  # dtype
-                        30,  # chunk_length
-                        True,  # save_transcriptions
-                        "transcripts",  # temp_uploads_dir
-                    ]
-                )
+                "data": json.dumps([
+                    [TEST_AUDIO_FILE],  # audio_file_paths as list
+                    "openai/whisper-tiny",  # model
+                    "cpu",  # device
+                    16,  # batch_size
+                    "chunk",  # timestamp_type
+                    "en",  # language
+                    "transcribe",  # task
+                    "float16",  # dtype
+                    30,  # chunk_length
+                    True,  # save_transcriptions
+                    "transcripts",  # temp_uploads_dir
+                ])
             },
             timeout=60,
         )
@@ -160,21 +156,19 @@ def test_long_audio_transcription():
             API_TRANSCRIBE_EP,
             files=files,
             data={
-                "data": json.dumps(
-                    [
-                        [LONG_TEST_AUDIO_FILE],  # audio_file_paths as list
-                        "openai/whisper-tiny",  # model
-                        "cpu",  # device
-                        16,  # batch_size
-                        "chunk",  # timestamp_type
-                        "en",  # language
-                        "transcribe",  # task
-                        "float16",  # dtype
-                        30,  # chunk_length
-                        True,  # save_transcriptions
-                        "transcripts",  # temp_uploads_dir
-                    ]
-                )
+                "data": json.dumps([
+                    [LONG_TEST_AUDIO_FILE],  # audio_file_paths as list
+                    "openai/whisper-tiny",  # model
+                    "cpu",  # device
+                    16,  # batch_size
+                    "chunk",  # timestamp_type
+                    "en",  # language
+                    "transcribe",  # task
+                    "float16",  # dtype
+                    30,  # chunk_length
+                    True,  # save_transcriptions
+                    "transcripts",  # temp_uploads_dir
+                ])
             },
             timeout=300,  # Longer timeout for the longer audio file
         )
@@ -210,21 +204,19 @@ def test_export_formats():
             API_TRANSCRIBE_EP,
             files=files,
             data={
-                "data": json.dumps(
-                    [
-                        [TEST_AUDIO_FILE],  # audio_file_paths as list
-                        "openai/whisper-tiny",  # model
-                        "cpu",  # device
-                        16,  # batch_size
-                        "chunk",  # timestamp_type
-                        "en",  # language
-                        "transcribe",  # task
-                        "float16",  # dtype
-                        30,  # chunk_length
-                        True,  # save_transcriptions
-                        "transcripts",  # temp_uploads_dir
-                    ]
-                )
+                "data": json.dumps([
+                    [TEST_AUDIO_FILE],  # audio_file_paths as list
+                    "openai/whisper-tiny",  # model
+                    "cpu",  # device
+                    16,  # batch_size
+                    "chunk",  # timestamp_type
+                    "en",  # language
+                    "transcribe",  # task
+                    "float16",  # dtype
+                    30,  # chunk_length
+                    True,  # save_transcriptions
+                    "transcripts",  # temp_uploads_dir
+                ])
             },
             timeout=60,
         )
@@ -268,12 +260,10 @@ def test_export_formats():
     json_response = requests.post(
         API_TRANSCRIBE_EP,
         data={
-            "data": json.dumps(
-                [
-                    "json",  # format_type
-                    result_data[3],  # result data from transcription
-                ]
-            )
+            "data": json.dumps([
+                "json",  # format_type
+                result_data[3],  # result data from transcription
+            ])
         },
         timeout=30,
     )

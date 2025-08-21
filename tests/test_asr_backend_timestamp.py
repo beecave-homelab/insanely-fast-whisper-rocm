@@ -1,7 +1,10 @@
-import types
 import pathlib
+import types
 
-from insanely_fast_whisper_api.core.asr_backend import HuggingFaceBackend, HuggingFaceBackendConfig
+from insanely_fast_whisper_api.core.asr_backend import (
+    HuggingFaceBackend,
+    HuggingFaceBackendConfig,
+)
 
 
 def test_disables_timestamps_when_generation_config_missing(monkeypatch, tmp_path):

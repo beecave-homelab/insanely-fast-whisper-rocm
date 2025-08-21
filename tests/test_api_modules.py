@@ -262,7 +262,7 @@ class TestMiddleware:
 
         with patch("insanely_fast_whisper_api.api.middleware.logger") as mock_logger:
             # Make a request to trigger middleware
-            response = client.get("/docs")  # Use docs endpoint which should exist
+            _ = client.get("/docs")  # Use docs endpoint which should exist
 
             # Verify logger was called with timing information
             mock_logger.info.assert_called()
