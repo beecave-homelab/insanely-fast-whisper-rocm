@@ -1,6 +1,4 @@
-"""
-Download a Hugging Face model if it's not already cached or if forced.
-"""
+"""Download a Hugging Face model if it's not already cached or if forced."""
 
 import logging
 import sys
@@ -48,8 +46,7 @@ def download_model_if_needed(
     ignore_patterns: list[str] | None = None,
     custom_logger: logging.Logger | None = None,
 ):
-    """
-    Downloads a Hugging Face model if it's not already cached or if forced.
+    """Downloads a Hugging Face model if it's not already cached or if forced.
     Respects Hugging Face's default cache locations and environment variables
     (HF_HOME, TRANSFORMERS_CACHE, HUGGINGFACE_HUB_CACHE) if cache_dir is None.
 
@@ -230,9 +227,7 @@ def main(
     ignore_patterns: tuple[str, ...],
     verbose: bool,
 ):
-    """
-    Main function to handle CLI arguments and trigger model download using Click.
-    """
+    """Main function to handle CLI arguments and trigger model download using Click."""
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)  # Set root logger level
         logger.setLevel(logging.DEBUG)  # Set our specific logger level

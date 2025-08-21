@@ -13,8 +13,9 @@ and removes external dependencies such as GPU availability or HF downloads.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 from insanely_fast_whisper_api.core.asr_backend import ASRBackend
 from insanely_fast_whisper_api.core.errors import (
@@ -40,10 +41,10 @@ class _DummyBackend(ASRBackend):
     def process_audio(
         self,
         audio_file_path: str,
-        language: Optional[str],
+        language: str | None,
         task: str,
         return_timestamps_value: bool | str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         # A fake but realistic looking result that unit-tests can introspect.
         return {
             "text": (
@@ -69,9 +70,7 @@ class ASRPipeline(BasePipeline):  # type: ignore[misc]
         model: str = "openai/whisper-base",
         device: str = "cpu",
         dtype: str = "float32",
-        progress_callback: Optional[
-            Callable[[str, int, int, Optional[str]], None]
-        ] = None,
+        progress_callback: Callable[[str, int, int, str | None], None] | None = None,
         **kwargs: Any,
     ):
         # Store simple attributes for legacy tests
@@ -95,12 +94,12 @@ class ASRPipeline(BasePipeline):  # type: ignore[misc]
     def __call__(
         self,
         audio_file_path: str,
-        language: Optional[str] = None,
+        language: str | None = None,
         task: str = "transcribe",
         timestamp_type: str = "chunk",
-        progress_callback: Optional[Callable[[float], None]] = None,
+        progress_callback: Callable[[float], None] | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         cb = progress_callback or self._progress_callback
         if cb:
             cb("SINGLE_FILE_PROCESSING_START", 0, 1, None)
@@ -130,10 +129,10 @@ class ASRPipeline(BasePipeline):  # type: ignore[misc]
     def _execute_asr(  # type: ignore[override]
         self,
         prepared_data: str,
-        language: Optional[str],
+        language: str | None,
         task: str,
         timestamp_type: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return self.asr_backend.process_audio(
             prepared_data, language, task, return_timestamps_value=False
         )
@@ -141,11 +140,11 @@ class ASRPipeline(BasePipeline):  # type: ignore[misc]
     # pylint: disable=unused-argument
     def _postprocess_output(  # type: ignore[override]
         self,
-        asr_output: Dict[str, Any],
+        asr_output: dict[str, Any],
         audio_file_path: Path,
         task: str,
-        original_filename: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        original_filename: str | None = None,
+    ) -> dict[str, Any]:
         return asr_output
 
 

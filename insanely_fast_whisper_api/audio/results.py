@@ -1,11 +1,8 @@
 """Utilities for processing and merging transcription results."""
 
-from typing import Dict, List
 
-
-def merge_chunk_results(chunk_results: List[Dict]) -> Dict:
-    """
-    Merge results from multiple chunked transcriptions.
+def merge_chunk_results(chunk_results: list[dict]) -> dict:
+    """Merge results from multiple chunked transcriptions.
 
     Args:
         chunk_results: List of transcription results from individual chunks.

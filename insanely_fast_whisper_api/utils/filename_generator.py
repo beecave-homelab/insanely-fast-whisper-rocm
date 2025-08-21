@@ -33,8 +33,7 @@ class FilenameGenerationStrategy(ABC):
 
     @abstractmethod
     def generate_filename(self, components: FilenameComponents) -> str:
-        """
-        Generates a filename based on the provided components.
+        """Generates a filename based on the provided components.
 
         Args:
             components: An instance of FilenameComponents containing all
@@ -47,15 +46,13 @@ class FilenameGenerationStrategy(ABC):
 
 
 class StandardFilenameStrategy(FilenameGenerationStrategy):
-    """
-    Standard strategy for generating filenames.
+    """Standard strategy for generating filenames.
     Pattern: {audio_stem}_{task}_{timestamp}.{extension}
     Timestamp format: YYYYMMDDTHHMMSSZ (ISO 8601 like)
     """
 
     def generate_filename(self, components: FilenameComponents) -> str:
-        """
-        Generates a filename using the standard unified pattern.
+        """Generates a filename using the standard unified pattern.
         Example: my_audio_transcribe_20241201T143022Z.json
         """
         # Ensure UTC timestamp if not already, matching 'Z' suffix.
@@ -69,8 +66,7 @@ class StandardFilenameStrategy(FilenameGenerationStrategy):
 
 
 class FilenameGenerator:
-    """
-    Context class that uses a FilenameGenerationStrategy to create filenames.
+    """Context class that uses a FilenameGenerationStrategy to create filenames.
     Uses centralized timezone configuration from constants.py (APP_TIMEZONE
     environment variable, defaults to UTC) for generating timestamps
     or interpreting naive provided timestamps.
@@ -90,8 +86,7 @@ class FilenameGenerator:
         extension: str,
         timestamp: datetime.datetime | None = None,
     ) -> str:
-        """
-        Creates a filename for a given audio path, task, and extension.
+        """Creates a filename for a given audio path, task, and extension.
         Uses centralized timezone configuration from constants.py
         (TZ environment variable via APP_TIMEZONE, defaults to Europe/Amsterdam).
 
@@ -107,7 +102,6 @@ class FilenameGenerator:
         Returns:
             The generated filename string.
         """
-
         target_tz_str = APP_TIMEZONE
         try:
             target_tz = ZoneInfo(target_tz_str)

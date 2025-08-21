@@ -4,7 +4,7 @@ This module implements the Strategy pattern for formatting different
 types of responses (JSON, text) from ASR processing results.
 """
 
-from typing import Any, Dict, Union
+from typing import Any
 
 from fastapi.responses import JSONResponse, PlainTextResponse
 
@@ -40,9 +40,12 @@ class ResponseFormatter:
             start_ts = ResponseFormatter._seconds_to_timestamp(seg.get("start", 0.0))
             end_ts = ResponseFormatter._seconds_to_timestamp(seg.get("end", 0.0))
             text = seg.get("text", "").strip()
-            srt_lines.extend(
-                [str(i), f"{start_ts} --> {end_ts}", text, ""]
-            )  # blank line after cue
+            srt_lines.extend([
+                str(i),
+                f"{start_ts} --> {end_ts}",
+                text,
+                "",
+            ])  # blank line after cue
         return "\n".join(srt_lines).strip()
 
     @staticmethod
@@ -62,8 +65,8 @@ class ResponseFormatter:
 
     @staticmethod
     def format_transcription(
-        result: Dict[str, Any], response_format: str = RESPONSE_FORMAT_JSON
-    ) -> Union[JSONResponse, PlainTextResponse]:
+        result: dict[str, Any], response_format: str = RESPONSE_FORMAT_JSON
+    ) -> JSONResponse | PlainTextResponse:
         """Format transcription result based on requested format.
 
         Args:
@@ -92,7 +95,7 @@ class ResponseFormatter:
             chunks = result.get("chunks", [])
             segments: list[dict] = []
             for idx, chunk in enumerate(chunks):
-                seg: Dict[str, Any] = {
+                seg: dict[str, Any] = {
                     "id": chunk.get("id", idx),
                     "seek": chunk.get("seek", 0),
                     "start": chunk.get("start", 0.0),
@@ -106,7 +109,7 @@ class ResponseFormatter:
                 }
                 segments.append(seg)
 
-            verbose_payload: Dict[str, Any] = {
+            verbose_payload: dict[str, Any] = {
                 "text": result.get("text", ""),
                 "segments": segments,
             }
@@ -140,8 +143,8 @@ class ResponseFormatter:
 
     @staticmethod
     def format_translation(
-        result: Dict[str, Any], response_format: str = RESPONSE_FORMAT_JSON
-    ) -> Union[JSONResponse, PlainTextResponse]:
+        result: dict[str, Any], response_format: str = RESPONSE_FORMAT_JSON
+    ) -> JSONResponse | PlainTextResponse:
         """Format translation result based on requested format.
 
         Args:
@@ -170,20 +173,18 @@ class ResponseFormatter:
             chunks = transcription_output.get("chunks", [])
             segments: list[dict] = []
             for idx, chunk in enumerate(chunks):
-                segments.append(
-                    {
-                        "id": chunk.get("id", idx),
-                        "seek": chunk.get("seek", 0),
-                        "start": chunk.get("start", 0.0),
-                        "end": chunk.get("end", 0.0),
-                        "text": chunk.get("text", ""),
-                        "tokens": chunk.get("tokens", []),
-                        "temperature": chunk.get("temperature", 0.0),
-                        "avg_logprob": chunk.get("avg_logprob", 0.0),
-                        "compression_ratio": chunk.get("compression_ratio", 0.0),
-                        "no_speech_prob": chunk.get("no_speech_prob", 0.0),
-                    }
-                )
+                segments.append({
+                    "id": chunk.get("id", idx),
+                    "seek": chunk.get("seek", 0),
+                    "start": chunk.get("start", 0.0),
+                    "end": chunk.get("end", 0.0),
+                    "text": chunk.get("text", ""),
+                    "tokens": chunk.get("tokens", []),
+                    "temperature": chunk.get("temperature", 0.0),
+                    "avg_logprob": chunk.get("avg_logprob", 0.0),
+                    "compression_ratio": chunk.get("compression_ratio", 0.0),
+                    "no_speech_prob": chunk.get("no_speech_prob", 0.0),
+                })
             verbose_payload = {
                 "text": transcription_output.get("text", ""),
                 "segments": segments,

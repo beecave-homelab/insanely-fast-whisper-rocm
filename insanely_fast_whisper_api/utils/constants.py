@@ -73,7 +73,7 @@ the project's version-controlled `.env` file.
 
 import os
 from pathlib import Path
-from typing import Literal, Set
+from typing import Literal
 
 from dotenv import load_dotenv
 
@@ -246,7 +246,7 @@ SUPPORTED_RESPONSE_FORMATS = {
 }
 
 # Supported audio formats (lowercase extensions)
-SUPPORTED_AUDIO_FORMATS: Set[str] = {
+SUPPORTED_AUDIO_FORMATS: set[str] = {
     ".mp3",
     ".flac",
     ".wav",
@@ -254,7 +254,7 @@ SUPPORTED_AUDIO_FORMATS: Set[str] = {
 }
 
 # Supported video formats (lowercase extensions)
-SUPPORTED_VIDEO_FORMATS: Set[str] = {
+SUPPORTED_VIDEO_FORMATS: set[str] = {
     ".mp4",
     ".mkv",
     ".webm",
@@ -262,4 +262,4 @@ SUPPORTED_VIDEO_FORMATS: Set[str] = {
 }
 
 # Combined upload formats for WebUI and CLI
-SUPPORTED_UPLOAD_FORMATS: Set[str] = SUPPORTED_AUDIO_FORMATS | SUPPORTED_VIDEO_FORMATS
+SUPPORTED_UPLOAD_FORMATS: set[str] = SUPPORTED_AUDIO_FORMATS | SUPPORTED_VIDEO_FORMATS

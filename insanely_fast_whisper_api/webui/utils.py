@@ -9,7 +9,6 @@ import os
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import torch
 
@@ -23,15 +22,15 @@ logger = logging.getLogger("insanely_fast_whisper_api.webui.utils")
 
 
 def save_temp_file(
-    content: str, extension: str = "txt", desired_filename: Optional[str] = None
+    content: str, extension: str = "txt", desired_filename: str | None = None
 ) -> str:
-    """
-    Save content to a temporary file and return the file path.
+    """Save content to a temporary file and return the file path.
 
     Args:
         content: The content to save.
         extension: The file extension (e.g., 'txt', 'srt', 'json').
         desired_filename: Optional. If provided, use this as the filename within a temp directory.
+
     Returns:
         The full path to the temporary file.
     """
@@ -56,7 +55,7 @@ def save_temp_file(
 
         logger.debug("[save_temp_file] Temp file created at: %s", temp_path)
         return temp_path
-    except (IOError, OSError) as e:
+    except OSError as e:
         logger.error("[save_temp_file] Failed to save temp file: %s", e)
         raise
 
@@ -67,8 +66,7 @@ def convert_device_string(device_id: str) -> str:
 
 
 def generate_timestamped_filename(base_name: str, extension: str) -> str:
-    """
-    Generate a filename with a timestamp to ensure uniqueness.
+    """Generate a filename with a timestamp to ensure uniqueness.
 
     Args:
         base_name: Base name for the file
@@ -82,8 +80,7 @@ def generate_timestamped_filename(base_name: str, extension: str) -> str:
 
 
 def is_cuda_available() -> bool:
-    """
-    Check if CUDA is available for PyTorch.
+    """Check if CUDA is available for PyTorch.
 
     Returns:
         True if CUDA is available, False otherwise
@@ -92,8 +89,7 @@ def is_cuda_available() -> bool:
 
 
 def is_mps_available() -> bool:
-    """
-    Check if MPS (Metal Performance Shaders) is available for PyTorch.
+    """Check if MPS (Metal Performance Shaders) is available for PyTorch.
 
     Returns:
         True if MPS is available, False otherwise

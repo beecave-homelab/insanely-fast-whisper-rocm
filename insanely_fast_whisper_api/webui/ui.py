@@ -5,7 +5,6 @@ including file upload, processing controls, and result display components.
 """
 
 import logging
-from typing import List
 
 import gradio as gr
 
@@ -131,7 +130,7 @@ def _create_file_handling_ui():
 
 
 def _process_transcription_request_wrapper(  # pylint: disable=too-many-arguments, too-many-positional-arguments
-    audio_paths: List[str],
+    audio_paths: list[str],
     model_name: str,
     device: str,
     batch_size: int,

@@ -54,15 +54,14 @@ def save_upload_file(file: UploadFile) -> str:
         with open(temp_filepath, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         return temp_filepath
-    except (OSError, IOError) as e:
+    except OSError as e:
         raise HTTPException(
             status_code=500, detail=f"Error saving uploaded file: {str(e)}"
         ) from e
 
 
 def cleanup_temp_files(file_paths: list[str]) -> None:
-    """
-    Clean up temporary files.
+    """Clean up temporary files.
 
     Args:
         file_paths: List of file paths to delete.
@@ -83,7 +82,7 @@ def cleanup_temp_files(file_paths: list[str]) -> None:
                         os.rmdir(dir_path)
                     except OSError:  # Catch potential race conditions or other errors
                         pass  # Don't raise if cleanup fails
-        except (OSError, IOError) as e:
+        except OSError as e:
             # Log cleanup failures but don't raise exceptions
             logger.warning("Failed to clean up %s: %s", file_path, e, exc_info=True)
 
@@ -135,7 +134,7 @@ class FileHandler:
                 shutil.copyfileobj(file.file, buffer)
             logger.info("File saved temporarily as: %s", temp_filepath)
             return temp_filepath
-        except (OSError, IOError) as e:
+        except OSError as e:
             logger.error("Error saving uploaded file: %s", str(e))
             raise HTTPException(
                 status_code=500, detail=f"Error saving uploaded file: {str(e)}"
@@ -151,6 +150,6 @@ class FileHandler:
             if os.path.exists(file_path):
                 logger.debug("Cleaning up temporary file: %s", file_path)
                 os.remove(file_path)
-        except (OSError, IOError) as e:
+        except OSError as e:
             logger.warning("Failed to cleanup file %s: %s", file_path, e)
             # Don't raise - cleanup failures shouldn't break the API

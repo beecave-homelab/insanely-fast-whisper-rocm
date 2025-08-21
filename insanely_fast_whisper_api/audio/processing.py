@@ -2,7 +2,6 @@
 
 import os
 import tempfile
-from typing import List
 
 import ffmpeg
 from pydub import AudioSegment
@@ -11,8 +10,7 @@ from insanely_fast_whisper_api.utils.file_utils import cleanup_temp_files
 
 
 def get_audio_duration(audio_path: str) -> float:
-    """
-    Get the duration of an audio file in seconds.
+    """Get the duration of an audio file in seconds.
 
     Args:
         audio_path: Path to the audio file.
@@ -23,7 +21,7 @@ def get_audio_duration(audio_path: str) -> float:
     try:
         audio = AudioSegment.from_file(audio_path)
         return len(audio) / 1000.0  # Convert ms to seconds
-    except (OSError, IOError, RuntimeError) as e:
+    except (OSError, RuntimeError) as e:
         raise RuntimeError(
             f"Failed to get audio duration for {audio_path}: {str(e)}"
         ) from e
@@ -86,9 +84,8 @@ def split_audio(
     chunk_duration: float = 600.0,
     chunk_overlap: float = 1.0,
     min_chunk_duration: float = 5.0,
-) -> List[str]:
-    """
-    Split an audio file into chunks of specified duration.
+) -> list[str]:
+    """Split an audio file into chunks of specified duration.
 
     Args:
         audio_path: Path to the input audio file.
@@ -145,7 +142,7 @@ def split_audio(
 
         return chunk_paths
 
-    except (OSError, IOError, RuntimeError, MemoryError) as e:
+    except (OSError, RuntimeError, MemoryError) as e:
         # Clean up any created files before re-raising
         if "chunk_paths" in locals() and locals()["chunk_paths"]:
             cleanup_temp_files(locals()["chunk_paths"])

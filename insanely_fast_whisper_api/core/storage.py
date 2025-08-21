@@ -6,7 +6,7 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +16,8 @@ class BaseStorage(ABC):  # pylint: disable=too-few-public-methods
 
     @abstractmethod
     def save(
-        self, data: Dict[str, Any], destination_path: Path, task: str
-    ) -> Optional[str]:
+        self, data: dict[str, Any], destination_path: Path, task: str
+    ) -> str | None:
         """Saves the data to the specified destination."""
 
 
@@ -25,8 +25,8 @@ class JsonStorage(BaseStorage):  # pylint: disable=too-few-public-methods
     """Stores transcription results as JSON files."""
 
     def save(
-        self, data: Dict[str, Any], destination_path: Path, task: str
-    ) -> Optional[str]:
+        self, data: dict[str, Any], destination_path: Path, task: str
+    ) -> str | None:
         """Saves the transcription data to a JSON file."""
         # Ensure the directory exists
         destination_path.parent.mkdir(parents=True, exist_ok=True)
@@ -42,7 +42,7 @@ class JsonStorage(BaseStorage):  # pylint: disable=too-few-public-methods
                 json.dump(data, f, indent=4, ensure_ascii=False)
             logger.info("Transcription result saved to %s", output_filename)
             return str(output_filename)
-        except IOError as e:
+        except OSError as e:
             logger.error(
                 "Error saving transcription to %s: %s",
                 output_filename,

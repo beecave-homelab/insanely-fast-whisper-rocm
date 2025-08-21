@@ -5,7 +5,7 @@ injection for ASR pipeline instances and file handling.
 """
 
 import logging
-from typing import Literal, Optional, Union
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
@@ -62,7 +62,7 @@ async def create_transcription(
         DEFAULT_TIMESTAMP_TYPE,
         description="Type of timestamp to generate ('chunk' or 'word')",
     ),
-    language: Optional[str] = Form(
+    language: str | None = Form(
         None, description="Source language code (auto-detect if None)"
     ),
     task: Literal["transcribe"] = Form("transcribe", description="ASR task type"),
@@ -76,7 +76,7 @@ async def create_transcription(
     ),
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),
     file_handler: FileHandler = Depends(get_file_handler),
-) -> Union[str, dict]:
+) -> str | dict:
     """Transcribe speech in an audio file to text.
 
     This endpoint processes an audio file and returns its transcription using the
@@ -166,7 +166,7 @@ async def create_translation(
         DEFAULT_TIMESTAMP_TYPE,
         description="Type of timestamp to generate ('chunk' or 'word')",
     ),
-    language: Optional[str] = Form(
+    language: str | None = Form(
         None, description="Source language code (auto-detect if None)"
     ),
     stabilize: bool = Form(
@@ -179,7 +179,7 @@ async def create_translation(
     ),
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),
     file_handler: FileHandler = Depends(get_file_handler),
-) -> Union[str, dict]:
+) -> str | dict:
     """Translate speech in an audio file to English.
 
     This endpoint processes an audio file in any supported language and translates

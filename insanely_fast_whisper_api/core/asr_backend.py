@@ -9,13 +9,14 @@ import time
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import torch
 from transformers import (
     AutoFeatureExtractor,
     AutoModelForSpeechSeq2Seq,
     AutoTokenizer,
+    GenerationConfig,
     pipeline,
 )
 from transformers.utils import logging as hf_logging
@@ -48,11 +49,11 @@ class ASRBackend(ABC):  # pylint: disable=too-few-public-methods
     def process_audio(
         self,
         audio_file_path: str,
-        language: Optional[str],
+        language: str | None,
         task: str,
-        return_timestamps_value: Union[bool, str],
+        return_timestamps_value: bool | str,
         # Potentially other common config options can go here
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Processes the audio file and returns the result."""
 
 
@@ -113,6 +114,53 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                     self.config.model_name
                 )
 
+                # Backfill missing Whisper generation config for fine-tuned
+                # checkpoints that did not upload generation_config.json.
+                # This enables timestamp extraction and multilingual task mapping.
+                try:
+                    gen_cfg = getattr(model, "generation_config", None)
+                    missing_ts_cfg = (
+                        gen_cfg is None
+                        or getattr(gen_cfg, "no_timestamps_token_id", None) is None
+                    )
+
+                    name = self.config.model_name.lower()
+                    if missing_ts_cfg and ("whisper" in name):
+                        is_en = (".en" in name) or ("-en" in name)
+                        base_id = None
+
+                        if "large" in name:
+                            if ("large-v3" in name) or ("v3" in name):
+                                base_id = "openai/whisper-large-v3"
+                            elif ("large-v2" in name) or ("v2" in name):
+                                base_id = "openai/whisper-large-v2"
+                            else:
+                                base_id = "openai/whisper-large-v2"
+                        elif "medium" in name:
+                            base_id = "openai/whisper-medium" + (".en" if is_en else "")
+                        elif "small" in name:
+                            base_id = "openai/whisper-small" + (".en" if is_en else "")
+                        elif "base" in name:
+                            base_id = "openai/whisper-base" + (".en" if is_en else "")
+                        elif "tiny" in name:
+                            base_id = "openai/whisper-tiny" + (".en" if is_en else "")
+
+                        if base_id:
+                            logger.info(
+                                "Backfilling gen config from %s for %s",
+                                base_id,
+                                self.config.model_name,
+                            )
+                            model.generation_config = GenerationConfig.from_pretrained(
+                                base_id
+                            )
+                except Exception as gen_e:  # pylint: disable=broad-except
+                    logger.warning(
+                        "Failed to backfill generation_config for %s: %s",
+                        self.config.model_name,
+                        str(gen_e),
+                    )
+
                 self.asr_pipe = pipeline(
                     "automatic-speech-recognition",
                     model=model,
@@ -133,10 +181,10 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
     def process_audio(
         self,
         audio_file_path: str,
-        language: Optional[str],
+        language: str | None,
         task: str,
-        return_timestamps_value: Union[bool, str],
-    ) -> Dict[str, Any]:
+        return_timestamps_value: bool | str,
+    ) -> dict[str, Any]:
         """Processes an audio file and returns the transcription result."""
         if self.asr_pipe is None:
             self._initialize_pipeline()

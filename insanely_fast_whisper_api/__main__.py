@@ -9,7 +9,6 @@ import logging.config
 import os
 import time
 from pathlib import Path
-from typing import Optional
 
 import click
 import yaml
@@ -134,8 +133,8 @@ def main(
     workers: int,
     log_level: str,
     reload: bool,
-    ssl_keyfile: Optional[str],
-    ssl_certfile: Optional[str],
+    ssl_keyfile: str | None,
+    ssl_certfile: str | None,
     debug: bool,
 ):
     """Run the Insanely Fast Whisper API server using Uvicorn."""

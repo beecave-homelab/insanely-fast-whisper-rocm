@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ except ImportError as err:  # pragma: no cover
 __all__ = ["stabilize_timestamps"]
 
 
-def _to_dict(obj: Any) -> Dict[str, Any]:
+def _to_dict(obj: Any) -> dict[str, Any]:
     """Convert the result object returned by *stable-whisper* to a dictionary."""
     logger.info("_to_dict called with type=%s", type(obj))
     if isinstance(obj, dict):
@@ -39,7 +39,7 @@ def _to_dict(obj: Any) -> Dict[str, Any]:
     return {"text": str(obj)}
 
 
-def _convert_to_stable(result: Dict[str, Any]) -> Dict[str, Any]:
+def _convert_to_stable(result: dict[str, Any]) -> dict[str, Any]:
     """Return *result* reshaped to match Whisper JSON expected by stable-ts."""
     logger.info("_convert_to_stable input keys=%s", list(result.keys()))
     converted = deepcopy(result)
@@ -92,12 +92,12 @@ def _convert_to_stable(result: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def stabilize_timestamps(
-    result: Dict[str, Any],
+    result: dict[str, Any],
     *,
     demucs: bool = False,
     vad: bool = False,
     vad_threshold: float = 0.35,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return a copy of *result* with word-level timestamps via stable-ts."""
     logger.info(
         "stabilize_timestamps called demucs=%s vad=%s vad_threshold=%s",

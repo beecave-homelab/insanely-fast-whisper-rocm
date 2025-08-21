@@ -3,8 +3,6 @@
 This module contains Pydantic models for request and response handling.
 """
 
-from typing import List, Optional
-
 from pydantic import BaseModel, Field
 
 
@@ -21,16 +19,16 @@ class TranscriptionResponse(BaseModel):
     """Response model for transcription and translation endpoints."""
 
     text: str = Field(..., description="The complete transcribed/translated text")
-    chunks: Optional[List[TranscriptionChunk]] = Field(
+    chunks: list[TranscriptionChunk] | None = Field(
         None, description="Individual chunks with timestamps (legacy minimal format)"
     )
-    segments: Optional[list[dict]] = Field(
+    segments: list[dict] | None = Field(
         None,
         description="Detailed segments following OpenAI Whisper specification (verbose_json)",
     )
-    language: Optional[str] = Field(
+    language: str | None = Field(
         None, description="Detected language for the transcription/translation"
     )
-    runtime_seconds: Optional[float] = Field(
+    runtime_seconds: float | None = Field(
         None, description="Processing time in seconds"
     )

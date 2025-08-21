@@ -11,7 +11,7 @@ import zipfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Literal
 
 import gradio as gr
 
@@ -71,8 +71,8 @@ class TranscriptionConfig:  # pylint: disable=too-many-instance-attributes
     task: Literal["transcribe", "translate"] = "transcribe"
     dtype: str = "float16"
     chunk_length: int = 30
-    chunk_duration: Optional[float] = None
-    chunk_overlap: Optional[float] = None
+    chunk_duration: float | None = None
+    chunk_overlap: float | None = None
     # Stabilization options
     stabilize: bool = DEFAULT_STABILIZE
     demucs: bool = DEFAULT_DEMUCS
@@ -89,14 +89,13 @@ class FileHandlingConfig:
 
 
 def _prepare_temp_downloadable_file(
-    raw_data: Dict[str, Any],
+    raw_data: dict[str, Any],
     format_type: str,  # "txt" or "srt"
     original_audio_stem: str,
     temp_dir: Path,
     task: TaskType,
 ) -> str:
-    """
-    Generates content for TXT or SRT, saves it to a temporary file,
+    """Generates content for TXT or SRT, saves it to a temporary file,
     and returns the file path.
     """
     formatter = FORMATTERS.get(format_type)
@@ -125,7 +124,7 @@ def _prepare_temp_downloadable_file(
             f.write(content)
         logger.info("Created temporary download file: %s", temp_file_path)
         return str(temp_file_path)
-    except IOError as e:
+    except OSError as e:
         logger.error(
             "Failed to create temporary download file %s: %s", temp_file_path, e
         )
@@ -136,12 +135,11 @@ def transcribe(
     audio_file_path: str,
     config: TranscriptionConfig,
     file_config: FileHandlingConfig,
-    progress_tracker_instance: Optional[gr.Progress] = None,
+    progress_tracker_instance: gr.Progress | None = None,
     current_file_idx: int = 0,
     total_files_for_session: int = 1,
-) -> Dict[str, Any]:
-    """
-    Transcribe an audio file using the ASRPipeline.
+) -> dict[str, Any]:
+    """Transcribe an audio file using the ASRPipeline.
 
     Args:
         audio_file_path: Path to the input audio file
@@ -313,15 +311,14 @@ def transcribe(
 
 
 def process_transcription_request(  # pylint: disable=too-many-locals, too-many-statements, too-many-branches
-    audio_paths: List[str],
+    audio_paths: list[str],
     transcription_config: TranscriptionConfig,
     file_handling_config: FileHandlingConfig,
-    progress_tracker: Optional[gr.Progress] = None,
-) -> Tuple[
-    str, Any, Any, Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]
+    progress_tracker: gr.Progress | None = None,
+) -> tuple[
+    str, Any, Any, dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]
 ]:
-    """
-    Process transcription for one or more audio files, generate results,
+    """Process transcription for one or more audio files, generate results,
     and prepare Gradio UI component updates using BatchZipBuilder.
     """
     all_results_data = []
@@ -394,14 +391,12 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             # No longer saving individual TXT/SRT here. They'll be generated on-the-fly for download
             # or created by BatchZipBuilder within ZIPs.
 
-            all_results_data.append(
-                {
-                    "audio_original_path": str(audio_file_path),  # Store full path
-                    "audio_original_stem": audio_file_path.stem,
-                    "raw_result": raw_transcription_result,
-                    "json_file_path": json_file_path_from_pipeline,  # Path to pipeline-saved JSON
-                }
-            )
+            all_results_data.append({
+                "audio_original_path": str(audio_file_path),  # Store full path
+                "audio_original_stem": audio_file_path.stem,
+                "raw_result": raw_transcription_result,
+                "json_file_path": json_file_path_from_pipeline,  # Path to pipeline-saved JSON
+            })
             processed_files_summary.append(
                 f"{file_name_for_log}: Transcribed successfully."
             )
@@ -415,9 +410,10 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         except TranscriptionError as e:
             logger.error("Error transcribing %s: %s", file_name_for_log, e)
             processed_files_summary.append(f"{file_name_for_log}: Error - {e}")
-            all_results_data.append(
-                {"audio_original_path": str(audio_file_path), "error": str(e)}
-            )
+            all_results_data.append({
+                "audio_original_path": str(audio_file_path),
+                "error": str(e),
+            })
             if progress_tracker is not None:
                 progress_tracker(
                     (idx + 1) / num_files,
@@ -439,7 +435,6 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 dl_btn_hidden,
             )
         except (
-            IOError,
             OSError,
             ValueError,
             TypeError,
@@ -456,9 +451,10 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             processed_files_summary.append(
                 f"{file_name_for_log}: Unexpected Error - {e}"
             )
-            all_results_data.append(
-                {"audio_original_path": str(audio_file_path), "error": str(e)}
-            )
+            all_results_data.append({
+                "audio_original_path": str(audio_file_path),
+                "error": str(e),
+            })
             if progress_tracker is not None:
                 progress_tracker(
                     (idx + 1) / num_files,
@@ -696,7 +692,6 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             )
             json_output_val["zip_archive_all"] = Path(ALL_ZIP_PATH).name
         except (
-            IOError,
             OSError,
             ValueError,
             TypeError,
@@ -745,7 +740,6 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     len(successful_results),
                 )
             except (
-                IOError,
                 OSError,
                 ValueError,
                 TypeError,
@@ -793,7 +787,6 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     len(successful_results),
                 )
             except (
-                IOError,
                 OSError,
                 ValueError,
                 TypeError,
@@ -843,7 +836,6 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     len(successful_results),
                 )
             except (
-                IOError,
                 OSError,
                 ValueError,
                 TypeError,

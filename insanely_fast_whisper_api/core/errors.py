@@ -2,12 +2,8 @@
 
 
 class TranscriptionError(Exception):
-    """
-    Custom exception raised when transcription fails.
-    """
+    """Custom exception raised when transcription fails."""
 
 
 class DeviceNotFoundError(Exception):
-    """
-    Custom exception raised when a requested compute device is not available.
-    """
+    """Custom exception raised when a requested compute device is not available."""
