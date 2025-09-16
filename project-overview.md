@@ -78,7 +78,7 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v0.10.1** *(16-09-2024)*
+### 🏷️ **Current Version: v0.10.1** *(16-09-2025)*
 
 **Latest improvements**: Added M4A audio format support and integrated `stable-ts` for enhanced word-level timestamp accuracy.
 
@@ -86,20 +86,19 @@ pdm run cli transcribe audio.mp3  # CLI
 
 | Version | Date | Type | Key Features |
 |---------|------|------|--------------|
-| **v0.10.1** | 16-09-2024 | 🐛 Patch | Docker image tag fix & general improvements |
-| **v0.10.0** | 23-07-2024 | ✨ Minor | M4A support & Stable-TS integration |
-| v0.9.1 | 19-07-2024 | 🐛 Patch | Translation & model override fixes |
-| **v0.8.0** | Jul 2024 | ✨ Minor | Entrypoint refactoring, CLI export formats, translation feature |
-| **v0.7.0** | Jun 2024 | ✨ Minor | Major import refactor, `pdm` migration, modular CLI |
-| **v0.4.1** | Jun 2024 | 🐛 Patch | WebUI download fixes, stability |
-| **v0.4.0** | Jun 2024 | ✨ Minor | Versioning improvements, logging enhancements |
-| **v0.3.1** | Jun 2024 | 🐛 Patch | ZIP fixes, audio validation, stability |
-| **v0.3.0** | May 2024 | ✨ Minor | WebUI modularization, batch processing |
-| **v0.2.1** | May 2024 | ♻️ Minor | Import standardization, core refinements |
-| **v0.2.0** | May 2024 | 🔄 Major | Breaking: Hugging Face direct integration |
-| **v0.1.2** | Mar 2024 | ✨ Minor | First WebUI introduction |
-| **v0.1.1** | Jan 2024 | 🔧 Minor | Enhanced functionality, logging |
-| **v0.1.0** | Jan 2024 | 🎉 Major | Initial Release: FastAPI wrapper |
+| **v0.10.0** | 23-07-2025 | ✨ Minor | M4A support & Stable-TS integration |
+| v0.9.1 | 19-07-2025 | 🐛 Patch | Translation & model override fixes |
+| **v0.8.0** | Jul 2025 | ✨ Minor | Entrypoint refactoring, CLI export formats, translation feature |
+| **v0.7.0** | Jun 2025 | ✨ Minor | Major import refactor, `pdm` migration, modular CLI |
+| **v0.4.1** | Jun 2025 | 🐛 Patch | WebUI download fixes, stability |
+| **v0.4.0** | Jun 2025 | ✨ Minor | Versioning improvements, logging enhancements |
+| **v0.3.1** | Jun 2025 | 🐛 Patch | ZIP fixes, audio validation, stability |
+| **v0.3.0** | May 2025 | ✨ Minor | WebUI modularization, batch processing |
+| **v0.2.1** | May 2025 | ♻️ Minor | Import standardization, core refinements |
+| **v0.2.0** | May 2025 | 🔄 Major | Breaking: Hugging Face direct integration |
+| **v0.1.2** | Mar 2025 | ✨ Minor | First WebUI introduction |
+| **v0.1.1** | Jan 2025 | 🔧 Minor | Enhanced functionality, logging |
+| **v0.1.0** | Jan 2025 | 🎉 Major | Initial Release: FastAPI wrapper |
 
 ### 📈 **Development Stats**
 
