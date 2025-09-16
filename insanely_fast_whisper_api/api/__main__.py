@@ -1,7 +1,8 @@
 """Main entrypoint for running the FastAPI application.
 
-This script allows the API to be started directly using `python -m insanely_fast_whisper_api.api`.
-It uses `uvicorn` to run the FastAPI application created by the `create_app` factory.
+This script allows the API to be started directly using
+`python -m insanely_fast_whisper_api.api`. It uses `uvicorn` to run the FastAPI
+application created by the `create_app` factory.
 """
 
 import uvicorn

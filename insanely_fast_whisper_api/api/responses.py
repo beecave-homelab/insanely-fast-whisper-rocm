@@ -8,6 +8,9 @@ from typing import Any
 
 from fastapi.responses import JSONResponse, PlainTextResponse
 
+from insanely_fast_whisper_api.core.formatters import (
+    FORMATTERS,
+)
 from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_JSON,
     RESPONSE_FORMAT_SRT,
@@ -23,7 +26,15 @@ class ResponseFormatter:
     # --- Internal helper utilities -------------------------------------------------
     @staticmethod
     def _seconds_to_timestamp(seconds: float, for_vtt: bool = False) -> str:
-        """Convert float seconds to SRT/VTT timestamp string."""
+        """Convert float seconds to SRT/VTT timestamp string.
+
+        Args:
+            seconds (float): The timestamp in seconds.
+            for_vtt (bool): If True, format for WebVTT (uses dot as separator).
+
+        Returns:
+            str: The formatted timestamp string (SRT or VTT style).
+        """
         hours = int(seconds // 3600)
         minutes = int((seconds % 3600) // 60)
         secs = int(seconds % 60)
@@ -34,7 +45,14 @@ class ResponseFormatter:
 
     @staticmethod
     def _segments_to_srt(segments: list[dict]) -> str:
-        """Convert segments list to SRT formatted string."""
+        """Convert segments list to SRT formatted string.
+
+        Args:
+            segments (list[dict]): ASR segments with 'start', 'end', and 'text'.
+
+        Returns:
+            str: A string containing SRT formatted subtitle cues.
+        """
         srt_lines: list[str] = []
         for i, seg in enumerate(segments, start=1):
             start_ts = ResponseFormatter._seconds_to_timestamp(seg.get("start", 0.0))
@@ -50,7 +68,14 @@ class ResponseFormatter:
 
     @staticmethod
     def _segments_to_vtt(segments: list[dict]) -> str:
-        """Convert segments list to WebVTT formatted string."""
+        """Convert segments list to WebVTT formatted string.
+
+        Args:
+            segments (list[dict]): ASR segments with 'start', 'end', and 'text'.
+
+        Returns:
+            str: A string containing WebVTT formatted subtitle cues.
+        """
         vtt_lines: list[str] = ["WEBVTT", ""]
         for seg in segments:
             start_ts = ResponseFormatter._seconds_to_timestamp(
@@ -90,8 +115,9 @@ class ResponseFormatter:
         # Verbose JSON – map `chunks` to `segments` & add language
         if response_format == RESPONSE_FORMAT_VERBOSE_JSON:
             # Build verbose JSON per OpenAI Whisper specification
-            # Normalise each chunk to include all expected keys so downstream clients (e.g. MacWhisper)
-            # can rely on their presence even if some values are only best-effort defaults.
+            # Normalise each chunk to include all expected keys so downstream
+            # clients (e.g. MacWhisper) can rely on their presence even if
+            # some values are only best-effort defaults.
             chunks = result.get("chunks", [])
             segments: list[dict] = []
             for idx, chunk in enumerate(chunks):
@@ -124,10 +150,6 @@ class ResponseFormatter:
 
         # Subtitle formats (SRT/VTT)
         if response_format in (RESPONSE_FORMAT_SRT, RESPONSE_FORMAT_VTT):
-            from insanely_fast_whisper_api.core.formatters import (
-                FORMATTERS,  # local import to avoid circular
-            )
-
             if response_format == RESPONSE_FORMAT_SRT:
                 text_output = FORMATTERS["srt"].format(result)
                 mime = "text/srt"
@@ -198,8 +220,6 @@ class ResponseFormatter:
 
         # Subtitle formats
         if response_format in (RESPONSE_FORMAT_SRT, RESPONSE_FORMAT_VTT):
-            from insanely_fast_whisper_api.core.formatters import FORMATTERS
-
             transcription_output = result.get("transcription", result)
             if response_format == RESPONSE_FORMAT_SRT:
                 text_output = FORMATTERS["srt"].format(transcription_output)

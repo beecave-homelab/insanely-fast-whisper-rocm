@@ -57,9 +57,12 @@ def create_app() -> FastAPI:
         configuration information and validates the application's setup.
         """
         logger.info(
-            "Attempting to download/verify Whisper model specified by WHISPER_MODEL or default..."
+            "Attempting to download/verify Whisper model specified by "
+            "WHISPER_MODEL or "
+            "default..."
         )
-        # Using centralized constants from constants.py for model and token configuration
+        # Using centralized constants from constants.py for model and
+        # token configuration
         download_model_if_needed(
             model_name=DEFAULT_MODEL,
             hf_token=HF_TOKEN,

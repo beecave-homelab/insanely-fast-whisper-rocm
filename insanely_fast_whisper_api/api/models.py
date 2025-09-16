@@ -24,7 +24,9 @@ class TranscriptionResponse(BaseModel):
     )
     segments: list[dict] | None = Field(
         None,
-        description="Detailed segments following OpenAI Whisper specification (verbose_json)",
+        description=(
+            "Detailed segments following OpenAI Whisper specification (verbose_json)"
+        ),
     )
     language: str | None = Field(
         None, description="Detected language for the transcription/translation"
