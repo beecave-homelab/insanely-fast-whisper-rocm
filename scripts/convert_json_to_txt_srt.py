@@ -2,7 +2,10 @@
 """CLI tool to convert a Whisper transcription JSON file to TXT and/or SRT formats.
 
 Usage:
-  python scripts/convert_json_to_txt_srt.py --input input.json --output-dir out/ --format txt --format srt [--debug]
+  python scripts/convert_json_to_txt_srt.py \
+      --input input.json \
+      --output-dir out/ \
+      --format txt --format srt [--debug]
 
 Requires: insanely_fast_whisper_api in PYTHONPATH or installed.
 """
@@ -19,7 +22,10 @@ try:
     from insanely_fast_whisper_api.core.formatters import SrtFormatter, TxtFormatter
 except ImportError:
     print(
-        "Error: Could not import formatters. Make sure insanely_fast_whisper_api is installed or PYTHONPATH is set."
+
+            "Error: Could not import formatters. Make sure "
+            "insanely_fast_whisper_api is installed or PYTHONPATH is set."
+
     )
     sys.exit(1)
 
