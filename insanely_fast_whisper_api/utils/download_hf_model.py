@@ -31,7 +31,8 @@ logger = logging.getLogger(__name__)  # Use __name__ for module-specific logger
 ENV_VAR_MODEL_NAME = "WHISPER_MODEL"
 ENV_VAR_HF_TOKEN = "HUGGINGFACE_TOKEN"
 
-# Note: DEFAULT_MODEL and HF_TOKEN are imported from constants.py for centralized configuration
+# Note: DEFAULT_MODEL and HF_TOKEN are imported from constants.py for
+# centralized configuration
 
 
 def download_model_if_needed(
@@ -232,7 +233,8 @@ def main(
         logging.getLogger().setLevel(logging.DEBUG)  # Set root logger level
         logger.setLevel(logging.DEBUG)  # Set our specific logger level
         logger.debug("Verbose logging enabled.")
-        # Log actual resolved values for clarity, click handles defaults before this point
+        # Log actual resolved values for clarity,
+        # click handles defaults before this point
         logger.debug("Effective model: %s", model_name_option)
         logger.debug(
             "Force: %s, HF Token: %s, Cache Dir: %s",
@@ -247,7 +249,8 @@ def main(
             ignore_patterns,
         )
 
-    # model_name_option is the parameter from click, assign to model_name for consistency if desired
+    # model_name_option is the parameter from click, assign to model_name
+    # for consistency if desired
     model_name = model_name_option
 
     if not model_name:

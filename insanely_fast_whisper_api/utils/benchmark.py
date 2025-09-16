@@ -272,7 +272,8 @@ class BenchmarkCollector:
             extra=extra,
         )
 
-        # Generate filename using the shared FilenameGenerator, then prepend "benchmark_".
+        # Generate filename using the shared FilenameGenerator, then prepend
+        # "benchmark_".
         strategy = StandardFilenameStrategy()
         generator = FilenameGenerator(strategy=strategy)
         try:

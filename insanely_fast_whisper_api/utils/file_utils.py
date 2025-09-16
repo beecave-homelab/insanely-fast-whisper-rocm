@@ -29,7 +29,10 @@ def validate_audio_file(file: UploadFile) -> None:
     if file_ext not in SUPPORTED_AUDIO_FORMATS:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file format. Supported formats: {', '.join(SUPPORTED_AUDIO_FORMATS)}",
+            detail=(
+                "Unsupported file format. Supported formats: "
+                f"{', '.join(SUPPORTED_AUDIO_FORMATS)}"
+            ),
         )
 
 
@@ -72,15 +75,17 @@ def cleanup_temp_files(file_paths: list[str]) -> None:
                 os.unlink(file_path)
             # Try to remove parent directory if it's empty
             dir_path = os.path.dirname(file_path)
-            # Ensure we only attempt to remove directories from the designated UPLOAD_DIR or a tempfile.gettempdir()
-            # and that the directory is indeed empty.
+            # Ensure we only attempt to remove directories from the designated
+            # UPLOAD_DIR or a tempfile.gettempdir() and that the directory is
+            # indeed empty.
             if dir_path and os.path.isdir(dir_path) and not os.listdir(dir_path):
                 if dir_path.startswith(UPLOAD_DIR) or dir_path.startswith(
                     tempfile.gettempdir()
                 ):
                     try:
                         os.rmdir(dir_path)
-                    except OSError:  # Catch potential race conditions or other errors
+                    except OSError:  # Catch potential race conditions or
+                        # other errors
                         pass  # Don't raise if cleanup fails
         except OSError as e:
             # Log cleanup failures but don't raise exceptions
@@ -94,7 +99,7 @@ class FileHandler:
     and cleanup operations used by the API endpoints.
     """
 
-    def __init__(self, upload_dir: str = UPLOAD_DIR):
+    def __init__(self, upload_dir: str = UPLOAD_DIR) -> None:
         """Initialize FileHandler with upload directory.
 
         Args:
@@ -111,7 +116,7 @@ class FileHandler:
 
         Raises:
             HTTPException: If the file format is not supported
-        """
+        """  # noqa: DOC502
         validate_audio_file(file)  # Use existing function
 
     def save_upload(self, file: UploadFile) -> str:

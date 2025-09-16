@@ -1,9 +1,10 @@
 """Constants and configuration management for the Insanely Fast Whisper API.
 
-This module serves as the **single source of truth** for all application configuration,
-implementing a centralized configuration pattern that ensures consistency across all modules.
+This module serves as the **single source of truth** for all application
+configuration, implementing a centralized configuration pattern that ensures
+consistency across all modules.
 
-## Configuration Management
+Configuration Management:
 
 This module handles:
 - Loading configuration from `.env` files using `load_dotenv()`
@@ -12,9 +13,9 @@ This module handles:
 - Token fallback logic (HF_TOKEN -> HUGGINGFACE_TOKEN)
 - Configuration file discovery in standard locations
 
-## Usage Guidelines
+Usage Guidelines:
 
-**For Application Modules:**
+For Application Modules:
 All application modules should import constants from this module rather than
 accessing environment variables directly:
 
@@ -24,7 +25,7 @@ accessing environment variables directly:
     # ❌ Incorrect - Direct environment access bypasses centralized config
     model = os.getenv("WHISPER_MODEL", "some-default")
 
-**For Adding New Configuration:**
+For Adding New Configuration:
 When adding new environment variables:
 
 1. Define the constant in this module with appropriate type conversion
@@ -33,45 +34,48 @@ When adding new environment variables:
 4. Group related constants together in logical sections
 5. Provide sensible defaults that work for most use cases
 
-## Configuration File Locations
+Configuration File Locations:
 
 The module automatically loads `.env` files. The loading order and precedence is:
-1. **Project root `.env` file**: Loaded first. This file is typically used for
+1. Project root `.env` file: Loaded first. This file is typically used for
    development-specific configurations or base defaults for the project.
-   Variables from this file will override any pre-existing shell environment variables.
-2. **`~/.config/insanely-fast-whisper-api/.env`**: Loaded second. This file is for
+   Variables from this file will override any pre-existing shell environment
+   variables.
+2. ~/.config/insanely-fast-whisper-api/.env: Loaded second. This file is for
    user-specific configurations. If the same variable exists in both this file
-   and the project root `.env` (or in the shell environment), the value from this
-   user-specific file will **take precedence** (override).
+   and the project root `.env` (or in the shell environment), the value from
+   this user-specific file will take precedence (override).
 
-This allows users to override project defaults and shell settings without modifying
-the project's version-controlled `.env` file.
+This allows users to override project defaults and shell settings without
+modifying the project's version-controlled `.env` file.
 
-## Type Conversion Patterns
+Type Conversion Patterns
 
-**Boolean Variables:**
+Boolean Variables:
     FEATURE_ENABLED = os.getenv("FEATURE_ENABLED", "false").lower() == "true"
 
-**Integer Variables:**
+Integer Variables:
     NUMERIC_SETTING = int(os.getenv("NUMERIC_SETTING", "10"))
 
-**Float Variables:**
+Float Variables:
     DECIMAL_SETTING = float(os.getenv("DECIMAL_SETTING", "1.5"))
 
-**String Variables:**
+String Variables:
     STRING_SETTING = os.getenv("STRING_SETTING", "default_value")
 
-## Architecture Benefits
+Architecture Benefits:
 
-- **Single Source of Truth**: All configuration in one location
-- **Consistent Defaults**: No conflicting defaults across modules
-- **Proper .env Support**: All modules benefit from centralized file loading
-- **Type Safety**: Centralized type conversion prevents runtime errors
-- **Easy Testing**: Simplified mocking and configuration validation
-- **Maintainability**: Configuration changes only need to be made once
+- Single Source of Truth: All configuration in one location
+- Consistent Defaults: No conflicting defaults across modules
+- Proper .env Support: All modules benefit from centralized file loading
+- Type Safety: Centralized type conversion prevents runtime errors
+- Easy Testing: Simplified mocking and configuration validation
+- Maintainability: Configuration changes only need to be made once
 """
 
 import os
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as pkg_version
 from pathlib import Path
 from typing import Literal
 
@@ -98,7 +102,8 @@ debug_print(
     f"constants.py: SHOW_DEBUG_PRINTS={SHOW_DEBUG_PRINTS}"
     "(derived from CLI args and initial .env LOG_LEVEL scan)"
 )
-# Project root .env is now loaded by env_loader.py before constants.py is fully processed.
+# Project root .env is now loaded by env_loader.py before constants.py is
+# fully processed.
 # constants.py will now load the user-specific .env file.
 
 # 2. Load user-specific .env next.
@@ -116,10 +121,12 @@ debug_print(
     f"constants.py: WHISPER_MODEL from os.environ: {os.getenv('WHISPER_MODEL')}"
 )
 debug_print(
-    f"constants.py: WHISPER_BATCH_SIZE from os.environ: {os.getenv('WHISPER_BATCH_SIZE')}"
+    "constants.py: WHISPER_BATCH_SIZE from os.environ: "
+    f"{os.getenv('WHISPER_BATCH_SIZE')}"
 )
 debug_print(
-    f"constants.py: HUGGINGFACE_TOKEN from os.environ: {'SET' if os.getenv('HUGGINGFACE_TOKEN') else 'NOT SET'}"
+    "constants.py: HUGGINGFACE_TOKEN from os.environ: "
+    f"{'SET' if os.getenv('HUGGINGFACE_TOKEN') else 'NOT SET'}"
 )
 debug_print(f"constants.py: Final LOG_LEVEL from os.environ: {os.getenv('LOG_LEVEL')}")
 
@@ -211,10 +218,10 @@ API_HOST = os.getenv("API_HOST", "0.0.0.0")  # API server host
 API_PORT = int(os.getenv("API_PORT", "8000"))  # API server port
 DEFAULT_RESPONSE_FORMAT = "json"
 
-# API version, sourced from main package __init__.py
+# API version, sourced from package metadata without importing the package
 try:
-    from insanely_fast_whisper_api import __version__ as API_VERSION
-except ImportError:
+    API_VERSION = pkg_version("insanely-fast-whisper-api")
+except PackageNotFoundError:
     API_VERSION = "unknown"
 
 # Convenience aliases expected by legacy code/tests

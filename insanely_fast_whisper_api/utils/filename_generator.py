@@ -19,13 +19,23 @@ class TaskType(Enum):
 
 @dataclass
 class FilenameComponents:
-    """Data class to hold components for filename generation."""
+    """Data class to hold components for filename generation.
+
+    Attributes:
+        audio_stem (str): The stem of the audio filename.
+        task (TaskType): The type of task (e.g., transcribe, translate).
+        timestamp (datetime.datetime): The timestamp to include in the filename.
+        extension (str): The file extension for the output.
+        # interface_context (str | None): Placeholder for future
+        # interface-specific needs.
+    """
 
     audio_stem: str
     task: TaskType
     timestamp: datetime.datetime
     extension: str
-    # interface_context: str | None = None # Placeholder for future interface-specific needs
+    # interface_context: str | None = None
+    # Placeholder for future interface-specific needs
 
 
 class FilenameGenerationStrategy(ABC):
@@ -62,7 +72,10 @@ class StandardFilenameStrategy(FilenameGenerationStrategy):
         # Basic sanitization for extension (remove leading dot if present)
         clean_extension = components.extension.lstrip(".").lower()
 
-        return f"{components.audio_stem}_{components.task.value}_{timestamp_str}.{clean_extension}"
+        return (
+            f"{components.audio_stem}_{components.task.value}_"
+            f"{timestamp_str}.{clean_extension}"
+        )
 
 
 class FilenameGenerator:
@@ -95,9 +108,11 @@ class FilenameGenerator:
             task: The type of ASR task (e.g., transcribe, translate).
             extension: The desired file extension for the output (e.g., "json", ".txt").
             timestamp: Optional. The specific timestamp to use.
-                       - If None, the current time in the configured timezone will be used.
-                       - If naive (no tzinfo), it's assumed to be in the configured timezone.
-                       - If aware, it will be converted to the configured timezone.
+                - If None, the current time in the configured timezone will be
+                  used.
+                - If naive (no tzinfo), it's assumed to be in the configured
+                  timezone.
+                - If aware, it will be converted to the configured timezone.
 
         Returns:
             The generated filename string.
@@ -106,10 +121,15 @@ class FilenameGenerator:
         try:
             target_tz = ZoneInfo(target_tz_str)
         except ZoneInfoNotFoundError:
-            # Fallback to UTC if the configured timezone is invalid, and log a warning.
-            # In a real application, this might raise an error or have more robust handling.
+            # Fallback to UTC if the configured timezone is invalid, and log a
+            # warning. In a real application, this might raise an error or have
+            # more robust handling.
             print(
-                f"Warning: Invalid timezone '{target_tz_str}' specified via TZ/APP_TIMEZONE. Falling back to UTC."
+
+                    "Warning: Invalid timezone '"
+                    f"{target_tz_str}"
+                    "' specified via TZ/APP_TIMEZONE. Falling back to UTC."
+
             )
             target_tz = ZoneInfo("UTC")
 
@@ -149,7 +169,10 @@ class FilenameGenerator:
 #     # Expected: my_audio_sample_transcribe_YYYYMMDDTHHMMSSZ.json
 
 #     # Example 2: Translation with a specific timestamp
-#     specific_time = datetime.datetime(2023, 10, 26, 12, 30, 0, tzinfo=datetime.timezone.utc)
+#     specific_time = datetime.datetime(
+#         2023, 10, 26, 12, 30, 0,
+#         tzinfo=datetime.timezone.utc,
+#     )
 #     filename2 = generator.create_filename(
 #         audio_path="another_audio.mp3",
 #         task=TaskType.TRANSLATE,
