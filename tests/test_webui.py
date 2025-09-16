@@ -139,9 +139,6 @@ def test_webui_transcription():
     assert "model" in config_used, "Config missing 'model' field"
 
 
-import pytest
-
-
 def test_long_audio_transcription():
     """Test the transcription functionality with a longer audio file."""
     # Upload the longer test audio file

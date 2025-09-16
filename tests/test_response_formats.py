@@ -6,6 +6,10 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from insanely_fast_whisper_api.api.dependencies import (
+    get_asr_pipeline,
+    get_file_handler,
+)
 from insanely_fast_whisper_api.main import app
 from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_JSON,
@@ -13,10 +17,6 @@ from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_TEXT,
     RESPONSE_FORMAT_VERBOSE_JSON,
     RESPONSE_FORMAT_VTT,
-)
-from insanely_fast_whisper_api.api.dependencies import (
-    get_asr_pipeline,
-    get_file_handler,
 )
 
 # ---------------------------------------------------------------------------
