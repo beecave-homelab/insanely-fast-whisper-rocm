@@ -4,8 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
 
-    image: ghrc.io/beecave-homelab/insanely-fast-whisper-rocm:dev
-    # image: beecave/insanely-fast-whisper-rocm:dev
+    image: ghcr.io/beecave-homelab/insanely-fast-whisper-rocm:dev
     container_name: insanely-fast-whisper-rocm-dev
     restart: unless-stopped
 
