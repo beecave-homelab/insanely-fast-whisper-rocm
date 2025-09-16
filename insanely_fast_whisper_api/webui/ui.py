@@ -146,9 +146,11 @@ def _process_transcription_request_wrapper(  # pylint: disable=too-many-argument
     vad_threshold: float,
     save_transcriptions: bool,
     temp_uploads_dir: str,
-    progress: gr.Progress = gr.Progress(),
+    progress: gr.Progress | None = None,
 ):
     """Wrapper to adapt Gradio inputs to process_transcription_request."""
+    if progress is None:
+        progress = gr.Progress()
     transcription_cfg = TranscriptionConfig(
         model=model_name,
         device=device,
@@ -189,7 +191,10 @@ def create_ui_components(
     with gr.Blocks(title="Insanely Fast Whisper - Local WebUI") as demo:
         gr.Markdown("# 🎙️ Insanely Fast Whisper - Local WebUI")
         gr.Markdown(
-            "Transcribe or translate audio and video files using Whisper models directly in your browser."
+
+                "Transcribe or translate audio and video files using Whisper "
+                "models directly in your browser."
+
         )
 
         with gr.Row():

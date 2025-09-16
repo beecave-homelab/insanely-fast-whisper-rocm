@@ -37,11 +37,17 @@ logger = logging.getLogger("insanely_fast_whisper_api.webui.app")
 @click.option(
     "--share",
     is_flag=True,
-    help="Create a public URL. This is useful for running on Colab or sharing with others.",
+    help=(
+        "Create a public URL. This is useful for running on Colab or sharing "
+        "with others."
+    ),
 )
 @click.option(
     "--model",
-    help="Whisper model to use. If not specified, uses the WHISPER_MODEL env var or default.",
+    help=(
+        "Whisper model to use. If not specified, uses the WHISPER_MODEL env var "
+        "or default."
+    ),
 )
 @click.option(
     "--vad-threshold",

@@ -29,7 +29,8 @@ def save_temp_file(
     Args:
         content: The content to save.
         extension: The file extension (e.g., 'txt', 'srt', 'json').
-        desired_filename: Optional. If provided, use this as the filename within a temp directory.
+        desired_filename: Optional. If provided, use this as the filename within
+            a temp directory.
 
     Returns:
         The full path to the temporary file.
