@@ -226,13 +226,17 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             no_ts_token_id = getattr(gen_cfg, "no_timestamps_token_id", None)
             if no_ts_token_id is None:
                 logger.warning(
-                    "Timestamp generation not properly configured for model %s; disabling.",
+                    (
+                        "Timestamp generation not properly configured for model %s; "
+                        "disabling."
+                    ),
                     self.config.model_name,
                 )
                 _return_timestamps_value = False
 
         # These are the arguments that will be passed to the pipeline
-        # Suppress noisy warnings from HF transformers related to experimental chunk_length and deprecations.
+        # Suppress noisy warnings from HF transformers related to experimental
+        # chunk_length and deprecations.
         warnings.filterwarnings(
             "ignore",
             message="Using `chunk_length_s` is very experimental*",
@@ -269,7 +273,10 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         # check, only warn (do not raise) so the underlying pipeline can handle it.
         if not is_multilingual and task == "translate":
             logger.warning(
-                "Translate requested but multilingual markers not found for model %s; proceeding anyway.",
+                (
+                    "Translate requested but multilingual markers not found for "
+                    "model %s; proceeding anyway."
+                ),
                 self.config.model_name,
             )
 
@@ -309,13 +316,17 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         try:
             outputs = self.asr_pipe(str(converted_path), **pipeline_kwargs)
         except RuntimeError as e:
-            # Check if this is the specific tensor size mismatch error in timestamp extraction
+            # Check if this is the specific tensor size mismatch error in
+            # timestamp extraction
             if "expanded size of the tensor" in str(
                 e
             ) and "must match the existing size" in str(e):
                 logger.warning(
-                    "Word-level timestamp extraction failed due to tensor size mismatch. "
-                    "Falling back to chunk-level timestamps for %s: %s",
+                    (
+                        "Word-level timestamp extraction failed due to "
+                        "tensor size mismatch. Falling back to chunk-level "
+                        "timestamps for %s: %s"
+                    ),
                     audio_file_path,
                     str(e),
                 )
@@ -339,7 +350,10 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                         exc_info=True,
                     )
                     raise TranscriptionError(
-                        f"Failed to transcribe audio even with fallback: {str(fallback_e)}"
+
+                            "Failed to transcribe audio even with fallback: "
+                            f"{str(fallback_e)}"
+
                     ) from fallback_e
             else:
                 # Re-raise other RuntimeErrors

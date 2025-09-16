@@ -212,7 +212,11 @@ class BasePipeline(ABC):
         task: str,
         original_filename: str | None = None,
     ) -> dict[str, Any]:
-        """Post-process ASR output (e.g., format, add metadata). Returns final result dict."""
+        """
+        Post-process ASR output (for example, format and add metadata).
+
+        Returns the final result dictionary.
+        """
 
     def _save_result(
         self,
@@ -230,7 +234,10 @@ class BasePipeline(ABC):
             current_task_type = TaskType(task.lower())
         except ValueError:
             logger.warning(
-                "_save_result: Invalid task type '%s'. Defaulting to transcribe for filename.",
+                (
+                    "_save_result: Invalid task type '%s'. Defaulting to "
+                    "transcribe for filename."
+                ),
                 task,
             )
             current_task_type = TaskType.TRANSCRIBE  # Fallback for filename generation
@@ -253,19 +260,20 @@ class BasePipeline(ABC):
         )
 
         save_path_base = self.output_dir / filename_str
-        # Note: JsonStorage.save expects a base path and appends its own extension.
-        # To use the fully generated name including extension, we might need to adjust JsonStorage
-        # or pass `save_path_base.stem` if JsonStorage *always* adds '.json'.
-        # For now, we pass the full name, assuming JsonStorage can handle it or needs adjustment.
-        # If JsonStorage strictly appends .json, save_path_base should be
-        # `self.output_dir / filename_str.removesuffix('.json')`
-        # or `self.output_dir / Path(filename_str).stem`
-        # This needs to be harmonized with how `JsonStorage.save()` works.
-        # Let's assume for now that `JsonStorage` is flexible or will be adapted.
+        # Note: JsonStorage.save expects a base path and appends its own
+        # extension. To use the fully generated name, we might need to adjust
+        # JsonStorage or pass `save_path_base.stem` if JsonStorage always adds
+        # '.json'. For now, we pass the full name, assuming JsonStorage can
+        # handle it or needs adjustment. If JsonStorage strictly appends .json,
+        # save_path_base should be `self.output_dir / filename_str.removesuffix(
+        # '.json')` or `self.output_dir / Path(filename_str).stem`. This needs
+        # to be harmonized with how `JsonStorage.save()` works. Let's assume for
+        # now that `JsonStorage` is flexible or will be adapted.
 
         try:
-            # Pass the full path (directory + filename_with_extension) to the storage backend.
-            # The `task` argument for storage.save might be redundant if already in filename.
+            # Pass the full path (directory + filename_with_extension) to the
+            # storage backend. The `task` argument for storage.save might be
+            # redundant if already in filename.
             saved_path = self.storage_backend.save(result, save_path_base, task)
             if saved_path:
                 logger.info("Result saved to %s", saved_path)
@@ -289,7 +297,8 @@ class WhisperPipeline(BasePipeline):
         """For basic Whisper, input is just the file path.
         Chunking would happen here or in _execute_asr.
         """
-        # This could be extended for chunking logic if not handled by the backend strategy
+        # This could be extended for chunking logic if not handled by the
+        # backend strategy
         logger.info("Preparing input: %s", audio_file_path)
         if not audio_file_path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_file_path}")

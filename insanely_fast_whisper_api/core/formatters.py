@@ -100,7 +100,8 @@ class SrtFormatter(BaseFormatter):
             srt_content = []
             for i, chunk in enumerate(chunks, 1):
                 try:
-                    # Support both {'start': ... , 'end': ...} and {'timestamp': [start, end]}
+                    # Support both {'start': ... , 'end': ...} and
+                    # {'timestamp': [start, end]}
                     ts_pair = (
                         chunk.get("timestamp")
                         if isinstance(chunk.get("timestamp"), (list, tuple))
@@ -179,7 +180,8 @@ class VttFormatter(BaseFormatter):
             vtt_content = ["WEBVTT\n"]
             for i, chunk in enumerate(chunks, 1):
                 try:
-                    # Support both {'start': ..., 'end': ...} and {'timestamp': [start, end]}
+                    # Support both {'start': ..., 'end': ...} and
+                    # {'timestamp': [start, end]}
                     ts_pair = (
                         chunk.get("timestamp")
                         if isinstance(chunk.get("timestamp"), (list, tuple))

@@ -125,7 +125,13 @@ def stabilize_timestamps(
 
     # Prepare a stable-whisper–compatible dict
     converted = _convert_to_stable(result)
-    inference_func = lambda *_a, **_k: converted  # type: ignore
+
+    def inference_func(*_a: Any, **_k: Any) -> dict[str, Any]:
+        """Return the precomputed converted dict regardless of inputs.
+
+        This mirrors the previous lambda behavior used for transcribe_any.
+        """
+        return converted
 
     # 1️⃣ Primary path: lambda-inference via transcribe_any
     try:
