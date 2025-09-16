@@ -4,28 +4,29 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v0.10.0-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v0.10.1-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v0.10.0` (Current) - *23-07-2025*](#v0100-current---23-07-2025)
+- [`v0.10.1` (Current) - *16-09-2025*](#v0101-current---16-09-2025)
+- [`v0.10.0` - *23-07-2025*](#v0100---23-07-2025)
 - [`v0.9.1` - *19-07-2025*](#v091---19-07-2025)
 - [`v0.9.0` - *06-07-2025*](#v090---06-07-2025)
 - [`v0.8.0` - *06-07-2025*](#v080---06-07-2025)
-- [`v0.7.0` - *05-07-2025*](#v070---05-07-2025)
+- [`v0.7.0` - *06-07-2025*](#v070---06-07-2025)
 - [`v0.6.0` - *05-07-2025*](#v060---05-07-2025)
-- [`v0.5.0` - *June 2025*](#v050---june-2025)
-- [`v0.4.1` - *June 2025*](#v041---june-2025)
-- [`v0.4.0` - *June 2025*](#v040---june-2025)
-- [`v0.3.1` - *June 4, 2025*](#v031---june-4-2025)
-- [`v0.3.0` - *May 27-31, 2025*](#v030---may-27-31-2025)
-- [`v0.2.1` - *May 29-30, 2025*](#v021---may-29-30-2025)
-- [`v0.2.0` - *May 20-21, 2025*](#v020---may-20-21-2025)
-- [`v0.1.2` - *March 8, 2025*](#v012---march-8-2025)
-- [`v0.1.1` - *January 19, 2025*](#v011---january-19-2025)
-- [`v0.1.0` - *January 18, 2025*](#v010---january-18-2025)
+- [`v0.5.0` - *05-06-2025*](#v050---07-06-2025)
+- [`v0.4.1` - *06-06-2025*](#v041---06-06-2025)
+- [`v0.4.0` - *06-06-2025*](#v040---06-06-2025)
+- [`v0.3.1` - *04-06-2025*](#v031---04-06-2025)
+- [`v0.3.0` - *27-05-2025*](#v030---27-05-2025)
+- [`v0.2.1` - *29-05-2025*](#v021---29-05-2025)
+- [`v0.2.0` - *20-05-2025*](#v020---20-05-2025)
+- [`v0.1.2` - *08-03-2025*](#v012---08-03-2025)
+- [`v0.1.1` - *19-01-2025*](#v011---19-01-2025)
+- [`v0.1.0` - *18-01-2025*](#v010---18-01-2025)
 
 ---
 
@@ -41,7 +42,31 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v0.10.0` (Current) - *23-07-2025*
+### `v0.10.1` (Current) - *16-09-2025*
+
+#### 🐛 **Bug Fix & Refactor Release: Docker Tags & Codebase Cleanup**
+
+This patch addresses an issue with Docker image tags in `docker-compose` files and includes several documentation and code quality improvements from a recent codebase review.
+
+#### 🐛 **Bug Fixes in v0.10.1**
+
+- **Fixed**: Docker image tags in `docker-compose.dev.yaml` and `docker-compose.yaml` were not being updated consistently.
+  - **Issue**: The `image:` tag was hardcoded, preventing it from being updated automatically during version bumps.
+  - **Root Cause**: Manual versioning in docker-compose files.
+  - **Solution**: Updated image tags to ensure consistency with the project version.
+
+#### 🔧 **Improvements in v0.10.1**
+
+- **Docs**: Added `AGENTS.md` to define strict coding standards for the project.
+- **Docs**: Completed a full review and update of `project-overview.md` to ensure it is factually correct and aligned with the current codebase.
+
+#### 📝 **Key Commits in v0.10.1**
+
+`fc61fb2`, `b68d199`, `3064745`
+
+---
+
+### `v0.10.0` - *23-07-2025*
 
 #### ✨ **Feature Release: M4A Audio Support & Stable-TS Integration**
 
@@ -144,7 +169,7 @@ This release focuses on standardizing application entrypoints, enhancing the CLI
 
 ---
 
-### `v0.7.0` - *05-07-2025*
+### `v0.7.0` - *06-07-2025*
 
 #### **♻️ Refactor Release: Unified Audio Processing for CLI**
 
@@ -186,7 +211,7 @@ This release focuses on standardizing application entrypoints, enhancing the CLI
 
 ---
 
-### `v0.5.0` - *June 2025*
+### `v0.5.0` - *07-06-2025*
 
 #### ✨ Feature Release: Major Restructure & ROCm Support
 
@@ -215,7 +240,7 @@ This release marks a significant architectural overhaul:
 
 ---
 
-### `v0.4.1` - *June 2025*
+### `v0.4.1` - *06-06-2025*
 
 #### 🐛 WebUI Download Fixes & Stability
 
@@ -243,7 +268,7 @@ This release marks a significant architectural overhaul:
 
 ---
 
-### `v0.4.0` - *June 2025*
+### `v0.4.0` - *06-06-2025*
 
 #### ✨ Enhanced Versioning & Logging
 
@@ -258,7 +283,7 @@ This release marks a significant architectural overhaul:
 
 ---
 
-### `v0.3.1` - *June 4, 2025*
+### `v0.3.1` - *04-06-2025*
 
 #### 🐛 Stability & Multi-file Processing
 
@@ -293,7 +318,7 @@ This release marks a significant architectural overhaul:
 
 ---
 
-### `v0.3.0` - *May 27-31, 2025*
+### `v0.3.0` - *27-05-2025*
 
 #### ✨ WebUI Modularization & Advanced Features
 
@@ -328,7 +353,7 @@ This release marks a significant architectural overhaul:
 
 ---
 
-### `v0.2.1` - *May 29-30, 2025*
+### `v0.2.1` - *29-05-2025*
 
 #### ♻️ Import Standardization & Core Refinements
 
@@ -364,7 +389,7 @@ This release marks a significant architectural overhaul:
 
 ---
 
-### `v0.2.0` - *May 20-21, 2025*
+### `v0.2.0` - *20-05-2025*
 
 #### 🔄 Architectural Revolution ⚠️ BREAKING CHANGES
 
@@ -395,7 +420,7 @@ This release marks a significant architectural overhaul:
 
 ---
 
-### `v0.1.2` - *March 8, 2025*
+### `v0.1.2` - *08-03-2025*
 
 #### 🎨 WebUI Introduction
 
@@ -418,7 +443,7 @@ This release marks a significant architectural overhaul:
 
 ---
 
-### `v0.1.1` - *January 19, 2025*
+### `v0.1.1` - *19-01-2025*
 
 #### ✨ New Features in v0.1.1
 
@@ -445,7 +470,7 @@ This release marks a significant architectural overhaul:
 
 ---
 
-### `v0.1.0` - *January 18, 2025*
+### `v0.1.0` - *18-01-2025*
 
 #### 🎉 Initial Release
 
