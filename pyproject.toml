@@ -150,10 +150,6 @@ select = [
 # Optional: stricter typing rules (discourage bare Any)
 extend-select = ["ANN401"]
 
-[tool.ruff.lint.per-file-ignores]
-# Allow long lines in tests temporarily. Keep E501 enforced elsewhere.
-"tests/**/*.py" = ["E501"]
-
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
@@ -166,6 +162,10 @@ section-order = [
   "local-folder",
 ]
 known-first-party = ["insanely_fast_whisper_api"]
+
+[tool.ruff.lint.per-file-ignores]
+# Temporarily ignore long-line checks in tests
+"tests/**/*.py" = ["E501"]
 
 # ------------------------------
 # Pytest & Coverage
