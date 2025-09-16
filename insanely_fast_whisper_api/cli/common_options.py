@@ -62,7 +62,10 @@ def audio_options(func: Callable[..., None]) -> Callable[..., None]:  # noqa: D4
             "-b",
             type=click.IntRange(constants.MIN_BATCH_SIZE, constants.MAX_BATCH_SIZE),
             default=constants.DEFAULT_BATCH_SIZE,
-            help=f"Batch size for processing ({constants.MIN_BATCH_SIZE}-{constants.MAX_BATCH_SIZE})",
+            help=(
+                "Batch size for processing "
+                f"({constants.MIN_BATCH_SIZE}-{constants.MAX_BATCH_SIZE})"
+            ),
             show_default=True,
         ),
         click.option(
@@ -84,7 +87,10 @@ def audio_options(func: Callable[..., None]) -> Callable[..., None]:  # noqa: D4
             "--output",
             "-o",
             type=click.Path(path_type=Path, dir_okay=False),
-            help="Save detailed results to JSON file (default: transcripts/[audio_filename].json)",
+            help=(
+                "Save detailed results to JSON file (default: "
+                "transcripts/[audio_filename].json)"
+            ),
         ),
         click.option(
             "--timestamp-type",

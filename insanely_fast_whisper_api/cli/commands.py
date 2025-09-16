@@ -1,7 +1,8 @@
 """CLI command implementations.
 
-Each command is a thin wrapper around [_run_task](cci:1://file:///home/elvee/Local-AI/insanely-fast-whisper-rocm/insanely_fast_whisper_api/cli/commands.py:380:0-632:19), receiving shared CLI
-options via the [audio_options](cci:1://file:///home/elvee/Local-AI/insanely-fast-whisper-rocm/insanely_fast_whisper_api/cli/common_options.py:21:0-150:15) decorator (see [cli/common_options.py](cci:7://file:///home/elvee/Local-AI/insanely-fast-whisper-rocm/insanely_fast_whisper_api/cli/common_options.py:0:0-0:0)).
+Each command is a thin wrapper around the internal ``_run_task`` function and
+receives shared CLI options via the ``audio_options`` decorator. See
+``cli/common_options.py`` for the shared option definitions.
 """
 
 from __future__ import annotations
