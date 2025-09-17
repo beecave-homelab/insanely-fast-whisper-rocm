@@ -76,12 +76,12 @@ Architecture Benefits:
 import os
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
-from pathlib import Path
 from typing import Literal
 
 from dotenv import load_dotenv
 
 from insanely_fast_whisper_api.utils.env_loader import (
+    PROJECT_ROOT,
     SHOW_DEBUG_PRINTS,
     USER_CONFIG_DIR,
     USER_ENV_EXISTS,
@@ -90,11 +90,15 @@ from insanely_fast_whisper_api.utils.env_loader import (
 )
 
 # --- Determine Project Root ---
-# This is now handled by env_loader.py for initial LOG_LEVEL check, but constants.py
-# still defines it for its own use.
-# Assumes this file is in insanely_fast_whisper_api/utils/
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-# PROJECT_ROOT_ENV_FILE, USER_CONFIG_DIR, USER_ENV_FILE are imported from env_loader
+# Use the single source of truth from env_loader.py to avoid drift. This value
+# points to the repository root (one level above the package directory), which is
+# required for features like locating the top-level '.env' and '.env.example'.
+# PROJECT_ROOT, USER_CONFIG_DIR, USER_ENV_FILE are imported from env_loader.
+
+# Re-export selected symbols for external consumers that import from this module.
+__all__ = [
+    "PROJECT_ROOT",
+]
 
 # --- Initial debug message based on SHOW_DEBUG_PRINTS from env_loader ---
 debug_print("constants.py: Starting .env loading process...")
