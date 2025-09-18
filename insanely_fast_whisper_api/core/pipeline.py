@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 
 from insanely_fast_whisper_api.audio.processing import split_audio
 from insanely_fast_whisper_api.audio.results import merge_chunk_results
@@ -24,6 +24,7 @@ from insanely_fast_whisper_api.utils.filename_generator import (
 
 logger = logging.getLogger(__name__)
 
+InputType = TypeVar("InputType")
 
 # ---------------------------------------------------------------------------
 # Lightweight configuration/result dataclasses for test compatibility
@@ -75,7 +76,15 @@ class BasePipeline(ABC):
         storage_backend: BaseStorage | None = None,
         save_transcriptions: bool = True,
         output_dir: str = "transcripts",
-    ):
+    ) -> None:
+        """Initializes the BasePipeline.
+
+        Args:
+            asr_backend: The ASR backend to use for transcription.
+            storage_backend: The storage backend for saving results.
+            save_transcriptions: Whether to save transcriptions to disk.
+            output_dir: The directory to save transcriptions in.
+        """
         self.asr_backend = asr_backend
         self.storage_backend = (
             storage_backend if storage_backend else StorageFactory.create()
@@ -110,7 +119,14 @@ class BasePipeline(ABC):
         original_filename: str | None = None,
         # Other common parameters for all pipelines
     ) -> dict[str, Any]:
-        """Template method defining the overall ASR algorithm skeleton."""
+        """Template method defining the overall ASR algorithm skeleton.
+
+        Returns:
+            A dictionary containing the final transcription result.
+
+        Raises:
+            TranscriptionError: If the pipeline fails at any stage.
+        """
         start_time = time.perf_counter()
         self.pipeline_id = str(uuid.uuid4())  # New ID for each run
         absolute_audio_path = Path(audio_file_path).resolve()
@@ -191,13 +207,13 @@ class BasePipeline(ABC):
             raise
 
     @abstractmethod
-    def _prepare_input(self, audio_file_path: Path) -> Any:
+    def _prepare_input(self, audio_file_path: Path) -> InputType:
         """Prepare audio input (e.g., load, chunk). Returns data for _execute_asr."""
 
     @abstractmethod
     def _execute_asr(
         self,
-        prepared_data: Any,
+        prepared_data: InputType,
         language: str | None,
         task: str,
         timestamp_type: str,
@@ -212,10 +228,10 @@ class BasePipeline(ABC):
         task: str,
         original_filename: str | None = None,
     ) -> dict[str, Any]:
-        """
-        Post-process ASR output (for example, format and add metadata).
+        """Post-process ASR output (for example, format and add metadata).
 
-        Returns the final result dictionary.
+        Returns:
+            The final result dictionary.
         """
 
     def _save_result(
@@ -225,7 +241,11 @@ class BasePipeline(ABC):
         task: str,
         original_filename: str | None = None,
     ) -> str | None:
-        """Saves the transcription result using the storage backend."""
+        """Saves the transcription result using the storage backend.
+
+        Returns:
+            The path to the saved file, or None if saving failed.
+        """
         if not self.storage_backend:
             logger.warning("No storage backend configured, skipping save.")
             return None
@@ -293,9 +313,17 @@ class BasePipeline(ABC):
 class WhisperPipeline(BasePipeline):
     """Whisper-specific pipeline implementation."""
 
-    def _prepare_input(self, audio_file_path: Path) -> Any:
-        """For basic Whisper, input is just the file path.
-        Chunking would happen here or in _execute_asr.
+    def _prepare_input(self, audio_file_path: Path) -> str:
+        """Prepare input for the Whisper pipeline.
+
+        For basic Whisper, the input is just the file path. This method ensures
+        the file exists before proceeding.
+
+        Returns:
+            The audio file path as a string.
+
+        Raises:
+            FileNotFoundError: If the audio file does not exist.
         """
         # This could be extended for chunking logic if not handled by the
         # backend strategy
@@ -313,8 +341,10 @@ class WhisperPipeline(BasePipeline):
         task: str,
         timestamp_type: str,
     ) -> dict[str, Any]:
-        """Executes ASR for a single audio file (or a single chunk
-        if chunking is done by this method).
+        """Execute ASR for a single audio file, handling chunking internally.
+
+        Returns:
+            The raw ASR output dictionary.
         """
         logger.info(
             "Executing ASR for: %s, task: %s, lang: %s, timestamps: %s",
@@ -336,16 +366,17 @@ class WhisperPipeline(BasePipeline):
         # Split the audio into chunks so we can provide deterministic progress
         # updates to observers (e.g. Gradio's progress bar).  ``split_audio``
         # returns a list with the original path if chunking is unnecessary.
-        chunk_paths = split_audio(
+        chunk_data = split_audio(
             prepared_data,
             chunk_duration=float(self.asr_backend.config.chunk_length),
             chunk_overlap=0.0,
         )
-        total_chunks = len(chunk_paths)
-        chunk_results: list[dict[str, Any]] = []
+        total_chunks = len(chunk_data)
+        # Store tuples of (result, start_time) for the merge step
+        chunk_results: list[tuple[dict[str, Any], float]] = []
 
         try:
-            for idx, chunk_path in enumerate(chunk_paths, start=1):
+            for idx, (chunk_path, chunk_start_time) in enumerate(chunk_data, start=1):
                 self._notify_listeners(
                     ProgressEvent(
                         event_type="chunk_start",
@@ -379,16 +410,24 @@ class WhisperPipeline(BasePipeline):
                         ),
                     )
                 )
-                chunk_results.append(asr_raw_result)
+                chunk_results.append((asr_raw_result, chunk_start_time))
         finally:
             # Only clean up generated chunk files; ``split_audio`` returns the
             # original path untouched when no chunking was required.
             if total_chunks > 1:
-                cleanup_temp_files(chunk_paths)
+                # Extract just the file paths for cleanup
+                paths_to_clean = [cd[0] for cd in chunk_data]
+                cleanup_temp_files(paths_to_clean)
+
+        if not chunk_results:
+            # This case should ideally not be hit if split_audio always returns
+            # at least one item, but as a safeguard:
+            return {"text": "", "chunks": []}
 
         if total_chunks > 1:
             return merge_chunk_results(chunk_results)
-        return chunk_results[0]
+        # For a single chunk, the result is the first element of the tuple
+        return chunk_results[0][0]
 
     def _postprocess_output(
         self,
@@ -397,7 +436,11 @@ class WhisperPipeline(BasePipeline):
         task: str,
         original_filename: str | None = None,
     ) -> dict[str, Any]:
-        """Post-processes the raw ASR output for Whisper."""
+        """Post-processes the raw ASR output for Whisper.
+
+        Returns:
+            The post-processed result dictionary with added metadata.
+        """
         logger.info("Postprocessing ASR output for: %s", audio_file_path)
         # Example: Add original file name, task, and a processing timestamp
         processed_result = asr_output.copy()
