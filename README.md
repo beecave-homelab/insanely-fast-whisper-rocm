@@ -23,7 +23,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **Noise Reduction & Voice Activity Detection (CLI, API & WebUI)**: Optional `--demucs` and `--vad` flags provide Demucs-based denoising and intelligent speech-region detection (adjustable `--vad-threshold`) for cleaner, more accurate transcripts
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v0.10.1-informational)](#insanely-fast-whisper-api-rocm)
+[![Version](https://img.shields.io/badge/Version-v1.0.0-informational)](#insanely-fast-whisper-api-rocm)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface)
@@ -310,6 +310,26 @@ The API endpoints have distinct parameters. Core model settings (`model`, `devic
 - `demucs`: `bool` - Enable Demucs noise reduction before transcription. Defaults to `False`.
 - `vad`: `bool` - Enable Silero VAD to filter out silent parts of the audio. Defaults to `False`.
 - `vad_threshold`: `float` - The threshold for VAD. Defaults to `0.35`.
+
+## Reviewer Quick Start (Lightweight Testing)
+
+For code reviewers or contributors who need to run tests without a GPU or heavy ML libraries, a lightweight, CPU-only requirements file is provided.
+
+1. **Install lightweight dependencies:**
+
+    ```bash
+    pip install -r requirements-reviewer.txt
+    ```
+
+2. **Run the CPU-safe test suite:**
+
+    The following command runs tests that do not require `torch` or a GPU. It excludes tests for CUDA, the full ASR backend, and server integration tests.
+
+    ```bash
+    pytest -q -k "not (cuda or webui or api_integration or asr_backend_generation_config or asr_backend_timestamp or api)"
+    ```
+
+    This ensures that core logic, utilities, and the dummy pipeline can be validated quickly in any environment.
 
 ## Development
 

@@ -4,13 +4,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v0.10.1-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v1.0.0-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v0.10.1` (Current) - *16-09-2025*](#v0101-current---16-09-2025)
+- [`v1.0.0` (Current) - *18-09-2025*](#v100-current---18-09-2025)
+- [`v0.10.1` - *16-09-2025*](#v0101---16-09-2025)
 - [`v0.10.0` - *23-07-2025*](#v0100---23-07-2025)
 - [`v0.9.1` - *19-07-2025*](#v091---19-07-2025)
 - [`v0.9.0` - *06-07-2025*](#v090---06-07-2025)
@@ -42,7 +43,51 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v0.10.1` (Current) - *16-09-2025*
+### `v1.0.0` (Current) - *18-09-2025*
+
+#### 💥 Breaking Changes in v1.0.0
+
+- `split_audio()` return type changed from `list[str]` to `list[tuple[str, float]]`.
+  - Each tuple contains `(chunk_path, chunk_start_time_seconds)`.
+- `merge_chunk_results()` parameter changed from `list[dict]` to `list[tuple[dict, float]]`.
+  - Each tuple contains `(chunk_result_dict, chunk_start_time_seconds)`.
+
+These functions are part of the public API (re-exported from `insanely_fast_whisper_api/__init__.py`). Any external code calling them must be updated.
+
+#### 🐛 Bug Fixes in v1.0.0
+
+- Fixed incorrect, overlapping timestamps in merged transcripts when audio is processed in chunks.
+  - Root cause: chunk-level timestamps from Whisper are relative to each chunk (starting at 0.0), and previous merge logic simply concatenated segments.
+  - Solution: offset segment and word timestamps by the chunk's start time before merging, producing a continuous, monotonic timeline.
+
+#### 🛠 Migration Notes
+
+- If you previously used `split_audio(path, ...) -> list[str]`, update your code to handle start times:
+
+  ```python
+  from insanely_fast_whisper_api.audio.processing import split_audio
+
+  for chunk_path, start_time in split_audio(path, chunk_duration=30.0):
+      ...
+  ```
+
+- If you previously used `merge_chunk_results(results: list[dict])`, now pass start times along with each result:
+
+  ```python
+  from insanely_fast_whisper_api.audio.results import merge_chunk_results
+
+  merged = merge_chunk_results([(result_dict, start_time_seconds) for ...])
+  ```
+
+- Overlap handling: the pipeline currently uses `chunk_overlap=0.0`. If you enable overlaps externally, the merger offsets timestamps but does not de-duplicate overlapped text; consider adding your own de-duplication if needed.
+
+#### 📝 Key Commits in v1.0.0
+
+`<populate-on-release>`
+
+---
+
+### `v0.10.1` - *16-09-2025*
 
 #### 🐛 **Bug Fix & Refactor Release: Docker Tags & Codebase Cleanup**
 
