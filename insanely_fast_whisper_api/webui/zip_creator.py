@@ -15,7 +15,8 @@ import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from types import TracebackType
+from typing import Any
 
 from insanely_fast_whisper_api.core.formatters import FORMATTERS
 
@@ -28,14 +29,14 @@ class ZipConfiguration:
     """Configuration for ZIP archive creation."""
 
     compression_method: int = zipfile.ZIP_DEFLATED
-    compression_level: Optional[int] = None  # None for default
+    compression_level: int | None = None  # None for default
     include_summary: bool = True
     include_merged: bool = False
     organize_by_format: bool = True
     organize_by_file: bool = False
-    custom_structure: Optional[Dict[str, str]] = None  # format -> folder_name
+    custom_structure: dict[str, str] | None = None  # format -> folder_name
     max_file_size_mb: int = 100  # Warning threshold
-    temp_dir: Optional[str] = None
+    temp_dir: str | None = None
 
 
 @dataclass
@@ -43,11 +44,11 @@ class ZipStats:
     """Statistics for ZIP creation process."""
 
     files_added: int = 0
-    folders_created: Set[str] = field(default_factory=set)
+    folders_created: set[str] = field(default_factory=set)
     total_size_bytes: int = 0
     compression_ratio: float = 0.0
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 class BatchZipBuilder:
@@ -57,42 +58,45 @@ class BatchZipBuilder:
     organization strategies and comprehensive error handling.
     """
 
-    def __init__(self, config: Optional[ZipConfiguration] = None):
+    def __init__(self, config: ZipConfiguration | None = None) -> None:
         """Initialize the ZIP builder.
 
         Args:
-            config: ZIP configuration options
+            config: ZIP configuration options.
         """
         self.config = config or ZipConfiguration()
         self.stats = ZipStats()
 
         # Builder state
-        self._zip_path: Optional[str] = None
-        self._zipfile: Optional[zipfile.ZipFile] = None
+        self._zip_path: str | None = None
+        self._zipfile: zipfile.ZipFile | None = None
         self._is_open = False
-        self._batch_id: Optional[str] = None
-        self._batch_data: Dict[str, Any] = {}
+        self._batch_id: str | None = None
+        self._batch_data: dict[str, Any] = {}
 
         # Content tracking
-        self._individual_files: Dict[
-            str, Dict[str, Any]
+        self._individual_files: dict[
+            str, dict[str, Any]
         ] = {}  # file_path -> result_data
-        self._merged_content: Dict[str, str] = {}  # format -> merged_content
-        self._custom_files: List[tuple] = []  # [(archive_path, content)]
+        self._merged_content: dict[str, str] = {}  # format -> merged_content
+        self._custom_files: list[tuple] = []  # [(archive_path, content)]
 
         logger.debug("Initialized BatchZipBuilder with config: %s", self.config)
 
     def create(
-        self, batch_id: Optional[str] = None, filename: Optional[str] = None
+        self, batch_id: str | None = None, filename: str | None = None
     ) -> "BatchZipBuilder":
         """Create a new ZIP archive.
 
         Args:
-            batch_id: Batch identifier for naming
-            filename: Custom filename for the archive
+            batch_id: Batch identifier for naming.
+            filename: Custom filename for the archive.
 
         Returns:
-            Self for method chaining
+            BatchZipBuilder: Self for method chaining.
+
+        Raises:
+            RuntimeError: If a ZIP archive is already open.
         """
         if self._is_open:
             raise RuntimeError("ZIP archive is already open")
@@ -127,16 +131,19 @@ class BatchZipBuilder:
             raise
 
     def add_batch_files(
-        self, file_results: Dict[str, Dict[str, Any]], formats: List[str]
+        self, file_results: dict[str, dict[str, Any]], formats: list[str]
     ) -> "BatchZipBuilder":
         """Add batch transcription files to the archive.
 
         Args:
-            file_results: Dictionary of file_path -> transcription_result
-            formats: List of formats to include
+            file_results: Dictionary of ``file_path -> transcription_result``.
+            formats: List of formats to include.
 
         Returns:
-            Self for method chaining
+            BatchZipBuilder: Self for method chaining.
+
+        Raises:
+            RuntimeError: If the ZIP archive is not open.
         """
         if not self._is_open:
             raise RuntimeError("ZIP archive is not open")
@@ -165,19 +172,24 @@ class BatchZipBuilder:
 
     def add_merged_files(
         self,
-        file_results: Dict[str, Dict[str, Any]],
-        formats: List[str],
-        merged_filename: Optional[str] = None,
+        file_results: dict[str, dict[str, Any]],
+        formats: list[str],
+        merged_filename: str | None = None,
     ) -> "BatchZipBuilder":
         """Add merged transcription files to the archive.
 
         Args:
-            file_results: Dictionary of file_path -> transcription_result
-            formats: List of formats to merge
-            merged_filename: Custom filename base for merged files
+            file_results: Dictionary of ``file_path -> transcription_result``.
+            formats: List of formats to merge.
+            merged_filename: Custom filename base for merged files.
 
         Returns:
-            Self for method chaining
+            BatchZipBuilder: Self for method chaining.
+
+        Raises:
+            RuntimeError: If the ZIP archive is not open.
+            OSError | ValueError | TypeError | KeyError | AttributeError |
+                zipfile.BadZipFile: On formatting or write failures.
         """
         if not self._is_open:
             raise RuntimeError("ZIP archive is not open")
@@ -211,11 +223,14 @@ class BatchZipBuilder:
         """Add a custom file to the archive.
 
         Args:
-            archive_path: Path within the archive
-            content: File content as string
+            archive_path: Path within the archive.
+            content: File content as string.
 
         Returns:
-            Self for method chaining
+            BatchZipBuilder: Self for method chaining.
+
+        Raises:
+            RuntimeError: If the ZIP archive is not open.
         """
         if not self._is_open:
             raise RuntimeError("ZIP archive is not open")
@@ -239,10 +254,13 @@ class BatchZipBuilder:
         """Add a batch summary file to the archive.
 
         Args:
-            include_stats: Whether to include ZIP creation statistics
+            include_stats: Whether to include ZIP creation statistics.
 
         Returns:
-            Self for method chaining
+            BatchZipBuilder: Self for method chaining.
+
+        Raises:
+            RuntimeError: If the ZIP archive is not open.
         """
         if not self._is_open:
             raise RuntimeError("ZIP archive is not open")
@@ -263,7 +281,7 @@ class BatchZipBuilder:
             logger.info("Added batch summary file")
             return self
 
-        except (IOError, OSError, ValueError, TypeError, zipfile.BadZipFile) as e:
+        except (OSError, ValueError, TypeError, zipfile.BadZipFile) as e:
             error_msg = "Failed to add summary: %s"
             logger.error(error_msg, str(e))
             self.stats.errors.append(error_msg % str(e))
@@ -274,7 +292,10 @@ class BatchZipBuilder:
         """Finalize and close the ZIP archive.
 
         Returns:
-            Tuple of (zip_path, zip_stats)
+            tuple[str, ZipStats]: A tuple of the ZIP path and creation statistics.
+
+        Raises:
+            RuntimeError: If the archive is not open or no path was created.
         """
         if not self._is_open:
             raise RuntimeError("ZIP archive is not open")
@@ -308,9 +329,9 @@ class BatchZipBuilder:
             if self._zip_path and os.path.exists(self._zip_path):
                 file_size_mb = os.path.getsize(self._zip_path) / (1024 * 1024)
                 if file_size_mb > self.config.max_file_size_mb:
-                    warning = "ZIP file size (%.1fMB) exceeds threshold (%.1fMB)" % (
-                        file_size_mb,
-                        self.config.max_file_size_mb,
+                    warning = (
+                        f"ZIP file size ({file_size_mb:.1f}MB) exceeds threshold "
+                        f"({self.config.max_file_size_mb:.1f}MB)"
                     )
                     self.stats.warnings.append(warning)
                     logger.warning(warning)
@@ -337,13 +358,13 @@ class BatchZipBuilder:
             if self._zipfile:
                 try:
                     self._zipfile.close()
-                except (IOError, OSError):
+                except OSError:
                     pass  # Ignore errors during cleanup
                 self._zipfile = None
             self._is_open = False
 
     def _add_files_by_format(
-        self, file_results: Dict[str, Dict[str, Any]], formats: List[str]
+        self, file_results: dict[str, dict[str, Any]], formats: list[str]
     ) -> None:
         """Add files organized by format (formats/txt/, formats/srt/, etc.)."""
         assert self._zipfile is not None, "ZIP file not initialized"
@@ -376,7 +397,7 @@ class BatchZipBuilder:
                 # Log content snippet or length for brevity
                 content_log = content[:200] + "..." if len(content) > 200 else content
                 logger.debug(
-                    "[_add_files_by_format] Formatted content for %s (len %d): '%s'",
+                    ("[_add_files_by_format] Formatted content for %s (len %d): '%s'"),
                     archive_path,
                     len(content),
                     content_log,
@@ -397,8 +418,11 @@ class BatchZipBuilder:
                     and content not in ["{}", "null"]
                 ):  # more specific for json
                     logger.warning(
-                        "[_add_files_by_format] Formatter for JSON produced empty or "
-                        "whitespace-only content for %s (actual: '%s'). Writing to ZIP.",
+                        (
+                            "[_add_files_by_format] Formatter for JSON produced empty "
+                            "or whitespace-only content for %s (actual: '%s'). "
+                            "Writing to ZIP."
+                        ),
                         file_path,
                         content,
                     )
@@ -407,7 +431,7 @@ class BatchZipBuilder:
                 self._track_addition(archive_path, len(content.encode("utf-8")))
 
     def _add_files_by_source(
-        self, file_results: Dict[str, Dict[str, Any]], formats: List[str]
+        self, file_results: dict[str, dict[str, Any]], formats: list[str]
     ) -> None:
         """Add files organized by source file (files/audio1/, files/audio2/, etc.)."""
         assert self._zipfile is not None, "ZIP file not initialized"
@@ -425,7 +449,6 @@ class BatchZipBuilder:
                     self._track_addition(archive_path, len(content.encode("utf-8")))
 
                 except (
-                    IOError,
                     OSError,
                     ValueError,
                     TypeError,
@@ -441,7 +464,7 @@ class BatchZipBuilder:
                     )
 
     def _add_files_flat(
-        self, file_results: Dict[str, Dict[str, Any]], formats: List[str]
+        self, file_results: dict[str, dict[str, Any]], formats: list[str]
     ) -> None:
         """Add files in flat structure (no subfolders)."""
         assert self._zipfile is not None, "ZIP file not initialized"
@@ -478,7 +501,7 @@ class BatchZipBuilder:
                 # Log content snippet or length for brevity
                 content_log = content[:200] + "..." if len(content) > 200 else content
                 logger.debug(
-                    "[_add_files_flat] Formatted content for %s (len %d): '%s'",
+                    ("[_add_files_flat] Formatted content for %s (len %d): '%s'"),
                     archive_path,
                     len(content),
                     content_log,
@@ -499,8 +522,11 @@ class BatchZipBuilder:
                     and content not in ["{}", "null"]
                 ):  # more specific for json
                     logger.warning(
-                        "[_add_files_flat] Formatter for JSON produced empty or "
-                        "whitespace-only content for %s (actual: '%s'). Writing to ZIP.",
+                        (
+                            "[_add_files_flat] Formatter for JSON produced empty or "
+                            "whitespace-only content for %s (actual: '%s'). "
+                            "Writing to ZIP."
+                        ),
                         file_path,
                         content,
                     )
@@ -509,9 +535,20 @@ class BatchZipBuilder:
                 self._track_addition(archive_path, len(content.encode("utf-8")))
 
     def _merge_format(
-        self, file_results: Dict[str, Dict[str, Any]], format_type: str
+        self, file_results: dict[str, dict[str, Any]], format_type: str
     ) -> str:
-        """Merge multiple transcription results into a single format."""
+        """Merge multiple transcription results into a single format.
+
+        Args:
+            file_results: Dictionary of ``file_path -> transcription_result``.
+            format_type: The desired format to merge (e.g., "txt", "srt", "json").
+
+        Returns:
+            str: The merged content.
+
+        Raises:
+            ValueError: If an unsupported merge format is requested.
+        """
         if format_type == "txt":
             return self._merge_txt(file_results)
         elif format_type == "srt":
@@ -519,10 +556,17 @@ class BatchZipBuilder:
         elif format_type == "json":
             return self._merge_json(file_results)
         else:
-            raise ValueError("Unsupported merge format: %s" % format_type)
+            raise ValueError(f"Unsupported merge format: {format_type}")
 
-    def _merge_txt(self, file_results: Dict[str, Dict[str, Any]]) -> str:
-        """Merge TXT format files."""
+    def _merge_txt(self, file_results: dict[str, dict[str, Any]]) -> str:
+        """Merge TXT format files.
+
+        Args:
+            file_results: Dictionary of ``file_path -> transcription_result``.
+
+        Returns:
+            str: Merged plain text content with headers and separators.
+        """
         merged_lines = []
 
         for file_path, result_data in file_results.items():
@@ -536,8 +580,15 @@ class BatchZipBuilder:
 
         return "\n".join(merged_lines)
 
-    def _merge_srt(self, file_results: Dict[str, Dict[str, Any]]) -> str:
-        """Merge SRT format files with sequential numbering."""
+    def _merge_srt(self, file_results: dict[str, dict[str, Any]]) -> str:
+        """Merge SRT format files with sequential numbering.
+
+        Args:
+            file_results: Dictionary of ``file_path -> transcription_result``.
+
+        Returns:
+            str: Merged SRT content with renumbered entries and section comments.
+        """
         merged_entries = []
         entry_counter = 1
 
@@ -564,14 +615,21 @@ class BatchZipBuilder:
 
         return "\n\n".join(filter(None, merged_entries))
 
-    def _merge_json(self, file_results: Dict[str, Dict[str, Any]]) -> str:
-        """Merge JSON format files into a batch structure."""
-        files_data: Dict[str, Dict[str, Any]] = {}
+    def _merge_json(self, file_results: dict[str, dict[str, Any]]) -> str:
+        """Merge JSON format files into a batch structure.
+
+        Args:
+            file_results: Dictionary of ``file_path -> transcription_result``.
+
+        Returns:
+            str: JSON string representing batch info and per-file results.
+        """
+        files_data: dict[str, dict[str, Any]] = {}
         for file_path, result_data in file_results.items():
             filename = Path(file_path).name
             files_data[filename] = result_data
 
-        batch_data: Dict[str, Any] = {
+        batch_data: dict[str, Any] = {
             "batch_info": {
                 "batch_id": self._batch_id,
                 "total_files": len(file_results),
@@ -581,23 +639,42 @@ class BatchZipBuilder:
         }
         return json.dumps(batch_data, indent=2, ensure_ascii=False)
 
-    def _format_result(self, result_data: Dict[str, Any], format_type: str) -> str:
-        """Format transcription result data."""
+    def _format_result(self, result_data: dict[str, Any], format_type: str) -> str:
+        """Format transcription result data.
+
+        Args:
+            result_data: Raw transcription result data.
+            format_type: One of "txt", "srt", or "json".
+
+        Returns:
+            str: The formatted content.
+
+        Raises:
+            ValueError: If the requested ``format_type`` is unknown.
+        """
         formatter = FORMATTERS.get(format_type)
         if not formatter:
-            raise ValueError("Unknown format: %s" % format_type)
+            raise ValueError(f"Unknown format: {format_type}")
         return formatter.format(result_data)
 
     def _get_base_filename(self, file_path: str) -> str:
-        """Get base filename from file path with Unicode and special character handling."""
+        """Get base filename from path with safe Unicode normalization.
+
+        Args:
+            file_path: The original file path.
+
+        Returns:
+            str: A sanitized base filename safe for archive inclusion.
+        """
         base_name = Path(file_path).stem
 
         # Normalize Unicode characters (NFC normalization)
         normalized_name = unicodedata.normalize("NFC", base_name)
 
-        # Conservative sanitization - only remove characters that are genuinely problematic
-        # across all filesystems. Keep parentheses (), brackets [], spaces, hyphens, etc.
-        # Only remove: < > : " | ? * (Windows restrictions) and control characters (\x00-\x1f)
+        # Conservative sanitization - only remove characters that are genuinely
+        # problematic across all filesystems. Keep parentheses (), brackets [],
+        # spaces, hyphens, etc. Only remove: < > : " | ? * (Windows restrictions)
+        # and control characters (\x00-\x1f)
         safe_name = re.sub(r'[<>:"|?*\x00-\x1f]', "_", normalized_name)
 
         # Only trim leading/trailing whitespace (keep internal spaces)
@@ -618,7 +695,12 @@ class BatchZipBuilder:
         return safe_name
 
     def _track_addition(self, archive_path: str, size_bytes: int) -> None:
-        """Track file addition statistics."""
+        """Track file addition statistics.
+
+        Args:
+            archive_path: Archive path of the added file.
+            size_bytes: Size of the added content in bytes.
+        """
         self.stats.files_added += 1
         self.stats.total_size_bytes += size_bytes
 
@@ -627,9 +709,16 @@ class BatchZipBuilder:
         if folder != ".":
             self.stats.folders_created.add(folder)
 
-    def _generate_summary(self, include_stats: bool) -> Dict[str, Any]:
-        """Generate batch summary data."""
-        summary: Dict[str, Any] = {
+    def _generate_summary(self, include_stats: bool) -> dict[str, Any]:
+        """Generate batch summary data.
+
+        Args:
+            include_stats: Whether to include creation statistics.
+
+        Returns:
+            dict[str, Any]: Summary structure for the batch ZIP.
+        """
+        summary: dict[str, Any] = {
             "batch_info": {
                 "batch_id": self._batch_id,
                 "created_timestamp": datetime.now().isoformat(),
@@ -689,15 +778,30 @@ class BatchZipBuilder:
         return summary
 
     def __enter__(self) -> "BatchZipBuilder":
-        """Context manager entry."""
+        """Context manager entry.
+
+        Returns:
+            BatchZipBuilder: Self for use within a context manager.
+        """
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Context manager exit."""
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        """Context manager exit.
+
+        Args:
+            exc_type: Exception type if one occurred, otherwise None.
+            exc_val: Exception instance if one occurred, otherwise None.
+            exc_tb: Traceback if one occurred, otherwise None.
+        """
         if self._is_open and self._zipfile:
             try:
                 self._zipfile.close()
-            except (IOError, OSError) as e:
+            except OSError as e:
                 logger.error("Error closing ZIP file: %s", str(e))
             finally:
                 self._is_open = False
@@ -705,23 +809,23 @@ class BatchZipBuilder:
 
 # Convenience function for simple ZIP creation
 def create_batch_zip(
-    file_results: Dict[str, Dict[str, Any]],
-    formats: List[str],
-    batch_id: Optional[str] = None,
+    file_results: dict[str, dict[str, Any]],
+    formats: list[str],
+    batch_id: str | None = None,
     include_merged: bool = False,
-    config: Optional[ZipConfiguration] = None,
+    config: ZipConfiguration | None = None,
 ) -> tuple[str, ZipStats]:
     """Create a ZIP archive for batch transcription results.
 
     Args:
-        file_results: Dictionary of file_path -> transcription_result
-        formats: List of formats to include
-        batch_id: Optional batch identifier
-        include_merged: Whether to include merged files
-        config: ZIP configuration
+        file_results: Dictionary of ``file_path -> transcription_result``.
+        formats: List of formats to include.
+        batch_id: Optional batch identifier.
+        include_merged: Whether to include merged files.
+        config: ZIP configuration.
 
     Returns:
-        Tuple of (zip_path, zip_stats)
+        tuple[str, ZipStats]: Tuple of (zip_path, zip_stats).
     """
     builder = BatchZipBuilder(config)
 

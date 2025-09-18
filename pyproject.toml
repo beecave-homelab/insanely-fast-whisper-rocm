@@ -1,6 +1,6 @@
 [project]
 name = "insanely-fast-whisper-api"
-version = "0.10.0"
+version = "0.10.1"
 description = "A FastAPI wrapper around a custom Whisper-based ASR pipeline (ROCM version)"
 authors = [
     {name = "elvee", email = "lowie@beecave.nl"},
@@ -22,6 +22,7 @@ dependencies = [
     "ffmpeg-python>=0.2.0",
     "stable-ts==2.19.0",
     "demucs==4.0.1",
+    "huggingface-hub>=0.34.4",
 ]
 requires-python = "~=3.10"
 
@@ -46,7 +47,7 @@ start-webui-debug = "insanely-fast-whisper-webui --debug"
 start-api = "insanely-fast-whisper-api"
 start-api-verbose = "insanely-fast-whisper-api -v"
 cli = "insanely-fast-whisper-cli"
-setup-config = "scripts.setup_config:main"
+setup-config = {call = "scripts.setup_config:main"}
 
 [[tool.pdm.source]]
 name = "pypi"
@@ -107,19 +108,6 @@ bench = [
 [tool.pdm.resolution]
 excludes = ["torch==2.0.1", "torch==2.3.0", "torch==2.4.1", "torch==2.6.0"]
 
-[tool.mypy]
-python_version = "3.10"
-ignore_missing_imports = true
-warn_return_any = false
-warn_unused_configs = true
-disallow_untyped_defs = false
-show_error_codes = true
-exclude = [
-    "temp_uploads/",
-    "transcripts/",
-    "transcripts_zips/"
-]
-
 [tool.black]
 line-length = 88
 target-version = ['py310']
@@ -136,32 +124,55 @@ exclude = '''
 )/
 '''
 
-[tool.isort]
-profile = "black"
-line_length = 88
-known_first_party = ["insanely_fast_whisper_api"]
-skip = ["temp_uploads", "transcripts", "transcripts_zips"]
-
+# ------------------------------
+# Ruff (linter + formatter + import sorting)
+# ------------------------------
 [tool.ruff]
 line-length = 88
-target-version = "py310"
-exclude = [
-    ".git",
-    ".venv",
-    "venv",
-    "__pycache__",
-    "temp_uploads",
-    "transcripts",
-    "transcripts_zips"
-]
+target-version = "py310"                # adjust if you target 3.9/3.12
+preview = true                          # needed for DOC + FA rules
+src = ["insanely_fast_whisper_api"]     # first-party package path
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
-ignore = ["E501"]  # Line too long (handled by black)
+select = [
+  "F",      # Pyflakes (includes F403/F405 for wildcard imports)
+  "E", "W", # pycodestyle subset (PEP 8 basics)
+  "N",      # pep8-naming (snake_case, PascalCase)
+  "I",      # isort (import sorting)
+  "D",      # pydocstyle (docstring presence + Google style)
+  "DOC",    # pydoclint (Args/Returns/Raises checks; needs preview)
+  "ANN",    # flake8-annotations (type hints everywhere)
+  "TID",    # flake8-tidy-imports (absolute imports: TID252)
+  "UP",     # pyupgrade (modern syntax)
+  "FA",     # future-annotations (auto `from __future__`; needs preview)
+]
 
+# Optional: stricter typing rules (discourage bare Any)
+extend-select = ["ANN401"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+section-order = [
+  "future",
+  "standard-library",
+  "third-party",
+  "first-party",
+  "local-folder",
+]
+known-first-party = ["insanely_fast_whisper_api"]
+
+[tool.ruff.lint.per-file-ignores]
+# Temporarily ignore long-line checks in tests
+"tests/**/*.py" = ["E501"]
+
+# ------------------------------
+# Pytest & Coverage
+# ------------------------------
 [tool.pytest.ini_options]
+addopts = "-q --cov=insanely_fast_whisper_api --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=html --cov-fail-under=85"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"

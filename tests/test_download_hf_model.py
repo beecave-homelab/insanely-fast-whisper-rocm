@@ -53,8 +53,7 @@ def custom_test_logger():
 def test_download_default_model_when_none_provided_and_env_var_not_set(
     mock_snapshot_download, mock_hf_hub_cache, custom_test_logger
 ):
-    """
-    Tests that download_model_if_needed attempts to download the centralized DEFAULT_MODEL
+    """Tests that download_model_if_needed attempts to download the centralized DEFAULT_MODEL
     when model_name is None.
     """
     dummy_model_path_str = str(

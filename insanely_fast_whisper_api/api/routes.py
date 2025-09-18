@@ -5,7 +5,7 @@ injection for ASR pipeline instances and file handling.
 """
 
 import logging
-from typing import Literal, Optional, Union
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
@@ -53,7 +53,7 @@ router = APIRouter()
     },
 )
 async def create_transcription(
-    file: UploadFile = File(..., description="The audio file to transcribe"),
+    file: UploadFile = File(..., description="The audio file to transcribe"),  # noqa: B008
     response_format: str = Form(
         RESPONSE_FORMAT_JSON,
         description="Response format (json, verbose_json, text, srt, vtt)",
@@ -62,7 +62,7 @@ async def create_transcription(
         DEFAULT_TIMESTAMP_TYPE,
         description="Type of timestamp to generate ('chunk' or 'word')",
     ),
-    language: Optional[str] = Form(
+    language: str | None = Form(
         None, description="Source language code (auto-detect if None)"
     ),
     task: Literal["transcribe"] = Form("transcribe", description="ASR task type"),
@@ -74,9 +74,9 @@ async def create_transcription(
     vad_threshold: float = Form(
         DEFAULT_VAD_THRESHOLD, description="VAD threshold for speech detection"
     ),
-    asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),
-    file_handler: FileHandler = Depends(get_file_handler),
-) -> Union[str, dict]:
+    asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),  # noqa: B008
+    file_handler: FileHandler = Depends(get_file_handler),  # noqa: B008
+) -> str | dict:
     """Transcribe speech in an audio file to text.
 
     This endpoint processes an audio file and returns its transcription using the
@@ -85,9 +85,15 @@ async def create_transcription(
 
     Args:
         file: The audio file to transcribe (supported formats: mp3, wav, etc.)
+        response_format: Desired response format ("json", "verbose_json",
+            "text", "srt", or "vtt").
         timestamp_type: Type of timestamp to generate ("chunk" or "word")
         language: Optional source language code (auto-detect if None)
         task: ASR task type (must be "transcribe")
+        stabilize: Enable timestamp stabilization if True.
+        demucs: Enable Demucs noise reduction if True.
+        vad: Enable Voice Activity Detection if True.
+        vad_threshold: VAD sensitivity threshold (0.0 - 1.0).
         asr_pipeline: Injected ASR pipeline instance
         file_handler: Injected file handler instance
 
@@ -157,7 +163,7 @@ async def create_transcription(
     },
 )
 async def create_translation(
-    file: UploadFile = File(..., description="The audio file to translate"),
+    file: UploadFile = File(..., description="The audio file to translate"),  # noqa: B008
     response_format: str = Form(
         RESPONSE_FORMAT_JSON,
         description="Response format (json, verbose_json, text, srt, vtt)",
@@ -166,7 +172,7 @@ async def create_translation(
         DEFAULT_TIMESTAMP_TYPE,
         description="Type of timestamp to generate ('chunk' or 'word')",
     ),
-    language: Optional[str] = Form(
+    language: str | None = Form(
         None, description="Source language code (auto-detect if None)"
     ),
     stabilize: bool = Form(
@@ -177,9 +183,9 @@ async def create_translation(
     vad_threshold: float = Form(
         DEFAULT_VAD_THRESHOLD, description="VAD threshold for speech detection"
     ),
-    asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),
-    file_handler: FileHandler = Depends(get_file_handler),
-) -> Union[str, dict]:
+    asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),  # noqa: B008
+    file_handler: FileHandler = Depends(get_file_handler),  # noqa: B008
+) -> str | dict:
     """Translate speech in an audio file to English.
 
     This endpoint processes an audio file in any supported language and translates
@@ -191,6 +197,10 @@ async def create_translation(
         response_format: Desired response format ("json" or "text")
         timestamp_type: Type of timestamp to generate ("chunk" or "word")
         language: Optional source language code (auto-detect if None)
+        stabilize: Enable timestamp stabilization if True.
+        demucs: Enable Demucs noise reduction if True.
+        vad: Enable Voice Activity Detection if True.
+        vad_threshold: VAD sensitivity threshold (0.0 - 1.0).
         asr_pipeline: Injected ASR pipeline instance
         file_handler: Injected file handler instance
 

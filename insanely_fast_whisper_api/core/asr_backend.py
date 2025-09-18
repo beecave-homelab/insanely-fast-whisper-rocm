@@ -9,13 +9,14 @@ import time
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import torch
 from transformers import (
     AutoFeatureExtractor,
     AutoModelForSpeechSeq2Seq,
     AutoTokenizer,
+    GenerationConfig,
     pipeline,
 )
 from transformers.utils import logging as hf_logging
@@ -48,11 +49,11 @@ class ASRBackend(ABC):  # pylint: disable=too-few-public-methods
     def process_audio(
         self,
         audio_file_path: str,
-        language: Optional[str],
+        language: str | None,
         task: str,
-        return_timestamps_value: Union[bool, str],
+        return_timestamps_value: bool | str,
         # Potentially other common config options can go here
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Processes the audio file and returns the result."""
 
 
@@ -113,6 +114,53 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                     self.config.model_name
                 )
 
+                # Backfill missing Whisper generation config for fine-tuned
+                # checkpoints that did not upload generation_config.json.
+                # This enables timestamp extraction and multilingual task mapping.
+                try:
+                    gen_cfg = getattr(model, "generation_config", None)
+                    missing_ts_cfg = (
+                        gen_cfg is None
+                        or getattr(gen_cfg, "no_timestamps_token_id", None) is None
+                    )
+
+                    name = self.config.model_name.lower()
+                    if missing_ts_cfg and ("whisper" in name):
+                        is_en = (".en" in name) or ("-en" in name)
+                        base_id = None
+
+                        if "large" in name:
+                            if ("large-v3" in name) or ("v3" in name):
+                                base_id = "openai/whisper-large-v3"
+                            elif ("large-v2" in name) or ("v2" in name):
+                                base_id = "openai/whisper-large-v2"
+                            else:
+                                base_id = "openai/whisper-large-v2"
+                        elif "medium" in name:
+                            base_id = "openai/whisper-medium" + (".en" if is_en else "")
+                        elif "small" in name:
+                            base_id = "openai/whisper-small" + (".en" if is_en else "")
+                        elif "base" in name:
+                            base_id = "openai/whisper-base" + (".en" if is_en else "")
+                        elif "tiny" in name:
+                            base_id = "openai/whisper-tiny" + (".en" if is_en else "")
+
+                        if base_id:
+                            logger.info(
+                                "Backfilling gen config from %s for %s",
+                                base_id,
+                                self.config.model_name,
+                            )
+                            model.generation_config = GenerationConfig.from_pretrained(
+                                base_id
+                            )
+                except Exception as gen_e:  # pylint: disable=broad-except
+                    logger.warning(
+                        "Failed to backfill generation_config for %s: %s",
+                        self.config.model_name,
+                        str(gen_e),
+                    )
+
                 self.asr_pipe = pipeline(
                     "automatic-speech-recognition",
                     model=model,
@@ -133,10 +181,10 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
     def process_audio(
         self,
         audio_file_path: str,
-        language: Optional[str],
+        language: str | None,
         task: str,
-        return_timestamps_value: Union[bool, str],
-    ) -> Dict[str, Any]:
+        return_timestamps_value: bool | str,
+    ) -> dict[str, Any]:
         """Processes an audio file and returns the transcription result."""
         if self.asr_pipe is None:
             self._initialize_pipeline()
@@ -173,8 +221,22 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 )
                 _return_timestamps_value = False
 
+        if _return_timestamps_value:
+            gen_cfg = getattr(self.asr_pipe.model, "generation_config", None)
+            no_ts_token_id = getattr(gen_cfg, "no_timestamps_token_id", None)
+            if no_ts_token_id is None:
+                logger.warning(
+                    (
+                        "Timestamp generation not properly configured for model %s; "
+                        "disabling."
+                    ),
+                    self.config.model_name,
+                )
+                _return_timestamps_value = False
+
         # These are the arguments that will be passed to the pipeline
-        # Suppress noisy warnings from HF transformers related to experimental chunk_length and deprecations.
+        # Suppress noisy warnings from HF transformers related to experimental
+        # chunk_length and deprecations.
         warnings.filterwarnings(
             "ignore",
             message="Using `chunk_length_s` is very experimental*",
@@ -211,17 +273,38 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         # check, only warn (do not raise) so the underlying pipeline can handle it.
         if not is_multilingual and task == "translate":
             logger.warning(
-                "Translate requested but multilingual markers not found for model %s; proceeding anyway.",
+                (
+                    "Translate requested but multilingual markers not found for "
+                    "model %s; proceeding anyway."
+                ),
                 self.config.model_name,
             )
 
-        # Always add task and language parameters so Whisper knows we want translation.
-        pipeline_kwargs["generate_kwargs"]["task"] = task
-        # If translate task and no explicit language provided, default to English
-        if language and language.lower() != "none":
-            pipeline_kwargs["generate_kwargs"]["language"] = language
-        elif task == "translate":
-            pipeline_kwargs["generate_kwargs"]["language"] = "en"
+        # Older checkpoints may ship with generation configs that predate the
+        # introduction of task/language mappings. Passing "task" or "language"
+        # to such models triggers a ValueError. Only forward these parameters
+        # when the generation config exposes the required attributes.
+        gen_cfg = getattr(self.asr_pipe.model, "generation_config", None)
+        has_task_mappings = False
+        if gen_cfg is not None:
+            has_task_mappings = any(
+                getattr(gen_cfg, attr, None) is not None
+                for attr in ("task_to_id", "lang_to_id")
+            )
+
+        if has_task_mappings:
+            pipeline_kwargs["generate_kwargs"]["task"] = task
+            # If translate task and no explicit language provided, default to English
+            if language and language.lower() != "none":
+                pipeline_kwargs["generate_kwargs"]["language"] = language
+            elif task == "translate":
+                pipeline_kwargs["generate_kwargs"]["language"] = "en"
+        elif task != "transcribe" or language:
+            logger.warning(
+                "Generation config for model %s lacks task/language mappings; "
+                "falling back to default transcription.",
+                self.config.model_name,
+            )
 
         # Convert to WAV if extension not among standard Whisper-friendly set
         from insanely_fast_whisper_api.audio.conversion import (
@@ -233,13 +316,17 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         try:
             outputs = self.asr_pipe(str(converted_path), **pipeline_kwargs)
         except RuntimeError as e:
-            # Check if this is the specific tensor size mismatch error in timestamp extraction
+            # Check if this is the specific tensor size mismatch error in
+            # timestamp extraction
             if "expanded size of the tensor" in str(
                 e
             ) and "must match the existing size" in str(e):
                 logger.warning(
-                    "Word-level timestamp extraction failed due to tensor size mismatch. "
-                    "Falling back to chunk-level timestamps for %s: %s",
+                    (
+                        "Word-level timestamp extraction failed due to "
+                        "tensor size mismatch. Falling back to chunk-level "
+                        "timestamps for %s: %s"
+                    ),
                     audio_file_path,
                     str(e),
                 )
@@ -263,7 +350,10 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                         exc_info=True,
                     )
                     raise TranscriptionError(
-                        f"Failed to transcribe audio even with fallback: {str(fallback_e)}"
+
+                            "Failed to transcribe audio even with fallback: "
+                            f"{str(fallback_e)}"
+
                     ) from fallback_e
             else:
                 # Re-raise other RuntimeErrors

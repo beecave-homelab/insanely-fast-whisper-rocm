@@ -11,7 +11,7 @@ import zipfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Literal
 
 import gradio as gr
 
@@ -71,8 +71,8 @@ class TranscriptionConfig:  # pylint: disable=too-many-instance-attributes
     task: Literal["transcribe", "translate"] = "transcribe"
     dtype: str = "float16"
     chunk_length: int = 30
-    chunk_duration: Optional[float] = None
-    chunk_overlap: Optional[float] = None
+    chunk_duration: float | None = None
+    chunk_overlap: float | None = None
     # Stabilization options
     stabilize: bool = DEFAULT_STABILIZE
     demucs: bool = DEFAULT_DEMUCS
@@ -89,15 +89,30 @@ class FileHandlingConfig:
 
 
 def _prepare_temp_downloadable_file(
-    raw_data: Dict[str, Any],
+    raw_data: dict[str, Any],
     format_type: str,  # "txt" or "srt"
     original_audio_stem: str,
     temp_dir: Path,
     task: TaskType,
 ) -> str:
-    """
-    Generates content for TXT or SRT, saves it to a temporary file,
-    and returns the file path.
+    """Generate and persist a temporary downloadable file for the WebUI.
+
+    Generates content for TXT or SRT, saves it to a temporary file, and
+    returns the file path.
+
+    Args:
+        raw_data: The raw transcription result data.
+        format_type: Target output format, e.g. "txt" or "srt".
+        original_audio_stem: Stem of the original audio file name.
+        temp_dir: Directory to write the temporary file to.
+        task: The task used for filename generation.
+
+    Returns:
+        str: Absolute path to the generated temporary file.
+
+    Raises:
+        ValueError: If a formatter for the given format is not available.
+        OSError: If writing the temporary file fails.
     """
     formatter = FORMATTERS.get(format_type)
     if not formatter:
@@ -109,8 +124,9 @@ def _prepare_temp_downloadable_file(
     # Filename will be like: audio_stem_task_timestamp.format
     # We need a unique name, timestamp is good.
     # The generator itself handles the timestamp.
+    # Generator expects a path-like string for stem extraction
     filename = WEBUI_FILENAME_GENERATOR.create_filename(
-        audio_path=original_audio_stem,  # Generator expects a path-like string for stem extraction
+        audio_path=original_audio_stem,
         task=task,
         extension=format_type,
     )
@@ -125,7 +141,7 @@ def _prepare_temp_downloadable_file(
             f.write(content)
         logger.info("Created temporary download file: %s", temp_file_path)
         return str(temp_file_path)
-    except IOError as e:
+    except OSError as e:
         logger.error(
             "Failed to create temporary download file %s: %s", temp_file_path, e
         )
@@ -136,12 +152,11 @@ def transcribe(
     audio_file_path: str,
     config: TranscriptionConfig,
     file_config: FileHandlingConfig,
-    progress_tracker_instance: Optional[gr.Progress] = None,
+    progress_tracker_instance: gr.Progress | None = None,
     current_file_idx: int = 0,
     total_files_for_session: int = 1,
-) -> Dict[str, Any]:
-    """
-    Transcribe an audio file using the ASRPipeline.
+) -> dict[str, Any]:
+    """Transcribe an audio file using the ASRPipeline.
 
     Args:
         audio_file_path: Path to the input audio file
@@ -184,7 +199,10 @@ def transcribe(
         if progress_tracker_instance is not None:
             progress_tracker_instance(
                 base_progress,
-                desc=f"Starting file {current_file_idx + 1}/{total_files_for_session}: {original_file_name_for_desc}",
+                desc=(
+                    f"Starting file {current_file_idx + 1}/{total_files_for_session}: "
+                    f"{original_file_name_for_desc}"
+                ),
             )
 
         # Initialize the ASR backend
@@ -206,10 +224,11 @@ def transcribe(
 
         # Adapt progress_callback to the new listener pattern
         if progress_tracker_instance is not None:
-            # progress_listener needs access to base_progress, current_file_idx, total_files_for_session
-            # and original_file_name_for_desc for consistent messaging.
+            # progress_listener needs access to base_progress,
+            # current_file_idx, total_files_for_session and
+            # original_file_name_for_desc for consistent messaging.
 
-            def progress_listener(event: ProgressEvent):
+            def progress_listener(event: ProgressEvent) -> None:
                 # Use original_file_name_for_desc captured from outer scope
                 nonlocal base_progress
 
@@ -247,14 +266,16 @@ def transcribe(
                     current_event_fraction_within_file = 1.0
 
                 if current_event_fraction_within_file is not None:
-                    # Scale current_event_fraction (0-1 for this file) to its portion of the total progress.
-                    # Each file contributes 1/total_files_for_session to the total progress.
+                    # Scale current_event_fraction (0-1 for this file) to its portion
+                    # of the total progress. Each file contributes
+                    # 1/total_files_for_session to the total progress.
                     overall_fraction = base_progress + (
                         current_event_fraction_within_file / total_files_for_session
                     )
                     progress_tracker_instance(overall_fraction, desc=desc_message)
                 else:
-                    # For other events, show indeterminate progress or just update description
+                    # For other events, show indeterminate progress or just update
+                    # description
                     progress_tracker_instance(None, desc=desc_message)
 
             asr_pipeline.add_listener(progress_listener)
@@ -263,7 +284,8 @@ def transcribe(
         # are not directly used by the new pipeline in this basic setup.
         # If that specific chunking logic is needed, it has to be implemented
         # within the WhisperPipeline._prepare_input or as a pre-processing step.
-        # The current HuggingFaceBackend relies on the model's internal chunking (chunk_length_s).
+        # The current HuggingFaceBackend relies on the model's internal chunking
+        # (chunk_length_s).
         if config.chunk_duration is not None and config.chunk_overlap is not None:
             logger.warning(
                 "App-level chunk_duration and chunk_overlap are set in config, "
@@ -302,7 +324,10 @@ def transcribe(
             ) / total_files_for_session
             progress_tracker_instance(
                 final_progress_for_this_file_segment,
-                desc=f"Completed file {current_file_idx + 1}/{total_files_for_session}: {original_file_name_for_desc}",
+                desc=(
+                    f"Completed file {current_file_idx + 1}/{total_files_for_session}: "
+                    f"{original_file_name_for_desc}"
+                ),
             )
 
         return result
@@ -313,16 +338,28 @@ def transcribe(
 
 
 def process_transcription_request(  # pylint: disable=too-many-locals, too-many-statements, too-many-branches
-    audio_paths: List[str],
+    audio_paths: list[str],
     transcription_config: TranscriptionConfig,
     file_handling_config: FileHandlingConfig,
-    progress_tracker: Optional[gr.Progress] = None,
-) -> Tuple[
-    str, Any, Any, Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]
+    progress_tracker: gr.Progress | None = None,
+) -> tuple[
+    str, Any, Any, dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]
 ]:
-    """
-    Process transcription for one or more audio files, generate results,
-    and prepare Gradio UI component updates using BatchZipBuilder.
+    """Process one or more files and prepare WebUI outputs.
+
+    Process transcription for one or more audio files, generate results, and
+    prepare Gradio UI component updates using `BatchZipBuilder`.
+
+    Args:
+        audio_paths: List of paths to audio files to transcribe.
+        transcription_config: Configuration for transcription.
+        file_handling_config: Configuration for file handling.
+        progress_tracker: Optional progress tracker for real-time progress updates.
+
+    Returns:
+        Tuple of Gradio UI component updates for transcription output, JSON output,
+        raw result, and download buttons.
+
     """
     all_results_data = []
     processed_files_summary = []
@@ -342,11 +379,12 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         # based on current_file_idx and total_files_for_session.
 
         try:
+            # Pass the main progress tracker to the transcribe function
             result_dict = transcribe(
                 str(audio_file_path),
                 transcription_config,
                 file_handling_config,
-                progress_tracker_instance=progress_tracker,  # Pass the main progress tracker
+                progress_tracker_instance=progress_tracker,
                 current_file_idx=idx,
                 total_files_for_session=num_files,
             )
@@ -372,13 +410,18 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 not json_file_path_from_pipeline
                 and file_handling_config.save_transcriptions
             ):
-                # This case should ideally not happen if pipeline guarantees output_file_path
+                # This case should ideally not happen if pipeline guarantees
+                # output_file_path
                 logger.error(
-                    "JSON file path missing from pipeline for %s despite save_transcriptions=True. Generating fallback.",
+                    (
+                        "JSON file path missing from pipeline for %s despite "
+                        "save_transcriptions=True. Generating fallback."
+                    ),
                     file_name_for_log,
                 )
                 # Fallback: generate filename for JSON if pipeline didn't provide path
-                # This JSON is for our records/data, not necessarily for direct download button if pipeline failed to save
+                # This JSON is for our records/data, not necessarily for direct download
+                # button if pipeline failed to save
                 fallback_json_filename = WEBUI_FILENAME_GENERATOR.create_filename(
                     audio_path=str(audio_file_path),
                     task=current_task_type,
@@ -391,17 +434,16 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     json.dump(raw_transcription_result, f, indent=2, ensure_ascii=False)
                 logger.info("Fallback: Saved JSON to %s", json_file_path_from_pipeline)
 
-            # No longer saving individual TXT/SRT here. They'll be generated on-the-fly for download
-            # or created by BatchZipBuilder within ZIPs.
+            # No longer saving individual TXT/SRT here. They'll be generated on-the-fly
+            # for download or created by BatchZipBuilder within ZIPs.
 
-            all_results_data.append(
-                {
-                    "audio_original_path": str(audio_file_path),  # Store full path
-                    "audio_original_stem": audio_file_path.stem,
-                    "raw_result": raw_transcription_result,
-                    "json_file_path": json_file_path_from_pipeline,  # Path to pipeline-saved JSON
-                }
-            )
+            all_results_data.append({
+                "audio_original_path": str(audio_file_path),  # Store full path
+                "audio_original_stem": audio_file_path.stem,
+                "raw_result": raw_transcription_result,
+                # Path to pipeline-saved JSON
+                "json_file_path": json_file_path_from_pipeline,
+            })
             processed_files_summary.append(
                 f"{file_name_for_log}: Transcribed successfully."
             )
@@ -415,13 +457,17 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         except TranscriptionError as e:
             logger.error("Error transcribing %s: %s", file_name_for_log, e)
             processed_files_summary.append(f"{file_name_for_log}: Error - {e}")
-            all_results_data.append(
-                {"audio_original_path": str(audio_file_path), "error": str(e)}
-            )
+            all_results_data.append({
+                "audio_original_path": str(audio_file_path),
+                "error": str(e),
+            })
             if progress_tracker is not None:
                 progress_tracker(
                     (idx + 1) / num_files,
-                    desc=f"Error processing file {idx + 1}/{num_files}: {file_name_for_log}",
+                    desc=(
+                        f"Error processing file {idx + 1}/{num_files}: "
+                        f"{file_name_for_log}"
+                    ),
                 )
             if num_files > 1:
                 continue
@@ -439,7 +485,6 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 dl_btn_hidden,
             )
         except (
-            IOError,
             OSError,
             ValueError,
             TypeError,
@@ -456,13 +501,17 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             processed_files_summary.append(
                 f"{file_name_for_log}: Unexpected Error - {e}"
             )
-            all_results_data.append(
-                {"audio_original_path": str(audio_file_path), "error": str(e)}
-            )
+            all_results_data.append({
+                "audio_original_path": str(audio_file_path),
+                "error": str(e),
+            })
             if progress_tracker is not None:
                 progress_tracker(
                     (idx + 1) / num_files,
-                    desc=f"Critical error file {idx + 1}/{num_files}: {file_name_for_log}",
+                    desc=(
+                        f"Critical error file {idx + 1}/{num_files}: "
+                        f"{file_name_for_log}"
+                    ),
                 )
             if num_files > 1:
                 continue
@@ -538,7 +587,8 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             else "Could not format text output."
         )
         json_output_val = first_success["raw_result"]
-        raw_result_state_val = {  # State for potential re-use, not directly for downloads now
+        # State for potential re-use, not directly for downloads now
+        raw_result_state_val = {
             "raw_result": first_success["raw_result"],
             "json_file_path": first_success["json_file_path"],
         }
@@ -589,9 +639,12 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 f"{first_success['audio_original_stem']}_ALL_{timestamp_str}.zip"
             )
 
-            # Data for builder: { "original_audio_path_for_internal_naming" : raw_result_data }
-            # The key is used by BatchZipBuilder to name files inside the zip if not organizing by format.
-            # Path(first_success['audio_original_path']).name might be better if stem is too simple.
+            # Data for builder:
+            # { "original_audio_path_for_internal_naming" : raw_result_data }
+            # The key is used by BatchZipBuilder to name files inside the zip if
+            # not organizing by format.
+            # Path(first_success['audio_original_path']).name might be better
+            # if stem is too simple.
             data_for_builder = {
                 Path(first_success["audio_original_path"]).name: first_success[
                     "raw_result"
@@ -682,21 +735,20 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             )
             all_zip_builder.add_summary(include_stats=True)
 
-            ALL_ZIP_PATH, _ = all_zip_builder.build()  # Call build() to get the path
+            all_zip_path, _ = all_zip_builder.build()  # Call build() to get the path
 
             zip_btn_update = gr.update(
-                value=ALL_ZIP_PATH,  # Use the returned path
+                value=all_zip_path,  # Use the returned path
                 visible=True,
                 interactive=True,
                 label=f"Download All ({len(successful_results)} files) as ZIP",
             )
-            raw_result_state_val["all_zip"] = ALL_ZIP_PATH
+            raw_result_state_val["all_zip"] = all_zip_path
             logger.info(
-                "Prepared ALL ZIP: %s, Files: %s", ALL_ZIP_PATH, len(successful_results)
+                "Prepared ALL ZIP: %s, Files: %s", all_zip_path, len(successful_results)
             )
-            json_output_val["zip_archive_all"] = Path(ALL_ZIP_PATH).name
+            json_output_val["zip_archive_all"] = Path(all_zip_path).name
         except (
-            IOError,
             OSError,
             ValueError,
             TypeError,
@@ -745,7 +797,6 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     len(successful_results),
                 )
             except (
-                IOError,
                 OSError,
                 ValueError,
                 TypeError,
@@ -793,7 +844,6 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     len(successful_results),
                 )
             except (
-                IOError,
                 OSError,
                 ValueError,
                 TypeError,
@@ -808,7 +858,8 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         # JSON files are generated from raw_result by BatchZipBuilder
         json_files_exist = bool(successful_results)  # Simpler check
         logger.debug("Multi-file json_files_exist: %s", json_files_exist)
-        # No need to log sample JSON output as BatchZipBuilder handles its creation directly from raw_result
+        # No need to log sample JSON output as BatchZipBuilder handles its
+        # creation directly from raw_result
 
         if json_files_exist:
             try:
@@ -843,7 +894,6 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     len(successful_results),
                 )
             except (
-                IOError,
                 OSError,
                 ValueError,
                 TypeError,

@@ -9,7 +9,6 @@ import logging.config
 import os
 import time
 from pathlib import Path
-from typing import Optional
 
 import click
 import yaml
@@ -125,7 +124,10 @@ def load_logging_config(debug: bool = False) -> dict:
     "--debug",
     is_flag=True,
     default=False,
-    help="Enable debug mode (sets YAML log config to DEBUG, implies --log-level debug if not set).",
+    help=(
+        "Enable debug mode (sets YAML log config to DEBUG, implies --log-level "
+        "debug if not set)."
+    ),
 )
 @click.version_option(version=constants.API_VERSION, prog_name=constants.API_TITLE)
 def main(
@@ -134,20 +136,24 @@ def main(
     workers: int,
     log_level: str,
     reload: bool,
-    ssl_keyfile: Optional[str],
-    ssl_certfile: Optional[str],
+    ssl_keyfile: str | None,
+    ssl_certfile: str | None,
     debug: bool,
 ):
     """Run the Insanely Fast Whisper API server using Uvicorn."""
     if uvicorn is None:
         click.secho(
-            "Uvicorn is not installed. Please install it to run the server: pip install uvicorn",
+            (
+                "Uvicorn is not installed. Please install it to run the server: "
+                "pip install uvicorn"
+            ),
             fg="red",
             err=True,
         )
         raise click.exceptions.Exit(1)
 
-    # If debug flag is set, and log_level is default 'info', upgrade log_level to 'debug'
+    # If debug flag is set, and log_level is default 'info', upgrade
+    # log_level to 'debug'
     effective_log_level = log_level
     if debug and log_level == constants.LOG_LEVEL.lower():
         effective_log_level = "debug"

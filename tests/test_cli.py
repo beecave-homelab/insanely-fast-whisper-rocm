@@ -237,7 +237,7 @@ class TestCLICommands:
 
             # Verify output file was created and contains expected data
             assert output_path.exists()
-            with open(output_path, "r", encoding="utf-8") as f:
+            with open(output_path, encoding="utf-8") as f:
                 saved_data = json.load(f)
 
             assert saved_data["transcription"] == "Test output"

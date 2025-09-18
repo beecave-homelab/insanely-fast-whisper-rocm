@@ -7,8 +7,7 @@
 
 
 def convert_device_string(device_id: str) -> str:
-    """
-    Convert a simplified device identifier to a PyTorch-compatible device string.
+    """Convert a simplified device identifier to a PyTorch-compatible device string.
 
     Args:
         device_id: A string representing the device. Can be:

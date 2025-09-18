@@ -4,14 +4,18 @@ import logging
 import time
 import uuid
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Literal, Optional, Union
+from typing import Any, Literal
 
+from insanely_fast_whisper_api.audio.processing import split_audio
+from insanely_fast_whisper_api.audio.results import merge_chunk_results
 from insanely_fast_whisper_api.core.asr_backend import ASRBackend
 from insanely_fast_whisper_api.core.errors import TranscriptionError
 from insanely_fast_whisper_api.core.storage import BaseStorage, StorageFactory
+from insanely_fast_whisper_api.utils.file_utils import cleanup_temp_files
 from insanely_fast_whisper_api.utils.filename_generator import (
     FilenameGenerator,
     StandardFilenameStrategy,
@@ -42,7 +46,7 @@ class TranscriptionResult:
     """Simplified representation of a transcription output used in tests."""
 
     text: str
-    chunks: Optional[Any] = None
+    chunks: Any | None = None
     language: str = "en"
 
 
@@ -53,10 +57,10 @@ class ProgressEvent:
     event_type: str  # e.g., "chunk_start", "chunk_complete", "pipeline_complete"
     pipeline_id: str
     file_path: str
-    chunk_num: Optional[int] = None
-    total_chunks: Optional[int] = None
-    message: Optional[str] = None
-    result: Optional[Dict[str, Any]] = None  # For chunk_complete or pipeline_complete
+    chunk_num: int | None = None
+    total_chunks: int | None = None
+    message: str | None = None
+    result: dict[str, Any] | None = None  # For chunk_complete or pipeline_complete
 
 
 ProgressCallback = Callable[[ProgressEvent], None]
@@ -68,7 +72,7 @@ class BasePipeline(ABC):
     def __init__(
         self,
         asr_backend: ASRBackend,
-        storage_backend: Optional[BaseStorage] = None,
+        storage_backend: BaseStorage | None = None,
         save_transcriptions: bool = True,
         output_dir: str = "transcripts",
     ):
@@ -78,7 +82,7 @@ class BasePipeline(ABC):
         )
         self.save_transcriptions = save_transcriptions
         self.output_dir = Path(output_dir)
-        self._listeners: List[ProgressCallback] = []
+        self._listeners: list[ProgressCallback] = []
         self.pipeline_id = str(uuid.uuid4())
         # Initialize filename generator with standard strategy
         self._filename_generator = FilenameGenerator(
@@ -100,12 +104,12 @@ class BasePipeline(ABC):
     def process(
         self,
         audio_file_path: str,
-        language: Optional[str],
+        language: str | None,
         task: Literal["transcribe", "translate"],
         timestamp_type: Literal["chunk", "word"],
-        original_filename: Optional[str] = None,
+        original_filename: str | None = None,
         # Other common parameters for all pipelines
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Template method defining the overall ASR algorithm skeleton."""
         start_time = time.perf_counter()
         self.pipeline_id = str(uuid.uuid4())  # New ID for each run
@@ -194,29 +198,33 @@ class BasePipeline(ABC):
     def _execute_asr(
         self,
         prepared_data: Any,
-        language: Optional[str],
+        language: str | None,
         task: str,
         timestamp_type: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute the core ASR task using the backend. Returns raw ASR output."""
 
     @abstractmethod
     def _postprocess_output(
         self,
-        asr_output: Dict[str, Any],
+        asr_output: dict[str, Any],
         audio_file_path: Path,
         task: str,
-        original_filename: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Post-process ASR output (e.g., format, add metadata). Returns final result dict."""
+        original_filename: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Post-process ASR output (for example, format and add metadata).
+
+        Returns the final result dictionary.
+        """
 
     def _save_result(
         self,
-        result: Dict[str, Any],
+        result: dict[str, Any],
         audio_file_path: Path,
         task: str,
-        original_filename: Optional[str] = None,
-    ) -> Optional[str]:
+        original_filename: str | None = None,
+    ) -> str | None:
         """Saves the transcription result using the storage backend."""
         if not self.storage_backend:
             logger.warning("No storage backend configured, skipping save.")
@@ -226,7 +234,10 @@ class BasePipeline(ABC):
             current_task_type = TaskType(task.lower())
         except ValueError:
             logger.warning(
-                "_save_result: Invalid task type '%s'. Defaulting to transcribe for filename.",
+                (
+                    "_save_result: Invalid task type '%s'. Defaulting to "
+                    "transcribe for filename."
+                ),
                 task,
             )
             current_task_type = TaskType.TRANSCRIBE  # Fallback for filename generation
@@ -249,26 +260,26 @@ class BasePipeline(ABC):
         )
 
         save_path_base = self.output_dir / filename_str
-        # Note: JsonStorage.save expects a base path and appends its own extension.
-        # To use the fully generated name including extension, we might need to adjust JsonStorage
-        # or pass `save_path_base.stem` if JsonStorage *always* adds '.json'.
-        # For now, we pass the full name, assuming JsonStorage can handle it or needs adjustment.
-        # If JsonStorage strictly appends .json, save_path_base should be
-        # `self.output_dir / filename_str.removesuffix('.json')`
-        # or `self.output_dir / Path(filename_str).stem`
-        # This needs to be harmonized with how `JsonStorage.save()` works.
-        # Let's assume for now that `JsonStorage` is flexible or will be adapted.
+        # Note: JsonStorage.save expects a base path and appends its own
+        # extension. To use the fully generated name, we might need to adjust
+        # JsonStorage or pass `save_path_base.stem` if JsonStorage always adds
+        # '.json'. For now, we pass the full name, assuming JsonStorage can
+        # handle it or needs adjustment. If JsonStorage strictly appends .json,
+        # save_path_base should be `self.output_dir / filename_str.removesuffix(
+        # '.json')` or `self.output_dir / Path(filename_str).stem`. This needs
+        # to be harmonized with how `JsonStorage.save()` works. Let's assume for
+        # now that `JsonStorage` is flexible or will be adapted.
 
         try:
-            # Pass the full path (directory + filename_with_extension) to the storage backend.
-            # The `task` argument for storage.save might be redundant if already in filename.
+            # Pass the full path (directory + filename_with_extension) to the
+            # storage backend. The `task` argument for storage.save might be
+            # redundant if already in filename.
             saved_path = self.storage_backend.save(result, save_path_base, task)
             if saved_path:
                 logger.info("Result saved to %s", saved_path)
             return saved_path
         except (
             OSError,
-            IOError,
             ValueError,
             TypeError,
             RuntimeError,
@@ -284,8 +295,10 @@ class WhisperPipeline(BasePipeline):
 
     def _prepare_input(self, audio_file_path: Path) -> Any:
         """For basic Whisper, input is just the file path.
-        Chunking would happen here or in _execute_asr."""
-        # This could be extended for chunking logic if not handled by the backend strategy
+        Chunking would happen here or in _execute_asr.
+        """
+        # This could be extended for chunking logic if not handled by the
+        # backend strategy
         logger.info("Preparing input: %s", audio_file_path)
         if not audio_file_path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_file_path}")
@@ -296,12 +309,13 @@ class WhisperPipeline(BasePipeline):
     def _execute_asr(
         self,
         prepared_data: str,  # This is the audio_file_path from _prepare_input
-        language: Optional[str],
+        language: str | None,
         task: str,
         timestamp_type: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Executes ASR for a single audio file (or a single chunk
-        if chunking is done by this method)."""
+        if chunking is done by this method).
+        """
         logger.info(
             "Executing ASR for: %s, task: %s, lang: %s, timestamps: %s",
             prepared_data,
@@ -311,7 +325,7 @@ class WhisperPipeline(BasePipeline):
         )
         # Determine return_timestamps_value for the backend based on timestamp_type
         if timestamp_type == "word":
-            return_timestamps_value: Union[bool, str] = "word"
+            return_timestamps_value: bool | str = "word"
         elif timestamp_type == "chunk":
             return_timestamps_value = (
                 True  # For Whisper, True implies chunk-level timestamps
@@ -319,51 +333,70 @@ class WhisperPipeline(BasePipeline):
         else:  # Default or unknown
             return_timestamps_value = False
 
-        # This method assumes the asr_backend can handle a single file path.
-        # If pipeline-level chunking was implemented in _prepare_input,
-        # this method would loop through chunks and aggregate results.
-        self._notify_listeners(
-            ProgressEvent(
-                event_type="chunk_start",  # Assuming non-chunked or backend handles chunks
-                pipeline_id=self.pipeline_id,
-                file_path=prepared_data,
-                chunk_num=1,  # Placeholder
-                total_chunks=1,  # Placeholder
-                message=(  # Reformatted for line length
-                    f"Processing chunk 1/1 for {prepared_data}"
-                ),
-            )
+        # Split the audio into chunks so we can provide deterministic progress
+        # updates to observers (e.g. Gradio's progress bar).  ``split_audio``
+        # returns a list with the original path if chunking is unnecessary.
+        chunk_paths = split_audio(
+            prepared_data,
+            chunk_duration=float(self.asr_backend.config.chunk_length),
+            chunk_overlap=0.0,
         )
+        total_chunks = len(chunk_paths)
+        chunk_results: list[dict[str, Any]] = []
 
-        asr_raw_result = self.asr_backend.process_audio(
-            audio_file_path=prepared_data,
-            language=language,
-            task=task,
-            return_timestamps_value=return_timestamps_value,
-        )
+        try:
+            for idx, chunk_path in enumerate(chunk_paths, start=1):
+                self._notify_listeners(
+                    ProgressEvent(
+                        event_type="chunk_start",
+                        pipeline_id=self.pipeline_id,
+                        file_path=prepared_data,
+                        chunk_num=idx,
+                        total_chunks=total_chunks,
+                        message=(
+                            f"Processing chunk {idx}/{total_chunks} for {prepared_data}"
+                        ),
+                    )
+                )
 
-        self._notify_listeners(
-            ProgressEvent(
-                event_type="chunk_complete",  # Assuming non-chunked or backend handles chunks
-                pipeline_id=self.pipeline_id,
-                file_path=prepared_data,
-                chunk_num=1,  # Placeholder
-                total_chunks=1,  # Placeholder
-                result=asr_raw_result,  # Added result
-                message=(  # Reformatted for line length
-                    f"Completed chunk 1/1 for {prepared_data}"
-                ),
-            )
-        )
-        return asr_raw_result
+                asr_raw_result = self.asr_backend.process_audio(
+                    audio_file_path=chunk_path,
+                    language=language,
+                    task=task,
+                    return_timestamps_value=return_timestamps_value,
+                )
+
+                self._notify_listeners(
+                    ProgressEvent(
+                        event_type="chunk_complete",
+                        pipeline_id=self.pipeline_id,
+                        file_path=prepared_data,
+                        chunk_num=idx,
+                        total_chunks=total_chunks,
+                        result=asr_raw_result,
+                        message=(
+                            f"Completed chunk {idx}/{total_chunks} for {prepared_data}"
+                        ),
+                    )
+                )
+                chunk_results.append(asr_raw_result)
+        finally:
+            # Only clean up generated chunk files; ``split_audio`` returns the
+            # original path untouched when no chunking was required.
+            if total_chunks > 1:
+                cleanup_temp_files(chunk_paths)
+
+        if total_chunks > 1:
+            return merge_chunk_results(chunk_results)
+        return chunk_results[0]
 
     def _postprocess_output(
         self,
-        asr_output: Dict[str, Any],
+        asr_output: dict[str, Any],
         audio_file_path: Path,
         task: str,
-        original_filename: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        original_filename: str | None = None,
+    ) -> dict[str, Any]:
         """Post-processes the raw ASR output for Whisper."""
         logger.info("Postprocessing ASR output for: %s", audio_file_path)
         # Example: Add original file name, task, and a processing timestamp

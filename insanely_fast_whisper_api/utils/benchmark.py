@@ -15,7 +15,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from statistics import median
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from insanely_fast_whisper_api.utils.filename_generator import (
     FilenameGenerator,
@@ -57,18 +57,18 @@ class BenchmarkResult(BaseModel):  # type: ignore[misc]
     """Schema for benchmark JSON file."""
 
     timestamp: str  # ISO8601
-    model: Optional[str]
-    device: Optional[str]
-    batch_size: Optional[int] = None
-    runtime_seconds: Optional[float]
-    total_wall_time_seconds: Optional[float]
-    model_load_seconds: Optional[float] = None
+    model: str | None
+    device: str | None
+    batch_size: int | None = None
+    runtime_seconds: float | None
+    total_wall_time_seconds: float | None
+    model_load_seconds: float | None = None
 
-    system: Dict[str, Any]
-    gpu: Dict[str, Any] | None = None
-    memory: Dict[str, Any] | None = None
+    system: dict[str, Any]
+    gpu: dict[str, Any] | None = None
+    memory: dict[str, Any] | None = None
 
-    extra: Dict[str, Any] | None = None
+    extra: dict[str, Any] | None = None
 
     class Config:
         frozen = True  # make it hashable / safe
@@ -80,12 +80,10 @@ class BenchmarkCollector:
     def __init__(self, benchmarks_dir: Path | str = "benchmarks") -> None:
         self._bench_dir = Path(benchmarks_dir)
         self._bench_dir.mkdir(exist_ok=True)
-        self._start_time: Optional[float] = None
-        self._model_load_time: Optional[float] = (
-            None  # placeholder, may be set externally
-        )
+        self._start_time: float | None = None
+        self._model_load_time: float | None = None  # placeholder, may be set externally
         # Live sampling state
-        self._samples: List[Dict[str, Any]] = []  # raw snapshots
+        self._samples: list[dict[str, Any]] = []  # raw snapshots
         self._sampling_thread: threading.Thread | None = None
         self._stop_event: threading.Event | None = None
         self._sample_interval: float = 0.5  # seconds
@@ -142,11 +140,11 @@ class BenchmarkCollector:
             # wait for interval
             self._stop_event.wait(self._sample_interval)
 
-    def _avg_system_metrics(self) -> Dict[str, Any]:
+    def _avg_system_metrics(self) -> dict[str, Any]:
         """Average numeric system metrics across samples."""
         if not self._samples:
             return {}
-        acc: Dict[str, float] = {}
+        acc: dict[str, float] = {}
         count = len(self._samples)
         for snap in self._samples:
             for k, v in snap["system"].items():
@@ -154,14 +152,14 @@ class BenchmarkCollector:
                     acc[k] = acc.get(k, 0.0) + float(v)
         return {k: round(v / count, 2) for k, v in acc.items()}
 
-    def _average_metrics(self) -> tuple[Dict[str, Any], Dict[str, Any] | None]:
+    def _average_metrics(self) -> tuple[dict[str, Any], dict[str, Any] | None]:
         """Return average system and GPU metrics over all collected samples."""
         if not self._samples:
             return self._collect_system_metrics(), self._collect_gpu_metrics()
 
         # Initialize accumulators
-        sys_acc: Dict[str, float] = {}
-        gpu_acc: Dict[str, float] | None = None
+        sys_acc: dict[str, float] = {}
+        gpu_acc: dict[str, float] | None = None
         count = len(self._samples)
         for snap in self._samples:
             sys_metrics = snap["system"]
@@ -184,10 +182,10 @@ class BenchmarkCollector:
 
     def _gpu_vram_stats(
         self,
-    ) -> tuple[Optional[float], Optional[float], Optional[float]]:
+    ) -> tuple[float | None, float | None, float | None]:
         """Return (min_non_zero, max, median) for vram_used_mb across samples."""
-        min_val: Optional[float] = None
-        max_val: Optional[float] = None
+        min_val: float | None = None
+        max_val: float | None = None
         values: list[float] = []
         for snap in self._samples:
             gpu_metrics = snap.get("gpu") or {}
@@ -213,10 +211,10 @@ class BenchmarkCollector:
         *,
         audio_path: str,
         task: str,
-        config: Dict[str, Any] | None,
-        runtime_seconds: Optional[float],
-        total_time: Optional[float],
-        extra: Dict[str, Any] | None = None,
+        config: dict[str, Any] | None,
+        runtime_seconds: float | None,
+        total_time: float | None,
+        extra: dict[str, Any] | None = None,
     ) -> Path:
         """Gather metrics & write to a timestamped JSON file.
         Stops live sampling and includes all collected samples."
@@ -274,7 +272,8 @@ class BenchmarkCollector:
             extra=extra,
         )
 
-        # Generate filename using the shared FilenameGenerator, then prepend "benchmark_".
+        # Generate filename using the shared FilenameGenerator, then prepend
+        # "benchmark_".
         strategy = StandardFilenameStrategy()
         generator = FilenameGenerator(strategy=strategy)
         try:
@@ -303,9 +302,9 @@ class BenchmarkCollector:
     # Internal helpers
     # ------------------------------------------------------------------
     @staticmethod
-    def _collect_system_metrics() -> Dict[str, Any]:
+    def _collect_system_metrics() -> dict[str, Any]:
         """Collect basic system-wide memory info (RAM)."""
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "os": platform.platform(),
             "python_version": platform.python_version(),
         }
@@ -314,16 +313,14 @@ class BenchmarkCollector:
 
         if psutil is not None:
             vm = psutil.virtual_memory()  # type: ignore[attr-defined]
-            data.update(
-                {
-                    "ram_total_mb": round(vm.total / 1024**2, 2),
-                    "ram_used_mb": round(vm.used / 1024**2, 2),
-                }
-            )
+            data.update({
+                "ram_total_mb": round(vm.total / 1024**2, 2),
+                "ram_used_mb": round(vm.used / 1024**2, 2),
+            })
         return data
 
     @staticmethod
-    def _collect_gpu_metrics() -> Dict[str, Any] | None:
+    def _collect_gpu_metrics() -> dict[str, Any] | None:
         """Return AMD GPU statistics if `pyamdgpuinfo` is installed."""
         # Try CUDA first
         if torch is not None and torch.cuda.is_available():  # type: ignore[attr-defined]

@@ -6,7 +6,7 @@ in different output formats (text, SRT subtitles, JSON).
 
 import json
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from insanely_fast_whisper_api.utils.format_time import (
     format_seconds as util_format_seconds,
@@ -19,7 +19,7 @@ class BaseFormatter:
     """Base class for all formatters."""
 
     @classmethod
-    def format(cls, result: Dict[str, Any]) -> str:
+    def format(cls, result: dict[str, Any]) -> str:
         """Format the transcription result.
 
         Args:
@@ -40,7 +40,7 @@ class TxtFormatter(BaseFormatter):
     """Formatter for plain text output."""
 
     @classmethod
-    def format(cls, result: Dict[str, Any]) -> str:
+    def format(cls, result: dict[str, Any]) -> str:
         """Format as plain text."""
         logger.debug(f"[TxtFormatter] Formatting result: keys={list(result.keys())}")
         try:
@@ -62,7 +62,7 @@ class SrtFormatter(BaseFormatter):
     """Formatter for SRT (SubRip) subtitles."""
 
     @classmethod
-    def format(cls, result: Dict[str, Any]) -> str:
+    def format(cls, result: dict[str, Any]) -> str:
         """Format as SRT subtitles with timestamps."""
         logger.debug(f"[SrtFormatter] Formatting result: keys={list(result.keys())}")
         try:
@@ -100,7 +100,8 @@ class SrtFormatter(BaseFormatter):
             srt_content = []
             for i, chunk in enumerate(chunks, 1):
                 try:
-                    # Support both {'start': ... , 'end': ...} and {'timestamp': [start, end]}
+                    # Support both {'start': ... , 'end': ...} and
+                    # {'timestamp': [start, end]}
                     ts_pair = (
                         chunk.get("timestamp")
                         if isinstance(chunk.get("timestamp"), (list, tuple))
@@ -141,7 +142,7 @@ class VttFormatter(BaseFormatter):
     """Formatter for WebVTT subtitles."""
 
     @classmethod
-    def format(cls, result: Dict[str, Any]) -> str:
+    def format(cls, result: dict[str, Any]) -> str:
         """Format as WebVTT subtitles with timestamps."""
         logger.debug(f"[VttFormatter] Formatting result: keys={list(result.keys())}")
         try:
@@ -179,7 +180,8 @@ class VttFormatter(BaseFormatter):
             vtt_content = ["WEBVTT\n"]
             for i, chunk in enumerate(chunks, 1):
                 try:
-                    # Support both {'start': ..., 'end': ...} and {'timestamp': [start, end]}
+                    # Support both {'start': ..., 'end': ...} and
+                    # {'timestamp': [start, end]}
                     ts_pair = (
                         chunk.get("timestamp")
                         if isinstance(chunk.get("timestamp"), (list, tuple))
@@ -220,7 +222,7 @@ class JsonFormatter(BaseFormatter):
     """Formatter for JSON output."""
 
     @classmethod
-    def format(cls, result: Dict[str, Any]) -> str:
+    def format(cls, result: dict[str, Any]) -> str:
         """Format as pretty-printed JSON."""
         logger.debug(f"[JsonFormatter] Formatting result: type={type(result)}")
         try:

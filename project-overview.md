@@ -1,12 +1,12 @@
 # Project Overview | Insanely Fast Whisper API (ROCm)
 
-A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture.
+A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.4.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture.
 
 > [!NOTE]
 > This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v0.10.0-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v0.10.1-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -78,7 +78,7 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v0.10.0** *(23-07-2025)*
+### 🏷️ **Current Version: v0.10.1** *(16-09-2025)*
 
 **Latest improvements**: Added M4A audio format support and integrated `stable-ts` for enhanced word-level timestamp accuracy.
 
@@ -118,7 +118,7 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ### Primary Focus: ROCm Support
 
-- **AMD GPU (ROCm v6.1) Support**: First-class AMD GPU acceleration for Whisper models
+- **AMD GPU (ROCm v6.4.1) Support**: First-class AMD GPU acceleration for Whisper models
 
 - **Extended Original Package**: Builds upon [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) with additional interfaces and ROCm compatibility
 - **Production-Ready Architecture**: Beyond CLI-only approach of original package
@@ -165,6 +165,7 @@ pdm run cli transcribe audio.mp3  # CLI
 │   ├── [logging_config.yaml](./insanely_fast_whisper_api/logging_config.yaml)             # Logging configuration
 │   ├── [api/](./insanely_fast_whisper_api/api/)                            # FastAPI application layer
 │   │   ├── [__init__.py](./insanely_fast_whisper_api/api/__init__.py)
+│   │   ├── [__main__.py](./insanely_fast_whisper_api/api/__main__.py)                  # API module entry
 │   │   ├── [app.py](./insanely_fast_whisper_api/api/app.py)                      # FastAPI app setup
 │   │   ├── [routes.py](./insanely_fast_whisper_api/api/routes.py)                   # API endpoints
 │   │   ├── [models.py](./insanely_fast_whisper_api/api/models.py)                   # Pydantic data models
@@ -173,37 +174,45 @@ pdm run cli transcribe audio.mp3  # CLI
 │   │   └── [responses.py](./insanely_fast_whisper_api/api/responses.py)                # Response formatters
 │   ├── [core/](./insanely_fast_whisper_api/core/)                           # Core ASR logic
 │   │   ├── [__init__.py](./insanely_fast_whisper_api/core/__init__.py)
+│   │   ├── [integrations/](./insanely_fast_whisper_api/core/integrations/)           # Integrations with other libs
+│   │   │   ├── [__init__.py](./insanely_fast_whisper_api/core/integrations/__init__.py)
+│   │   │   └── [stable_ts.py](./insanely_fast_whisper_api/core/integrations/stable_ts.py)      # stable-ts logic
 │   │   ├── [pipeline.py](./insanely_fast_whisper_api/core/pipeline.py)                 # ASR orchestration
 │   │   ├── [asr_backend.py](./insanely_fast_whisper_api/core/asr_backend.py)              # Whisper model backend
 │   │   ├── [storage.py](./insanely_fast_whisper_api/core/storage.py)                  # File lifecycle management
 │   │   ├── [utils.py](./insanely_fast_whisper_api/core/utils.py)                    # Core utilities
+│   │   ├── [formatters.py](./insanely_fast_whisper_api/core/formatters.py)              # Output formatting logic
 │   │   └── [errors.py](./insanely_fast_whisper_api/core/errors.py)                   # Exception classes
 │   ├── [audio/](./insanely_fast_whisper_api/audio/)                          # Audio processing
 │   │   ├── [__init__.py](./insanely_fast_whisper_api/audio/__init__.py)
+│   │   ├── [conversion.py](./insanely_fast_whisper_api/audio/conversion.py)               # Audio conversion logic
 │   │   ├── [processing.py](./insanely_fast_whisper_api/audio/processing.py)               # Validation and preprocessing
 │   │   └── [results.py](./insanely_fast_whisper_api/audio/results.py)                  # Output formatting
 │   ├── [cli/](./insanely_fast_whisper_api/cli/)                            # CLI tools
 │   │   ├── [__init__.py](./insanely_fast_whisper_api/cli/__init__.py)
+│   │   ├── [__main__.py](./insanely_fast_whisper_api/cli/__main__.py)                  # CLI module entry
 │   │   ├── [cli.py](./insanely_fast_whisper_api/cli/cli.py)                      # CLI entry point
 │   │   ├── [commands.py](./insanely_fast_whisper_api/cli/commands.py)                 # Subcommand logic
+│   │   ├── [common_options.py](./insanely_fast_whisper_api/cli/common_options.py)         # Shared CLI options
 │   │   └── [facade.py](./insanely_fast_whisper_api/cli/facade.py)                   # High-level CLI wrapper
 │   ├── [webui/](./insanely_fast_whisper_api/webui/)                          # Web UI (Gradio)
 │   │   ├── [__init__.py](./insanely_fast_whisper_api/webui/__init__.py)
-│   │   ├── [cli.py](./insanely_fast_whisper_api/webui/cli.py)                      # WebUI CLI entry point
+│   │   ├── [__main__.py](./insanely_fast_whisper_api/webui/__main__.py)                  # WebUI module entry
+│   │   ├── [app.py](./insanely_fast_whisper_api/webui/app.py)                      # Gradio App launcher
 │   │   ├── [ui.py](./insanely_fast_whisper_api/webui/ui.py)                       # Gradio interface
 │   │   ├── [handlers.py](./insanely_fast_whisper_api/webui/handlers.py)                 # Upload + result management
-│   │   ├── [formatters.py](./insanely_fast_whisper_api/webui/formatters.py)               # Export formats (TXT, JSON, SRT)
+│   │   ├── [merge_handler.py](./insanely_fast_whisper_api/webui/merge_handler.py)            # Transcription file merge handlers
 │   │   ├── [utils.py](./insanely_fast_whisper_api/webui/utils.py)                    # WebUI utilities
-│   │   ├── [errors.py](./insanely_fast_whisper_api/webui/errors.py)                   # UI-specific exceptions
-│   │   ├── [zip_creator.py](./insanely_fast_whisper_api/webui/zip_creator.py)              # ZIP archive builder
-│   │   └── [merge_handler.py](./insanely_fast_whisper_api/webui/merge_handler.py)            # Transcription file merge handlers
+│   │   └── [errors.py](./insanely_fast_whisper_api/webui/errors.py)                   # UI-specific exceptions
 │   └── [utils/](./insanely_fast_whisper_api/utils/)                          # General utilities
 │       ├── [__init__.py](./insanely_fast_whisper_api/utils/__init__.py)
+│       ├── [benchmark.py](./insanely_fast_whisper_api/utils/benchmark.py)                # Benchmarking utilities
 │       ├── [constants.py](./insanely_fast_whisper_api/utils/constants.py)                # Core environment variable definitions
 │       ├── [env_loader.py](./insanely_fast_whisper_api/utils/env_loader.py)               # Hierarchical .env loading & debug print logic
 │       ├── [download_hf_model.py](./insanely_fast_whisper_api/utils/download_hf_model.py)        # Model downloading & caching
 │       ├── [file_utils.py](./insanely_fast_whisper_api/utils/file_utils.py)               # File operations
-│       └── [filename_generator.py](./insanely_fast_whisper_api/utils/filename_generator.py)       # Unified filename logic
+│       ├── [filename_generator.py](./insanely_fast_whisper_api/utils/filename_generator.py)       # Unified filename logic
+│       └── [format_time.py](./insanely_fast_whisper_api/utils/format_time.py)              # Time formatting utilities
 ├── [scripts/](./scripts/)                            # Utility and maintenance scripts
 │   └── [setup_config.py](./scripts/setup_config.py)               # Script to set up user-specific .env file
 ```
@@ -222,7 +231,7 @@ This project uses the native Scaled Dot Product Attention (SDPA) available in Py
 - **Performance**: It provides significant speed improvements for attention-heavy models like Whisper, often matching or exceeding the performance of `BetterTransformer`.
 - **Simplicity**: As a native feature, it doesn't require an extra dependency like `optimum` or manual model patching (`BetterTransformer.transform(model)`). Integration is cleaner and more robust.
 
-The codebase automatically enables `sdpa` for any GPU-based device (`cuda`, `mps`) and disables it for CPU, ensuring optimal performance where available without manual configuration. While the `optimum` package is still a dependency for potential future ONNX optimizations, `sdpa` is the current and recommended acceleration method.
+The codebase automatically enables `sdpa` for any GPU-based device (`cuda`, `mps`) and disables it for CPU, ensuring optimal performance where available without manual configuration. `sdpa` is the current and recommended acceleration method.
 
 ### Core Refactor (v0.2.0+)
 
@@ -319,19 +328,18 @@ The application uses a hierarchical approach for loading `.env` files, managed b
 
 **User Configuration Setup Script:**
 
-A utility script [scripts/setup_config.py](./scripts/setup_config.py) is provided to help users create their user-specific configuration file. It copies [setup script](./scripts/setup_config.py) (located in the project root) to `~/.config/insanely-fast-whisper-api/.env`.
+A utility script [`scripts/setup_config.py`](./scripts/setup_config.py) is provided to help users create their user-specific configuration file. It copies the project's `.env.example` file to `~/.config/insanely-fast-whisper-api/.env`.
 
 The script performs the following actions:
 
-- Checks if [setup script](./scripts/setup_config.py) exists in the project root.
+- Checks if `.env.example` exists in the project root.
 - Creates the `~/.config/insanely-fast-whisper-api/` directory if it doesn't already exist.
-- Copies the [`scripts/setup_config.py`](./scripts/setup_config.py) to `~/.config/insanely-fast-whisper-api/.env`.
+- Copies `.env.example` to `~/.config/insanely-fast-whisper-api/.env`.
 - Prompts the user for confirmation if a configuration file already exists at the destination, to prevent accidental overwrites.
-- Informs the user to edit the newly created or updated file to input their specific settings, such as `HUGGINGFACE_TOKEN` for gated models.
+- Informs the user to edit the newly created file to input their specific settings, such as `HUGGINGFACE_TOKEN` for gated models.
 
-Refer to the [setup script](./scripts/setup_config.py) file in the project root for a comprehensive list of all available configuration options and their descriptions (e.g., model settings, device selection, file handling parameters, timezone configuration).
+Refer to the `.env.example` file in the project root for a comprehensive list of all available configuration options and their descriptions (e.g., model settings, device selection, file handling parameters, timezone configuration).
 
-{{ ... }}
 Run it using PDM:
 
 ```bash
@@ -341,7 +349,7 @@ pdm run setup-config
 Or directly:
 
 ```bash
-python [scripts/setup_config.py](./scripts/setup_config.py)
+python scripts/setup_config.py
 ```
 
 **Important**: No direct `os.getenv()` calls should be made outside of [insanely_fast_whisper_api/utils/env_loader.py](./insanely_fast_whisper_api/utils/env_loader.py) or [insanely_fast_whisper_api/utils/constants.py](./insanely_fast_whisper_api/utils/constants.py) to ensure consistent configuration loading.

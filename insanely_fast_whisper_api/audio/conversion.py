@@ -31,7 +31,6 @@ def ensure_wav(
     16-bit PCM WAV with the desired *sample_rate* and *channels* and a path to
     the temporary WAV file is returned.
     """
-
     input_path = str(input_path)
 
     if input_path.lower().endswith(".wav"):

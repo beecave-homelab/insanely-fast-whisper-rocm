@@ -29,7 +29,10 @@ def validate_audio_file(file: UploadFile) -> None:
     if file_ext not in SUPPORTED_AUDIO_FORMATS:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file format. Supported formats: {', '.join(SUPPORTED_AUDIO_FORMATS)}",
+            detail=(
+                "Unsupported file format. Supported formats: "
+                f"{', '.join(SUPPORTED_AUDIO_FORMATS)}"
+            ),
         )
 
 
@@ -54,15 +57,14 @@ def save_upload_file(file: UploadFile) -> str:
         with open(temp_filepath, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         return temp_filepath
-    except (OSError, IOError) as e:
+    except OSError as e:
         raise HTTPException(
             status_code=500, detail=f"Error saving uploaded file: {str(e)}"
         ) from e
 
 
 def cleanup_temp_files(file_paths: list[str]) -> None:
-    """
-    Clean up temporary files.
+    """Clean up temporary files.
 
     Args:
         file_paths: List of file paths to delete.
@@ -73,17 +75,19 @@ def cleanup_temp_files(file_paths: list[str]) -> None:
                 os.unlink(file_path)
             # Try to remove parent directory if it's empty
             dir_path = os.path.dirname(file_path)
-            # Ensure we only attempt to remove directories from the designated UPLOAD_DIR or a tempfile.gettempdir()
-            # and that the directory is indeed empty.
+            # Ensure we only attempt to remove directories from the designated
+            # UPLOAD_DIR or a tempfile.gettempdir() and that the directory is
+            # indeed empty.
             if dir_path and os.path.isdir(dir_path) and not os.listdir(dir_path):
                 if dir_path.startswith(UPLOAD_DIR) or dir_path.startswith(
                     tempfile.gettempdir()
                 ):
                     try:
                         os.rmdir(dir_path)
-                    except OSError:  # Catch potential race conditions or other errors
+                    except OSError:  # Catch potential race conditions or
+                        # other errors
                         pass  # Don't raise if cleanup fails
-        except (OSError, IOError) as e:
+        except OSError as e:
             # Log cleanup failures but don't raise exceptions
             logger.warning("Failed to clean up %s: %s", file_path, e, exc_info=True)
 
@@ -95,7 +99,7 @@ class FileHandler:
     and cleanup operations used by the API endpoints.
     """
 
-    def __init__(self, upload_dir: str = UPLOAD_DIR):
+    def __init__(self, upload_dir: str = UPLOAD_DIR) -> None:
         """Initialize FileHandler with upload directory.
 
         Args:
@@ -112,7 +116,7 @@ class FileHandler:
 
         Raises:
             HTTPException: If the file format is not supported
-        """
+        """  # noqa: DOC502
         validate_audio_file(file)  # Use existing function
 
     def save_upload(self, file: UploadFile) -> str:
@@ -135,7 +139,7 @@ class FileHandler:
                 shutil.copyfileobj(file.file, buffer)
             logger.info("File saved temporarily as: %s", temp_filepath)
             return temp_filepath
-        except (OSError, IOError) as e:
+        except OSError as e:
             logger.error("Error saving uploaded file: %s", str(e))
             raise HTTPException(
                 status_code=500, detail=f"Error saving uploaded file: {str(e)}"
@@ -151,6 +155,6 @@ class FileHandler:
             if os.path.exists(file_path):
                 logger.debug("Cleaning up temporary file: %s", file_path)
                 os.remove(file_path)
-        except (OSError, IOError) as e:
+        except OSError as e:
             logger.warning("Failed to cleanup file %s: %s", file_path, e)
             # Don't raise - cleanup failures shouldn't break the API

@@ -142,7 +142,7 @@ class TestTranscriptionEndpoint:
         mock_pipeline.return_value = mock_pipeline_instance
 
         # Make request with specific parameters
-        response = client.post(
+        _ = client.post(
             "/v1/audio/transcriptions",
             files={"file": mock_audio_file},
             data={

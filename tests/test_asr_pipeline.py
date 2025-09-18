@@ -1,6 +1,6 @@
 import wave
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 import pytest
@@ -55,10 +55,10 @@ def long_audio_file_for_chunking(dummy_audio_file: Callable[[float], str]) -> st
 
 def test_asr_pipeline_callback_non_chunked(short_audio_file: str):
     """Test ASRPipeline progress callbacks for non-chunked transcription."""
-    progress_updates: List[Tuple[str, int, int, Optional[str]]] = []
+    progress_updates: list[tuple[str, int, int, str | None]] = []
 
     def mock_callback(
-        stage: str, current_step: int, total_steps: int, message: Optional[str] = None
+        stage: str, current_step: int, total_steps: int, message: str | None = None
     ):
         progress_updates.append((stage, current_step, total_steps, message))
 

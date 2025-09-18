@@ -64,7 +64,8 @@ if _project_root_env_exists_temp:
 else:
     debug_print("env_loader.py: Project .env file NOT found.")
 
-# Expose pre-checked existence and paths for constants.py to use for the main load
-# PROJECT_ROOT_ENV_EXISTS is still useful if constants.py wants to know if it *was* loaded
+# Expose pre-checked existence and paths for constants.py to use for the main
+# load. PROJECT_ROOT_ENV_EXISTS is still useful if constants.py wants to know
+# if it was loaded.
 PROJECT_ROOT_ENV_EXISTS = _project_root_env_exists_temp
 USER_ENV_EXISTS = _user_env_exists_temp

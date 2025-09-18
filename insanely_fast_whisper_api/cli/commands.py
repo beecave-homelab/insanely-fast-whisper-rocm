@@ -1,7 +1,8 @@
 """CLI command implementations.
 
-Each command is a thin wrapper around [_run_task](cci:1://file:///home/elvee/Local-AI/insanely-fast-whisper-rocm/insanely_fast_whisper_api/cli/commands.py:380:0-632:19), receiving shared CLI
-options via the [audio_options](cci:1://file:///home/elvee/Local-AI/insanely-fast-whisper-rocm/insanely_fast_whisper_api/cli/common_options.py:21:0-150:15) decorator (see [cli/common_options.py](cci:7://file:///home/elvee/Local-AI/insanely-fast-whisper-rocm/insanely_fast_whisper_api/cli/common_options.py:0:0-0:0)).
+Each command is a thin wrapper around the internal ``_run_task`` function and
+receives shared CLI options via the ``audio_options`` decorator. See
+``cli/common_options.py`` for the shared option definitions.
 """
 
 from __future__ import annotations
@@ -10,7 +11,6 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Optional
 
 import click
 from click.core import ParameterSource
@@ -42,7 +42,6 @@ logger = logging.getLogger(__name__)
 @audio_options
 def transcribe(audio_file: Path, **kwargs) -> None:
     """Transcribe *audio_file* using Whisper models."""
-
     # Was --export-format explicitly supplied?
     ctx = click.get_current_context()
     kwargs["export_format_explicit"] = (
@@ -56,7 +55,6 @@ def transcribe(audio_file: Path, **kwargs) -> None:
 @audio_options
 def translate(audio_file: Path, **kwargs) -> None:
     """Translate *audio_file* to English using Whisper models."""
-
     ctx = click.get_current_context()
     kwargs["export_format_explicit"] = (
         ctx.get_parameter_source("export_format") == ParameterSource.COMMANDLINE
@@ -71,8 +69,7 @@ def translate(audio_file: Path, **kwargs) -> None:
 
 
 def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
-    """
-    Execute *task* (“transcribe” or “translate”) on *audio_file*.
+    """Execute *task* (“transcribe” or “translate”) on *audio_file*.
 
     All CLI flags arrive in **kwargs.
     """
@@ -87,7 +84,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
     batch_size: int = kwargs.pop("batch_size")
     chunk_length: int = kwargs.pop("chunk_length")
     language: str = kwargs.pop("language")
-    output: Optional[Path] = kwargs.pop("output", None)
+    output: Path | None = kwargs.pop("output", None)
     timestamp_type: str = kwargs.pop("timestamp_type")
     # Stable-ts options
     stabilize: bool = kwargs.pop("stabilize")
@@ -233,7 +230,7 @@ def _handle_output_and_benchmarks(
     audio_file: Path,
     result: dict,
     total_time: float,
-    output: Optional[Path],
+    output: Path | None,
     export_format: str,
     export_format_explicit: bool,
     benchmark_enabled: bool,
@@ -241,7 +238,6 @@ def _handle_output_and_benchmarks(
     temp_files: list[Path],
 ) -> None:
     """Handle file export and benchmark writing."""
-
     # Decide which formats to export
     if export_format == "all":
         formats_to_export = ("json", "txt", "srt")
@@ -304,7 +300,7 @@ def _handle_output_and_benchmarks(
         from insanely_fast_whisper_api.benchmarks.collector import BenchmarkCollector
 
         collector = BenchmarkCollector()
-        extra_dict: Dict[str, str] | None = None
+        extra_dict: dict[str, str] | None = None
         if benchmark_extra:
             extra_dict = dict(item.split("=", 1) for item in benchmark_extra)
 

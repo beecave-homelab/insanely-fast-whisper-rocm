@@ -1,9 +1,10 @@
 """Insanely Fast Whisper API.
 
-A FastAPI wrapper around a custom Whisper-based ASR pipeline with audio chunking support.
+A FastAPI wrapper around a custom Whisper-based ASR pipeline with audio
+chunking support.
 """
 
-__version__ = "0.10.0"
+__version__ = "0.10.1"
 __author__ = "elvee"
 __email__ = "lowie@beecave.nl"
 
