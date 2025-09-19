@@ -187,6 +187,10 @@ except ModuleNotFoundError:  # pragma: no cover
 * Each module must begin with:
 
 ```python
+"""
+<module description>.
+"""
+
 from __future__ import annotations
 ```
 
