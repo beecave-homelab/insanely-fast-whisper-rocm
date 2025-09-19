@@ -20,7 +20,7 @@ from click.core import ParameterSource
 from insanely_fast_whisper_api.audio.processing import extract_audio_from_video
 from insanely_fast_whisper_api.cli.common_options import audio_options
 from insanely_fast_whisper_api.cli.facade import cli_facade
-from insanely_fast_whisper_api.cli.progress_rich import RichProgressReporter
+from insanely_fast_whisper_api.cli.progress_tqdm import TqdmProgressReporter
 from insanely_fast_whisper_api.core.errors import (
     DeviceNotFoundError,
     TranscriptionError,
@@ -154,10 +154,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
     # ------------------------------------------------------------------ #
     processed_language = language or None
     temp_files: list[Path] = []
-    reporter = RichProgressReporter(
-        enabled=progress_enabled,
-        show_messages=not quiet,
-    )
+    reporter = TqdmProgressReporter(enabled=progress_enabled)
 
     # Reduce logging verbosity when --quiet is used
     if quiet and not debug:
@@ -222,7 +219,11 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
                         vad=vad,
                         vad_threshold=vad_threshold,
                     )
-                reporter.on_postprocess_finished("stable-ts")
+                # Emit granular completion lines instead of a generic message
+                if demucs:
+                    reporter.on_postprocess_finished("demucs")
+                if vad:
+                    reporter.on_postprocess_finished(f"vad threshold={vad_threshold}")
             except Exception as exc:  # pragma: no cover
                 if not quiet:
                     click.secho(
@@ -395,7 +396,11 @@ def _handle_output_and_benchmarks(
             try:
                 if progress_cb is not None:
                     # type: ignore[attr-defined]
-                    progress_cb.on_export_item_done(idx, fmt)
+                    # Provide full context to tqdm reporter when single item
+                    # using the convention "FMT::/full/path" so it can print
+                    # a concise checkmark instead of showing a bar.
+                    export_label = f"{fmt.upper()}::{output_path}"
+                    progress_cb.on_export_item_done(idx, export_label)
             except Exception:  # pragma: no cover
                 pass
 

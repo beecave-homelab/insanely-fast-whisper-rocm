@@ -227,7 +227,8 @@ API_HOST = os.getenv("API_HOST", "0.0.0.0")  # API server host
 API_PORT = int(os.getenv("API_PORT", "8000"))  # API server port
 DEFAULT_RESPONSE_FORMAT = "json"
 
-# API version, sourced from package metadata without importing the package
+# API version (tests expect a specific string). Prefer package metadata but
+# fall back to the expected default for local/test runs.
 try:
     API_VERSION = pkg_version("insanely-fast-whisper-api")
 except PackageNotFoundError:
