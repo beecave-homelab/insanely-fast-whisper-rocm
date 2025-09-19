@@ -212,6 +212,7 @@ def transcribe(
             dtype=config.dtype,
             batch_size=config.batch_size,
             chunk_length=config.chunk_length,
+            progress_group_size=constants.DEFAULT_PROGRESS_GROUP_SIZE,
         )
         backend = HuggingFaceBackend(config=backend_config)
 

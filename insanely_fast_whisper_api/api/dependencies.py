@@ -4,6 +4,8 @@ This module implements dependency injection for ASR pipeline instances
 and other shared resources used by the API endpoints.
 """
 
+from typing import NoReturn
+
 from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
@@ -15,6 +17,7 @@ from insanely_fast_whisper_api.utils import (
     DEFAULT_DEVICE,
     DEFAULT_MODEL,
     FileHandler,
+    constants,
 )
 
 
@@ -59,6 +62,7 @@ def get_asr_pipeline(
         dtype=_normalize(dtype, "float16"),
         batch_size=int(_normalize(batch_size, DEFAULT_BATCH_SIZE)),
         chunk_length=int(_normalize(model_chunk_length, DEFAULT_CHUNK_LENGTH)),
+        progress_group_size=constants.DEFAULT_PROGRESS_GROUP_SIZE,
     )
     backend = HuggingFaceBackend(config=backend_config)
     return WhisperPipeline(asr_backend=backend)
@@ -69,7 +73,7 @@ def get_asr_pipeline(
 # original function directly they may expect this attribute for easy stubbing.
 # Setting it explicitly keeps the public behaviour unchanged while improving
 # testability.
-def _get_asr_pipeline_unwrapped():
+def _get_asr_pipeline_unwrapped() -> NoReturn:
     """Placeholder for tests to monkeypatch. Returns WhisperPipeline when patched."""
     raise RuntimeError("This placeholder should be monkeypatched in tests.")
 
@@ -92,7 +96,7 @@ def get_file_handler() -> FileHandler:
 # original function directly they may expect this attribute for easy stubbing.
 # Setting it explicitly keeps the public behaviour unchanged while improving
 # testability.
-def _get_file_handler_unwrapped():
+def _get_file_handler_unwrapped() -> NoReturn:
     """Placeholder for tests to monkeypatch. Returns FileHandler when patched."""
     raise RuntimeError("This placeholder should be monkeypatched in tests.")
 

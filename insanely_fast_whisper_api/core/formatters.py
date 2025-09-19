@@ -41,7 +41,15 @@ class TxtFormatter(BaseFormatter):
 
     @classmethod
     def format(cls, result: dict[str, Any]) -> str:
-        """Format as plain text."""
+        """Format as plain text.
+
+        Args:
+            result: The transcription result from ASRPipeline
+
+        Returns:
+            str: The formatted text.
+
+        """
         logger.debug(f"[TxtFormatter] Formatting result: keys={list(result.keys())}")
         try:
             text = result.get("text", "")
@@ -49,12 +57,18 @@ class TxtFormatter(BaseFormatter):
                 logger.error("[TxtFormatter] 'text' field is not a string.")
                 return ""
             return text
-        except Exception as e:
+        except (TypeError, KeyError, AttributeError) as e:
             logger.exception(f"[TxtFormatter] Failed to format TXT: {e}")
             return ""
 
     @classmethod
     def get_file_extension(cls) -> str:
+        """Get the file extension for this format.
+
+        Returns:
+            str: The file extension for this format ("txt").
+
+        """
         return "txt"
 
 
@@ -63,7 +77,21 @@ class SrtFormatter(BaseFormatter):
 
     @classmethod
     def format(cls, result: dict[str, Any]) -> str:
-        """Format as SRT subtitles with timestamps."""
+        """Format as SRT subtitles with timestamps.
+
+        Args:
+            result: The transcription result from ASRPipeline
+
+        Returns:
+            str: The formatted SRT subtitles.
+
+        Raises:
+            TypeError: If the input is of incorrect type.
+            KeyError: If required keys are missing from the result.
+            AttributeError: If the result object does not support expected operations.
+            IndexError: If accessing list elements fails.
+
+        """
         logger.debug(f"[SrtFormatter] Formatting result: keys={list(result.keys())}")
         try:
             segments = result.get("segments", [])
@@ -124,17 +152,23 @@ class SrtFormatter(BaseFormatter):
                     end = util_format_seconds(end_sec)
                     text = chunk["text"].replace("\n", " ").strip()
                     srt_content.append(f"{i}\n{start} --> {end}\n{text}\n")
-                except Exception as chunk_e:
+                except (TypeError, KeyError, AttributeError, IndexError) as chunk_e:
                     logger.error(
                         f"[SrtFormatter] Failed to format chunk #{i}: {chunk_e}"
                     )
             return "\n".join(srt_content)
-        except Exception as e:
+        except (TypeError, KeyError, AttributeError, IndexError) as e:
             logger.exception(f"[SrtFormatter] Failed to format SRT: {e}")
             return ""
 
     @classmethod
     def get_file_extension(cls) -> str:
+        """Get the file extension for this format.
+
+        Returns:
+            str: The file extension for this format ("srt").
+
+        """
         return "srt"
 
 
@@ -143,7 +177,21 @@ class VttFormatter(BaseFormatter):
 
     @classmethod
     def format(cls, result: dict[str, Any]) -> str:
-        """Format as WebVTT subtitles with timestamps."""
+        """Format as WebVTT subtitles with timestamps.
+
+        Args:
+            result: The transcription result from ASRPipeline
+
+        Returns:
+            str: The formatted WebVTT subtitles.
+
+        Raises:
+            TypeError: If the input is of incorrect type.
+            KeyError: If required keys are missing from the result.
+            AttributeError: If the result object does not support expected operations.
+            IndexError: If accessing list elements fails.
+
+        """
         logger.debug(f"[VttFormatter] Formatting result: keys={list(result.keys())}")
         try:
             segments = result.get("segments", [])
@@ -204,17 +252,23 @@ class VttFormatter(BaseFormatter):
                     end = util_format_seconds(end_sec)
                     text = chunk["text"].replace("\n", " ").strip()
                     vtt_content.append(f"{start} --> {end}\n{text}\n")
-                except Exception as chunk_e:
+                except (TypeError, KeyError, AttributeError, IndexError) as chunk_e:
                     logger.error(
                         f"[VttFormatter] Failed to format chunk #{i}: {chunk_e}"
                     )
             return "\n".join(vtt_content)
-        except Exception as e:
+        except (TypeError, KeyError, AttributeError, IndexError) as e:
             logger.exception(f"[VttFormatter] Failed to format VTT: {e}")
             return "WEBVTT\n\n"
 
     @classmethod
     def get_file_extension(cls) -> str:
+        """Get the file extension for this format.
+
+        Returns:
+            str: The file extension for this format ("vtt")
+
+        """
         return "vtt"
 
 
@@ -223,16 +277,34 @@ class JsonFormatter(BaseFormatter):
 
     @classmethod
     def format(cls, result: dict[str, Any]) -> str:
-        """Format as pretty-printed JSON."""
+        """Format as pretty-printed JSON.
+
+        Args:
+            result: The result to format.
+
+        Returns:
+            str: The formatted JSON string.
+
+        Raises:
+            TypeError: If the result contains non-serializable objects.
+            ValueError: If the result cannot be serialized to JSON.
+
+        """
         logger.debug(f"[JsonFormatter] Formatting result: type={type(result)}")
         try:
             return json.dumps(result, ensure_ascii=False, indent=2)
-        except Exception as e:
+        except (TypeError, ValueError) as e:
             logger.exception(f"[JsonFormatter] Failed to format JSON: {e}")
             return "{}"
 
     @classmethod
     def get_file_extension(cls) -> str:
+        """Get the file extension for this formatter.
+
+        Returns:
+            str: The file extension for this formatter ("json")
+
+        """
         return "json"
 
 
