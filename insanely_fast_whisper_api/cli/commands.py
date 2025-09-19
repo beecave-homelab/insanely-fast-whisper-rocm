@@ -7,7 +7,9 @@ receives shared CLI options via the ``audio_options`` decorator. See
 
 from __future__ import annotations
 
+import contextlib
 import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -18,11 +20,13 @@ from click.core import ParameterSource
 from insanely_fast_whisper_api.audio.processing import extract_audio_from_video
 from insanely_fast_whisper_api.cli.common_options import audio_options
 from insanely_fast_whisper_api.cli.facade import cli_facade
+from insanely_fast_whisper_api.cli.progress_rich import RichProgressReporter
 from insanely_fast_whisper_api.core.errors import (
     DeviceNotFoundError,
     TranscriptionError,
 )
 from insanely_fast_whisper_api.core.formatters import FORMATTERS
+from insanely_fast_whisper_api.core.progress import ProgressCallback
 from insanely_fast_whisper_api.utils import constants
 from insanely_fast_whisper_api.utils.file_utils import cleanup_temp_files
 from insanely_fast_whisper_api.utils.filename_generator import (
@@ -33,6 +37,34 @@ from insanely_fast_whisper_api.utils.filename_generator import (
 
 logger = logging.getLogger(__name__)
 
+
+@contextlib.contextmanager
+def _suppress_output_fds() -> None:
+    """Temporarily silence stdout/stderr at the file-descriptor level.
+
+    This suppresses outputs from C/C++ libraries and progress bars (e.g.,
+    MIOpen/Demucs/tqdm) that bypass Python's logging and write directly to
+    the underlying file descriptors.
+
+    Yields:
+        None: Control to the with-block where output remains silenced.
+    """
+    # Save original fds
+    stdout_fd = os.dup(1)
+    stderr_fd = os.dup(2)
+    devnull_fd = os.open(os.devnull, os.O_WRONLY)
+    try:
+        os.dup2(devnull_fd, 1)  # stdout -> /dev/null
+        os.dup2(devnull_fd, 2)  # stderr -> /dev/null
+        yield
+    finally:
+        # Restore
+        os.dup2(stdout_fd, 1)
+        os.dup2(stderr_fd, 2)
+        os.close(stdout_fd)
+        os.close(stderr_fd)
+        os.close(devnull_fd)
+
 # --------------------------------------------------------------------------- #
 # High-level command wrappers                                                 #
 # --------------------------------------------------------------------------- #
@@ -40,7 +72,7 @@ logger = logging.getLogger(__name__)
 
 @click.command(short_help="Transcribe an audio file")
 @audio_options
-def transcribe(audio_file: Path, **kwargs) -> None:
+def transcribe(audio_file: Path, **kwargs: dict) -> None:
     """Transcribe *audio_file* using Whisper models."""
     # Was --export-format explicitly supplied?
     ctx = click.get_current_context()
@@ -53,7 +85,7 @@ def transcribe(audio_file: Path, **kwargs) -> None:
 
 @click.command(short_help="Translate an audio file to English")
 @audio_options
-def translate(audio_file: Path, **kwargs) -> None:
+def translate(audio_file: Path, **kwargs: dict) -> None:
     """Translate *audio_file* to English using Whisper models."""
     ctx = click.get_current_context()
     kwargs["export_format_explicit"] = (
@@ -68,7 +100,7 @@ def translate(audio_file: Path, **kwargs) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
+def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: C901
     """Execute *task* (“transcribe” or “translate”) on *audio_file*.
 
     All CLI flags arrive in **kwargs.
@@ -82,6 +114,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
     device: str = kwargs.pop("device")
     dtype: str = kwargs.pop("dtype")
     batch_size: int = kwargs.pop("batch_size")
+    progress_group_size: int = kwargs.pop("progress_group_size")
     chunk_length: int = kwargs.pop("chunk_length")
     language: str = kwargs.pop("language")
     output: Path | None = kwargs.pop("output", None)
@@ -93,6 +126,8 @@ def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
     vad_threshold: float = kwargs.pop("vad_threshold")
 
     debug: bool = kwargs.pop("debug", False)
+    quiet: bool = kwargs.pop("quiet", False)
+    progress_enabled: bool = kwargs.pop("progress", True)
     no_timestamps: bool = kwargs.pop("no_timestamps", False)
     export_format: str = kwargs.pop("export_format", "json")
     benchmark: bool = kwargs.pop("benchmark", False)
@@ -119,11 +154,25 @@ def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
     # ------------------------------------------------------------------ #
     processed_language = language or None
     temp_files: list[Path] = []
+    reporter = RichProgressReporter(
+        enabled=progress_enabled,
+        show_messages=not quiet,
+    )
+
+    # Reduce logging verbosity when --quiet is used
+    if quiet and not debug:
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.WARNING)
+        logging.getLogger("insanely_fast_whisper_api").setLevel(logging.ERROR)
 
     # If a video file was supplied, extract its audio first
     if audio_file.suffix.lower() in constants.SUPPORTED_VIDEO_FORMATS:
-        audio_file = extract_audio_from_video(video_path=audio_file)
-        temp_files.append(audio_file)
+        try:
+            reporter.on_postprocess_started("extract-audio")
+            audio_file = extract_audio_from_video(video_path=audio_file)
+            temp_files.append(audio_file)
+        finally:
+            reporter.on_postprocess_finished("extract-audio")
 
     # ------------------------------------------------------------------ #
     # Execute the ASR backend via the facade                              #
@@ -140,9 +189,11 @@ def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
             dtype=dtype,
             batch_size=batch_size,
             chunk_length=chunk_length,
+            progress_group_size=progress_group_size,
             language=processed_language,
             task=task,
             return_timestamps_value=return_timestamps_value,
+            progress_cb=reporter,
         )
 
         # Optional stable-ts post-processing
@@ -155,22 +206,37 @@ def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
                 # Ensure the result contains the audio path for stable-ts
                 result.setdefault("audio_file_path", str(audio_file))
 
-                result = stabilize_timestamps(
-                    result,
-                    demucs=demucs,
-                    vad=vad,
-                    vad_threshold=vad_threshold,
-                )
+                reporter.on_postprocess_started("stable-ts")
+                if quiet:
+                    with _suppress_output_fds():
+                        result = stabilize_timestamps(
+                            result,
+                            demucs=demucs,
+                            vad=vad,
+                            vad_threshold=vad_threshold,
+                        )
+                else:
+                    result = stabilize_timestamps(
+                        result,
+                        demucs=demucs,
+                        vad=vad,
+                        vad_threshold=vad_threshold,
+                    )
+                reporter.on_postprocess_finished("stable-ts")
             except Exception as exc:  # pragma: no cover
-                click.secho(f"⚠️  stable-ts post-processing failed: {exc}", fg="yellow")
+                if not quiet:
+                    click.secho(
+                        f"⚠️  stable-ts post-processing failed: {exc}", fg="yellow"
+                    )
 
-        # INFO-level summary (lazy logging)
-        logger.info(
-            "Segments: %s | Stabilized: %s (%s)",
-            result.get("segments_count"),
-            bool(result.get("stabilized")),
-            result.get("stabilization_path", "n/a"),
-        )
+        # INFO-level summary (lazy logging) — skip when quiet
+        if not quiet:
+            logger.info(
+                "Segments: %s | Stabilized: %s (%s)",
+                result.get("segments_count"),
+                bool(result.get("stabilized")),
+                result.get("stabilization_path", "n/a"),
+            )
 
         total_time = time.time() - start_time
 
@@ -188,12 +254,15 @@ def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
             benchmark_enabled=benchmark,
             benchmark_extra=benchmark_extra,
             temp_files=temp_files,
+            progress_cb=reporter,
+            quiet=quiet,
         )
 
     # ------------------------------------------------------------------ #
     # Error handling                                                      #
     # ------------------------------------------------------------------ #
     except DeviceNotFoundError as exc:
+        reporter.on_error(str(exc))
         click.secho(f"\n❌ Device error: {exc}", fg="red", err=True)
         click.secho(
             "💡 Try --device cpu or verify your CUDA/MPS setup", fg="yellow", err=True
@@ -203,12 +272,14 @@ def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
         sys.exit(1)
 
     except TranscriptionError as exc:
+        reporter.on_error(str(exc))
         click.secho(f"\n❌ {task.capitalize()} error: {exc}", fg="red", err=True)
         if debug:
             logger.exception("%s error details", task)
         sys.exit(1)
 
     except Exception as exc:  # noqa: BLE001
+        reporter.on_error(str(exc))
         click.secho(f"\n❌ Unexpected error: {exc}", fg="red", err=True)
         if debug:
             logger.exception("Unexpected error during %s", task)
@@ -236,8 +307,28 @@ def _handle_output_and_benchmarks(
     benchmark_enabled: bool,
     benchmark_extra: tuple[str, ...],
     temp_files: list[Path],
+    progress_cb: ProgressCallback | None = None,
+    quiet: bool = False,
 ) -> None:
-    """Handle file export and benchmark writing."""
+    """Handle file export and benchmark writing.
+
+    Args:
+        task: Task name ("transcribe" or "translate").
+        audio_file: Path to the original audio file.
+        result: Result dictionary returned by the backend.
+        total_time: Total wall-clock time for the operation in seconds.
+        output: Optional explicit output file path when a single format is
+            requested by the user.
+        export_format: Selected export format ("all", "json", "srt", "txt").
+        export_format_explicit: Whether the export format was explicitly chosen
+            by the user via CLI flags.
+        benchmark_enabled: Whether to collect benchmark metrics.
+        benchmark_extra: Additional key=value entries to include in the
+            benchmark record.
+        temp_files: List of temporary files to clean up after export.
+        progress_cb: Optional progress callback to report export progress.
+        quiet: If True, suppress non-essential messages (e.g., benchmark line).
+    """
     # Decide which formats to export
     if export_format == "all":
         formats_to_export = ("json", "txt", "srt")
@@ -262,7 +353,15 @@ def _handle_output_and_benchmarks(
     # ------------------------------------------------------------------ #
     # Export each requested format                                       #
     # ------------------------------------------------------------------ #
-    for fmt in formats_to_export:
+    # Export progress
+    try:
+        if progress_cb is not None:
+            # type: ignore[attr-defined]
+            progress_cb.on_export_started(len(formats_to_export))
+    except Exception:  # pragma: no cover
+        pass
+
+    for idx, fmt in enumerate(formats_to_export):
         formatter = FORMATTERS[fmt]
         content = formatter.format(detailed_result)
         ext = formatter.get_file_extension()
@@ -292,6 +391,13 @@ def _handle_output_and_benchmarks(
             click.secho(f"💾 Saved {fmt.upper()} to: {output_path}", fg="green")
         except OSError as exc:
             click.secho(f"❌ Failed to save {fmt.upper()}: {exc}", fg="red", err=True)
+        else:
+            try:
+                if progress_cb is not None:
+                    # type: ignore[attr-defined]
+                    progress_cb.on_export_item_done(idx, fmt)
+            except Exception:  # pragma: no cover
+                pass
 
     # ------------------------------------------------------------------ #
     # Benchmark (optional)                                               #
@@ -312,7 +418,8 @@ def _handle_output_and_benchmarks(
             total_time=total_time,
             extra=extra_dict,
         )
-        click.secho(f"📈 Benchmark saved to: {benchmark_path}", fg="green")
+        if not quiet:
+            click.secho(f"📈 Benchmark saved to: {benchmark_path}", fg="green")
 
     # ------------------------------------------------------------------ #
     # Cleanup                                                            #

@@ -538,6 +538,37 @@ Consult `python -m insanely_fast_whisper_api.cli --help` for a full list of comm
 
 ---
 
+#### Quiet Mode (`--quiet`)
+
+Use `--quiet` to minimize console output. In quiet mode, the CLI shows only:
+
+- The Rich progress bar during processing (when attached to a TTY).
+- The final lines indicating where files were saved (for example, `💾 Saved TXT to: …`).
+
+All intermediate INFO logs and auxiliary messages are suppressed. When
+timestamp stabilization is enabled (via `--stabilize`) and optional post-
+processing is active (Demucs/VAD), quiet mode also suppresses third-party
+progress bars and HIP/MIOpen warnings emitted by underlying libraries.
+
+Notes:
+
+- On non-TTY output (pipes/redirects), the Rich progress bar is disabled by
+  design; quiet mode will still emit the final saved-path line(s).
+- `--debug` overrides quiet suppression and will emit detailed logs.
+
+Example:
+
+```bash
+# Only show the progress bar and the final saved path(s)
+python -m insanely_fast_whisper_api.cli transcribe audio.mp3 \
+  --model openai/whisper-small \
+  --batch-size 12 \
+  --export-format txt \
+  --quiet
+```
+
+---
+
 ## Dependency Management with PDM
 
 This project uses [PDM (Python Development Master)](https://pdm-project.org/) for dependency management and package building, adhering to PEP 517, PEP 518, and PEP 621 standards. All project metadata, dependencies, and scripts are defined in the [`pyproject.toml`](./pyproject.toml) file.

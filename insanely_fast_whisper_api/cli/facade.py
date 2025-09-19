@@ -8,6 +8,7 @@ from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )
+from insanely_fast_whisper_api.core.progress import ProgressCallback
 from insanely_fast_whisper_api.core.utils import convert_device_string
 from insanely_fast_whisper_api.utils import constants
 
@@ -57,6 +58,7 @@ class CLIFacade:
         dtype: str,
         batch_size: int,
         chunk_length: int,
+        progress_group_size: int,
     ) -> HuggingFaceBackendConfig:
         """Create a backend configuration from CLI-supplied arguments.
 
@@ -66,6 +68,7 @@ class CLIFacade:
             dtype (str): Data type for inference (e.g., "float16").
             batch_size (int): Number of samples to batch per inference step.
             chunk_length (int): Audio chunk size in seconds.
+            progress_group_size (int): Chunks per progress update group.
 
         Returns:
             HuggingFaceBackendConfig: The constructed backend configuration.
@@ -76,6 +79,7 @@ class CLIFacade:
             dtype=dtype,
             batch_size=batch_size,
             chunk_length=chunk_length,
+            progress_group_size=progress_group_size,
         )
 
     def process_audio(  # pylint: disable=too-many-arguments
@@ -86,9 +90,11 @@ class CLIFacade:
         dtype: str = "float16",
         batch_size: int | None = None,
         chunk_length: int = 30,
+        progress_group_size: int | None = None,
         language: str | None = None,
         task: str = "transcribe",
         return_timestamps_value: bool | str = True,
+        progress_cb: ProgressCallback | None = None,
     ) -> dict[str, Any]:
         """Process an audio file via the ASR backend.
 
@@ -101,6 +107,8 @@ class CLIFacade:
             dtype (str): Data type for inference.
             batch_size (int | None): Optional batch size for processing.
             chunk_length (int): Audio chunk length in seconds.
+            progress_group_size (int | None): Chunks per progress update group. If
+                None, defaults to constants.DEFAULT_PROGRESS_GROUP_SIZE.
             language (str | None): Optional language code for processing.
             task (str): Task to perform ("transcribe" or "translate").
             return_timestamps_value (bool | str): Whether/how to return
@@ -110,6 +118,11 @@ class CLIFacade:
         Returns:
             dict[str, Any]: Results payload with transcription/translation
             outputs as provided by the backend.
+
+        Args:
+            progress_cb: Optional progress callback used to emit granular
+                progress events for model loading, audio I/O, inference, and
+                export. Pass ``None`` to disable progress reporting.
         """
         # Get config from environment with defaults
         config = self.get_env_config()
@@ -130,12 +143,18 @@ class CLIFacade:
             batch_size = min(batch_size, 2)  # Reduce batch size for CPU
 
         # Create backend configuration
+        eff_progress_group_size = (
+            progress_group_size
+            if progress_group_size and progress_group_size > 0
+            else constants.DEFAULT_PROGRESS_GROUP_SIZE
+        )
         backend_config = self._create_backend_config(
             model=model_name,
             device=device,
             dtype=dtype,
             batch_size=batch_size,
             chunk_length=chunk_length,
+            progress_group_size=eff_progress_group_size,
         )
 
         # Log final configuration
@@ -165,6 +184,7 @@ class CLIFacade:
             language=language,
             task=task,
             return_timestamps_value=return_timestamps_value,
+            progress_cb=progress_cb,
         )
 
 

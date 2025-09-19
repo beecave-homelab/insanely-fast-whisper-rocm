@@ -256,6 +256,10 @@ python -m insanely_fast_whisper_api.cli translate audio_file.mp3 --export-format
 
 For detailed commands and options, see [`project-overview.md`](./project-overview.md#cli-command-line-interface-details).
 
+#### Quiet mode (`--quiet`)
+
+Use `--quiet` to minimize console output. In quiet mode, only the Rich progress bar (when attached to a TTY) and the final saved-path line(s) are shown. Intermediate logs/messages are suppressed. This also hides third-party Demucs/VAD progress and HIP/MIOpen warnings when stabilization is enabled. See the CLI section in [`project-overview.md`](./project-overview.md#quiet-mode---quiet) for details.
+
 ### Output Files and Filename Conventions
 
 The API uses standardized filename conventions for all output files to ensure consistency across different interfaces and file types. All generated files follow the pattern:

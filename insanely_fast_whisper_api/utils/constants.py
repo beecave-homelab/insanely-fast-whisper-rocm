@@ -163,6 +163,11 @@ COMMAND_TIMEOUT_SECONDS = 3600  # Maximum time allowed for processing (1 hour)
 MAX_AUDIO_SIZE_MB = 100  # Maximum allowed audio file size in MB
 MAX_CONCURRENT_REQUESTS = 10  # Maximum number of concurrent processing requests
 
+# Progress UI granularity
+# Number of chunks to submit per pipeline call for user-visible progress updates.
+# Larger values reduce progress update frequency but may improve throughput.
+DEFAULT_PROGRESS_GROUP_SIZE = int(os.getenv("PROGRESS_GROUP_SIZE", "4"))
+
 # Diarization configuration
 DEFAULT_DIARIZATION_MODEL = os.getenv(
     "WHISPER_DIARIZATION_MODEL", "pyannote/speaker-diarization"
