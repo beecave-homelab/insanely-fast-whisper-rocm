@@ -1,7 +1,10 @@
+"""Tests for Hugging Face model downloading utilities."""
+
 import logging
 import os
+from collections.abc import Generator
 from pathlib import Path  # Used for Path object
-from unittest.mock import patch  # Used for @patch decorator
+from unittest.mock import Mock, patch  # Used for @patch decorator
 
 import pytest
 
@@ -27,8 +30,14 @@ logging.basicConfig(
 
 
 @pytest.fixture
-def mock_hf_hub_cache(tmp_path_factory):
-    """Creates a temporary, isolated Hugging Face cache directory for tests."""
+def mock_hf_hub_cache(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Generator[str, None, None]:
+    """Create an isolated Hugging Face cache directory for tests.
+
+    Yields:
+        str: The temporary cache directory path set via the HF_HOME env var.
+    """
     hf_cache_dir = tmp_path_factory.mktemp("hf_cache")
     original_hf_home = os.environ.get(TEST_HF_CACHE_ENV_VAR)
     os.environ[TEST_HF_CACHE_ENV_VAR] = str(hf_cache_dir)
@@ -41,8 +50,12 @@ def mock_hf_hub_cache(tmp_path_factory):
 
 
 @pytest.fixture
-def custom_test_logger():
-    """Provides a logger instance for tests."""
+def custom_test_logger() -> logging.Logger:
+    """Provide a logger instance for tests.
+
+    Returns:
+        logging.Logger: Logger configured for tests in this module.
+    """
     return logging.getLogger("test_download_script")
 
 
@@ -51,10 +64,14 @@ def custom_test_logger():
 
 @patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
 def test_download_default_model_when_none_provided_and_env_var_not_set(
-    mock_snapshot_download, mock_hf_hub_cache, custom_test_logger
-):
-    """Tests that download_model_if_needed attempts to download the centralized DEFAULT_MODEL
-    when model_name is None.
+    mock_snapshot_download: Mock,
+    mock_hf_hub_cache: str,
+    custom_test_logger: logging.Logger,
+) -> None:
+    """Test that DEFAULT_MODEL is used when no model_name is provided.
+
+    When ``model_name`` is ``None``, the helper must resolve to the centralized
+    ``DEFAULT_MODEL`` constant and call ``snapshot_download`` with it.
     """
     dummy_model_path_str = str(
         Path(mock_hf_hub_cache)

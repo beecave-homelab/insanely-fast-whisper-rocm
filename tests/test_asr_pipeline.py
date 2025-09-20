@@ -1,3 +1,5 @@
+"""ASR pipeline tests focusing on progress callbacks and chunking behavior."""
+
 import wave
 from collections.abc import Callable
 from pathlib import Path
@@ -17,7 +19,12 @@ TEST_MODEL = "openai/whisper-tiny"
 
 @pytest.fixture
 def dummy_audio_file(tmp_path: Path) -> Callable[[float], str]:
-    """Factory fixture to create a dummy WAV audio file of specified duration."""
+    """Factory fixture to create a dummy WAV audio file of specified duration.
+
+    Returns:
+        Callable[[float], str]: Function that generates a WAV file of the given
+        duration (in seconds) and returns its filesystem path as a string.
+    """
 
     def _create_audio(duration_seconds: float = 1.0) -> str:
         file_path = tmp_path / f"test_audio_{duration_seconds}s.wav"
@@ -40,26 +47,34 @@ def dummy_audio_file(tmp_path: Path) -> Callable[[float], str]:
 
 @pytest.fixture
 def short_audio_file(dummy_audio_file: Callable[[float], str]) -> str:
-    """Provides a short (1s) dummy audio file for non-chunking tests."""
+    """Provide a short (1s) dummy audio file for non-chunking tests.
+
+    Returns:
+        str: Filesystem path to the generated WAV file.
+    """
     return dummy_audio_file(1.0)
 
 
 @pytest.fixture
 def long_audio_file_for_chunking(dummy_audio_file: Callable[[float], str]) -> str:
-    """Provides a longer (e.g., 5s) dummy audio file to trigger chunking."""
+    """Provide a longer (e.g., 5s) dummy audio file to trigger chunking.
+
+    Returns:
+        str: Filesystem path to the generated WAV file.
+    """
     # Duration should be longer than the ASRPipeline's default chunk_length if we want to test chunking.
     # However, ASRPipeline default chunk_length is 30s. For faster tests, we'll use a shorter chunk_length
     # in the test setup itself.
     return dummy_audio_file(5.0)  # 5 seconds audio
 
 
-def test_asr_pipeline_callback_non_chunked(short_audio_file: str):
+def test_asr_pipeline_callback_non_chunked(short_audio_file: str) -> None:
     """Test ASRPipeline progress callbacks for non-chunked transcription."""
     progress_updates: list[tuple[str, int, int, str | None]] = []
 
     def mock_callback(
         stage: str, current_step: int, total_steps: int, message: str | None = None
-    ):
+    ) -> None:
         progress_updates.append((stage, current_step, total_steps, message))
 
     pipeline = ASRPipeline(

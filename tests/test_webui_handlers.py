@@ -1,5 +1,6 @@
 """Unit tests for the WebUI handler functions."""
 
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,8 +12,13 @@ from insanely_fast_whisper_api.webui.handlers import (
 
 
 @pytest.fixture
-def mock_pipeline_and_stabilizer():
-    """Fixture to mock WhisperPipeline and stabilize_timestamps."""
+def mock_pipeline_and_stabilizer() -> Generator[tuple[MagicMock, MagicMock], None, None]:
+    """Fixture to mock WhisperPipeline and ``stabilize_timestamps``.
+
+    Yields:
+        tuple[MagicMock, MagicMock]: A tuple of (mocked pipeline instance,
+        mocked ``stabilize_timestamps`` function).
+    """
     with (
         patch(
             "insanely_fast_whisper_api.webui.handlers.HuggingFaceBackend"
@@ -36,7 +42,9 @@ def mock_pipeline_and_stabilizer():
         yield mock_pipeline_instance, mock_stabilize
 
 
-def test_transcribe_handler_with_stabilization(mock_pipeline_and_stabilizer):
+def test_transcribe_handler_with_stabilization(
+    mock_pipeline_and_stabilizer: tuple[MagicMock, MagicMock],
+) -> None:
     """Test that the transcribe handler calls stabilize_timestamps with correct args."""
     _mock_pipeline, mock_stabilize = mock_pipeline_and_stabilizer
 
@@ -53,7 +61,9 @@ def test_transcribe_handler_with_stabilization(mock_pipeline_and_stabilizer):
     assert call_kwargs.get("vad_threshold") == 0.6
 
 
-def test_transcribe_handler_without_stabilization(mock_pipeline_and_stabilizer):
+def test_transcribe_handler_without_stabilization(
+    mock_pipeline_and_stabilizer: tuple[MagicMock, MagicMock],
+) -> None:
     """Test that stabilize_timestamps is not called when stabilization is disabled."""
     _mock_pipeline, mock_stabilize = mock_pipeline_and_stabilizer
 

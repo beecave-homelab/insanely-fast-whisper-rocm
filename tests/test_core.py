@@ -1,5 +1,7 @@
 """Tests for the core ASR pipeline functionality."""
 
+from pathlib import Path
+
 import pytest
 
 from insanely_fast_whisper_api import ASRPipeline
@@ -27,7 +29,7 @@ def test_asr_pipeline_custom_params() -> None:
 
 
 @pytest.mark.integration
-def test_asr_pipeline_inference(tmp_path):
+def test_asr_pipeline_inference(tmp_path: Path) -> None:
     """Test the ASR pipeline inference on a sample audio file.
 
     This test requires a sample audio file and is marked as integration test.

@@ -110,7 +110,7 @@ class TestCLIFacade:
         assert isinstance(config.batch_size, int)
 
     @patch("insanely_fast_whisper_api.cli.facade.HuggingFaceBackend")
-    def test_transcribe_audio_success(self, mock_backend_class) -> None:
+    def test_transcribe_audio_success(self, mock_backend_class: Mock) -> None:
         """Test successful audio transcription."""
         # Mock the backend
         mock_backend = Mock()
@@ -134,7 +134,7 @@ class TestCLIFacade:
         mock_backend.process_audio.assert_called_once()
 
     @patch("insanely_fast_whisper_api.cli.facade.HuggingFaceBackend")
-    def test_transcribe_audio_backend_reuse(self, mock_backend_class) -> None:
+    def test_transcribe_audio_backend_reuse(self, mock_backend_class: Mock) -> None:
         """Test that backend is reused when configuration doesn't change."""
         mock_backend = Mock()
         mock_backend.process_audio.return_value = {"text": "Test", "chunks": []}
@@ -190,7 +190,7 @@ class TestCLICommands:
         assert "does not exist" in result.output.lower()
 
     @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
-    def test_transcribe_success(self, mock_process) -> None:
+    def test_transcribe_success(self, mock_process: Mock) -> None:
         """Test successful transcription command."""
         # Mock successful transcription
         mock_process.return_value = {
@@ -232,7 +232,7 @@ class TestCLICommands:
             tmp_path.unlink(missing_ok=True)
 
     @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
-    def test_transcribe_with_output_file(self, mock_process) -> None:
+    def test_transcribe_with_output_file(self, mock_process: Mock) -> None:
         """Test transcription with output file."""
         mock_process.return_value = {
             "text": "Test output",
@@ -279,7 +279,7 @@ class TestCLICommands:
             output_path.unlink(missing_ok=True)
 
     @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
-    def test_transcribe_device_error(self, mock_process) -> None:
+    def test_transcribe_device_error(self, mock_process: Mock) -> None:
         """Test transcription with device error."""
         mock_process.side_effect = DeviceNotFoundError("CUDA device not available")
 
@@ -300,7 +300,7 @@ class TestCLICommands:
             tmp_path.unlink(missing_ok=True)
 
     @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
-    def test_transcribe_transcription_error(self, mock_process) -> None:
+    def test_transcribe_transcription_error(self, mock_process: Mock) -> None:
         """Test transcription with transcription error."""
         mock_process.side_effect = TranscriptionError("Model loading failed")
 
@@ -318,7 +318,7 @@ class TestCLICommands:
             tmp_path.unlink(missing_ok=True)
 
     @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
-    def test_transcribe_unexpected_error(self, mock_process) -> None:
+    def test_transcribe_unexpected_error(self, mock_process: Mock) -> None:
         """Test transcription with unexpected error."""
         mock_process.side_effect = RuntimeError("Unexpected error")
 
@@ -335,7 +335,7 @@ class TestCLICommands:
             tmp_path.unlink(missing_ok=True)
 
     @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
-    def test_transcribe_all_options(self, mock_process) -> None:
+    def test_transcribe_all_options(self, mock_process: Mock) -> None:
         """Test transcribe command with all options."""
         mock_process.return_value = {
             "text": "Full options test",
@@ -527,7 +527,7 @@ class TestBackwardCompatibility:
         assert "".join(str(constants.DEFAULT_DEVICE).split()) in normalized_output
         assert "".join(str(constants.DEFAULT_BATCH_SIZE).split()) in normalized_output
 
-    def test_error_messages_consistent(self):
+    def test_error_messages_consistent(self) -> None:
         """Test that error messages are consistent with original."""
         runner = CliRunner()
 

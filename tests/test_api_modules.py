@@ -6,6 +6,7 @@ and file handling components of the refactored API layer.
 
 import os
 from io import BytesIO
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -63,9 +64,9 @@ class TestAppFactory:
             "A FastAPI wrapper around the insanely-fast-whisper tool."
             in app.description
         )
-        from insanely_fast_whisper_api import __version__ as PKG_VERSION
+        from insanely_fast_whisper_api import __version__ as pkg_version
 
-        assert app.version == PKG_VERSION
+        assert app.version == pkg_version
 
 
 class TestDependencies:
@@ -73,7 +74,9 @@ class TestDependencies:
 
     @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
     @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
-    def test_get_asr_pipeline_creates_pipeline(self, mock_pipeline, mock_backend) -> None:
+    def test_get_asr_pipeline_creates_pipeline(
+        self, mock_pipeline: Mock, mock_backend: Mock
+    ) -> None:
         """Test that get_asr_pipeline creates a properly configured pipeline."""
         # Setup mocks
         mock_backend_instance = Mock()
@@ -170,7 +173,7 @@ class TestResponseFormatter:
 class TestFileHandler:
     """Test file handling operations."""
 
-    def test_file_handler_initialization(self, tmp_path) -> None:
+    def test_file_handler_initialization(self, tmp_path: Path) -> None:
         """Test FileHandler initialization creates upload directory."""
         upload_dir = str(tmp_path / "test_uploads")
         handler = FileHandler(upload_dir=upload_dir)
@@ -206,7 +209,7 @@ class TestFileHandler:
         assert exc_info.value.status_code == 400
         assert "Unsupported file format" in str(exc_info.value.detail)
 
-    def test_save_upload_creates_file(self, tmp_path) -> None:
+    def test_save_upload_creates_file(self, tmp_path: Path) -> None:
         """Test saving uploaded file creates file with unique name."""
         upload_dir = str(tmp_path / "test_uploads")
         handler = FileHandler(upload_dir=upload_dir)
@@ -229,7 +232,7 @@ class TestFileHandler:
             content = f.read()
         assert content == b"test audio content"
 
-    def test_cleanup_removes_file(self, tmp_path) -> None:
+    def test_cleanup_removes_file(self, tmp_path: Path) -> None:
         """Test cleanup removes the specified file."""
         upload_dir = str(tmp_path / "test_uploads")
         handler = FileHandler(upload_dir=upload_dir)

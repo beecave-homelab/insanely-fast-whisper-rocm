@@ -44,6 +44,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
 
     Args:
         tmp_path: Temporary directory provided by pytest.
+        monkeypatch: Pytest fixture to temporarily modify attributes during tests.
 
     Yields:
         TestClient: Configured client instance.

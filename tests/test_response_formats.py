@@ -1,9 +1,11 @@
 """Unit tests for response_format handling on transcription and translation endpoints."""
 
 import io
+from collections.abc import Generator
 from typing import Any
 
 import pytest
+import requests
 from fastapi.testclient import TestClient
 
 from insanely_fast_whisper_api.api.dependencies import (
@@ -27,7 +29,7 @@ from insanely_fast_whisper_api.utils import (
 class _StubPipeline:  # noqa: D401 (simple class)
     """Minimal stub for WhisperPipeline that returns deterministic output."""
 
-    def process(self, *_, **__) -> dict[str, Any]:  # noqa: D401
+    def process(self, *args: object, **kwargs: object) -> dict[str, Any]:  # noqa: D401
         return {
             "text": "hello world",
             "chunks": [
@@ -53,18 +55,18 @@ class _StubPipeline:  # noqa: D401 (simple class)
 class _StubFileHandler:  # noqa: D401
     """Stub for FileHandler that bypasses filesystem interaction."""
 
-    def validate_audio_file(self, *_):
+    def validate_audio_file(self, *args: object) -> bool:
         return True
 
-    def save_upload(self, _file):  # noqa: D401
+    def save_upload(self, _file: object) -> str:  # noqa: D401
         return "dummy_path.wav"
 
-    def cleanup(self, _):
+    def cleanup(self, _: object) -> bool:
         return True
 
 
 @pytest.fixture(autouse=True)
-def _override_dependencies():
+def _override_dependencies() -> Generator[None, None, None]:
     """Override FastAPI dependencies for tests using app.dependency_overrides."""
 
     def _get_stub_asr_pipeline() -> "_StubPipeline":  # type: ignore[return-value]
@@ -83,8 +85,12 @@ def _override_dependencies():
 
 def _post_file(
     client: TestClient, url: str, response_format: str = RESPONSE_FORMAT_JSON
-):
-    """Helper to send a dummy wav file to a URL with specified response_format."""
+) -> requests.Response:
+    """Helper to send a dummy wav file to a URL with specified response_format.
+
+    Returns:
+        requests.Response: Response object from the FastAPI TestClient.
+    """
     dummy_audio = io.BytesIO(
         b"RIFF\x00\x00\x00\x00WAVEfmt "
     )  # Minimal WAV header bytes
@@ -110,7 +116,9 @@ def _post_file(
         (RESPONSE_FORMAT_VTT, "text/vtt; charset=utf-8"),
     ],
 )
-def test_response_format_variants(endpoint, response_format, expected_content_type):
+def test_response_format_variants(
+    endpoint: str, response_format: str, expected_content_type: str
+) -> None:
     """Ensure each endpoint returns correct status and content-type per format."""
     client = TestClient(app)
     response = _post_file(client, endpoint, response_format)

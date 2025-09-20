@@ -44,8 +44,11 @@ class _FakeTqdmModule:
 
 @pytest.fixture
 def fake_tqdm(monkeypatch: pytest.MonkeyPatch) -> _FakeTqdmModule:
-    """Provide a patched tqdm shim for the duration of a test."""
+    """Provide a patched tqdm shim for the duration of a test.
 
+    Returns:
+        _FakeTqdmModule: Module-like object capturing tqdm interactions.
+    """
     fake_module = _FakeTqdmModule()
     monkeypatch.setattr(
         "insanely_fast_whisper_api.cli.progress_tqdm.tqdm", fake_module
@@ -55,7 +58,6 @@ def fake_tqdm(monkeypatch: pytest.MonkeyPatch) -> _FakeTqdmModule:
 
 def test_tqdm_reporter_full_flow(fake_tqdm: _FakeTqdmModule) -> None:
     """Exercise the happy-path flow with progress enabled."""
-
     reporter = TqdmProgressReporter(enabled=True)
 
     reporter.on_model_load_finished()
@@ -82,7 +84,6 @@ def test_tqdm_reporter_full_flow(fake_tqdm: _FakeTqdmModule) -> None:
 
 def test_tqdm_reporter_disabled_is_noop(fake_tqdm: _FakeTqdmModule) -> None:
     """Ensure disabled reporter performs no tqdm calls."""
-
     reporter = TqdmProgressReporter(enabled=False)
 
     reporter.on_model_load_finished()

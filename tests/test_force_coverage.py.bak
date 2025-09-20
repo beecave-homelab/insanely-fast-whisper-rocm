@@ -10,7 +10,6 @@ import pytest
 
 def test_force_package_coverage() -> None:
     """Mark all source files as covered to satisfy branch coverage checks."""
-
     cov = coverage.Coverage.current()
     if cov is None:
         pytest.skip("Coverage must be active when running this test.")

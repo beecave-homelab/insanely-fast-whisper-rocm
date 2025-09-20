@@ -4,8 +4,9 @@ This module tests that the refactored routes work correctly with
 dependency injection and maintain the same functionality as before.
 """
 
-import os
 from io import BytesIO
+from pathlib import Path
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -16,8 +17,12 @@ from insanely_fast_whisper_api.api.app import create_app
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    """Create a test client for the refactored API with temp upload dir."""
+def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    """Create a test client for the refactored API with temp upload dir.
+
+    Returns:
+        TestClient: FastAPI test client configured with a temporary upload dir.
+    """
     monkeypatch.setattr(
         "insanely_fast_whisper_api.api.app.download_model_if_needed",
         lambda *args, **kwargs: None,
@@ -41,14 +46,22 @@ def client(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def mock_audio_file():
-    """Create a mock audio file for testing."""
+def mock_audio_file() -> tuple[str, BytesIO, str]:
+    """Create a mock audio file for testing.
+
+    Returns:
+        tuple[str, BytesIO, str]: Tuple of filename, file-like object, and MIME type.
+    """
     return ("test.mp3", BytesIO(b"fake audio content"), "audio/mpeg")
 
 
 @pytest.fixture
-def mock_asr_result():
-    """Create a mock ASR processing result."""
+def mock_asr_result() -> dict[str, Any]:
+    """Create a mock ASR processing result.
+
+    Returns:
+        dict[str, Any]: Minimal ASR result payload used by tests.
+    """
     return {
         "text": "Hello, this is a test transcription.",
         "transcription": {
@@ -68,7 +81,9 @@ def mock_asr_result():
 class TestTranscriptionEndpoint:
     """Test the refactored transcription endpoint."""
 
-    def test_transcription_endpoint_validation_invalid_format(self, client):
+    def test_transcription_endpoint_validation_invalid_format(
+        self, client: TestClient
+    ) -> None:
         """Test that the endpoint validates file formats correctly."""
         # Test with unsupported file format
         response = client.post(
@@ -81,8 +96,13 @@ class TestTranscriptionEndpoint:
     @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
     @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
     def test_transcription_endpoint_success_json(
-        self, mock_backend, mock_pipeline, client, mock_audio_file, mock_asr_result
-    ):
+        self,
+        mock_backend: Mock,
+        mock_pipeline: Mock,
+        client: TestClient,
+        mock_audio_file: tuple[str, BytesIO, str],
+        mock_asr_result: dict[str, Any],
+    ) -> None:
         """Test successful transcription with JSON response."""
         # Setup mocks
         mock_pipeline_instance = Mock()
@@ -122,8 +142,13 @@ class TestTranscriptionEndpoint:
     @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
     @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
     def test_transcription_endpoint_success_text(
-        self, mock_backend, mock_pipeline, client, mock_audio_file, mock_asr_result
-    ):
+        self,
+        mock_backend: Mock,
+        mock_pipeline: Mock,
+        client: TestClient,
+        mock_audio_file: tuple[str, BytesIO, str],
+        mock_asr_result: dict[str, Any],
+    ) -> None:
         """Test successful transcription with text response."""
         # Setup mocks
         mock_pipeline_instance = Mock()
@@ -150,8 +175,13 @@ class TestTranscriptionEndpoint:
     @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
     @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
     def test_transcription_endpoint_dependency_injection(
-        self, mock_backend, mock_pipeline, client, mock_audio_file, mock_asr_result
-    ):
+        self,
+        mock_backend: Mock,
+        mock_pipeline: Mock,
+        client: TestClient,
+        mock_audio_file: tuple[str, BytesIO, str],
+        mock_asr_result: dict[str, Any],
+    ) -> None:
         """Test that dependency injection works correctly."""
         # Setup mocks
         mock_backend_instance = Mock()
@@ -190,7 +220,9 @@ class TestTranscriptionEndpoint:
 class TestTranslationEndpoint:
     """Test the refactored translation endpoint."""
 
-    def test_translation_endpoint_validation_invalid_format(self, client):
+    def test_translation_endpoint_validation_invalid_format(
+        self, client: TestClient
+    ) -> None:
         """Test that the endpoint validates file formats correctly."""
         # Test with unsupported file format
         response = client.post(
@@ -203,8 +235,13 @@ class TestTranslationEndpoint:
     @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
     @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
     def test_translation_endpoint_success_json(
-        self, mock_backend, mock_pipeline, client, mock_audio_file, mock_asr_result
-    ):
+        self,
+        mock_backend: Mock,
+        mock_pipeline: Mock,
+        client: TestClient,
+        mock_audio_file: tuple[str, BytesIO, str],
+        mock_asr_result: dict[str, Any],
+    ) -> None:
         """Test successful translation with JSON response."""
         # Setup mocks
         mock_pipeline_instance = Mock()
@@ -237,8 +274,13 @@ class TestTranslationEndpoint:
     @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
     @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
     def test_translation_endpoint_success_text(
-        self, mock_backend, mock_pipeline, client, mock_audio_file, mock_asr_result
-    ):
+        self,
+        mock_backend: Mock,
+        mock_pipeline: Mock,
+        client: TestClient,
+        mock_audio_file: tuple[str, BytesIO, str],
+        mock_asr_result: dict[str, Any],
+    ) -> None:
         """Test successful translation with text response."""
         # Setup mocks
         mock_pipeline_instance = Mock()
@@ -266,13 +308,13 @@ class TestFileHandling:
     @patch("insanely_fast_whisper_api.utils.FileHandler.cleanup")
     def test_file_cleanup_called(
         self,
-        mock_cleanup,
-        mock_backend,
-        mock_pipeline,
-        client,
-        mock_audio_file,
-        mock_asr_result,
-    ):
+        mock_cleanup: Mock,
+        mock_backend: Mock,
+        mock_pipeline: Mock,
+        client: TestClient,
+        mock_audio_file: tuple[str, BytesIO, str],
+        mock_asr_result: dict[str, Any],
+    ) -> None:
         """Test that file cleanup is called even when processing succeeds."""
         # Setup mocks
         mock_pipeline_instance = Mock()
@@ -293,8 +335,13 @@ class TestFileHandling:
     @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
     @patch("insanely_fast_whisper_api.utils.FileHandler.cleanup")
     def test_file_cleanup_called_on_error(
-        self, mock_cleanup, mock_backend, mock_pipeline, client, mock_audio_file
-    ):
+        self,
+        mock_cleanup: Mock,
+        mock_backend: Mock,
+        mock_pipeline: Mock,
+        client: TestClient,
+        mock_audio_file: tuple[str, BytesIO, str],
+    ) -> None:
         """Test that file cleanup is called even when processing fails."""
         # Setup mocks to raise an exception during processing
         mock_backend_instance = Mock()
@@ -322,7 +369,7 @@ class TestFileHandling:
 class TestBackwardsCompatibility:
     """Test that the refactored API maintains backwards compatibility."""
 
-    def test_endpoint_paths_unchanged(self, client):
+    def test_endpoint_paths_unchanged(self, client: TestClient) -> None:
         """Test that endpoint paths remain the same."""
         # Test that the expected endpoints exist
         response = client.get("/docs")  # OpenAPI docs should be available
@@ -339,8 +386,13 @@ class TestBackwardsCompatibility:
     @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
     @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
     def test_parameter_names_unchanged(
-        self, mock_backend, mock_pipeline, client, mock_audio_file, mock_asr_result
-    ):
+        self,
+        mock_backend: Mock,
+        mock_pipeline: Mock,
+        client: TestClient,
+        mock_audio_file: tuple[str, BytesIO, str],
+        mock_asr_result: dict[str, Any],
+    ) -> None:
         """Test that parameter names remain the same for backwards compatibility."""
         # Setup mocks properly
         mock_backend_instance = Mock()

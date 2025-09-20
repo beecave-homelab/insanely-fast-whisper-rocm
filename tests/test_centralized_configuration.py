@@ -19,7 +19,7 @@ import insanely_fast_whisper_api.utils.constants as constants_module
 class TestCentralizedConfiguration:
     """Test the centralized configuration system."""
 
-    def test_default_values_without_env_vars(self):
+    def test_default_values_without_env_vars(self) -> None:
         """Test that default values are used when no environment variables are set."""
         with patch(
             "insanely_fast_whisper_api.utils.constants.os.getenv"
@@ -35,7 +35,7 @@ class TestCentralizedConfiguration:
             assert constants_module.FILENAME_TIMEZONE == "UTC"
             assert constants_module.HF_TOKEN is None
 
-    def test_environment_variable_overrides(self):
+    def test_environment_variable_overrides(self) -> None:
         """Test that environment variables properly override defaults."""
         test_env_vars = {
             "WHISPER_MODEL": "openai/whisper-tiny",
@@ -51,7 +51,7 @@ class TestCentralizedConfiguration:
             "insanely_fast_whisper_api.utils.constants.os.getenv"
         ) as mock_getenv:
             # Mock getenv to return test values for specific keys
-            def getenv_side_effect(key, default=None):
+            def getenv_side_effect(key: str, default: str | None = None) -> str | None:
                 return test_env_vars.get(key, default)
 
             mock_getenv.side_effect = getenv_side_effect
@@ -67,7 +67,7 @@ class TestCentralizedConfiguration:
             assert constants_module.HF_TOKEN == "test_token_123"
             assert constants_module.DEFAULT_BATCH_SIZE == 8
 
-    def test_boolean_environment_variables(self):
+    def test_boolean_environment_variables(self) -> None:
         """Test that boolean environment variables are properly parsed."""
         with patch(
             "insanely_fast_whisper_api.utils.constants.os.getenv"
@@ -98,7 +98,7 @@ class TestCentralizedConfiguration:
             assert constants_module.SAVE_TRANSCRIPTIONS is False
             assert constants_module.HIP_LAUNCH_BLOCKING is False
 
-    def test_integer_environment_variables(self):
+    def test_integer_environment_variables(self) -> None:
         """Test that integer environment variables are properly parsed."""
         with patch(
             "insanely_fast_whisper_api.utils.constants.os.getenv"
@@ -115,7 +115,7 @@ class TestCentralizedConfiguration:
             assert constants_module.DEFAULT_CHUNK_LENGTH == 45
             assert constants_module.API_PORT == 9000
 
-    def test_float_environment_variables(self):
+    def test_float_environment_variables(self) -> None:
         """Test that float environment variables are properly parsed."""
         with patch(
             "insanely_fast_whisper_api.utils.constants.os.getenv"
@@ -132,22 +132,21 @@ class TestCentralizedConfiguration:
             assert constants_module.AUDIO_CHUNK_OVERLAP == 2.5
             assert constants_module.AUDIO_CHUNK_MIN_DURATION == 10.0
 
-    def test_hf_token_fallback(self):
-        """Test that HF_TOKEN correctly falls back to HUGGINGFACE_TOKEN."""
-        # Test HF_TOKEN takes precedence
+    def test_hf_token_no_fallback(self) -> None:
+        """Test that HF_TOKEN is sourced only from HF_TOKEN env var (no fallback)."""
+        # When HF_TOKEN is set, constant should reflect it
         with patch(
             "insanely_fast_whisper_api.utils.constants.os.getenv"
         ) as mock_getenv:
             mock_getenv.side_effect = lambda key, default=None: {
                 "HF_TOKEN": "primary_token",
-                "HUGGINGFACE_TOKEN": "fallback_token",
             }.get(key, default)
 
             reload(constants_module)
 
             assert constants_module.HF_TOKEN == "primary_token"
 
-        # Test fallback to HUGGINGFACE_TOKEN when HF_TOKEN is not set
+        # When only HUGGINGFACE_TOKEN is set, HF_TOKEN should remain None
         with patch(
             "insanely_fast_whisper_api.utils.constants.os.getenv"
         ) as mock_getenv:
@@ -157,13 +156,13 @@ class TestCentralizedConfiguration:
 
             reload(constants_module)
 
-            assert constants_module.HF_TOKEN == "fallback_token"
+            assert constants_module.HF_TOKEN is None
 
 
 class TestModuleCentralizedConfigurationUsage:
     """Test that modules correctly import and use centralized configuration."""
 
-    def test_app_module_uses_centralized_config(self):
+    def test_app_module_uses_centralized_config(self) -> None:
         """Test that app.py uses constants from constants.py."""
         # Import the app module and verify it imports from constants
 
@@ -175,7 +174,7 @@ class TestModuleCentralizedConfigurationUsage:
         assert DEFAULT_MODEL is not None
         assert isinstance(DEFAULT_MODEL, str)
 
-    def test_filename_generator_uses_centralized_config(self):
+    def test_filename_generator_uses_centralized_config(self) -> None:
         """Test that filename_generator.py uses constants from constants.py."""
         from insanely_fast_whisper_api.utils.constants import FILENAME_TIMEZONE
 
@@ -183,7 +182,7 @@ class TestModuleCentralizedConfigurationUsage:
         assert FILENAME_TIMEZONE is not None
         assert isinstance(FILENAME_TIMEZONE, str)
 
-    def test_download_hf_model_uses_centralized_config(self):
+    def test_download_hf_model_uses_centralized_config(self) -> None:
         """Test that download_hf_model.py uses constants from constants.py."""
         from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL
 
@@ -221,7 +220,7 @@ class TestDotEnvFileSupport:
             # Clean up temp file
             os.unlink(env_file_path)
 
-    def test_config_dir_creation(self):
+    def test_config_dir_creation(self) -> None:
         """Test that configuration directory is created if it doesn't exist."""
         with patch(
             "insanely_fast_whisper_api.utils.constants.CONFIG_DIR"
@@ -238,8 +237,12 @@ class TestDotEnvFileSupport:
 
 
 @pytest.fixture(autouse=True)
-def restore_constants():
-    """Restore constants module to original state after each test."""
+def restore_constants() -> None:
+    """Restore constants module to original state after each test.
+
+    Yields:
+        None: Control back to the test; after the test, constants are reloaded.
+    """
     yield
     # Reload to restore original state
     reload(constants_module)
