@@ -46,8 +46,9 @@ def download_model_if_needed(
     allow_patterns: list[str] | None = None,
     ignore_patterns: list[str] | None = None,
     custom_logger: logging.Logger | None = None,
-):
+) -> str:
     """Downloads a Hugging Face model if it's not already cached or if forced.
+
     Respects Hugging Face's default cache locations and environment variables
     (HF_HOME, TRANSFORMERS_CACHE, HUGGINGFACE_HUB_CACHE) if cache_dir is None.
 
@@ -79,7 +80,6 @@ def download_model_if_needed(
         str: The path to the downloaded model directory.
 
     Raises:
-        ValueError: If the model name cannot be determined.
         FileNotFoundError: If local_files_only is True and the model is not
                            found in cache.
         HfHubHTTPError: For HTTP errors during download (e.g., 401, 404).
@@ -227,8 +227,21 @@ def main(
     allow_patterns: tuple[str, ...],
     ignore_patterns: tuple[str, ...],
     verbose: bool,
-):
-    """Main function to handle CLI arguments and trigger model download using Click."""
+) -> None:
+    """Main function to handle CLI arguments and trigger model download using Click.
+
+    This function is the entry point for the command line interface.
+
+    Args:
+        model_name_option (str): The name of the model on Hugging Face Hub.
+        force (bool): If True, re-downloads the model even if it exists in the cache.
+        hf_token (str | None): Hugging Face API token.
+        cache_dir (Path | None): Path to the Hugging Face cache directory.
+        check_only (bool): If True, only checks if the model is cached locally.
+        allow_patterns (tuple[str, ...]): Patterns for files to include.
+        ignore_patterns (tuple[str, ...]): Patterns for files to exclude.
+        verbose (bool): If True, enables verbose logging.
+    """
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)  # Set root logger level
         logger.setLevel(logging.DEBUG)  # Set our specific logger level

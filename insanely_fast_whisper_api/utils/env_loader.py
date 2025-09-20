@@ -47,7 +47,7 @@ _env_debug_mode_temp = _env_log_level_temp == "DEBUG"
 SHOW_DEBUG_PRINTS = _cli_debug_mode or _env_debug_mode_temp
 
 
-def debug_print(message: str):
+def debug_print(message: str) -> None:
     """Prints a message if SHOW_DEBUG_PRINTS is True, formatted like a log entry."""
     if SHOW_DEBUG_PRINTS:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S,%f")[:-3]

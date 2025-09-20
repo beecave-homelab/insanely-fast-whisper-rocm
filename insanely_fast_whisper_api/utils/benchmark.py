@@ -71,6 +71,13 @@ class BenchmarkResult(BaseModel):  # type: ignore[misc]
     extra: dict[str, Any] | None = None
 
     class Config:
+        """Pydantic configuration for the benchmark result model.
+
+        Notes:
+            The model is frozen to make instances hashable and safer to use as
+            values in collections.
+        """
+
         frozen = True  # make it hashable / safe
 
 
@@ -78,6 +85,11 @@ class BenchmarkCollector:
     """Collects timing + system metrics and persists them to `benchmarks/`."""
 
     def __init__(self, benchmarks_dir: Path | str = "benchmarks") -> None:
+        """Initialize the collector with an output directory.
+
+        Args:
+            benchmarks_dir: Directory where benchmark JSON files will be written.
+        """
         self._bench_dir = Path(benchmarks_dir)
         self._bench_dir.mkdir(exist_ok=True)
         self._start_time: float | None = None
@@ -103,7 +115,11 @@ class BenchmarkCollector:
         self._sampling_thread.start()
 
     def stop(self) -> float:
-        """Return elapsed time since :meth:`start` in seconds."""
+        """Return elapsed time since :meth:`start` in seconds.
+
+        Raises:
+            RuntimeError: If called before :meth:`start` was invoked.
+        """
         if self._start_time is None:
             raise RuntimeError("BenchmarkCollector.stop() called before start().")
         return time.perf_counter() - self._start_time
@@ -121,6 +137,11 @@ class BenchmarkCollector:
         )
 
     def set_model_load_time(self, seconds: float) -> None:
+        """Record the model loading time in seconds.
+
+        Args:
+            seconds: Duration of model initialization.
+        """
         self._model_load_time = seconds
 
     # ---------------------------------------------------------------------
@@ -141,7 +162,11 @@ class BenchmarkCollector:
             self._stop_event.wait(self._sample_interval)
 
     def _avg_system_metrics(self) -> dict[str, Any]:
-        """Average numeric system metrics across samples."""
+        """Average numeric system metrics across samples.
+
+        Returns:
+            A dictionary of averaged system metrics rounded to two decimals.
+        """
         if not self._samples:
             return {}
         acc: dict[str, float] = {}
@@ -153,7 +178,12 @@ class BenchmarkCollector:
         return {k: round(v / count, 2) for k, v in acc.items()}
 
     def _average_metrics(self) -> tuple[dict[str, Any], dict[str, Any] | None]:
-        """Return average system and GPU metrics over all collected samples."""
+        """Return average system and GPU metrics over all collected samples.
+
+        Returns:
+            A tuple containing averaged system metrics and averaged GPU metrics
+            (or None if GPU metrics are unavailable).
+        """
         if not self._samples:
             return self._collect_system_metrics(), self._collect_gpu_metrics()
 
@@ -216,10 +246,12 @@ class BenchmarkCollector:
         total_time: float | None,
         extra: dict[str, Any] | None = None,
     ) -> Path:
-        """Gather metrics & write to a timestamped JSON file.
-        Stops live sampling and includes all collected samples."
+        """Gather metrics and write to a timestamped JSON file.
 
-        Returns the path to the JSON file that was written.
+        Stops live sampling and includes all collected samples.
+
+        Returns:
+            Path: The path to the JSON file that was written.
         """
         # Ensure sampling thread stopped
         self.stop_sampling()
@@ -303,7 +335,11 @@ class BenchmarkCollector:
     # ------------------------------------------------------------------
     @staticmethod
     def _collect_system_metrics() -> dict[str, Any]:
-        """Collect basic system-wide memory info (RAM)."""
+        """Collect basic system-wide memory info (RAM).
+
+        Returns:
+            A dictionary with OS, Python, and memory statistics.
+        """
         data: dict[str, Any] = {
             "os": platform.platform(),
             "python_version": platform.python_version(),

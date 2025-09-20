@@ -57,13 +57,18 @@ class FilenameGenerationStrategy(ABC):
 
 class StandardFilenameStrategy(FilenameGenerationStrategy):
     """Standard strategy for generating filenames.
+
     Pattern: {audio_stem}_{task}_{timestamp}.{extension}
     Timestamp format: YYYYMMDDTHHMMSSZ (ISO 8601 like)
     """
 
     def generate_filename(self, components: FilenameComponents) -> str:
-        """Generates a filename using the standard unified pattern.
-        Example: my_audio_transcribe_20241201T143022Z.json
+        """Generate a filename using the standard unified pattern.
+
+        Example: my_audio_transcribe_20241201T143022Z.json.
+
+        Returns:
+            str: The generated filename.
         """
         # Ensure UTC timestamp if not already, matching 'Z' suffix.
         # The calling code in FilenameGenerator ensures UTC for .now()
@@ -80,12 +85,22 @@ class StandardFilenameStrategy(FilenameGenerationStrategy):
 
 class FilenameGenerator:
     """Context class that uses a FilenameGenerationStrategy to create filenames.
+
     Uses centralized timezone configuration from constants.py (APP_TIMEZONE
     environment variable, defaults to UTC) for generating timestamps
     or interpreting naive provided timestamps.
     """
 
-    def __init__(self, strategy: FilenameGenerationStrategy):
+    def __init__(self, strategy: FilenameGenerationStrategy) -> None:
+        """Initialize a filename generator with a concrete strategy.
+
+        Args:
+            strategy: Strategy instance used to format the filename.
+
+        Raises:
+            TypeError: If ``strategy`` is not an instance of
+                ``FilenameGenerationStrategy``.
+        """
         if not isinstance(strategy, FilenameGenerationStrategy):
             raise TypeError(
                 "strategy must be an instance of FilenameGenerationStrategy"
@@ -99,7 +114,8 @@ class FilenameGenerator:
         extension: str,
         timestamp: datetime.datetime | None = None,
     ) -> str:
-        """Creates a filename for a given audio path, task, and extension.
+        """Create a filename for a given audio path, task, and extension.
+
         Uses centralized timezone configuration from constants.py
         (TZ environment variable via APP_TIMEZONE, defaults to Europe/Amsterdam).
 
