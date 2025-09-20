@@ -15,12 +15,16 @@ def mock_pipeline_and_stabilizer():
     """Fixture to mock WhisperPipeline and stabilize_timestamps."""
     with (
         patch(
+            "insanely_fast_whisper_api.webui.handlers.HuggingFaceBackend"
+        ) as mock_backend_class,
+        patch(
             "insanely_fast_whisper_api.webui.handlers.WhisperPipeline"
         ) as mock_pipeline_class,
         patch(
             "insanely_fast_whisper_api.webui.handlers.stabilize_timestamps"
         ) as mock_stabilize,
     ):
+        mock_backend_class.return_value = MagicMock()
         # Mock the pipeline's process method to return a dummy result
         mock_pipeline_instance = MagicMock()
         mock_pipeline_instance.process.return_value = {"text": "test transcription"}

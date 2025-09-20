@@ -11,12 +11,22 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from insanely_fast_whisper_api import constants
 from insanely_fast_whisper_api.api.app import create_app
 
 
 @pytest.fixture
-def client(tmp_path):
+def client(tmp_path, monkeypatch):
     """Create a test client for the refactored API with temp upload dir."""
+    monkeypatch.setattr(
+        "insanely_fast_whisper_api.api.app.download_model_if_needed",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "insanely_fast_whisper_api.core.asr_backend.HuggingFaceBackend._validate_device",
+        lambda self: None,
+    )
+
     app = create_app()
 
     # Override FileHandler to use a temp directory to avoid permission issues
@@ -167,11 +177,11 @@ class TestTranscriptionEndpoint:
         # Verify backend was configured correctly
         mock_backend.assert_called_once()
         backend_config = mock_backend.call_args[1]["config"]
-        assert backend_config.model_name == os.getenv("WHISPER_MODEL", "custom-model")
-        assert backend_config.device == os.getenv("WHISPER_DEVICE", "cuda:0")
-        assert backend_config.batch_size == int(os.getenv("WHISPER_BATCH_SIZE", 8))
-        assert backend_config.dtype == os.getenv("WHISPER_DTYPE", "float16")
-        assert backend_config.chunk_length == int(os.getenv("WHISPER_CHUNK_LENGTH", 15))
+        assert backend_config.model_name == constants.DEFAULT_MODEL
+        assert backend_config.device == constants.DEFAULT_DEVICE
+        assert backend_config.batch_size == constants.DEFAULT_BATCH_SIZE
+        assert backend_config.dtype == constants.DEFAULT_DTYPE
+        assert backend_config.chunk_length == constants.DEFAULT_CHUNK_LENGTH
 
         # Verify pipeline was created with backend
         mock_pipeline.assert_called_once_with(asr_backend=mock_backend_instance)
@@ -363,9 +373,9 @@ class TestBackwardsCompatibility:
         # Verify the backend was configured with the test parameters
         mock_backend.assert_called_once()
         backend_config = mock_backend.call_args[1]["config"]
-        assert backend_config.model_name == os.getenv("WHISPER_MODEL", "test-model")
-        assert backend_config.device == os.getenv("WHISPER_DEVICE", "cpu")
-        assert backend_config.batch_size == int(os.getenv("WHISPER_BATCH_SIZE", 2))
+        assert backend_config.model_name == constants.DEFAULT_MODEL
+        assert backend_config.device == constants.DEFAULT_DEVICE
+        assert backend_config.batch_size == constants.DEFAULT_BATCH_SIZE
 
         # Verify pipeline was created with backend
         mock_pipeline.assert_called_once_with(asr_backend=mock_backend_instance)

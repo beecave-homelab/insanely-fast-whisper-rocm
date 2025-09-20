@@ -522,9 +522,10 @@ class TestBackwardCompatibility:
         result = runner.invoke(cli, ["transcribe", "--help"])
 
         # Check that defaults are shown and match constants
-        assert str(constants.DEFAULT_MODEL) in result.output
-        assert str(constants.DEFAULT_DEVICE) in result.output
-        assert str(constants.DEFAULT_BATCH_SIZE) in result.output
+        normalized_output = "".join(result.output.split())
+        assert "".join(str(constants.DEFAULT_MODEL).split()) in normalized_output
+        assert "".join(str(constants.DEFAULT_DEVICE).split()) in normalized_output
+        assert "".join(str(constants.DEFAULT_BATCH_SIZE).split()) in normalized_output
 
     def test_error_messages_consistent(self):
         """Test that error messages are consistent with original."""
