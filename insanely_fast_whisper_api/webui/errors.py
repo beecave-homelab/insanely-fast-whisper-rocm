@@ -17,12 +17,11 @@ class TranscriptionError(Exception):  # pylint: disable=too-few-public-methods
 
 
 class DeviceNotFoundError(Exception):  # pylint: disable=too-few-public-methods
-    """Custom exception raised when a requested compute device is not
-    available in the WebUI context.
+    """Custom exception raised when a requested compute device is unavailable.
 
     This exception is raised when the application attempts to use a specific
     device (e.g., CUDA GPU, MPS) that is either not present or not properly
-    configured on the system.
+    configured on the system in the WebUI context.
     """
 
 

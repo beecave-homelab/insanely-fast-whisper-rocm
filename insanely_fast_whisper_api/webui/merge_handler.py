@@ -43,12 +43,25 @@ class MergeResult:
 class MergeHandler(ABC):
     """Abstract base class for format-specific merge handlers."""
 
-    def __init__(self, config: MergeConfiguration | None = None):
+    def __init__(self, config: MergeConfiguration | None = None) -> None:
+        """Initialize the merge handler.
+
+        Args:
+            config: Optional merge configuration. If not provided, a default
+                configuration is used.
+        """
         self.config = config or MergeConfiguration()
         self.warnings = []
 
     def merge_files(self, file_results: dict[str, dict[str, Any]]) -> MergeResult:
-        """Template method for merging multiple files."""
+        """Template method for merging multiple files.
+
+        Args:
+            file_results: Mapping of file path to transcription result data.
+
+        Returns:
+            MergeResult: Aggregate result with merged content and statistics.
+        """
         try:
             logger.info(
                 "Starting merge of %d files with %s",
@@ -103,7 +116,14 @@ class MergeHandler(ABC):
     def _validate_files(
         self, file_results: dict[str, dict[str, Any]]
     ) -> dict[str, dict[str, Any]]:
-        """Validate input files."""
+        """Validate input files.
+
+        Args:
+            file_results: Mapping of file path to raw result data.
+
+        Returns:
+            dict[str, dict[str, Any]]: Filtered mapping of valid files only.
+        """
         validated = {}
         for file_path, result_data in file_results.items():
             if result_data and self._is_valid_file_result(result_data):
@@ -115,7 +135,14 @@ class MergeHandler(ABC):
     def _format_sections(
         self, ordered_files: list[tuple[str, dict[str, Any]]]
     ) -> list[str]:
-        """Format each file as a section."""
+        """Format each file as a section.
+
+        Args:
+            ordered_files: List of (path, result) tuples sorted deterministically.
+
+        Returns:
+            list[str]: A list of formatted section strings.
+        """
         sections = []
         for file_path, result_data in ordered_files:
             try:
@@ -134,7 +161,14 @@ class MergeHandler(ABC):
         return sections
 
     def _combine_sections(self, sections: list[str]) -> str:
-        """Combine sections."""
+        """Combine sections.
+
+        Args:
+            sections: List of section strings.
+
+        Returns:
+            str: Combined content with optional separators.
+        """
         if not sections:
             return ""
         separator = (
@@ -145,11 +179,25 @@ class MergeHandler(ABC):
         return separator.join(sections)
 
     def _finalize_content(self, content: str) -> str:
-        """Finalize content."""
+        """Finalize content.
+
+        Args:
+            content: The merged content.
+
+        Returns:
+            str: Final content possibly with headers/footers applied.
+        """
         return content
 
     def _generate_header(self, file_path: str) -> str:
-        """Generate section header."""
+        """Generate section header.
+
+        Args:
+            file_path: Original file path.
+
+        Returns:
+            str: A formatted header string for the section.
+        """
         filename = Path(file_path).name
         if self.config.header_style == "equals":
             return f"=== {filename} ==="
@@ -170,7 +218,11 @@ class MergeHandler(ABC):
 
     @abstractmethod
     def get_format_name(self) -> str:
-        """Get format name."""
+        """Get format name.
+
+        Returns:
+            str: The format name handled by this merger.
+        """
         raise NotImplementedError
 
 
@@ -184,13 +236,23 @@ class TxtMerger(MergeHandler):
         return FORMATTERS["txt"].format(result_data).strip()
 
     def get_format_name(self) -> str:
+        """Return the human-readable format name handled by this merger.
+
+        Returns:
+            str: The format name "txt".
+        """
         return "txt"
 
 
 class SrtMerger(MergeHandler):
     """Merge handler for SRT format."""
 
-    def __init__(self, config: MergeConfiguration | None = None):
+    def __init__(self, config: MergeConfiguration | None = None) -> None:
+        """Initialize the SRT merger.
+
+        Args:
+            config: Optional merge configuration.
+        """
         super().__init__(config)
         self.entry_counter = 1
 
@@ -202,7 +264,14 @@ class SrtMerger(MergeHandler):
         return self._renumber_srt(srt_content)
 
     def _renumber_srt(self, content: str) -> str:
-        """Renumber SRT entries."""
+        """Renumber SRT entries.
+
+        Args:
+            content: Original SRT content string.
+
+        Returns:
+            str: Content with sequentially renumbered entries.
+        """
         entries = content.strip().split("\n\n")
         renumbered = []
         for entry in entries:
@@ -218,6 +287,11 @@ class SrtMerger(MergeHandler):
         return content  # No headers for SRT
 
     def get_format_name(self) -> str:
+        """Return the human-readable format name handled by this merger.
+
+        Returns:
+            str: The format name "srt".
+        """
         return "srt"
 
 
@@ -248,7 +322,14 @@ class VttMerger(MergeHandler):
         return "\n\n".join(vtt_entries)
 
     def _format_vtt_time(self, seconds: float | None) -> str:
-        """Format time for VTT."""
+        """Format time for VTT.
+
+        Args:
+            seconds: The timestamp in seconds or None.
+
+        Returns:
+            str: VTT-formatted time string.
+        """
         if seconds is None:
             return "00:00:00.000"
 
@@ -264,6 +345,11 @@ class VttMerger(MergeHandler):
         return f"WEBVTT\n\n{content}" if content.strip() else "WEBVTT\n"
 
     def get_format_name(self) -> str:
+        """Return the human-readable format name handled by this merger.
+
+        Returns:
+            str: The format name "vtt".
+        """
         return "vtt"
 
 
@@ -278,7 +364,18 @@ MERGE_HANDLERS = {
 def get_merge_handler(
     format_type: str, config: MergeConfiguration | None = None
 ) -> MergeHandler:
-    """Get merge handler for format."""
+    """Get merge handler for format.
+
+    Args:
+        format_type: One of "txt", "srt", or "vtt".
+        config: Optional merge configuration.
+
+    Returns:
+        MergeHandler: A handler instance for the requested format.
+
+    Raises:
+        ValueError: If the requested format type is unsupported.
+    """
     handler_class = MERGE_HANDLERS.get(format_type)
     if not handler_class:
         available = list(MERGE_HANDLERS.keys())
@@ -289,6 +386,14 @@ def get_merge_handler(
 def merge_files(
     file_results: dict[str, dict[str, Any]], format_type: str
 ) -> MergeResult:
-    """Convenience function to merge files."""
+    """Convenience function to merge files.
+
+    Args:
+        file_results: Mapping of file paths to result data.
+        format_type: Target format for merge ("txt", "srt", or "vtt").
+
+    Returns:
+        MergeResult: The result including merged content and stats.
+    """
     merger = get_merge_handler(format_type)
     return merger.merge_files(file_results)

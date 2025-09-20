@@ -34,6 +34,9 @@ def save_temp_file(
 
     Returns:
         The full path to the temporary file.
+
+    Raises:
+        OSError: If the file cannot be created or written.
     """
     try:
         if desired_filename:
@@ -62,7 +65,11 @@ def save_temp_file(
 
 
 def convert_device_string(device_id: str) -> str:
-    """Wrapper for core.utils.convert_device_string for webui internal use."""
+    """Wrapper for core.utils.convert_device_string for webui internal use.
+
+    Returns:
+        str: The normalized device string.
+    """
     return core_convert_device_string(device_id)
 
 

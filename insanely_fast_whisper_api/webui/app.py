@@ -85,7 +85,7 @@ def launch_webui(
     vad: bool,
     vad_threshold: float,
     debug: bool,
-):
+) -> None:
     """Launch the Insanely Fast Whisper WebUI."""
     # Configure logging
     log_level = logging.DEBUG if debug else logging.INFO
