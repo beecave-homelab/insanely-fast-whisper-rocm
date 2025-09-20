@@ -4,10 +4,11 @@ A FastAPI wrapper around a custom Whisper-based ASR pipeline with audio
 chunking support.
 """
 
-from insanely_fast_whisper_api.utils.constants import API_VERSION as __version__
+from insanely_fast_whisper_api.utils.constants import API_VERSION
 
 __author__ = "elvee"
 __email__ = "lowie@beecave.nl"
+__version__ = API_VERSION
 
 # Audio utilities
 import insanely_fast_whisper_api.utils.constants as constants

@@ -24,7 +24,7 @@ except ImportError:
     uvicorn = None
 
 
-def setup_timezone():
+def setup_timezone() -> None:
     """Set the timezone for the application based on constants.APP_TIMEZONE."""
     try:
         os.environ["TZ"] = constants.APP_TIMEZONE
@@ -139,8 +139,12 @@ def main(
     ssl_keyfile: str | None,
     ssl_certfile: str | None,
     debug: bool,
-):
-    """Run the Insanely Fast Whisper API server using Uvicorn."""
+) -> None:
+    """Run the Insanely Fast Whisper API server using Uvicorn.
+
+    Raises:
+        click.exceptions.Exit: If Uvicorn is not installed.
+    """
     if uvicorn is None:
         click.secho(
             (
@@ -227,4 +231,4 @@ def main(
 
 
 if __name__ == "__main__":
-    main()  # pylint: disable=no-value-for-parameter
+    main()
