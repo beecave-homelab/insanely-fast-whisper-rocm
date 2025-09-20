@@ -5,6 +5,7 @@ chunking support.
 """
 
 from insanely_fast_whisper_api.utils.constants import API_VERSION as __version__
+
 __author__ = "elvee"
 __email__ = "lowie@beecave.nl"
 
@@ -27,5 +28,5 @@ __all__ = [
     "get_audio_duration",
     "split_audio",
     "cleanup_temp_files",
-    "merge_chunk_results",
+    "merge_chunk_results", "__version__",
 ]
