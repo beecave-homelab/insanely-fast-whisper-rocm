@@ -85,12 +85,6 @@ class SrtFormatter(BaseFormatter):
         Returns:
             str: The formatted SRT subtitles.
 
-        Raises:
-            TypeError: If the input is of incorrect type.
-            KeyError: If required keys are missing from the result.
-            AttributeError: If the result object does not support expected operations.
-            IndexError: If accessing list elements fails.
-
         """
         logger.debug(f"[SrtFormatter] Formatting result: keys={list(result.keys())}")
         try:
@@ -185,12 +179,6 @@ class VttFormatter(BaseFormatter):
         Returns:
             str: The formatted WebVTT subtitles.
 
-        Raises:
-            TypeError: If the input is of incorrect type.
-            KeyError: If required keys are missing from the result.
-            AttributeError: If the result object does not support expected operations.
-            IndexError: If accessing list elements fails.
-
         """
         logger.debug(f"[VttFormatter] Formatting result: keys={list(result.keys())}")
         try:
@@ -284,10 +272,6 @@ class JsonFormatter(BaseFormatter):
 
         Returns:
             str: The formatted JSON string.
-
-        Raises:
-            TypeError: If the result contains non-serializable objects.
-            ValueError: If the result cannot be serialized to JSON.
 
         """
         logger.debug(f"[JsonFormatter] Formatting result: type={type(result)}")

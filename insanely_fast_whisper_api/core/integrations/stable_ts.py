@@ -28,8 +28,16 @@ except ImportError as err:  # pragma: no cover
 __all__ = ["stabilize_timestamps"]
 
 
-def _to_dict(obj: Any) -> dict[str, Any]:
-    """Convert the result object returned by *stable-whisper* to a dictionary."""
+def _to_dict(obj: object) -> dict[str, Any]:
+    """Convert the result object returned by *stable-whisper* to a dictionary.
+
+    Args:
+        obj: The object returned by stable-whisper; can be a dict or a model-like
+            object exposing ``to_dict``/``model_dump``/``_asdict``.
+
+    Returns:
+        dict[str, Any]: A dictionary representation of the input object.
+    """
     logger.info("_to_dict called with type=%s", type(obj))
     if isinstance(obj, dict):
         return obj
@@ -126,7 +134,7 @@ def stabilize_timestamps(
     # Prepare a stable-whisper–compatible dict
     converted = _convert_to_stable(result)
 
-    def inference_func(*_a: Any, **_k: Any) -> dict[str, Any]:
+    def inference_func(*_a: object, **_k: object) -> dict[str, Any]:
         """Return the precomputed converted dict regardless of inputs.
 
         This mirrors the previous lambda behavior used for transcribe_any.

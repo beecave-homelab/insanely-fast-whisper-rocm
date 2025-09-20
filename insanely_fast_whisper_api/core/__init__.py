@@ -32,7 +32,7 @@ class _DummyBackend(ASRBackend):
     exercising the pipeline interface.
     """
 
-    def __init__(self, model_name: str, device: str, dtype: str):
+    def __init__(self, model_name: str, device: str, dtype: str) -> None:
         self.model_name = model_name
         self.device = device
         self.dtype = dtype
@@ -71,8 +71,18 @@ class ASRPipeline(BasePipeline):  # type: ignore[misc]
         device: str = "cpu",
         dtype: str = "float32",
         progress_callback: Callable[[str, int, int, str | None], None] | None = None,
-        **kwargs: Any,
-    ):
+        **kwargs: object,
+    ) -> None:
+        """Initialize a lightweight ASR pipeline wrapper.
+
+        Args:
+            model: Model identifier (kept for API compatibility).
+            device: Target device (e.g., "cpu").
+            dtype: Numeric precision (e.g., "float32").
+            progress_callback: Optional progress callback receiving stage events.
+            **kwargs: Additional keyword arguments accepted for compatibility and
+                ignored by this lightweight implementation.
+        """
         # Store simple attributes for legacy tests
         self.model_name = model
         self.device = device
@@ -98,8 +108,23 @@ class ASRPipeline(BasePipeline):  # type: ignore[misc]
         task: str = "transcribe",
         timestamp_type: str = "chunk",
         progress_callback: Callable[[float], None] | None = None,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> dict[str, Any]:
+        """Process a single audio file and return a transcription-like dict.
+
+        Args:
+            audio_file_path: Path to the audio file to be processed.
+            language: Optional language hint (e.g., "en").
+            task: Processing task, typically "transcribe".
+            timestamp_type: Timestamp granularity (e.g., "chunk").
+            progress_callback: Optional per-call progress callback.
+            **kwargs: Additional keyword arguments accepted for compatibility and
+                ignored by this lightweight implementation.
+
+        Returns:
+            dict[str, Any]: A dictionary containing at least "text" and
+            possibly "chunks"/"segments" keys, mimicking the real pipeline output.
+        """
         cb = progress_callback or self._progress_callback
         if cb:
             cb("SINGLE_FILE_PROCESSING_START", 0, 1, None)
