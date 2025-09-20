@@ -1,5 +1,11 @@
 # Lightweight, CPU-only requirements for code reviewers.
 # Excludes heavy dependencies like torch, torchaudio, onnx, etc.
+# Install with constraints to forbid heavy backends (recommended):
+#   pip install -r requirements-reviewer.txt -c constraints-no-heavy.txt
+# or with PDM (if mirrored to a group):
+#   pdm sync -G reviewer -c constraints-no-heavy.txt
+# The constraints file pins heavy packages (e.g., torch, onnxruntime) to
+# an impossible version to ensure they are not installed transitively.
 
 # Core application dependencies
 fastapi==0.116.1
