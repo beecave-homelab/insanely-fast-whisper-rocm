@@ -216,6 +216,7 @@ For docstrings mismatches caused by third-party constraints, prefer a targeted `
 ## 10) Tests & examples
 
 * Tests must follow the same rules as production code.
+* Tests must match the current production code. If there is a mismatch, update the tests to match the production code.
 * Test names: `test_<unit_under_test>__<expected_behavior>()`.
 * Docstring examples should be runnable when practical:
 
@@ -275,8 +276,8 @@ repos:
 CI will run the same two commands:
 
 ```bash
-ruff check .
-ruff format --check .
+bash scripts/clean_codebase.sh
+bash scripts/clean_codebase_sorted.sh --keep-going
 ```
 
 A PR is mergeable only when both pass.
