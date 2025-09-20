@@ -53,10 +53,10 @@ RUN pip install --no-cache-dir .
 # Added in case Gradio is used and needs to be accessible; remove if not needed.
 ENV GRADIO_SERVER_NAME="0.0.0.0"
 
-# Make port 8888 available to the world outside this container (standard for uvicorn)
-EXPOSE 8889
-EXPOSE 7861
+# Expose default internal ports (API/WebUI). Actual host bindings are controlled by Compose.
+EXPOSE 8888
+EXPOSE 7860
 
-# Define the command to run the application using uvicorn.
-# This points to the `app` instance in your `main.py` inside the installed package.
-CMD ["uvicorn", "insanely_fast_whisper_api.main:app", "--host", "0.0.0.0", "--port", "8888"]
+# Use the package entrypoint so host/port are controlled by env vars (API_HOST/API_PORT).
+# docker-compose.dev.yaml overrides this CMD to run the WebUI as needed.
+CMD ["insanely-fast-whisper-api"]

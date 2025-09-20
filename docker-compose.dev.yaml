@@ -24,29 +24,37 @@ services:
 
     env_file:
       - .env
+    environment:
+      # Dev-specific ports are controlled by DEV_* variables to avoid clashing
+      # with production defaults defined in .env. Compose variable substitution
+      # uses the project-level .env, not this environment block, so we mirror
+      # the values here for the application to read at runtime.
+      API_PORT: "${DEV_API_PORT:-8889}"
+      WEBUI_PORT: "${DEV_WEBUI_PORT:-7862}"
 
     ports:
-      - "8889:8889"  # API port
-      - "7861:7861"  # WebUI port
-    
+      - "${DEV_API_PORT:-8889}:${DEV_API_PORT:-8889}"  # API port (dev)
+      - "${DEV_WEBUI_PORT:-7862}:${DEV_WEBUI_PORT:-7862}"  # WebUI port (dev)
+
     volumes:
       - "./transcripts:/app/transcripts"
+      - "./transcripts-txt:/app/transcripts-txt"
+      - "./transcripts-srt:/app/transcripts-srt"
       - "./temp_uploads:/app/temp_uploads"
       - "./insanely_fast_whisper_api:/app/insanely_fast_whisper_api"
-      - "./tests:/app/tests"
       - "$HOME/.cache/huggingface/hub:/root/.cache/huggingface/hub"
 
     #################################################
     ## Default: Gradio WebUI without debug logging ##
     #################################################
-    # command: ["python", "-m", "insanely_fast_whisper_api.webui.cli"]
+    # command: ["python", "-m", "insanely_fast_whisper_api.webui"]
     
     ##############################################
     ## Alternative commands (uncomment to use): ##
     ##############################################
     #
     # Gradio WebUI with debug logging:
-    # command: ["python", "-m", "insanely_fast_whisper_api.webui.cli",  "--debug"]
+    command: ["python", "-m", "insanely_fast_whisper_api.webui",  "--debug"]
     #
     # API only:
     # command: ["python", "-m", "insanely_fast_whisper_api"]
@@ -55,7 +63,7 @@ services:
     # command: ["python", "-m", "insanely_fast_whisper_api", "-v"]
     #
     # Custom WebUI with extra args:
-    command: ["python", "-m", "insanely_fast_whisper_api.webui.cli", "--port", "7861", "--host", "0.0.0.0", "--debug"]
+    # command: ["python", "-m", "insanely_fast_whisper_api.webui", "--debug", "--port", "${WEBUI_PORT:-7862}", "--host", "0.0.0.0", "--model", "distil-whisper/distil-large-v3"]
     #
     # CLI transcription example:
-    # command: ["python", "-m", "insanely_fast_whisper_api.cli.cli", "transcribe", "tests/file.mp3", "--debug"]
+    # command: ["python", "-m", "insanely_fast_whisper_api.cli", "transcribe", "tests/data/conversion-test-file.mp3", "--debug"]
