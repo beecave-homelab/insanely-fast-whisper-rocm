@@ -93,3 +93,4 @@ commit_subdirectories.sh
 .vscode/settings.json
 project-overview.md.bak
 tests/data/test.txt
+.github/PULL_REQUEST/
