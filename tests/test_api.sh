@@ -10,7 +10,7 @@ echo -e "\n1. Quick transcription with default parameters (short file):"
 curl -X POST "${API_URL}/v1/audio/transcriptions" \
   -H "accept: application/json" \
   -H "Content-Type: multipart/form-data" \
-  -F "file=@tests/conversion-test-file.mp3" \
+  -F "file=@tests/data/conversion-test-file.mp3" \
   -F "model=openai/whisper-tiny"
 
 echo -e "\n2. Transcription with custom parameters (long file):"
@@ -38,7 +38,7 @@ echo -e "\n4. Quick translation with default parameters (short file):"
 curl -X POST "${API_URL}/v1/audio/translations" \
   -H "accept: application/json" \
   -H "Content-Type: multipart/form-data" \
-  -F "file=@tests/conversion-test-file.mp3"
+  -F "file=@tests/data/conversion-test-file.mp3"
 
 echo -e "\n5. Advanced translation with custom parameters (long file):"
 curl -X POST "${API_URL}/v1/audio/translations" \
@@ -62,7 +62,7 @@ echo -e "\n7. Testing with invalid model name (short file):"
 curl -X POST "${API_URL}/v1/audio/transcriptions" \
   -H "accept: application/json" \
   -H "Content-Type: multipart/form-data" \
-  -F "file=@tests/conversion-test-file.mp3" \
+  -F "file=@tests/data/conversion-test-file.mp3" \
   -F "model=invalid-model"
 
 # Performance testing with different batch sizes (long file)

@@ -4,7 +4,7 @@
 API_URL="http://localhost:8888"
 
 # Set the audio file to use
-AUDIO_FILE="tests/conversion-test-file.mp3"
+AUDIO_FILE="tests/data/conversion-test-file.mp3"
 
 # Set the model to use
 MODEL="distil-whisper/distil-large-v3"

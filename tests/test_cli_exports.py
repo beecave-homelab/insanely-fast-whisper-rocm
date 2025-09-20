@@ -14,10 +14,10 @@ from insanely_fast_whisper_api.cli.cli import cli
 class TestCliExports:
     """Test suite for CLI export functionality."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test environment."""
         self.runner = CliRunner()
-        self.audio_file = Path("tests/conversion-test-file.mp3")
+        self.audio_file = Path("tests/data/conversion-test-file.mp3")
         self.model = "openai/whisper-tiny.en"
         self.batch_size = 6
         self.output_dirs = [
@@ -35,16 +35,37 @@ class TestCliExports:
         self.audio_file.parent.mkdir(parents=True, exist_ok=True)
         self.audio_file.write_bytes(b"\x00\x00")
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up after tests."""
         self._cleanup()
 
-    def _cleanup(self):
-        """Remove created directories."""
-        for dir_path in self.output_dirs:
-            shutil.rmtree(dir_path, ignore_errors=True)
+    def _cleanup(self) -> None:
+        """Remove test artifacts while preserving .gitkeep files and directories.
 
-    def test_export_json_default(self):
+        This avoids deleting repository-tracked placeholder files like `.gitkeep`
+        in the following directories:
+        - transcripts/
+        - transcripts-txt/
+        - transcripts-srt/
+        - custom_output/
+        """
+        for dir_path in self.output_dirs:
+            if not dir_path.exists():
+                continue
+            # Remove all files/dirs inside, except `.gitkeep`.
+            for entry in dir_path.iterdir():
+                if entry.name == ".gitkeep":
+                    continue
+                if entry.is_dir():
+                    shutil.rmtree(entry, ignore_errors=True)
+                else:
+                    try:
+                        entry.unlink()
+                    except FileNotFoundError:
+                        # Entry might have been concurrently removed; safe to ignore.
+                        pass
+
+    def test_export_json_default(self) -> None:
         """Test default export to JSON."""
         with patch(
             "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
@@ -75,7 +96,7 @@ class TestCliExports:
         assert len(json_files) == 1
         assert json_files[0].stat().st_size > 0
 
-    def test_export_txt(self):
+    def test_export_txt(self) -> None:
         """Test --export-format txt."""
         with patch(
             "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
@@ -106,7 +127,7 @@ class TestCliExports:
         assert len(txt_files) == 1
         assert txt_files[0].stat().st_size > 0
 
-    def test_export_srt(self):
+    def test_export_srt(self) -> None:
         """Test --export-format srt."""
         with patch(
             "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
@@ -139,7 +160,7 @@ class TestCliExports:
         assert len(srt_files) == 1
         assert srt_files[0].stat().st_size > 0
 
-    def test_export_all(self):
+    def test_export_all(self) -> None:
         """Test --export-format all."""
         with patch(
             "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
@@ -188,7 +209,7 @@ class TestCliExports:
         assert len(srt_files) == 1
         assert srt_files[0].stat().st_size > 0
 
-    def test_custom_output_path(self):
+    def test_custom_output_path(self) -> None:
         """Test custom output path with --output."""
         output_file = Path("custom_output/result.json")
         with patch(
