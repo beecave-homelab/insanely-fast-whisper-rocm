@@ -50,7 +50,7 @@ Clean Codebase with Ruff${NC}
 # ==============================================================================
 show_help() {
   cat << EOF
-Usage: $SCRIPT_NAME [OPTIONS]
+Usage: $SCRIPT_NAME [OPTIONS] [PATHS...]
 
 Options:
   -k, --keep-going    Continue running all passes even if a pass fails.
@@ -69,6 +69,10 @@ Description:
    - Tidy imports (TID)
    - Pyupgrade with fixes (UP)
    - Future annotations (FA) [often requires --preview]
+
+Targets:
+  Provide one or more files/directories (e.g., src/ tests/cli). If omitted,
+  defaults to the current directory (.). Shell globs are supported by Bash.
 
 Notes:
   By default, the script stops on the first failing Ruff pass (set -e).
@@ -134,34 +138,34 @@ main_logic() {
   echo -e "${YELLOW}${BOLD}Ruff passes${NC}"
 
   # Pyflakes
-  run_ruff . --select F
+  run_ruff "${TARGETS[@]}" --select F
 
   # Pycodestyle
-  run_ruff . --select E,W
+  run_ruff "${TARGETS[@]}" --select E,W
 
   # Naming
-  run_ruff . --select N
+  run_ruff "${TARGETS[@]}" --select N
 
   # Import sorting (auto-fix)
-  run_ruff . --select I --fix
+  run_ruff "${TARGETS[@]}" --select I --fix
 
   # Docstrings
-  run_ruff . --select D
+  run_ruff "${TARGETS[@]}" --select D
 
   # Pydoclint (DOC)
-  run_ruff . --select DOC
+  run_ruff "${TARGETS[@]}" --select DOC
 
   # Annotations
-  run_ruff . --select ANN
+  run_ruff "${TARGETS[@]}" --select ANN
 
   # Tidy imports
-  run_ruff . --select TID
+  run_ruff "${TARGETS[@]}" --select TID
 
   # Pyupgrade (auto-fix)
-  run_ruff . --select UP --fix
+  run_ruff "${TARGETS[@]}" --select UP --fix
 
   # Future annotations (FA)
-  run_ruff . --select FA
+  run_ruff "${TARGETS[@]}" --select FA
 
   echo -e "\n${CHECK} ${BOLD}All passes completed.${NC}"
 }
@@ -172,6 +176,7 @@ main_logic() {
 main() {
   require_cmd "ruff"
 
+  TARGETS=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -k|--keep-going)
@@ -187,7 +192,9 @@ main() {
         exit 0
         ;;
       *)
-        error_exit "Invalid option: $1. Use -h for help."
+        # Treat as a path/target (supports multiple)
+        TARGETS+=("$1")
+        shift
         ;;
     esac
   done
@@ -195,6 +202,11 @@ main() {
   # Configure common Ruff args
   if [[ "${USE_PREVIEW}" == true ]]; then
     RUFF_COMMON+=(--preview)
+  fi
+
+  # Default to current directory if no targets provided
+  if [[ ${#TARGETS[@]} -eq 0 ]]; then
+    TARGETS=(.)
   fi
 
   main_logic
