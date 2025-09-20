@@ -4,9 +4,9 @@
 import json
 import shutil
 from pathlib import Path
+from unittest.mock import patch
 
 from click.testing import CliRunner
-from unittest.mock import patch
 
 from insanely_fast_whisper_api.cli.cli import cli
 
