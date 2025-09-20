@@ -29,39 +29,43 @@ from insanely_fast_whisper_api.utils import (
 class TestAppFactory:
     """Test the FastAPI application factory."""
 
-    def test_create_app_returns_fastapi_instance(self):
+    def test_create_app_returns_fastapi_instance(self) -> None:
         """Test that create_app returns a FastAPI instance."""
         app = create_app()
         assert isinstance(app, FastAPI)
 
-    def test_create_app_has_correct_metadata(self):
+    def test_create_app_has_correct_metadata(self) -> None:
         """Test that the app has correct title, description, and version."""
         app = create_app()
         assert app.title == "Insanely Fast Whisper API"
         assert "FastAPI wrapper" in app.description
-        assert app.version == "0.9.0"
+        from insanely_fast_whisper_api import __version__ as pkg_version
 
-    def test_create_app_has_routes(self):
+        assert app.version == pkg_version
+
+    def test_create_app_has_routes(self) -> None:
         """Test that the app includes the expected routes."""
         app = create_app()
         route_paths = [route.path for route in app.routes]
         assert "/v1/audio/transcriptions" in route_paths
         assert "/v1/audio/translations" in route_paths
 
-    def test_create_app_has_middleware(self):
+    def test_create_app_has_middleware(self) -> None:
         """Test that the app has middleware configured."""
         app = create_app()
         # Check that middleware is present (middleware stack is not empty)
         assert len(app.user_middleware) > 0
 
-    def test_app_metadata(self):
+    def test_app_metadata(self) -> None:
         """Test that the app has correct title, description, and version."""
         assert app.title == "Insanely Fast Whisper API"
         assert (
             "A FastAPI wrapper around the insanely-fast-whisper tool."
             in app.description
         )
-        assert app.version == "0.9.0"
+        from insanely_fast_whisper_api import __version__ as PKG_VERSION
+
+        assert app.version == PKG_VERSION
 
 
 class TestDependencies:
@@ -69,7 +73,7 @@ class TestDependencies:
 
     @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
     @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
-    def test_get_asr_pipeline_creates_pipeline(self, mock_pipeline, mock_backend):
+    def test_get_asr_pipeline_creates_pipeline(self, mock_pipeline, mock_backend) -> None:
         """Test that get_asr_pipeline creates a properly configured pipeline."""
         # Setup mocks
         mock_backend_instance = Mock()
@@ -99,7 +103,7 @@ class TestDependencies:
         mock_pipeline.assert_called_once_with(asr_backend=mock_backend_instance)
         assert result == mock_pipeline_instance
 
-    def test_get_file_handler_returns_file_handler(self):
+    def test_get_file_handler_returns_file_handler(self) -> None:
         """Test that get_file_handler returns a FileHandler instance."""
         result = get_file_handler()
         assert isinstance(result, FileHandler)
@@ -108,7 +112,7 @@ class TestDependencies:
 class TestResponseFormatter:
     """Test response formatting strategies."""
 
-    def test_format_transcription_json_response(self):
+    def test_format_transcription_json_response(self) -> None:
         """Test formatting transcription result as JSON."""
         result = {"text": "Hello world", "metadata": {"duration": 2.5}}
 
@@ -118,7 +122,7 @@ class TestResponseFormatter:
         assert response.headers["content-type"] == "application/json"
         # Note: JSONResponse content is accessible via response.body
 
-    def test_format_transcription_text_response(self):
+    def test_format_transcription_text_response(self) -> None:
         """Test formatting transcription result as plain text."""
         result = {"text": "Hello world", "metadata": {"duration": 2.5}}
 
@@ -128,7 +132,7 @@ class TestResponseFormatter:
         assert response.headers["content-type"] == "text/plain; charset=utf-8"
         assert response.body == b"Hello world"
 
-    def test_format_translation_json_response(self):
+    def test_format_translation_json_response(self) -> None:
         """Test formatting translation result as JSON."""
         result = {
             "transcription": {"text": "Hello world"},
@@ -140,7 +144,7 @@ class TestResponseFormatter:
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/json"
 
-    def test_format_translation_text_response(self):
+    def test_format_translation_text_response(self) -> None:
         """Test formatting translation result as plain text."""
         result = {
             "transcription": {"text": "Hello world"},
@@ -153,7 +157,7 @@ class TestResponseFormatter:
         assert response.headers["content-type"] == "text/plain; charset=utf-8"
         assert response.body == b"Hello world"
 
-    def test_format_translation_text_response_missing_transcription(self):
+    def test_format_translation_text_response_missing_transcription(self) -> None:
         """Test formatting translation result when transcription key is missing."""
         result = {"metadata": {"duration": 2.5}}
 
@@ -166,7 +170,7 @@ class TestResponseFormatter:
 class TestFileHandler:
     """Test file handling operations."""
 
-    def test_file_handler_initialization(self, tmp_path):
+    def test_file_handler_initialization(self, tmp_path) -> None:
         """Test FileHandler initialization creates upload directory."""
         upload_dir = str(tmp_path / "test_uploads")
         handler = FileHandler(upload_dir=upload_dir)
@@ -174,7 +178,7 @@ class TestFileHandler:
         assert handler.upload_dir == upload_dir
         assert os.path.exists(upload_dir)
 
-    def test_validate_audio_file_valid_format(self):
+    def test_validate_audio_file_valid_format(self) -> None:
         """Test validation passes for supported audio formats."""
         handler = FileHandler()
 
@@ -185,7 +189,7 @@ class TestFileHandler:
         # Should not raise exception
         handler.validate_audio_file(mock_file)
 
-    def test_validate_audio_file_invalid_format(self):
+    def test_validate_audio_file_invalid_format(self) -> None:
         """Test validation fails for unsupported formats."""
         handler = FileHandler()
 
@@ -202,7 +206,7 @@ class TestFileHandler:
         assert exc_info.value.status_code == 400
         assert "Unsupported file format" in str(exc_info.value.detail)
 
-    def test_save_upload_creates_file(self, tmp_path):
+    def test_save_upload_creates_file(self, tmp_path) -> None:
         """Test saving uploaded file creates file with unique name."""
         upload_dir = str(tmp_path / "test_uploads")
         handler = FileHandler(upload_dir=upload_dir)
@@ -225,7 +229,7 @@ class TestFileHandler:
             content = f.read()
         assert content == b"test audio content"
 
-    def test_cleanup_removes_file(self, tmp_path):
+    def test_cleanup_removes_file(self, tmp_path) -> None:
         """Test cleanup removes the specified file."""
         upload_dir = str(tmp_path / "test_uploads")
         handler = FileHandler(upload_dir=upload_dir)
@@ -244,7 +248,7 @@ class TestFileHandler:
         # Verify file is removed
         assert not test_file.exists()
 
-    def test_cleanup_handles_missing_file(self):
+    def test_cleanup_handles_missing_file(self) -> None:
         """Test cleanup gracefully handles missing files."""
         handler = FileHandler()
 
@@ -255,7 +259,7 @@ class TestFileHandler:
 class TestMiddleware:
     """Test middleware functionality."""
 
-    def test_request_timing_middleware_logs_requests(self):
+    def test_request_timing_middleware_logs_requests(self) -> None:
         """Test that request timing middleware logs request information."""
         app = create_app()
         client = TestClient(app)

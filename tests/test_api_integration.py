@@ -15,9 +15,18 @@ from insanely_fast_whisper_api.api.app import create_app
 
 
 @pytest.fixture
-def client():
-    """Create a test client for the refactored API."""
+def client(tmp_path):
+    """Create a test client for the refactored API with temp upload dir."""
     app = create_app()
+
+    # Override FileHandler to use a temp directory to avoid permission issues
+    from insanely_fast_whisper_api.api.dependencies import get_file_handler
+    from insanely_fast_whisper_api.utils import FileHandler
+
+    app.dependency_overrides[get_file_handler] = (
+        lambda: FileHandler(upload_dir=str(tmp_path))
+    )
+
     return TestClient(app)
 
 

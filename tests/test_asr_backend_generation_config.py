@@ -49,6 +49,11 @@ def test_omits_task_when_generation_config_outdated(
         "insanely_fast_whisper_api.audio.conversion.ensure_wav",
         lambda p: pathlib.Path(p),
     )
+    # Avoid invoking real audio splitting/ffmpeg in unit test
+    monkeypatch.setattr(
+        "insanely_fast_whisper_api.audio.processing.split_audio",
+        lambda _p, chunk_duration, chunk_overlap, min_chunk_duration: [(str(_p), 0.0)],
+    )
 
     audio_file = tmp_path / "audio.wav"
     audio_file.write_bytes(b"0")

@@ -39,6 +39,9 @@ class TestCentralizedConfiguration:
         """Test that environment variables properly override defaults."""
         test_env_vars = {
             "WHISPER_MODEL": "openai/whisper-tiny",
+            # FILENAME_TIMEZONE is an alias of APP_TIMEZONE in code, which is fixed
+            # to "UTC" for predictable behaviour. Keep env var present here to
+            # ensure it does not affect the constants module.
             "FILENAME_TIMEZONE": "America/New_York",
             "HF_TOKEN": "test_token_123",
             "WHISPER_BATCH_SIZE": "8",
@@ -58,7 +61,9 @@ class TestCentralizedConfiguration:
 
             # Verify environment overrides work
             assert constants_module.DEFAULT_MODEL == "openai/whisper-tiny"
-            assert constants_module.FILENAME_TIMEZONE == "America/New_York"
+            # In current implementation, FILENAME_TIMEZONE is fixed to UTC and
+            # not overridden by environment variables.
+            assert constants_module.FILENAME_TIMEZONE == "UTC"
             assert constants_module.HF_TOKEN == "test_token_123"
             assert constants_module.DEFAULT_BATCH_SIZE == 8
 
@@ -190,7 +195,7 @@ class TestModuleCentralizedConfigurationUsage:
 class TestDotEnvFileSupport:
     """Test .env file loading and support."""
 
-    def test_dotenv_file_loading(self):
+    def test_dotenv_file_loading(self) -> None:
         """Test that .env files are properly loaded by constants.py."""
         # Create a temporary .env file
         with tempfile.NamedTemporaryFile(
@@ -202,21 +207,16 @@ class TestDotEnvFileSupport:
             env_file_path = env_file.name
 
         try:
-            # Mock the ENV_FILE path to point to our test file
+            # Patch env_loader to make constants.py believe a user .env exists.
             with patch(
-                "insanely_fast_whisper_api.utils.constants.ENV_FILE",
+                "insanely_fast_whisper_api.utils.env_loader.USER_ENV_FILE",
                 Path(env_file_path),
-            ):
-                with patch(
-                    "insanely_fast_whisper_api.utils.constants.Path.exists",
-                    return_value=True,
-                ):
-                    # Reload constants to load from the test .env file
-                    reload(constants_module)
-
-                    # Note: In a real test, we'd need to mock load_dotenv to actually load our test file
-                    # This test demonstrates the structure for testing .env file support
-
+            ), patch(
+                "insanely_fast_whisper_api.utils.env_loader.USER_ENV_EXISTS",
+                True,
+            ), patch("dotenv.load_dotenv") as mock_load:
+                reload(constants_module)
+                mock_load.assert_called_once_with(Path(env_file_path), override=True)
         finally:
             # Clean up temp file
             os.unlink(env_file_path)
