@@ -28,5 +28,6 @@ __all__ = [
     "get_audio_duration",
     "split_audio",
     "cleanup_temp_files",
-    "merge_chunk_results", "__version__",
+    "merge_chunk_results",
+    "__version__",
 ]
