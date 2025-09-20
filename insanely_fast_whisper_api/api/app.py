@@ -50,7 +50,7 @@ def create_app() -> FastAPI:
 
     # Configure startup event
     @app.on_event("startup")
-    async def startup_event():
+    async def startup_event() -> None:
         """Initialize application state and log configuration on startup.
 
         This function runs when the FastAPI application starts up. It logs important

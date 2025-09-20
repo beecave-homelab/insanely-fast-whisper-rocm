@@ -48,7 +48,7 @@ def get_asr_pipeline(
     # if this function is used incorrectly as a dependency with `Form` params.  Make
     # the function robust by extracting the `.default` attribute when a parameter is
     # a FastAPI param instance.
-    def _normalize(value, default=None):
+    def _normalize(value: object, default: object | None = None) -> object:
         # Detect fastapi.params.Param types without importing fastapi here.
         if hasattr(value, "__class__") and value.__class__.__module__.startswith(
             "fastapi."
@@ -74,7 +74,11 @@ def get_asr_pipeline(
 # Setting it explicitly keeps the public behaviour unchanged while improving
 # testability.
 def _get_asr_pipeline_unwrapped() -> NoReturn:
-    """Placeholder for tests to monkeypatch. Returns WhisperPipeline when patched."""
+    """Placeholder for tests to monkeypatch. Returns WhisperPipeline when patched.
+
+    Raises:
+        RuntimeError: Always raised unless this function is monkeypatched in tests.
+    """
     raise RuntimeError("This placeholder should be monkeypatched in tests.")
 
 
@@ -97,7 +101,11 @@ def get_file_handler() -> FileHandler:
 # Setting it explicitly keeps the public behaviour unchanged while improving
 # testability.
 def _get_file_handler_unwrapped() -> NoReturn:
-    """Placeholder for tests to monkeypatch. Returns FileHandler when patched."""
+    """Placeholder for tests to monkeypatch. Returns FileHandler when patched.
+
+    Raises:
+        RuntimeError: Always raised unless this function is monkeypatched in tests.
+    """
     raise RuntimeError("This placeholder should be monkeypatched in tests.")
 
 
