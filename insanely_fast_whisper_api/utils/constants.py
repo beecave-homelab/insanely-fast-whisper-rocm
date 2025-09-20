@@ -10,7 +10,7 @@ This module handles:
 - Loading configuration from `.env` files using `load_dotenv()`
 - Defining all environment variables with appropriate defaults
 - Type conversion for boolean, integer, and float environment variables
-- Token fallback logic (HF_TOKEN -> HUGGINGFACE_TOKEN)
+- Hugging Face token loading via a single env var: HF_TOKEN
 - Configuration file discovery in standard locations
 
 Usage Guidelines:
@@ -19,10 +19,10 @@ For Application Modules:
 All application modules should import constants from this module rather than
 accessing environment variables directly:
 
-    # ✅ Correct - Use centralized constants
+    # Correct - Use centralized constants
     from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL, HF_TOKEN
 
-    # ❌ Incorrect - Direct environment access bypasses centralized config
+    # Incorrect - Direct environment access bypasses centralized config
     model = os.getenv("WHISPER_MODEL", "some-default")
 
 For Adding New Configuration:
@@ -129,8 +129,8 @@ debug_print(
     f"{os.getenv('WHISPER_BATCH_SIZE')}"
 )
 debug_print(
-    "constants.py: HUGGINGFACE_TOKEN from os.environ: "
-    f"{'SET' if os.getenv('HUGGINGFACE_TOKEN') else 'NOT SET'}"
+    "constants.py: HF_TOKEN from os.environ: "
+    f"{'SET' if os.getenv('HF_TOKEN') else 'NOT SET'}"
 )
 debug_print(f"constants.py: Final LOG_LEVEL from os.environ: {os.getenv('LOG_LEVEL')}")
 
@@ -172,9 +172,7 @@ DEFAULT_PROGRESS_GROUP_SIZE = int(os.getenv("PROGRESS_GROUP_SIZE", "4"))
 DEFAULT_DIARIZATION_MODEL = os.getenv(
     "WHISPER_DIARIZATION_MODEL", "pyannote/speaker-diarization"
 )
-HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv(
-    "HUGGINGFACE_TOKEN"
-)  # Support both token names
+HF_TOKEN = os.getenv("HF_TOKEN")
 MIN_SPEAKERS = 1  # Minimum number of speakers for diarization
 MAX_SPEAKERS = 10  # Maximum number of speakers for diarization
 
@@ -226,6 +224,13 @@ API_DESCRIPTION = "A FastAPI wrapper around the insanely-fast-whisper tool."
 API_HOST = os.getenv("API_HOST", "0.0.0.0")  # API server host
 API_PORT = int(os.getenv("API_PORT", "8000"))  # API server port
 DEFAULT_RESPONSE_FORMAT = "json"
+
+# WebUI configuration
+# Defaults mirror the Click defaults used by the WebUI CLI.
+# These allow the WebUI to pick up host/port from environment when flags are not
+# provided on the command line.
+WEBUI_HOST = os.getenv("WEBUI_HOST", "0.0.0.0")  # WebUI server host
+WEBUI_PORT = int(os.getenv("WEBUI_PORT", "7860"))  # WebUI server port
 
 # API version (tests expect a specific string). Prefer package metadata but
 # fall back to the expected default for local/test runs.

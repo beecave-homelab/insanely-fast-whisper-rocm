@@ -8,6 +8,7 @@ import sys
 
 import click
 
+from insanely_fast_whisper_api.utils import constants
 from insanely_fast_whisper_api.utils.constants import (
     DEFAULT_DEMUCS,
     DEFAULT_MODEL,
@@ -25,12 +26,12 @@ logger = logging.getLogger("insanely_fast_whisper_api.webui.app")
 @click.command()
 @click.option(
     "--host",
-    default="0.0.0.0",
+    default=constants.WEBUI_HOST,
     help="Host to bind the server to. Default is 0.0.0.0 (all interfaces).",
 )
 @click.option(
     "--port",
-    default=7860,
+    default=constants.WEBUI_PORT,
     type=int,
     help="Port to bind the server to. Default is 7860.",
 )

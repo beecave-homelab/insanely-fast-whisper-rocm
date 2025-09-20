@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)  # Use __name__ for module-specific logger
 
 # Environment variable names
 ENV_VAR_MODEL_NAME = "WHISPER_MODEL"
-ENV_VAR_HF_TOKEN = "HUGGINGFACE_TOKEN"
+ENV_VAR_HF_TOKEN = "HF_TOKEN"
 
 # Note: DEFAULT_MODEL and HF_TOKEN are imported from constants.py for
 # centralized configuration
@@ -59,8 +59,9 @@ def download_model_if_needed(
                                  then DEFAULT_MODEL.
         force (bool): If True, re-downloads the model even if it exists in the
                       cache.
-        hf_token (str | None): Hugging Face API token. If None, tries to use
-                               HUGGINGFACE_TOKEN env var.
+        hf_token (str | None): Hugging Face API token. If None, the
+                               huggingface_hub library may use the HF_TOKEN
+                               environment variable if set.
                                The huggingface_hub library handles token
                                precedence (explicit > env var).
         cache_dir (str | Path | None): Path to the Hugging Face cache directory.
@@ -142,8 +143,7 @@ def download_model_if_needed(
             if e.response.status_code == 401:
                 log.error(
                     "Authentication failed. This could be a private/gated model. "
-                    "Ensure HUGGINGFACE_TOKEN is set correctly or you have "
-                    "access rights."
+                    "Ensure HF_TOKEN is set correctly or you have access rights."
                 )
             elif e.response.status_code == 404:
                 log.error(
