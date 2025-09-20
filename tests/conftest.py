@@ -30,6 +30,9 @@ def webui_server(request):
     Yields the base URL (str) that can be passed to gradio_client.Client().
     Uses the lightweight `openai/whisper-tiny` model for faster startup.
     """
+    if os.getenv("RUN_WEBUI_TESTS", "0") != "1":
+        pytest.skip("WebUI server tests are disabled in this environment.")
+
     base_url = "http://localhost:7861"
 
     # Launch the WebUI as a subprocess

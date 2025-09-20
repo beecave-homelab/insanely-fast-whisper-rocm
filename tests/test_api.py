@@ -39,7 +39,7 @@ def mock_asr_pipeline() -> Iterator[MagicMock]:
 
 
 @pytest.fixture
-def client(tmp_path: Path) -> Iterator[TestClient]:
+def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """Create a TestClient overriding FileHandler to use a temp dir.
 
     Args:
@@ -48,6 +48,14 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
     Yields:
         TestClient: Configured client instance.
     """
+    monkeypatch.setattr(
+        "insanely_fast_whisper_api.api.app.download_model_if_needed",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "insanely_fast_whisper_api.core.asr_backend.HuggingFaceBackend._validate_device",
+        lambda self: None,
+    )
     app.dependency_overrides[get_file_handler] = (
         lambda: FileHandler(upload_dir=str(tmp_path))
     )
