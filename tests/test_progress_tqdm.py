@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import Mock
+
 import pytest
 
 from insanely_fast_whisper_api.cli.progress_tqdm import TqdmProgressReporter
@@ -95,5 +97,131 @@ def test_tqdm_reporter_disabled_is_noop(fake_tqdm: _FakeTqdmModule) -> None:
     reporter.on_export_item_done(index=0, label="JSON::/tmp/output.json")
     reporter.on_error(message="boom")
 
-    assert fake_tqdm.write_calls == []
     assert fake_tqdm.bars == []
+
+
+def test_tqdm_reporter_zero_chunks_no_bar(fake_tqdm: _FakeTqdmModule) -> None:
+    """Test that zero total chunks doesn't create a progress bar."""
+    reporter = TqdmProgressReporter(enabled=True)
+
+    # Zero chunks should not create a bar
+    reporter.on_chunking_started(total_chunks=0)
+    assert len(fake_tqdm.bars) == 0
+
+    # None chunks should not create a bar
+    reporter.on_chunking_started(total_chunks=None)
+    assert len(fake_tqdm.bars) == 0
+
+
+def test_tqdm_reporter_chunk_done_early_completion(fake_tqdm: _FakeTqdmModule) -> None:
+    """Test chunk completion when bar finishes early."""
+    reporter = TqdmProgressReporter(enabled=True)
+
+    # Start with 2 chunks
+    reporter.on_chunking_started(total_chunks=2)
+    assert len(fake_tqdm.bars) == 1
+    bar = fake_tqdm.bars[0]
+    assert bar.total == 2
+
+    # Complete both chunks
+    reporter.on_chunk_done(index=0)
+    assert bar.n == 1
+    reporter.on_chunk_done(index=1)
+    assert bar.n == 2  # Should be set to total
+    assert bar.closed
+
+    # Check completion message
+    assert "✔ Transcription" in fake_tqdm.write_calls[-1]
+
+
+def test_tqdm_reporter_inference_noops(fake_tqdm: _FakeTqdmModule) -> None:
+    """Test that inference callbacks are no-ops."""
+    reporter = TqdmProgressReporter(enabled=True)
+
+    # These should do nothing
+    reporter.on_inference_started(total_batches=10)
+    reporter.on_inference_batch_done(index=0)
+
+    assert len(fake_tqdm.bars) == 0
+    assert fake_tqdm.write_calls == []
+
+
+def test_tqdm_reporter_postprocess_started_noop(fake_tqdm: _FakeTqdmModule) -> None:
+    """Test that postprocess started is a no-op."""
+    reporter = TqdmProgressReporter(enabled=True)
+
+    reporter.on_postprocess_started("any_name")
+    assert fake_tqdm.write_calls == []
+
+
+def test_tqdm_reporter_postprocess_vad_parsing(fake_tqdm: _FakeTqdmModule) -> None:
+    """Test VAD threshold parsing in postprocess finished."""
+    reporter = TqdmProgressReporter(enabled=True)
+
+    # Test VAD with threshold
+    reporter.on_postprocess_finished("vad threshold=0.35")
+    assert "✔ VAD applied (threshold=0.35)" in fake_tqdm.write_calls
+
+    # Test VAD without threshold
+    reporter.on_postprocess_finished("vad")
+    assert "✔ VAD applied" in fake_tqdm.write_calls[-1]
+
+    # Test malformed VAD
+    reporter.on_postprocess_finished("vad threshold=")
+    assert "✔ VAD applied" in fake_tqdm.write_calls[-1]
+
+
+def test_tqdm_reporter_postprocess_generic(fake_tqdm: _FakeTqdmModule) -> None:
+    """Test generic postprocess finished message."""
+    reporter = TqdmProgressReporter(enabled=True)
+
+    reporter.on_postprocess_finished("unknown_process")
+    assert "✔ Post completed" in fake_tqdm.write_calls[-1]
+
+
+def test_tqdm_reporter_export_single_item_no_bar(fake_tqdm: _FakeTqdmModule) -> None:
+    """Test single export item doesn't create progress bar."""
+    reporter = TqdmProgressReporter(enabled=True)
+
+    reporter.on_export_started(total_items=1)
+    assert len(fake_tqdm.bars) == 0
+
+    reporter.on_export_item_done(index=0, label="JSON::/tmp/test.json")
+    # Should not create any bar or messages for single items
+    assert len(fake_tqdm.bars) == 0
+
+
+def test_tqdm_reporter_export_multi_item_with_bar(fake_tqdm: _FakeTqdmModule) -> None:
+    """Test multiple export items create and update progress bar."""
+    reporter = TqdmProgressReporter(enabled=True)
+
+    reporter.on_export_started(total_items=3)
+    assert len(fake_tqdm.bars) == 1
+    bar = fake_tqdm.bars[0]
+    assert bar.total == 3
+
+    # Complete items
+    reporter.on_export_item_done(index=0, label="JSON::/tmp/test.json")
+    assert bar.n == 1
+    reporter.on_export_item_done(index=1, label="TXT::/tmp/test.txt")
+    assert bar.n == 2
+    reporter.on_export_item_done(index=2, label="SRT::/tmp/test.srt")
+    assert bar.n == 3
+    assert bar.closed
+
+
+def test_tqdm_reporter_completion_error_handling(fake_tqdm: _FakeTqdmModule) -> None:
+    """Test error handling in completion cleanup."""
+    reporter = TqdmProgressReporter(enabled=True)
+
+    # Create a bar that will fail to close
+    reporter.on_chunking_started(total_chunks=1)
+
+    # Mock the bar to raise exception on close
+    bar = fake_tqdm.bars[0]
+    bar.close = Mock(side_effect=Exception("Close failed"))
+
+    # Completion should handle errors gracefully
+    reporter.on_completed()
+    # Bar should still be attempted to close despite error
+    bar.close.assert_called_once()

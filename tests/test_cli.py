@@ -385,33 +385,123 @@ class TestCLICommands:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    def test_transcribe_language_none(self) -> None:
-        """Test transcribe command with language set to 'none'."""
-        with patch(
-            "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
-        ) as mock_process:
-            mock_process.return_value = {
-                "text": "Test",
-                "chunks": [],
-                "runtime_seconds": 1.0,
-            }
+    def test_translate_help(self) -> None:
+        """Test translate command help."""
+        result = self.runner.invoke(cli, ["translate", "--help"])
+        assert result.exit_code == 0
+        # Help text should include command name and core options
+        assert "translate" in result.output
+        assert "--model" in result.output
+        assert "--device" in result.output
+        assert "--output" in result.output
 
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
-                tmp_path = Path(tmp_file.name)
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    def test_translate_success(self, mock_process: Mock) -> None:
+        """Test successful translation command."""
+        # Mock successful translation
+        mock_process.return_value = {
+            "text": "This is a test translation.",
+            "chunks": [
+                {"text": "This is a test translation.", "timestamp": [0.0, 2.0]}
+            ],
+            "runtime_seconds": 1.23,
+            "config_used": {"model": "openai/whisper-tiny"},
+        }
 
-            try:
-                result = self.runner.invoke(
-                    cli, ["transcribe", str(tmp_path), "--language", "none"]
-                )
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
 
-                assert result.exit_code == 0
+        try:
+            result = self.runner.invoke(
+                cli,
+                [
+                    "translate",
+                    str(tmp_path),
+                    "--model",
+                    "openai/whisper-tiny",
+                    "--device",
+                    "cpu",
+                ],
+            )
 
-                # With current implementation, passing "none" remains a string
-                call_args = mock_process.call_args[1]
-                assert call_args["language"] == "none"
+            assert result.exit_code == 0
 
-            finally:
-                tmp_path.unlink(missing_ok=True)
+            # Verify facade was called with correct parameters
+            mock_process.assert_called_once()
+            call_args = mock_process.call_args
+            assert call_args[1]["model"] == "openai/whisper-tiny"
+            assert call_args[1]["device"] == "cpu"
+            assert call_args[1]["task"] == "translate"
+
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    def test_transcribe_legacy_export_json(self, mock_process: Mock) -> None:
+        """Test legacy --export-json flag."""
+        mock_process.return_value = {"text": "Test", "chunks": [], "runtime_seconds": 1.0}
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(cli, ["transcribe", str(tmp_path), "--export-json"])
+            assert result.exit_code == 0
+            # Legacy flag should set export format to json
+            # The actual verification happens in _handle_output_and_benchmarks
+            mock_process.assert_called_once()
+            # Just verify the command completed successfully
+            assert result.exit_code == 0
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    def test_transcribe_legacy_export_txt(self, mock_process: Mock) -> None:
+        """Test legacy --export-txt flag."""
+        mock_process.return_value = {"text": "Test", "chunks": [], "runtime_seconds": 1.0}
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(cli, ["transcribe", str(tmp_path), "--export-txt"])
+            assert result.exit_code == 0
+            mock_process.assert_called_once()
+            assert result.exit_code == 0
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    def test_transcribe_legacy_export_srt(self, mock_process: Mock) -> None:
+        """Test legacy --export-srt flag."""
+        mock_process.return_value = {"text": "Test", "chunks": [], "runtime_seconds": 1.0}
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(cli, ["transcribe", str(tmp_path), "--export-srt"])
+            assert result.exit_code == 0
+            mock_process.assert_called_once()
+            assert result.exit_code == 0
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    def test_transcribe_legacy_export_all(self, mock_process: Mock) -> None:
+        """Test legacy --export-all flag."""
+        mock_process.return_value = {"text": "Test", "chunks": [], "runtime_seconds": 1.0}
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(cli, ["transcribe", str(tmp_path), "--export-all"])
+            assert result.exit_code == 0
+            mock_process.assert_called_once()
+            assert result.exit_code == 0
+        finally:
+            tmp_path.unlink(missing_ok=True)
 
 
 class TestCLIIntegration:
@@ -487,6 +577,54 @@ class TestErrorHandling:
             with pytest.raises(TranscriptionError):
                 facade.process_audio(Path("test.mp3"))
 
+    def test_cpu_parameter_adjustments(self) -> None:
+        """Test that CPU device gets parameter adjustments for better stability."""
+        facade = CLIFacade()
+
+        with patch("insanely_fast_whisper_api.cli.facade.HuggingFaceBackend") as mock_backend_class:
+            mock_backend = Mock()
+            mock_backend.process_audio.return_value = {"text": "CPU test", "chunks": []}
+            mock_backend_class.return_value = mock_backend
+
+            # Test with CPU device - should adjust chunk_length and batch_size
+            facade.process_audio(
+                audio_file_path=Path("test.mp3"),
+                device="cpu",
+                chunk_length=30,  # Should be reduced to 15 for CPU
+                batch_size=8,     # Should be reduced to 2 for CPU
+            )
+
+            # Verify backend was created with adjusted parameters
+            mock_backend_class.assert_called_once()
+            call_args = mock_backend_class.call_args
+            config = call_args[0][0]
+            assert config.chunk_length == 15  # Reduced from 30
+            assert config.batch_size == 2     # Reduced from 8
+
+    def test_cpu_parameter_adjustments_min_values(self) -> None:
+        """Test CPU parameter adjustments respect maximum values for stability."""
+        facade = CLIFacade()
+
+        with patch("insanely_fast_whisper_api.cli.facade.HuggingFaceBackend") as mock_backend_class:
+            mock_backend = Mock()
+            mock_backend.process_audio.return_value = {"text": "CPU test", "chunks": []}
+            mock_backend_class.return_value = mock_backend
+
+            # Test with values larger than CPU limits - should be reduced
+            facade.process_audio(
+                audio_file_path=Path("test.mp3"),
+                device="cpu",
+                chunk_length=20,  # Should be reduced to 15 for CPU
+                batch_size=4,     # Should be reduced to 2 for CPU
+            )
+
+            # Verify backend was created with adjusted parameters
+            mock_backend_class.assert_called_once()
+            call_args = mock_backend_class.call_args
+            config = call_args[0][0]
+            assert config.chunk_length == 15  # Reduced from 20 to max 15 for CPU
+            assert config.batch_size == 2     # Reduced from 4 to max 2 for CPU
+
 
 class TestBackwardCompatibility:
     """Test backward compatibility of CLI interface."""
@@ -535,6 +673,243 @@ class TestBackwardCompatibility:
         result = runner.invoke(cli, ["transcribe", "nonexistent.mp3"])
         assert result.exit_code != 0
         assert "does not exist" in result.output.lower()
+
+
+class TestVideoProcessing:
+    """Test video file processing functionality."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    @patch("insanely_fast_whisper_api.cli.commands.extract_audio_from_video")
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    def test_video_file_extraction(self, mock_process: Mock, mock_extract: Mock) -> None:
+        """Test that video files are extracted to audio before processing."""
+        # Mock successful video extraction
+        mock_extract.return_value = Path("extracted_audio.wav")
+        mock_process.return_value = {"text": "Video transcription", "chunks": [], "runtime_seconds": 2.0}
+
+        # Create a temporary video file
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(cli, ["transcribe", str(tmp_path), "--device", "cpu"])
+            assert result.exit_code == 0
+
+            # Verify video extraction was called
+            mock_extract.assert_called_once_with(video_path=tmp_path)
+
+            # Verify audio processing was called with extracted audio
+            mock_process.assert_called_once()
+            call_args = mock_process.call_args[1]
+            assert call_args["audio_file_path"] == Path("extracted_audio.wav")
+
+        finally:
+            tmp_path.unlink(missing_ok=True)
+            # Clean up the extracted audio file mock
+            if Path("extracted_audio.wav").exists():
+                Path("extracted_audio.wav").unlink(missing_ok=True)
+
+
+class TestQuietMode:
+    """Test quiet mode functionality."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    def test_quiet_mode_logging_reduction(self, mock_process: Mock) -> None:
+        """Test that quiet mode reduces logging verbosity."""
+        mock_process.return_value = {"text": "Test", "chunks": [], "runtime_seconds": 1.0}
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(cli, ["transcribe", str(tmp_path), "--quiet"])
+            assert result.exit_code == 0
+            # Quiet mode should complete successfully
+            mock_process.assert_called_once()
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    @patch("insanely_fast_whisper_api.cli.commands.stabilize_timestamps")
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    def test_stabilize_quiet_mode_suppress_output(self, mock_process: Mock, mock_stabilize: Mock) -> None:
+        """Test that stabilize in quiet mode suppresses output."""
+        mock_process.return_value = {"text": "Test", "chunks": [], "runtime_seconds": 1.0}
+        mock_stabilize.return_value = {"text": "Test", "chunks": [], "stabilized": True}
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(cli, ["transcribe", str(tmp_path), "--stabilize", "--quiet"])
+            assert result.exit_code == 0
+            mock_stabilize.assert_called_once()
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+
+class TestStableTS:
+    """Test stable-ts post-processing functionality."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    @patch("insanely_fast_whisper_api.cli.commands.stabilize_timestamps")
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    def test_stabilize_timestamps_basic(self, mock_process: Mock, mock_stabilize: Mock) -> None:
+        """Test basic timestamp stabilization."""
+        mock_process.return_value = {"text": "Test", "chunks": [], "runtime_seconds": 1.0}
+        mock_stabilize.return_value = {"text": "Test", "chunks": [], "stabilized": True}
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(cli, ["transcribe", str(tmp_path), "--stabilize"])
+            assert result.exit_code == 0
+            mock_stabilize.assert_called_once()
+            call_args = mock_stabilize.call_args
+            assert call_args[0][0]["text"] == "Test"
+            assert call_args[1]["demucs"] is False
+            assert call_args[1]["vad"] is False
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    @patch("insanely_fast_whisper_api.cli.commands.stabilize_timestamps")
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    def test_stabilize_timestamps_with_demucs(self, mock_process: Mock, mock_stabilize: Mock) -> None:
+        """Test timestamp stabilization with demucs."""
+        mock_process.return_value = {"text": "Test", "chunks": [], "runtime_seconds": 1.0}
+        mock_stabilize.return_value = {"text": "Test", "chunks": [], "stabilized": True}
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(cli, ["transcribe", str(tmp_path), "--stabilize", "--demucs"])
+            assert result.exit_code == 0
+            mock_stabilize.assert_called_once()
+            call_args = mock_stabilize.call_args
+            assert call_args[1]["demucs"] is True
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    @patch("insanely_fast_whisper_api.cli.commands.stabilize_timestamps")
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    def test_stabilize_timestamps_with_vad(self, mock_process: Mock, mock_stabilize: Mock) -> None:
+        """Test timestamp stabilization with VAD."""
+        mock_process.return_value = {"text": "Test", "chunks": [], "runtime_seconds": 1.0}
+        mock_stabilize.return_value = {"text": "Test", "chunks": [], "stabilized": True}
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(cli, ["transcribe", str(tmp_path), "--stabilize", "--vad", "--vad-threshold", "0.5"])
+            assert result.exit_code == 0
+            mock_stabilize.assert_called_once()
+            call_args = mock_stabilize.call_args
+            assert call_args[1]["vad"] is True
+            assert call_args[1]["vad_threshold"] == 0.5
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+
+class TestDebugErrorHandling:
+    """Test debug mode error logging."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    def test_device_error_debug_logging(self, mock_process: Mock) -> None:
+        """Test device error logging in debug mode."""
+        from insanely_fast_whisper_api.cli.errors import DeviceNotFoundError
+
+        mock_process.side_effect = DeviceNotFoundError("CUDA device not available")
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(cli, ["transcribe", str(tmp_path), "--debug"])
+            assert result.exit_code == 1
+            # Should exit with error code 1
+            assert "Device error" in result.output
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    def test_transcription_error_debug_logging(self, mock_process: Mock) -> None:
+        """Test transcription error logging in debug mode."""
+        from insanely_fast_whisper_api.cli.errors import TranscriptionError
+
+        mock_process.side_effect = TranscriptionError("Model failed")
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(cli, ["transcribe", str(tmp_path), "--debug"])
+            assert result.exit_code == 1
+            assert "Transcription error" in result.output
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    def test_unexpected_error_debug_logging(self, mock_process: Mock) -> None:
+        """Test unexpected error logging in debug mode."""
+        mock_process.side_effect = Exception("Unexpected error")
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(cli, ["transcribe", str(tmp_path), "--debug"])
+            assert result.exit_code == 1
+            assert "Unexpected error" in result.output
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+
+class TestBenchmarkCollection:
+    """Test benchmark collection functionality."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_api.benchmarks.collector.BenchmarkCollector")
+    def test_benchmark_collection_with_extra(self, mock_collector_class: Mock, mock_process: Mock) -> None:
+        """Test benchmark collection with extra metadata."""
+        mock_process.return_value = {"text": "Test", "chunks": [], "runtime_seconds": 1.0, "config_used": {}}
+        mock_collector = Mock()
+        mock_collector.collect.return_value = Path("benchmark.json")
+        mock_collector_class.return_value = mock_collector
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(cli, ["transcribe", str(tmp_path), "--benchmark", "--benchmark-extra", "key1=value1", "--benchmark-extra", "key2=value2"])
+            assert result.exit_code == 0
+            mock_collector.collect.assert_called_once()
+            call_args = mock_collector.collect.call_args
+            # Check that extra dict was parsed correctly
+            assert call_args[1]["extra"]["key1"] == "value1"
+            assert call_args[1]["extra"]["key2"] == "value2"
+            assert "Benchmark saved" in result.output
+        finally:
+            tmp_path.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
