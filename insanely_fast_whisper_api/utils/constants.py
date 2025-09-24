@@ -218,6 +218,12 @@ HIP_LAUNCH_BLOCKING = (
     os.getenv("HIP_LAUNCH_BLOCKING", "false").lower() == "true"
 )  # Synchronous HIP kernel launches
 
+# Torchaudio backend selection for environments that rely on the soundfile
+# backend (e.g., stable-ts lambda path calling torchaudio.save). Set this to
+# "1" (or any non-empty string) when libsndfile + the Python package
+# "soundfile" are installed in the environment.
+TORCHAUDIO_USE_SOUNDFILE = os.getenv("TORCHAUDIO_USE_SOUNDFILE")
+
 # API configuration
 API_TITLE = "Insanely Fast Whisper API"
 API_DESCRIPTION = "A FastAPI wrapper around the insanely-fast-whisper tool."
