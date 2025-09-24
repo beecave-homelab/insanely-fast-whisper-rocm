@@ -23,6 +23,7 @@ dependencies = [
     "stable-ts==2.19.0",
     "demucs==4.0.1",
     "huggingface-hub>=0.34.4",
+    "soundfile>=0.12",
 ]
 requires-python = "~=3.10"
 
@@ -72,11 +73,6 @@ dev = [
     "pytest-cov",
     # Code Quality
     "ruff",
-    "black",
-    "isort",
-    "mypy",
-    "pydocstyle",
-    "pylint",
     # Type stubs for better static analysis
     "types-PyYAML",
     "typing-extensions",
@@ -108,22 +104,6 @@ bench = [
 
 [tool.pdm.resolution]
 excludes = ["torch==2.0.1", "torch==2.3.0", "torch==2.4.1", "torch==2.6.0"]
-
-[tool.black]
-line-length = 88
-target-version = ['py310']
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.venv
-  | venv
-  | __pycache__
-  | temp_uploads
-  | transcripts
-  | transcripts_zips
-)/
-'''
 
 # ------------------------------
 # Ruff (linter + formatter + import sorting)

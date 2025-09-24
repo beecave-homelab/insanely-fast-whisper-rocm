@@ -94,3 +94,6 @@ commit_subdirectories.sh
 project-overview.md.bak
 tests/data/test.txt
 .github/PULL_REQUEST/
+tests/data/repo-tree.txt
+to-do/**
+
