@@ -160,7 +160,7 @@ python -m insanely_fast_whisper_api.utils.download_hf_model --force
 python -m insanely_fast_whisper_api.utils.download_hf_model --cache_dir /path/to/cache
 ```
 
-For private or gated models, set the `HUGGINGFACE_TOKEN` environment variable with your API token.
+For private or gated models, set the `HF_TOKEN` environment variable with your API token.
 
 ## Configuration
 
@@ -190,7 +190,7 @@ To create or update your user-specific configuration file (`~/.config/insanely-f
 
 2. **Edit your configuration file:**
 
-    After running the script, open `~/.config/insanely-fast-whisper-api/.env` with your preferred text editor and customize the settings. Pay special attention to `HUGGINGFACE_TOKEN` if using gated models. Refer to [`.env.example`](./.env.example) in the project root for a full list of available options and their descriptions.
+    After running the script, open `~/.config/insanely-fast-whisper-api/.env` with your preferred text editor and customize the settings. Pay special attention to `HF_TOKEN` if using gated models. Refer to [`.env.example`](./.env.example) in the project root for a full list of available options and their descriptions.
 
     If no configuration file exists, the API will use these default values. The configuration file will be automatically created with default values on first run.
 

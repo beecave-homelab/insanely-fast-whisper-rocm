@@ -337,7 +337,7 @@ The script performs the following actions:
 - Creates the `~/.config/insanely-fast-whisper-api/` directory if it doesn't already exist.
 - Copies `.env.example` to `~/.config/insanely-fast-whisper-api/.env`.
 - Prompts the user for confirmation if a configuration file already exists at the destination, to prevent accidental overwrites.
-- Informs the user to edit the newly created file to input their specific settings, such as `HUGGINGFACE_TOKEN` for gated models.
+- Informs the user to edit the newly created file to input their specific settings, such as `HF_TOKEN` for gated models.
 
 Refer to the `.env.example` file in the project root for a comprehensive list of all available configuration options and their descriptions (e.g., model settings, device selection, file handling parameters, timezone configuration).
 
@@ -572,6 +572,35 @@ python -m insanely_fast_whisper_api.cli transcribe audio.mp3 \
 ## Dependency Management with PDM
 
 This project uses [PDM (Python Development Master)](https://pdm-project.org/) for dependency management and package building, adhering to PEP 517, PEP 518, and PEP 621 standards. All project metadata, dependencies, and scripts are defined in the [`pyproject.toml`](./pyproject.toml) file.
+
+### Torchaudio backend setup for stable-ts (SoundFile + libsndfile)
+
+Some `stable-ts` code paths call `torchaudio.save(...)`. Minimal Docker images often lack a write-capable torchaudio backend by default, causing errors like:
+
+```text
+RuntimeError: Couldn't find appropriate backend to handle uri /path/file.wav and format None.
+```
+
+- **Install runtime dependencies**:
+  - Python: `soundfile` (PySoundFile)
+  - System: `libsndfile`
+- **Prefer SoundFile backend**:
+
+```bash
+# In Dockerfile or environment
+export TORCHAUDIO_USE_SOUNDFILE=1
+```
+
+This repository is configured accordingly:
+
+- `Dockerfile.dev` installs `libsndfile1` and sets `TORCHAUDIO_USE_SOUNDFILE=1`.
+- `pyproject.toml` declares `soundfile` as a dependency.
+- `.env.example` documents `TORCHAUDIO_USE_SOUNDFILE` and cautions against forcing unsupported ROCm allocator modes.
+
+Notes for ROCm users:
+
+- Avoid `PYTORCH_HIP_ALLOC_CONF=expandable_segments:True` on stacks that do not support it; it can lead to stalls. Prefer leaving it unset or set `expandable_segments:False`.
+- The ASR backend attempts `attn_implementation="sdpa"` first on ROCm and falls back to `"eager"` automatically if the load fails.
 
 ### [`pyproject.toml`](./pyproject.toml) Structure
 
@@ -861,10 +890,10 @@ python -m insanely_fast_whisper_api.webui --port 7860 --host 0.0.0.0 --debug
 python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3
 
 # Transcribe with word-level stabilization
-python -m insanely_fast_whisper_api.cli transcribe tests/conversion-test-file.mp3 --stabilize
+python -m insanely_fast_whisper_api.cli transcribe tests/data/conversion-test-file.mp3 --stabilize
 
 # Transcribe with options
-python -m insanely_fast_whisper_api.cli transcribe tests/conversion-test-file.mp3 --no-timestamps --debug
+python -m insanely_fast_whisper_api.cli transcribe tests/data/conversion-test-file.mp3 --no-timestamps --debug
 
 # Translate audio to English
 python -m insanely_fast_whisper_api.cli translate audio_file.mp3
