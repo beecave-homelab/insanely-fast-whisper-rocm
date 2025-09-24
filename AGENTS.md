@@ -4,8 +4,8 @@ This repo uses **Ruff** as the source of truth for linting. If your change viola
 Run locally before committing:
 
 ```bash
-pdm run ruff check --fix .
-pdm run ruff format .
+bash scripts/clean_codebase.sh
+bash scripts/clean_codebase_sorted.sh --keep-going
 ```
 
 When in doubt, prefer **correctness → clarity → consistency → brevity** (in that order).
