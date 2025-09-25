@@ -7,6 +7,7 @@ Provides `stabilize_timestamps` to refine Whisper transcription results using
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -16,7 +17,9 @@ logger = logging.getLogger(__name__)
 try:
     import stable_whisper  # type: ignore
 
+    # Prefer explicit function if available; also support common alias 'postprocess'.
     _postprocess = getattr(stable_whisper, "postprocess_word_timestamps", None)
+    _postprocess_alt = getattr(stable_whisper, "postprocess", None)
 except ImportError as err:  # pragma: no cover
     logger.error(
         "stable-whisper is not installed – stabilize_timestamps will be a no-op: %s",
@@ -24,6 +27,7 @@ except ImportError as err:  # pragma: no cover
     )
     stable_whisper = None  # type: ignore
     _postprocess = None
+    _postprocess_alt = None
 
 __all__ = ["stabilize_timestamps"]
 
@@ -105,8 +109,21 @@ def stabilize_timestamps(
     demucs: bool = False,
     vad: bool = False,
     vad_threshold: float = 0.35,
+    progress_cb: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
-    """Return a copy of *result* with word-level timestamps via stable-ts."""
+    """Return a copy of *result* with word-level timestamps via stable-ts.
+
+    Args:
+        result: Base transcription result to refine.
+        demucs: Whether to run Demucs denoising.
+        vad: Whether to run Voice Activity Detection.
+        vad_threshold: VAD threshold when ``vad`` is True.
+        progress_cb: Optional callback receiving human-readable status updates.
+
+    Returns:
+        A refined result dictionary. If stabilization fails, the original
+        ``result`` is returned.
+    """
     logger.info(
         "stabilize_timestamps called demucs=%s vad=%s vad_threshold=%s",
         demucs,
@@ -117,6 +134,8 @@ def stabilize_timestamps(
         logger.warning(
             "stable-whisper not available – returning original result unchanged"
         )
+        if progress_cb:
+            progress_cb("stable-ts unavailable; skipping stabilization")
         return result
 
     audio_path_str = result.get("original_file") or result.get("audio_file_path")
@@ -124,11 +143,15 @@ def stabilize_timestamps(
         logger.error(
             "Audio path missing from transcription result; cannot stabilize timestamps"
         )
+        if progress_cb:
+            progress_cb("stable-ts: audio path missing; skipping")
         return result
 
     audio_path = Path(audio_path_str).expanduser().resolve()
     if not audio_path.exists():
         logger.error("Audio file not found for stabilization: %s", audio_path)
+        if progress_cb:
+            progress_cb("stable-ts: audio file not found; skipping")
         return result
 
     # Prepare a stable-whisper–compatible dict
@@ -141,8 +164,48 @@ def stabilize_timestamps(
         """
         return converted
 
-    # 1️⃣ Primary path: lambda-inference via transcribe_any
+    # 1. Preferred paths: postprocess_* style APIs (avoid torchaudio.save)
+    for func_name, func in (
+        ("postprocess_word_timestamps", _postprocess),
+        ("postprocess", _postprocess_alt),
+    ):
+        if func is None:
+            continue
+        try:
+            if progress_cb:
+                progress_cb(f"stable-ts: {func_name} running")
+            try:
+                refined = func(  # type: ignore[misc]
+                    converted,
+                    audio=str(audio_path),
+                    demucs=demucs,
+                    vad=vad,
+                    vad_threshold=vad_threshold,
+                )
+            except TypeError:
+                # Some versions may not accept the same kwargs; retry with minimal args.
+                refined = func(converted, audio=str(audio_path))  # type: ignore[misc]
+            refined_dict = _to_dict(refined)
+            merged = {**result, **refined_dict, "stabilized": True}
+            if "segments" in merged:
+                merged.pop("chunks", None)
+            merged.setdefault("segments_count", len(refined_dict.get("segments", [])))
+            merged.setdefault("stabilization_path", func_name)
+            if progress_cb:
+                progress_cb(f"stable-ts: refinement successful ({func_name})")
+            return merged
+        except Exception as exc:  # pragma: no cover
+            logger.warning("%s failed: %s", func_name, exc)
+            if progress_cb:
+                progress_cb(f"stable-ts: {func_name} failed; trying alt path")
+
+    # 2. Alternative path: lambda-inference via transcribe_any
+    # (may require torchaudio.save)
     try:
+        if progress_cb:
+            progress_cb(
+                f"stable-ts: running (demucs={demucs}, vad={vad}, thr={vad_threshold})"
+            )
         refined = stable_whisper.transcribe_any(
             inference_func,
             audio=str(audio_path),
@@ -155,6 +218,8 @@ def stabilize_timestamps(
         logger.info(
             "stable-ts succeeded: segments=%d", len(refined_dict.get("segments", []))
         )
+        if progress_cb:
+            progress_cb("stable-ts: refinement successful")
         merged = {**result, **refined_dict, "stabilized": True}
 
         def _segments_have_timestamps(seg_list: list[dict]) -> bool:
@@ -169,30 +234,16 @@ def stabilize_timestamps(
         # Enrich with metadata before returning (lazy logging ready)
         merged.setdefault("segments_count", len(refined_dict.get("segments", [])))
         merged.setdefault("stabilization_path", "lambda")
+        if progress_cb:
+            progress_cb("stable-ts: merging results")
         return merged
     except Exception as exc:  # pragma: no cover
         logger.error("stable-ts lambda inference path failed: %s", exc, exc_info=True)
+        if progress_cb:
+            progress_cb("stable-ts: alternative path failed")
 
-    # 2️⃣ Fallback: postprocess_word_timestamps if available
-    if _postprocess is not None:
-        try:
-            refined = _postprocess(
-                converted,
-                audio=str(audio_path),
-                demucs=demucs,
-                vad=vad,
-                vad_threshold=vad_threshold,
-            )
-            refined_dict = _to_dict(refined)
-            merged = {**result, **refined_dict, "stabilized": True}
-            if "segments" in merged:
-                merged.pop("chunks", None)
-            merged.setdefault("segments_count", len(refined_dict.get("segments", [])))
-            merged.setdefault("stabilization_path", "postprocess")
-            return merged
-        except Exception as exc:  # pragma: no cover
-            logger.warning("postprocess_word_timestamps fallback failed: %s", exc)
-
-    # 3️⃣ Give up
+    # 3. Give up
     logger.error("stable-ts processing failed; returning original result")
+    if progress_cb:
+        progress_cb("stable-ts: failed; returning original result")
     return result

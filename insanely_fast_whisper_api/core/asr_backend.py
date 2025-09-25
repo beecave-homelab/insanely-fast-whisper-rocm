@@ -107,6 +107,14 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         Raises:
             TranscriptionError: If the ASR model or associated components fail
                 to load.
+            ImportError: Propagated if a required backend or package is missing
+                and cannot be recovered.
+            OSError: Propagated if underlying IO or model loading fails in a way
+                that cannot be wrapped.
+            RuntimeError: Propagated for low-level framework errors that may
+                occur prior to wrapping.
+            ValueError: Propagated for invalid configuration detected during
+                model initialization when not recoverable.
         """
         if self.asr_pipe is None:
             cb = progress_cb or NoOpProgress()
@@ -125,10 +133,18 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 "use_safetensors": True,
             }
 
-            # For newer transformers versions, SDPA is the native way to get
-            # BetterTransformer-like optimizations.
+            # For newer transformers, SDPA is fast. On ROCm it sometimes fails at
+            # runtime on certain stacks; per user preference, try SDPA first and
+            # fallback to 'eager' only if needed. Keep SDPA on CUDA.
             if self.effective_device != "cpu":
-                model_load_kwargs["attn_implementation"] = "sdpa"
+                is_rocm = getattr(torch.version, "hip", None) is not None
+                if is_rocm:
+                    model_load_kwargs["attn_implementation"] = "sdpa"
+                    logger.info(
+                        "ROCm detected; trying attn_implementation='sdpa' first"
+                    )
+                else:
+                    model_load_kwargs["attn_implementation"] = "sdpa"
 
             try:
                 logger.info(
@@ -136,9 +152,32 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                     self.config.model_name,
                     model_load_kwargs,
                 )
-                model = AutoModelForSpeechSeq2Seq.from_pretrained(
-                    self.config.model_name, **model_load_kwargs
-                )
+                try:
+                    model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                        self.config.model_name, **model_load_kwargs
+                    )
+                except (OSError, ValueError, RuntimeError, ImportError) as e_first:
+                    # On ROCm, fallback to 'eager' if SDPA attempt fails at load.
+                    if (
+                        getattr(torch.version, "hip", None) is not None
+                        and model_load_kwargs.get("attn_implementation") == "sdpa"
+                    ):
+                        logger.warning(
+                            "Model load with SDPA failed on ROCm, retrying with "
+                            "attn_implementation='eager': %s",
+                            str(e_first),
+                        )
+                        model_load_kwargs["attn_implementation"] = "eager"
+                        logger.info(
+                            "Reloading ASR model '%s' with kwargs: %s",
+                            self.config.model_name,
+                            model_load_kwargs,
+                        )
+                        model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                            self.config.model_name, **model_load_kwargs
+                        )
+                    else:
+                        raise
                 tokenizer = AutoTokenizer.from_pretrained(self.config.model_name)
                 feature_extractor = AutoFeatureExtractor.from_pretrained(
                     self.config.model_name
@@ -209,161 +248,6 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                     exc_info=True,
                 )
                 raise TranscriptionError(f"Failed to load ASR model: {str(e)}") from e
-
-    def _process_with_manual_chunking(
-        self,
-        *,
-        audio_file_path: str,
-        language: str | None,
-        task: str,
-        return_timestamps_value: bool | str,
-        cb: ProgressCallback,
-        pipeline_kwargs: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Process audio by splitting into chunks and batching for progress.
-
-        This path enables accurate percentage progress based on total chunks.
-
-        Args:
-            audio_file_path: Original input audio path.
-            language: Optional language code.
-            task: "transcribe" or "translate".
-            return_timestamps_value: Whether/how to return timestamps.
-            cb: Progress callback to emit progress events.
-            pipeline_kwargs: Keyword args forwarded to the HF pipeline.
-
-        Raises:
-            TranscriptionError: If the ASR model or associated components fail
-                to load.
-
-        Returns:
-            dict[str, Any]: Merged result across all chunks.
-
-        """
-        from insanely_fast_whisper_api.audio.conversion import ensure_wav
-        from insanely_fast_whisper_api.audio.processing import split_audio
-
-        start_time = time.perf_counter()
-
-        cb.on_audio_loading_started(audio_file_path)
-        converted_path = ensure_wav(audio_file_path)
-        cb.on_audio_loading_finished(duration_sec=None)
-
-        chunks_with_offsets = split_audio(
-            converted_path,
-            chunk_duration=float(self.config.chunk_length),
-            chunk_overlap=0.0,
-            min_chunk_duration=1.0,
-        )
-
-        total_chunks = len(chunks_with_offsets)
-        if total_chunks == 0:
-            raise TranscriptionError("No audio chunks produced for transcription.")
-
-        cb.on_chunking_started(total_chunks)
-
-        def _shift_chunk_timestamps(
-            items: list[dict[str, object]] | None, offset: float
-        ) -> list[dict[str, object]]:
-            if not items:
-                return []
-            shifted: list[dict[str, object]] = []
-            for it in items:
-                ts = it.get("timestamp") if isinstance(it, dict) else None
-                if isinstance(ts, (list, tuple)) and len(ts) == 2:
-                    start, end = ts
-                    try:
-                        start_f = float(start) if start is not None else None
-                        end_f = float(end) if end is not None else None
-                    except (TypeError, ValueError):
-                        start_f, end_f = None, None
-                    new_ts = (
-                        (start_f + offset) if start_f is not None else None,
-                        (end_f + offset) if end_f is not None else None,
-                    )
-                    new_item = dict(it)
-                    new_item["timestamp"] = new_ts
-                    shifted.append(new_item)
-                else:
-                    shifted.append(dict(it))
-            return shifted
-
-        combined_text_parts: list[str] = []
-        combined_chunks: list[dict[str, object]] = []
-
-        # Progress groups: decouple progress frequency from model batch_size.
-        # We submit smaller groups to the pipeline so progress updates are more
-        # frequent even if the user-specified batch_size is large.
-        progress_group_size = max(1, int(self.config.progress_group_size))
-        groups: list[list[tuple[str, float]]] = [
-            chunks_with_offsets[i : i + progress_group_size]
-            for i in range(0, total_chunks, progress_group_size)
-        ]
-        total_groups = len(groups)
-        cb.on_inference_started(total_groups)
-
-        completed_chunks = 0
-
-        for group_index, group in enumerate(groups):
-            batch_paths = [p for p, _off in group]
-            batch_offsets = [_off for _p, _off in group]
-
-            try:
-                batch_outputs = self.asr_pipe(batch_paths, **pipeline_kwargs)
-            except (
-                RuntimeError,
-                OSError,
-                ValueError,
-                MemoryError,
-                TypeError,
-                IndexError,
-            ) as e:
-                logger.error(
-                    "Transcription failed for batch starting at %s: %s",
-                    batch_paths[0] if batch_paths else converted_path,
-                    str(e),
-                    exc_info=True,
-                )
-                raise TranscriptionError(f"Failed to transcribe audio: {str(e)}") from e
-
-            if isinstance(batch_outputs, dict):
-                batch_outputs_list = [batch_outputs]
-            else:
-                batch_outputs_list = list(batch_outputs)
-
-            for i, out in enumerate(batch_outputs_list):
-                text_part = out.get("text", "") if isinstance(out, dict) else ""
-                if isinstance(text_part, str) and text_part:
-                    combined_text_parts.append(text_part.strip())
-                out_chunks = out.get("chunks") if isinstance(out, dict) else None
-                offset = float(batch_offsets[i]) if i < len(batch_offsets) else 0.0
-                combined_chunks.extend(_shift_chunk_timestamps(out_chunks, offset))
-                cb.on_chunk_done(completed_chunks)
-                completed_chunks += 1
-            cb.on_inference_batch_done(group_index)
-
-        end_time = time.perf_counter()
-        elapsed_time = end_time - start_time
-
-        result = {
-            "text": " ".join(combined_text_parts).strip(),
-            "chunks": combined_chunks if return_timestamps_value else None,
-            "runtime_seconds": round(elapsed_time, 2),
-            "config_used": {
-                "model": self.config.model_name,
-                "device": self.effective_device,
-                "batch_size": self.config.batch_size,
-                "language": language or "auto",
-                "dtype": self.config.dtype,
-                "chunk_length_s": self.config.chunk_length,
-                "progress_group_size": self.config.progress_group_size,
-                "task": task,
-                "return_timestamps": return_timestamps_value,
-            },
-        }
-        # Stop progress before export begins so "Saved ..." lines print cleanly.
-        cb.on_completed()
-        return result
 
     def process_audio(
         self,
@@ -510,28 +394,8 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 self.config.model_name,
             )
 
-        # Accurate progress path: manual chunking + batch loop
-        return self._process_with_manual_chunking(
-            audio_file_path=audio_file_path,
-            language=language,
-            task=task,
-            return_timestamps_value=_return_timestamps_value,
-            cb=cb,
-            pipeline_kwargs=pipeline_kwargs,
-        )
-        # Convert to WAV if extension not among standard Whisper-friendly set
-        from insanely_fast_whisper_api.audio.conversion import (
-            ensure_wav,  # local import to avoid heavy deps at import time
-        )
-
-        cb.on_audio_loading_started(audio_file_path)
-        converted_path = ensure_wav(audio_file_path)
-        cb.on_audio_loading_finished(duration_sec=None)
-
         try:
-            cb.on_inference_started(total_batches=None)
-            outputs = self.asr_pipe(str(converted_path), **pipeline_kwargs)
-            cb.on_inference_batch_done(0)
+            outputs = self.asr_pipe(str(audio_file_path), **pipeline_kwargs)
         except RuntimeError as e:
             # Check if this is the specific tensor size mismatch error in
             # timestamp extraction
@@ -567,10 +431,8 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                         exc_info=True,
                     )
                     raise TranscriptionError(
-
-                            "Failed to transcribe audio even with fallback: "
-                            f"{str(fallback_e)}"
-
+                        "Failed to transcribe audio even with fallback: "
+                        f"{str(fallback_e)}"
                     ) from fallback_e
             else:
                 # Re-raise other RuntimeErrors
@@ -614,5 +476,4 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         logger.info(
             "Transcription completed in %.2fs for %s", elapsed_time, audio_file_path
         )
-        cb.on_completed()
         return result

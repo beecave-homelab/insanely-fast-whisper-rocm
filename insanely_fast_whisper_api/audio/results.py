@@ -1,6 +1,5 @@
 """Utilities for processing and merging transcription results."""
 
-
 from typing import Any
 
 
@@ -28,20 +27,30 @@ def merge_chunk_results(chunk_results: list[tuple[dict, float]]) -> dict[str, An
 
         if "chunks" in result:
             for segment in result["chunks"]:
-                # Adjust segment timestamps
+                # Adjust segment timestamps, but guard None values
                 if "timestamp" in segment and isinstance(
                     segment["timestamp"], (list, tuple)
                 ):
-                    segment["timestamp"] = (
-                        segment["timestamp"][0] + start_time,
-                        segment["timestamp"][1] + start_time,
+                    start_val = segment["timestamp"][0]
+                    end_val = segment["timestamp"][1]
+                    adj_start = (
+                        (start_val + start_time)
+                        if isinstance(start_val, (int, float))
+                        else None
                     )
+                    adj_end = (
+                        (end_val + start_time)
+                        if isinstance(end_val, (int, float))
+                        else None
+                    )
+                    segment["timestamp"] = (adj_start, adj_end)
 
-                # Adjust word timestamps if they exist
+                # Adjust word timestamps if they exist (guard missing/None)
                 if "words" in segment and isinstance(segment["words"], list):
                     for word in segment["words"]:
-                        if "start" in word and "end" in word:
+                        if "start" in word and isinstance(word["start"], (int, float)):
                             word["start"] += start_time
+                        if "end" in word and isinstance(word["end"], (int, float)):
                             word["end"] += start_time
                 all_chunks.append(segment)
 

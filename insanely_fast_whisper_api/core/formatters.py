@@ -8,9 +8,7 @@ import json
 import logging
 from typing import Any
 
-from insanely_fast_whisper_api.utils.format_time import (
-    format_seconds as util_format_seconds,
-)
+from insanely_fast_whisper_api.utils.format_time import format_srt_time, format_vtt_time
 
 logger = logging.getLogger(__name__)
 
@@ -119,31 +117,76 @@ class SrtFormatter(BaseFormatter):
                 )
                 return ""
 
+            def _get_start_end(c: dict) -> tuple[float | None, float | None]:
+                ts_val = c.get("timestamp")
+                ts_pair = ts_val if isinstance(ts_val, (list, tuple)) else None
+                s = c.get("start")
+                e = c.get("end")
+                if (s is None or e is None) and ts_pair and len(ts_pair) == 2:
+                    s, e = ts_pair[0], ts_pair[1]
+                return s, e
+
+            # Heuristic: detect "word-like" segments (very short duration, tiny text)
+            durations = []
+            short_count = 0
+            for c in chunks:
+                s, e = _get_start_end(c)
+                if isinstance(s, (int, float)) and isinstance(e, (int, float)):
+                    d = max(0.0, e - s)
+                    durations.append(d)
+                    if d <= 0.6 and len(c.get("text", "").strip().split()) <= 2:
+                        short_count += 1
+            word_like_ratio = short_count / max(1, len(chunks))
+
+            # If more than 60% look like word-level items, group into readable captions
+            if word_like_ratio >= 0.6:
+                grouped: list[dict] = []
+                cur: dict | None = None
+
+                def flush_current() -> None:
+                    nonlocal cur
+                    if cur is not None:
+                        grouped.append(cur)
+                        cur = None
+
+                for c in chunks:
+                    s, e = _get_start_end(c)
+                    if s is None or e is None:
+                        continue
+                    t = c.get("text", "").strip()
+                    if not t:
+                        continue
+                    if cur is None:
+                        cur = {"start": s, "end": e, "text": t}
+                        continue
+                    # If gap is big or line too long, flush
+                    gap = s - float(cur["end"])  # type: ignore[arg-type]
+                    new_text = (cur["text"] + " " + t).strip()  # type: ignore[index]
+                    duration = float(e) - float(cur["start"])  # type: ignore[arg-type]
+                    if gap > 0.6 or len(new_text) > 42 or duration > 3.5:
+                        flush_current()
+                        cur = {"start": s, "end": e, "text": t}
+                    else:
+                        cur["end"] = e  # type: ignore[index]
+                        cur["text"] = new_text  # type: ignore[index]
+                        # Flush at sentence-ending punctuation
+                        if new_text.endswith((".", "!", "?", ":", ";")):
+                            flush_current()
+                            cur = None
+                flush_current()
+                chunks = grouped
+
             srt_content = []
             for i, chunk in enumerate(chunks, 1):
                 try:
-                    # Support both {'start': ... , 'end': ...} and
-                    # {'timestamp': [start, end]}
-                    ts_pair = (
-                        chunk.get("timestamp")
-                        if isinstance(chunk.get("timestamp"), (list, tuple))
-                        else None
-                    )
-                    start_sec = chunk.get("start")
-                    end_sec = chunk.get("end")
-                    if (
-                        (start_sec is None or end_sec is None)
-                        and ts_pair
-                        and len(ts_pair) == 2
-                    ):
-                        start_sec, end_sec = ts_pair[0], ts_pair[1]
+                    start_sec, end_sec = _get_start_end(chunk)
                     if start_sec is None or end_sec is None:
                         logger.warning(
                             "[Formatter] Skipping chunk #%d with missing timestamp", i
                         )
                         continue
-                    start = util_format_seconds(start_sec)
-                    end = util_format_seconds(end_sec)
+                    start = format_srt_time(start_sec)
+                    end = format_srt_time(end_sec)
                     text = chunk["text"].replace("\n", " ").strip()
                     srt_content.append(f"{i}\n{start} --> {end}\n{text}\n")
                 except (TypeError, KeyError, AttributeError, IndexError) as chunk_e:
@@ -236,8 +279,8 @@ class VttFormatter(BaseFormatter):
                             "[Formatter] Skipping chunk #%d with missing timestamp", i
                         )
                         continue
-                    start = util_format_seconds(start_sec)
-                    end = util_format_seconds(end_sec)
+                    start = format_vtt_time(start_sec)
+                    end = format_vtt_time(end_sec)
                     text = chunk["text"].replace("\n", " ").strip()
                     vtt_content.append(f"{start} --> {end}\n{text}\n")
                 except (TypeError, KeyError, AttributeError, IndexError) as chunk_e:

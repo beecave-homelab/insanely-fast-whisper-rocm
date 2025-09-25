@@ -13,6 +13,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 import click
 from click.core import ParameterSource
@@ -34,6 +35,29 @@ from insanely_fast_whisper_api.utils.filename_generator import (
     StandardFilenameStrategy,
     TaskType,
 )
+
+try:
+    from insanely_fast_whisper_api.core.integrations import stabilize_timestamps
+except ModuleNotFoundError:  # pragma: no cover
+
+    def stabilize_timestamps(  # type: ignore[no-redef]
+        result: dict[str, Any],
+        *,
+        demucs: bool = False,
+        vad: bool = False,
+        vad_threshold: float | None = None,
+    ) -> dict[str, Any]:
+        """Raise a helpful error when stable-ts integration is unavailable.
+
+        Raises:
+            RuntimeError: Always, indicating the optional stable-ts dependency
+                is missing from the current installation.
+        """
+        raise RuntimeError(
+            "stable-ts integration is not installed; reinstall with the extra"
+            " dependencies to enable --stabilize support."
+        )
+
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +88,7 @@ def _suppress_output_fds() -> None:
         os.close(stdout_fd)
         os.close(stderr_fd)
         os.close(devnull_fd)
+
 
 # --------------------------------------------------------------------------- #
 # High-level command wrappers                                                 #
@@ -196,10 +221,6 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
         # Optional stable-ts post-processing
         if stabilize:
             try:
-                from insanely_fast_whisper_api.core.integrations import (
-                    stabilize_timestamps,
-                )
-
                 # Ensure the result contains the audio path for stable-ts
                 result.setdefault("audio_file_path", str(audio_file))
 
@@ -224,6 +245,12 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
                     reporter.on_postprocess_finished("demucs")
                 if vad:
                     reporter.on_postprocess_finished(f"vad threshold={vad_threshold}")
+            except RuntimeError as exc:
+                if not quiet:
+                    click.secho(
+                        f"⚠️  stable-ts post-processing unavailable: {exc}",
+                        fg="yellow",
+                    )
             except Exception as exc:  # pragma: no cover
                 if not quiet:
                     click.secho(
@@ -273,8 +300,15 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
         sys.exit(1)
 
     except TranscriptionError as exc:
-        reporter.on_error(str(exc))
-        click.secho(f"\n❌ {task.capitalize()} error: {exc}", fg="red", err=True)
+        message = str(exc)
+        reporter.on_error(message)
+        if task == "transcribe":
+            error_label = "Transcription"
+        elif task == "translate":
+            error_label = "Translation"
+        else:
+            error_label = task.capitalize()
+        click.secho(f"\n❌ {error_label} error: {message}", fg="red", err=True)
         if debug:
             logger.exception("%s error details", task)
         sys.exit(1)
