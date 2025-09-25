@@ -45,7 +45,4 @@ pdm run ruff check "${TARGETS[@]}" --fix
 # Format code with Ruff
 pdm run ruff format "${TARGETS[@]}"
 
-# Sort imports with isort
-pdm run isort "${TARGETS[@]}"
-
-echo "Codebase cleaned: ruff check --fix, ruff format, isort complete for: ${TARGETS[*]}"
+echo "Codebase cleaned: 'ruff check --fix' and 'ruff format' for: ${TARGETS[*]}"
