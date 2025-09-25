@@ -1,4 +1,5 @@
 """Tests for filename generation utilities and strategies."""
+
 import datetime
 import os
 from unittest.mock import Mock, patch

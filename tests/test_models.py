@@ -13,10 +13,7 @@ from insanely_fast_whisper_api.api.models import (
 
 def test_transcription_chunk_creation() -> None:
     """Test TranscriptionChunk model creation with valid data."""
-    chunk = TranscriptionChunk(
-        text="Hello world",
-        timestamp=(0.0, 2.5)
-    )
+    chunk = TranscriptionChunk(text="Hello world", timestamp=(0.0, 2.5))
 
     assert chunk.text == "Hello world"
     assert chunk.timestamp == (0.0, 2.5)
@@ -48,10 +45,7 @@ def test_transcription_chunk_serialization() -> None:
 
     # Test dict conversion
     chunk_dict = chunk.model_dump()
-    expected = {
-        "text": "Hello",
-        "timestamp": (0.5, 1.5)
-    }
+    expected = {"text": "Hello", "timestamp": (0.5, 1.5)}
     assert chunk_dict == expected
 
     # Test JSON serialization
@@ -75,12 +69,12 @@ def test_transcription_response_creation_full() -> None:
     """Test TranscriptionResponse model creation with all fields."""
     chunks = [
         TranscriptionChunk(text="Hello", timestamp=(0.0, 1.0)),
-        TranscriptionChunk(text="world", timestamp=(1.0, 2.0))
+        TranscriptionChunk(text="world", timestamp=(1.0, 2.0)),
     ]
 
     segments = [
         {"text": "Hello", "start": 0.0, "end": 1.0},
-        {"text": "world", "start": 1.0, "end": 2.0}
+        {"text": "world", "start": 1.0, "end": 2.0},
     ]
 
     response = TranscriptionResponse(
@@ -88,7 +82,7 @@ def test_transcription_response_creation_full() -> None:
         chunks=chunks,
         segments=segments,
         language="en",
-        runtime_seconds=2.5
+        runtime_seconds=2.5,
     )
 
     assert response.text == "Hello world"
@@ -111,7 +105,7 @@ def test_transcription_response_validation() -> None:
         chunks=[TranscriptionChunk(text="chunk", timestamp=(0.0, 1.0))],
         segments=[{"text": "segment", "start": 0.0, "end": 1.0}],
         language="es",
-        runtime_seconds=1.5
+        runtime_seconds=1.5,
     )
     assert response.language == "es"
     assert response.runtime_seconds == 1.5
@@ -125,15 +119,15 @@ def test_transcription_response_validation_errors() -> None:
 
     # Invalid runtime_seconds type
     with pytest.raises(ValidationError):
-        TranscriptionResponse(text="test", runtime_seconds="invalid")  # Should be float or None
+        TranscriptionResponse(
+            text="test", runtime_seconds="invalid"
+        )  # Should be float or None
 
 
 def test_transcription_response_serialization() -> None:
     """Test TranscriptionResponse model serialization."""
     response = TranscriptionResponse(
-        text="Hello world",
-        language="en",
-        runtime_seconds=1.23
+        text="Hello world", language="en", runtime_seconds=1.23
     )
 
     # Test dict conversion
@@ -143,7 +137,7 @@ def test_transcription_response_serialization() -> None:
         "chunks": None,
         "segments": None,
         "language": "en",
-        "runtime_seconds": 1.23
+        "runtime_seconds": 1.23,
     }
     assert response_dict == expected
 

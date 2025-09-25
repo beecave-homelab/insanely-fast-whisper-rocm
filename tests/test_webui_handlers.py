@@ -5,14 +5,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from insanely_fast_whisper_api.webui.handlers import (
-    TranscriptionConfig,
-    transcribe,
-)
+from insanely_fast_whisper_api.webui.handlers import TranscriptionConfig, transcribe
 
 
 @pytest.fixture
-def mock_pipeline_and_stabilizer() -> Generator[tuple[MagicMock, MagicMock], None, None]:
+def mock_pipeline_and_stabilizer() -> Generator[
+    tuple[MagicMock, MagicMock], None, None
+]:
     """Fixture to mock WhisperPipeline and ``stabilize_timestamps``.
 
     Yields:

@@ -11,9 +11,11 @@ class TestSetupTimezone:
     """Test the setup_timezone function."""
 
     @patch("time.tzset")
-    @patch("time.tzname", ["EST", "EDT"])
+    @patch("time.tzname", new=["EST", "EDT"])
     @patch("logging.info")
-    def test_setup_timezone_success(self, mock_logging_info: Mock, mock_tzname: Mock, mock_tzset: Mock) -> None:
+    def test_setup_timezone_success(
+        self, mock_logging_info: Mock, mock_tzset: Mock
+    ) -> None:
         """Test successful timezone setup."""
         # Setup
         expected_timezone = constants.APP_TIMEZONE
@@ -33,7 +35,9 @@ class TestSetupTimezone:
 
     @patch("os.environ.__setitem__", side_effect=OSError("Permission denied"))
     @patch("logging.warning")
-    def test_setup_timezone_oserror(self, mock_logging_warning: Mock, mock_setitem: Mock) -> None:
+    def test_setup_timezone_oserror(
+        self, mock_logging_warning: Mock, mock_setitem: Mock
+    ) -> None:
         """Test timezone setup with OSError."""
         # Execute
         setup_timezone()
@@ -48,7 +52,9 @@ class TestSetupTimezone:
 
     @patch("time.tzset", side_effect=TypeError("Invalid timezone"))
     @patch("logging.warning")
-    def test_setup_timezone_typeerror(self, mock_logging_warning: Mock, mock_tzset: Mock) -> None:
+    def test_setup_timezone_typeerror(
+        self, mock_logging_warning: Mock, mock_tzset: Mock
+    ) -> None:
         """Test timezone setup with TypeError."""
         # Setup
         os.environ["TZ"] = constants.APP_TIMEZONE
@@ -64,10 +70,12 @@ class TestSetupTimezone:
             "Invalid timezone",
         )
 
-    @patch("time.tzname", ["EST"])  # Missing EDT
+    @patch("time.tzname", new=["EST"])  # Missing EDT
     @patch("time.tzset")
     @patch("logging.warning")
-    def test_setup_timezone_indexerror(self, mock_logging_warning: Mock, mock_tzset: Mock, mock_tzname: Mock) -> None:
+    def test_setup_timezone_indexerror(
+        self, mock_logging_warning: Mock, mock_tzset: Mock
+    ) -> None:
         """Test timezone setup with IndexError (missing tzname[1])."""
         # Setup
         os.environ["TZ"] = constants.APP_TIMEZONE

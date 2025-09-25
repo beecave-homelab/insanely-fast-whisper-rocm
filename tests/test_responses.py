@@ -168,7 +168,9 @@ def test_format_transcription_verbose_json_response() -> None:
         ],
     }
 
-    response = ResponseFormatter.format_transcription(result, RESPONSE_FORMAT_VERBOSE_JSON)
+    response = ResponseFormatter.format_transcription(
+        result, RESPONSE_FORMAT_VERBOSE_JSON
+    )
 
     assert isinstance(response, JSONResponse)
 
@@ -187,7 +189,9 @@ def test_format_transcription_verbose_json_with_language() -> None:
         "language": "en",
     }
 
-    response = ResponseFormatter.format_transcription(result, RESPONSE_FORMAT_VERBOSE_JSON)
+    response = ResponseFormatter.format_transcription(
+        result, RESPONSE_FORMAT_VERBOSE_JSON
+    )
 
     content = response.body.decode()
     assert '"language":"en"' in content
@@ -201,7 +205,9 @@ def test_format_transcription_verbose_json_with_config_language() -> None:
         "config_used": {"language": "fr"},
     }
 
-    response = ResponseFormatter.format_transcription(result, RESPONSE_FORMAT_VERBOSE_JSON)
+    response = ResponseFormatter.format_transcription(
+        result, RESPONSE_FORMAT_VERBOSE_JSON
+    )
 
     content = response.body.decode()
     assert '"language":"fr"' in content
@@ -211,10 +217,19 @@ def test_format_transcription_srt_response() -> None:
     """Test format_transcription with SRT response format."""
     # Mock the FORMATTERS to avoid external dependencies
     original_formatters = ResponseFormatter.__dict__.get("FORMATTERS", {})
-    ResponseFormatter.FORMATTERS = {"srt": type("MockFormatter", (), {"format": lambda x: "1\n00:00:00,000 --> 00:00:02,500\nHello world\n\n"})()}
+    ResponseFormatter.FORMATTERS = {
+        "srt": type(
+            "MockFormatter",
+            (),
+            {"format": lambda x: "1\n00:00:00,000 --> 00:00:02,500\nHello world\n\n"},
+        )()
+    }
 
     try:
-        result = {"text": "Hello world", "chunks": [{"start": 0.0, "end": 2.5, "text": "Hello world"}]}
+        result = {
+            "text": "Hello world",
+            "chunks": [{"start": 0.0, "end": 2.5, "text": "Hello world"}],
+        }
 
         response = ResponseFormatter.format_transcription(result, RESPONSE_FORMAT_SRT)
 
@@ -223,8 +238,8 @@ def test_format_transcription_srt_response() -> None:
         assert response.body == b"1\n00:00:00,000 --> 00:00:02,500\nHello world\n\n"
     finally:
         # Restore original FORMATTERS
-        if hasattr(ResponseFormatter, 'FORMATTERS'):
-            delattr(ResponseFormatter, 'FORMATTERS')
+        if hasattr(ResponseFormatter, "FORMATTERS"):
+            delattr(ResponseFormatter, "FORMATTERS")
         for key, value in original_formatters.items():
             setattr(ResponseFormatter, key, value)
 
@@ -233,20 +248,33 @@ def test_format_transcription_vtt_response() -> None:
     """Test format_transcription with VTT response format."""
     # Mock the FORMATTERS to avoid external dependencies
     original_formatters = ResponseFormatter.__dict__.get("FORMATTERS", {})
-    ResponseFormatter.FORMATTERS = {"vtt": type("MockFormatter", (), {"format": lambda x: "WEBVTT\n\n00:00:00.000 --> 00:00:02.500\nHello world\n\n"})()}
+    ResponseFormatter.FORMATTERS = {
+        "vtt": type(
+            "MockFormatter",
+            (),
+            {
+                "format": lambda x: "WEBVTT\n\n00:00:00.000 --> 00:00:02.500\nHello world\n\n"
+            },
+        )()
+    }
 
     try:
-        result = {"text": "Hello world", "chunks": [{"start": 0.0, "end": 2.5, "text": "Hello world"}]}
+        result = {
+            "text": "Hello world",
+            "chunks": [{"start": 0.0, "end": 2.5, "text": "Hello world"}],
+        }
 
         response = ResponseFormatter.format_transcription(result, RESPONSE_FORMAT_VTT)
 
         assert isinstance(response, PlainTextResponse)
         assert response.media_type == "text/vtt"
-        assert response.body == b"WEBVTT\n\n00:00:00.000 --> 00:00:02.500\nHello world\n\n"
+        assert (
+            response.body == b"WEBVTT\n\n00:00:00.000 --> 00:00:02.500\nHello world\n\n"
+        )
     finally:
         # Restore original FORMATTERS
-        if hasattr(ResponseFormatter, 'FORMATTERS'):
-            delattr(ResponseFormatter, 'FORMATTERS')
+        if hasattr(ResponseFormatter, "FORMATTERS"):
+            delattr(ResponseFormatter, "FORMATTERS")
         for key, value in original_formatters.items():
             setattr(ResponseFormatter, key, value)
 
@@ -306,7 +334,9 @@ def test_format_translation_verbose_json_response() -> None:
         }
     }
 
-    response = ResponseFormatter.format_translation(result, RESPONSE_FORMAT_VERBOSE_JSON)
+    response = ResponseFormatter.format_translation(
+        result, RESPONSE_FORMAT_VERBOSE_JSON
+    )
 
     assert isinstance(response, JSONResponse)
 
@@ -320,10 +350,21 @@ def test_format_translation_srt_response() -> None:
     """Test format_translation with SRT response format."""
     # Mock the FORMATTERS to avoid external dependencies
     original_formatters = ResponseFormatter.__dict__.get("FORMATTERS", {})
-    ResponseFormatter.FORMATTERS = {"srt": type("MockFormatter", (), {"format": lambda x: "1\n00:00:00,000 --> 00:00:02,500\nHello world\n\n"})()}
+    ResponseFormatter.FORMATTERS = {
+        "srt": type(
+            "MockFormatter",
+            (),
+            {"format": lambda x: "1\n00:00:00,000 --> 00:00:02,500\nHello world\n\n"},
+        )()
+    }
 
     try:
-        result = {"transcription": {"text": "Hello world", "chunks": [{"start": 0.0, "end": 2.5, "text": "Hello world"}]}}
+        result = {
+            "transcription": {
+                "text": "Hello world",
+                "chunks": [{"start": 0.0, "end": 2.5, "text": "Hello world"}],
+            }
+        }
 
         response = ResponseFormatter.format_translation(result, RESPONSE_FORMAT_SRT)
 
@@ -332,8 +373,8 @@ def test_format_translation_srt_response() -> None:
         assert response.body == b"1\n00:00:00,000 --> 00:00:02,500\nHello world\n\n"
     finally:
         # Restore original FORMATTERS
-        if hasattr(ResponseFormatter, 'FORMATTERS'):
-            delattr(ResponseFormatter, 'FORMATTERS')
+        if hasattr(ResponseFormatter, "FORMATTERS"):
+            delattr(ResponseFormatter, "FORMATTERS")
         for key, value in original_formatters.items():
             setattr(ResponseFormatter, key, value)
 
@@ -342,20 +383,35 @@ def test_format_translation_vtt_response() -> None:
     """Test format_translation with VTT response format."""
     # Mock the FORMATTERS to avoid external dependencies
     original_formatters = ResponseFormatter.__dict__.get("FORMATTERS", {})
-    ResponseFormatter.FORMATTERS = {"vtt": type("MockFormatter", (), {"format": lambda x: "WEBVTT\n\n00:00:00.000 --> 00:00:02.500\nHello world\n\n"})()}
+    ResponseFormatter.FORMATTERS = {
+        "vtt": type(
+            "MockFormatter",
+            (),
+            {
+                "format": lambda x: "WEBVTT\n\n00:00:00.000 --> 00:00:02.500\nHello world\n\n"
+            },
+        )()
+    }
 
     try:
-        result = {"transcription": {"text": "Hello world", "chunks": [{"start": 0.0, "end": 2.5, "text": "Hello world"}]}}
+        result = {
+            "transcription": {
+                "text": "Hello world",
+                "chunks": [{"start": 0.0, "end": 2.5, "text": "Hello world"}],
+            }
+        }
 
         response = ResponseFormatter.format_translation(result, RESPONSE_FORMAT_VTT)
 
         assert isinstance(response, PlainTextResponse)
         assert response.media_type == "text/vtt"
-        assert response.body == b"WEBVTT\n\n00:00:00.000 --> 00:00:02.500\nHello world\n\n"
+        assert (
+            response.body == b"WEBVTT\n\n00:00:00.000 --> 00:00:02.500\nHello world\n\n"
+        )
     finally:
         # Restore original FORMATTERS
-        if hasattr(ResponseFormatter, 'FORMATTERS'):
-            delattr(ResponseFormatter, 'FORMATTERS')
+        if hasattr(ResponseFormatter, "FORMATTERS"):
+            delattr(ResponseFormatter, "FORMATTERS")
         for key, value in original_formatters.items():
             setattr(ResponseFormatter, key, value)
 

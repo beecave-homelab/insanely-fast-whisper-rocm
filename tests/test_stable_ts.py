@@ -28,7 +28,9 @@ def _sample_result(tmp_path: Path) -> dict[str, Any]:
             {"text": "world", "timestamp": [2.0, 3.0]},
             {"text": "hello", "timestamp": [0.0, 1.0]},
         ],
-        "original_file": str(Path(__file__).parent / "data" / "conversion-test-file.mp3"),
+        "original_file": str(
+            Path(__file__).parent / "data" / "conversion-test-file.mp3"
+        ),
     }
 
 
@@ -44,7 +46,9 @@ def test_convert_to_stable_segments(sample_result: dict[str, Any]) -> None:
     assert segments[1]["text"] == "world"
 
 
-def test_stabilize_returns_original_without_dependency(sample_result: dict[str, Any]) -> None:
+def test_stabilize_returns_original_without_dependency(
+    sample_result: dict[str, Any],
+) -> None:
     """If *stable_whisper* is unavailable, result should be returned unchanged."""
     # Force *stable_whisper* to None and reload to simulate missing dependency
     st.stable_whisper = None  # type: ignore
@@ -65,7 +69,7 @@ def test_stabilize_success(
         vad: bool = False,
         vad_threshold: float = 0.35,
         check_sorted: bool = False,
-        **kwargs: dict[str, Any]
+        **kwargs: dict[str, Any],
     ) -> dict[str, Any]:  # noqa: D401, D403
         base = inference_func()
         # Ensure conversion produced *segments*
@@ -93,6 +97,7 @@ def test_to_dict_with_dict() -> None:
 
 def test_to_dict_with_to_dict_method() -> None:
     """Test _to_dict with object having to_dict method."""
+
     class MockObject:
         def to_dict(self) -> dict[str, Any]:
             return {"mocked": True, "value": 42}
@@ -104,6 +109,7 @@ def test_to_dict_with_to_dict_method() -> None:
 
 def test_to_dict_with_model_dump_method() -> None:
     """Test _to_dict with object having model_dump method."""
+
     class MockObject:
         def model_dump(self) -> dict[str, Any]:
             return {"model": "dumped", "data": [1, 2, 3]}
@@ -115,6 +121,7 @@ def test_to_dict_with_model_dump_method() -> None:
 
 def test_to_dict_with_asdict_method() -> None:
     """Test _to_dict with object having _asdict method."""
+
     class MockObject:
         def _asdict(self) -> dict[str, Any]:
             return {"as": "dict", "converted": True}
@@ -138,7 +145,7 @@ def test_convert_to_stable_segments_already_exist() -> None:
         "segments": [
             {"text": "hello", "start": 0.0, "end": 1.0},
             {"text": "world", "start": 1.0, "end": 2.0},
-        ]
+        ],
     }
     converted = st._convert_to_stable(result)
     assert "segments" in converted
@@ -153,7 +160,7 @@ def test_convert_to_stable_no_timestamp_conversion() -> None:
         "chunks": [
             {"text": "hello", "start": 0.0, "end": 1.0},
             {"text": "world", "start": 1.0, "end": 2.0},
-        ]
+        ],
     }
     converted = st._convert_to_stable(result)
     assert "segments" in converted
@@ -168,7 +175,7 @@ def test_convert_to_stable_wrong_timestamp_order() -> None:
         "chunks": [
             {"text": "hello", "start": 1.0, "end": 0.0},  # Wrong order
             {"text": "world", "start": 2.0, "end": 3.0},
-        ]
+        ],
     }
     converted = st._convert_to_stable(result)
     segments = converted["segments"]
@@ -183,8 +190,8 @@ def test_convert_to_stable_none_timestamps() -> None:
         "chunks": [
             {"text": "hello", "start": 0.0, "end": 1.0},
             {"text": "world", "start": None, "end": 2.0},  # None start
-            {"text": "!", "start": 2.0, "end": None},     # None end
-        ]
+            {"text": "!", "start": 2.0, "end": None},  # None end
+        ],
     }
     converted = st._convert_to_stable(result)
     segments = converted["segments"]
@@ -200,8 +207,8 @@ def test_convert_to_stable_overlapping_segments() -> None:
         "chunks": [
             {"text": "hello", "start": 0.0, "end": 2.0},
             {"text": "world", "start": 1.0, "end": 3.0},  # Overlaps with previous
-            {"text": "!", "start": 4.0, "end": 5.0},     # No overlap
-        ]
+            {"text": "!", "start": 4.0, "end": 5.0},  # No overlap
+        ],
     }
     converted = st._convert_to_stable(result)
     segments = converted["segments"]
@@ -230,15 +237,18 @@ def test_stabilize_transcribe_any_failure_with_postprocess(
     monkeypatch: pytest.MonkeyPatch, sample_result: dict[str, Any]
 ) -> None:
     """Test stabilize_timestamps when transcribe_any fails but postprocess succeeds."""
+
     # Mock transcribe_any to fail
     def failing_transcribe_any(*args: object, **kwargs: object) -> None:
         raise Exception("transcribe_any failed")
 
     # Mock postprocess to succeed
-    def mock_postprocess(converted: dict[str, Any], audio: str, **kwargs: object) -> dict[str, Any]:
+    def mock_postprocess(
+        converted: dict[str, Any], audio: str, **kwargs: object
+    ) -> dict[str, Any]:
         return {
             "segments": [{"text": "processed", "start": 0.0, "end": 1.0}],
-            "text": "processed result"
+            "text": "processed result",
         }
 
     mock_sw = SimpleNamespace(transcribe_any=failing_transcribe_any)
@@ -252,8 +262,11 @@ def test_stabilize_transcribe_any_failure_with_postprocess(
     assert "segments" in stabilized
 
 
-def test_stabilize_all_methods_fail(sample_result: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
+def test_stabilize_all_methods_fail(
+    sample_result: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test stabilize_timestamps when both transcribe_any and postprocess fail."""
+
     # Mock transcribe_any to fail
     def failing_transcribe_any(*args: object, **kwargs: object) -> None:
         raise Exception("transcribe_any failed")
@@ -272,8 +285,11 @@ def test_stabilize_all_methods_fail(sample_result: dict[str, Any], monkeypatch: 
     assert stabilized.get("stabilized") is None  # No stabilization flag set
 
 
-def test_stabilize_segments_without_timestamps(monkeypatch: pytest.MonkeyPatch, sample_result: dict[str, Any]) -> None:
+def test_stabilize_segments_without_timestamps(
+    monkeypatch: pytest.MonkeyPatch, sample_result: dict[str, Any]
+) -> None:
     """Test stabilize_timestamps when processed segments don't have timestamps."""
+
     def fake_transcribe_any(
         inference_func: Callable[[], dict[str, Any]],
         audio: str,
@@ -281,7 +297,7 @@ def test_stabilize_segments_without_timestamps(monkeypatch: pytest.MonkeyPatch, 
         vad: bool = False,
         vad_threshold: float = 0.35,
         check_sorted: bool = False,
-        **kwargs: dict[str, Any]
+        **kwargs: dict[str, Any],
     ) -> dict[str, Any]:
         base = inference_func()
         # Return segments without start/end timestamps
@@ -315,7 +331,7 @@ def test_convert_to_stable_comprehensive_edge_cases() -> None:
             {"text": "none_end", "timestamp": [5.0, None]},
             # Overlapping (should be adjusted)
             {"text": "overlap", "timestamp": [4.5, 6.0]},
-        ]
+        ],
     }
     converted = st._convert_to_stable(result)
     segments = converted["segments"]
@@ -337,27 +353,24 @@ def test_convert_to_stable_comprehensive_edge_cases() -> None:
     assert segments[3]["start"] >= segments[2]["end"]  # Adjusted for overlap
 
 
-def test_stabilize_timestamps_comprehensive_error_cases(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_stabilize_timestamps_comprehensive_error_cases(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Test stabilize_timestamps with various error conditions."""
     # Test with audio_file_path instead of original_file
-    result = {
-        "text": "test",
-        "audio_file_path": "/nonexistent.mp3"
-    }
+    result = {"text": "test", "audio_file_path": "/nonexistent.mp3"}
     stabilized = st.stabilize_timestamps(result)
     assert stabilized == result  # Should return unchanged
 
     # Test with empty string path
-    result2 = {
-        "text": "test",
-        "original_file": ""
-    }
+    result2 = {"text": "test", "original_file": ""}
     stabilized2 = st.stabilize_timestamps(result2)
     assert stabilized2 == result2  # Should return unchanged
 
 
 def test_to_dict_comprehensive() -> None:
     """Test _to_dict with comprehensive object types."""
+
     # Test with various object types that have conversion methods
     class ToDictObj:
         def to_dict(self) -> dict[str, Any]:

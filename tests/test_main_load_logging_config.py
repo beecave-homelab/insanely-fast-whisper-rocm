@@ -19,9 +19,7 @@ class TestLoadLoggingConfig:
         mock_config = {
             "version": 1,
             "root": {"level": "INFO", "handlers": ["console"]},
-            "loggers": {
-                "test_logger": {"level": "INFO", "handlers": ["console"]}
-            },
+            "loggers": {"test_logger": {"level": "INFO", "handlers": ["console"]}},
             "handlers": {
                 "console": {
                     "class": "logging.StreamHandler",
@@ -29,25 +27,28 @@ class TestLoadLoggingConfig:
                     "formatter": "simple",
                 }
             },
-            "formatters": {
-                "simple": {"format": "%(levelname)s - %(message)s"}
-            },
+            "formatters": {"simple": {"format": "%(levelname)s - %(message)s"}},
         }
 
         # Create temporary config file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(mock_config, f)
             config_path = Path(f.name)
 
         try:
             # Mock the path resolution
-            with patch('insanely_fast_whisper_api.__main__.Path') as mock_path_class:
+            with patch("insanely_fast_whisper_api.__main__.Path") as mock_path_class:
                 mock_path_instance = mock_path_class.return_value
-                mock_path_instance.parent = Path(__file__).parent.parent / "insanely_fast_whisper_api"
+                mock_path_instance.parent = (
+                    Path(__file__).parent.parent / "insanely_fast_whisper_api"
+                )
                 mock_path_instance.__truediv__ = lambda self, x: config_path
 
-                with patch('insanely_fast_whisper_api.__main__.yaml.safe_load', return_value=mock_config) as mock_yaml_load:
-                    with patch('insanely_fast_whisper_api.__main__.setup_timezone'):
+                with patch(
+                    "insanely_fast_whisper_api.__main__.yaml.safe_load",
+                    return_value=mock_config,
+                ) as mock_yaml_load:
+                    with patch("insanely_fast_whisper_api.__main__.setup_timezone"):
                         # Execute
                         result = load_logging_config(debug=False)
 
@@ -76,25 +77,28 @@ class TestLoadLoggingConfig:
                     "formatter": "simple",
                 }
             },
-            "formatters": {
-                "simple": {"format": "%(levelname)s - %(message)s"}
-            },
+            "formatters": {"simple": {"format": "%(levelname)s - %(message)s"}},
         }
 
         # Create temporary config file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(mock_config, f)
             config_path = Path(f.name)
 
         try:
             # Mock the path resolution
-            with patch('insanely_fast_whisper_api.__main__.Path') as mock_path_class:
+            with patch("insanely_fast_whisper_api.__main__.Path") as mock_path_class:
                 mock_path_instance = mock_path_class.return_value
-                mock_path_instance.parent = Path(__file__).parent.parent / "insanely_fast_whisper_api"
+                mock_path_instance.parent = (
+                    Path(__file__).parent.parent / "insanely_fast_whisper_api"
+                )
                 mock_path_instance.__truediv__ = lambda self, x: config_path
 
-                with patch('insanely_fast_whisper_api.__main__.yaml.safe_load', return_value=mock_config) as mock_yaml_load:
-                    with patch('insanely_fast_whisper_api.__main__.setup_timezone'):
+                with patch(
+                    "insanely_fast_whisper_api.__main__.yaml.safe_load",
+                    return_value=mock_config,
+                ) as mock_yaml_load:
+                    with patch("insanely_fast_whisper_api.__main__.setup_timezone"):
                         # Execute
                         result = load_logging_config(debug=True)
 
@@ -112,12 +116,14 @@ class TestLoadLoggingConfig:
 
     def test_load_logging_config_file_not_found(self) -> None:
         """Test load_logging_config when config file doesn't exist."""
-        with patch('insanely_fast_whisper_api.__main__.Path') as mock_path_class:
+        with patch("insanely_fast_whisper_api.__main__.Path") as mock_path_class:
             mock_path_instance = mock_path_class.return_value
-            mock_path_instance.parent = Path(__file__).parent.parent / "insanely_fast_whisper_api"
+            mock_path_instance.parent = (
+                Path(__file__).parent.parent / "insanely_fast_whisper_api"
+            )
             mock_path_instance.__truediv__ = lambda self, x: Path("nonexistent.yaml")
 
-            with patch('insanely_fast_whisper_api.__main__.setup_timezone'):
+            with patch("insanely_fast_whisper_api.__main__.setup_timezone"):
                 # Execute & Verify
                 with pytest.raises(FileNotFoundError):
                     load_logging_config(debug=False)

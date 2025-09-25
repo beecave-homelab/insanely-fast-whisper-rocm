@@ -207,13 +207,17 @@ class TestDotEnvFileSupport:
 
         try:
             # Patch env_loader to make constants.py believe a user .env exists.
-            with patch(
-                "insanely_fast_whisper_api.utils.env_loader.USER_ENV_FILE",
-                Path(env_file_path),
-            ), patch(
-                "insanely_fast_whisper_api.utils.env_loader.USER_ENV_EXISTS",
-                True,
-            ), patch("dotenv.load_dotenv") as mock_load:
+            with (
+                patch(
+                    "insanely_fast_whisper_api.utils.env_loader.USER_ENV_FILE",
+                    Path(env_file_path),
+                ),
+                patch(
+                    "insanely_fast_whisper_api.utils.env_loader.USER_ENV_EXISTS",
+                    True,
+                ),
+                patch("dotenv.load_dotenv") as mock_load,
+            ):
                 reload(constants_module)
                 mock_load.assert_called_once_with(Path(env_file_path), override=True)
         finally:

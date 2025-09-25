@@ -38,8 +38,8 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     from insanely_fast_whisper_api.api.dependencies import get_file_handler
     from insanely_fast_whisper_api.utils import FileHandler
 
-    app.dependency_overrides[get_file_handler] = (
-        lambda: FileHandler(upload_dir=str(tmp_path))
+    app.dependency_overrides[get_file_handler] = lambda: FileHandler(
+        upload_dir=str(tmp_path)
     )
 
     return TestClient(app)

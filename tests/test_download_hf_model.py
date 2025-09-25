@@ -13,9 +13,7 @@ from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL
 
 # Adjust the import path based on your project structure
 # This assumes 'insanely_fast_whisper_api' is a package in the project root
-from insanely_fast_whisper_api.utils.download_hf_model import (
-    download_model_if_needed,
-)
+from insanely_fast_whisper_api.utils.download_hf_model import download_model_if_needed
 
 # Constants for testing, mirroring values or concepts from the main script
 TEST_HF_CACHE_ENV_VAR = "HF_HOME"  # Standard Hugging Face cache env var

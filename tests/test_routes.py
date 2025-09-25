@@ -90,9 +90,17 @@ def test_route_function_signatures() -> None:
     # Check create_transcription signature
     sig = inspect.signature(create_transcription)
     expected_params = {
-        'file', 'response_format', 'timestamp_type', 'language',
-        'task', 'stabilize', 'demucs', 'vad', 'vad_threshold',
-        'asr_pipeline', 'file_handler'
+        "file",
+        "response_format",
+        "timestamp_type",
+        "language",
+        "task",
+        "stabilize",
+        "demucs",
+        "vad",
+        "vad_threshold",
+        "asr_pipeline",
+        "file_handler",
     }
 
     actual_params = set(sig.parameters.keys())
@@ -101,9 +109,16 @@ def test_route_function_signatures() -> None:
     # Check create_translation signature
     sig = inspect.signature(create_translation)
     expected_params = {
-        'file', 'response_format', 'timestamp_type', 'language',
-        'stabilize', 'demucs', 'vad', 'vad_threshold',
-        'asr_pipeline', 'file_handler'
+        "file",
+        "response_format",
+        "timestamp_type",
+        "language",
+        "stabilize",
+        "demucs",
+        "vad",
+        "vad_threshold",
+        "asr_pipeline",
+        "file_handler",
     }
 
     actual_params = set(sig.parameters.keys())

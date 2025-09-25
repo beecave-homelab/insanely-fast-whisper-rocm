@@ -26,7 +26,9 @@ def test_get_audio_duration_valid_file() -> None:
         mock_audio = Mock()
         mock_audio.__len__ = Mock(return_value=5000)  # 5 seconds in milliseconds
 
-        with patch("insanely_fast_whisper_api.audio.processing.AudioSegment") as mock_audio_segment:
+        with patch(
+            "insanely_fast_whisper_api.audio.processing.AudioSegment"
+        ) as mock_audio_segment:
             mock_audio_segment.from_file.return_value = mock_audio
 
             result = get_audio_duration(tmp_path)
@@ -41,7 +43,9 @@ def test_get_audio_duration_file_not_found() -> None:
     """Test get_audio_duration with non-existent file."""
     non_existent_path = "/path/to/nonexistent/file.wav"
 
-    with patch("insanely_fast_whisper_api.audio.processing.AudioSegment") as mock_audio_segment:
+    with patch(
+        "insanely_fast_whisper_api.audio.processing.AudioSegment"
+    ) as mock_audio_segment:
         mock_audio_segment.from_file.side_effect = OSError("File not found")
 
         with pytest.raises(RuntimeError, match="Failed to get audio duration"):
@@ -54,7 +58,9 @@ def test_get_audio_duration_processing_error() -> None:
         tmp_path = tmp.name
 
     try:
-        with patch("insanely_fast_whisper_api.audio.processing.AudioSegment") as mock_audio_segment:
+        with patch(
+            "insanely_fast_whisper_api.audio.processing.AudioSegment"
+        ) as mock_audio_segment:
             mock_audio_segment.from_file.side_effect = RuntimeError("Processing error")
 
             with pytest.raises(RuntimeError, match="Failed to get audio duration"):
@@ -121,7 +127,9 @@ def test_extract_audio_from_video_ffmpeg_error() -> None:
 
             mock_ffmpeg.input.return_value = mock_ffmpeg_input
 
-            with pytest.raises(RuntimeError, match="Failed to extract audio from video"):
+            with pytest.raises(
+                RuntimeError, match="Failed to extract audio from video"
+            ):
                 extract_audio_from_video(tmp_path)
     finally:
         os.unlink(tmp_path)
@@ -145,10 +153,7 @@ def test_extract_audio_from_video_custom_parameters() -> None:
             mock_ffmpeg.input.return_value = mock_ffmpeg_input
 
             result = extract_audio_from_video(
-                tmp_path,
-                output_format="mp3",
-                sample_rate=44100,
-                channels=2
+                tmp_path, output_format="mp3", sample_rate=44100, channels=2
             )
 
             # Verify custom parameters were used
@@ -172,18 +177,28 @@ def test_split_audio_valid_parameters() -> None:
         mock_audio = Mock()
         mock_audio.__len__ = Mock(return_value=30000)  # 30 seconds
 
-        with patch("insanely_fast_whisper_api.audio.processing.AudioSegment") as mock_audio_segment:
-            with patch("insanely_fast_whisper_api.audio.processing.tempfile.mkdtemp") as mock_mkdtemp:
-                with patch("insanely_fast_whisper_api.audio.processing.os.path.join") as mock_join:
+        with patch(
+            "insanely_fast_whisper_api.audio.processing.AudioSegment"
+        ) as mock_audio_segment:
+            with patch(
+                "insanely_fast_whisper_api.audio.processing.tempfile.mkdtemp"
+            ) as mock_mkdtemp:
+                with patch(
+                    "insanely_fast_whisper_api.audio.processing.os.path.join"
+                ) as mock_join:
                     mock_audio_segment.from_file.return_value = mock_audio
                     mock_mkdtemp.return_value = "/tmp/test_dir"
                     mock_join.return_value = "/tmp/test_dir/chunk_0001.wav"
 
-                    result = split_audio(tmp_path, chunk_duration=10.0, chunk_overlap=1.0)
+                    result = split_audio(
+                        tmp_path, chunk_duration=10.0, chunk_overlap=1.0
+                    )
 
                     assert len(result) == 3  # 30 seconds / 10 seconds = 3 chunks
                     assert all(isinstance(path, str) for path, _ in result)
-                    assert all(isinstance(start_time, float) for _, start_time in result)
+                    assert all(
+                        isinstance(start_time, float) for _, start_time in result
+                    )
     finally:
         os.unlink(tmp_path)
 
@@ -198,7 +213,9 @@ def test_split_audio_short_audio() -> None:
         mock_audio = Mock()
         mock_audio.__len__ = Mock(return_value=5000)  # 5 seconds
 
-        with patch("insanely_fast_whisper_api.audio.processing.AudioSegment") as mock_audio_segment:
+        with patch(
+            "insanely_fast_whisper_api.audio.processing.AudioSegment"
+        ) as mock_audio_segment:
             mock_audio_segment.from_file.return_value = mock_audio
 
             result = split_audio(tmp_path, chunk_duration=10.0, chunk_overlap=1.0)
@@ -225,11 +242,15 @@ def test_split_audio_invalid_parameters() -> None:
             split_audio(tmp_path, chunk_overlap=-1.0)
 
         # Test overlap >= duration
-        with pytest.raises(ValueError, match="chunk_overlap must be less than chunk_duration"):
+        with pytest.raises(
+            ValueError, match="chunk_overlap must be less than chunk_duration"
+        ):
             split_audio(tmp_path, chunk_duration=10.0, chunk_overlap=15.0)
 
         # Test negative min chunk duration
-        with pytest.raises(ValueError, match="min_chunk_duration must be greater than 0"):
+        with pytest.raises(
+            ValueError, match="min_chunk_duration must be greater than 0"
+        ):
             split_audio(tmp_path, min_chunk_duration=-1.0)
     finally:
         os.unlink(tmp_path)
@@ -241,7 +262,9 @@ def test_split_audio_processing_error() -> None:
         tmp_path = tmp.name
 
     try:
-        with patch("insanely_fast_whisper_api.audio.processing.AudioSegment") as mock_audio_segment:
+        with patch(
+            "insanely_fast_whisper_api.audio.processing.AudioSegment"
+        ) as mock_audio_segment:
             mock_audio_segment.from_file.side_effect = RuntimeError("Processing error")
 
             with pytest.raises(RuntimeError, match="Failed to split audio"):
@@ -256,8 +279,12 @@ def test_split_audio_memory_error() -> None:
         tmp_path = tmp.name
 
     try:
-        with patch("insanely_fast_whisper_api.audio.processing.AudioSegment") as mock_audio_segment:
-            with patch("insanely_fast_whisper_api.audio.processing.tempfile.mkdtemp") as mock_mkdtemp:
+        with patch(
+            "insanely_fast_whisper_api.audio.processing.AudioSegment"
+        ) as mock_audio_segment:
+            with patch(
+                "insanely_fast_whisper_api.audio.processing.tempfile.mkdtemp"
+            ) as mock_mkdtemp:
                 mock_audio_segment.from_file.side_effect = MemoryError("Out of memory")
                 mock_mkdtemp.return_value = "/tmp/test_dir"
 
@@ -280,9 +307,15 @@ def test_split_audio_chunk_export() -> None:
         mock_chunk = Mock()
         mock_chunk.export = Mock()
 
-        with patch("insanely_fast_whisper_api.audio.processing.AudioSegment") as mock_audio_segment:
-            with patch("insanely_fast_whisper_api.audio.processing.tempfile.mkdtemp") as mock_mkdtemp:
-                with patch("insanely_fast_whisper_api.audio.processing.os.path.join") as mock_join:
+        with patch(
+            "insanely_fast_whisper_api.audio.processing.AudioSegment"
+        ) as mock_audio_segment:
+            with patch(
+                "insanely_fast_whisper_api.audio.processing.tempfile.mkdtemp"
+            ) as mock_mkdtemp:
+                with patch(
+                    "insanely_fast_whisper_api.audio.processing.os.path.join"
+                ) as mock_join:
                     mock_audio_segment.from_file.return_value = mock_audio
                     mock_mkdtemp.return_value = "/tmp/test_dir"
                     mock_join.return_value = "/tmp/test_dir/chunk_0001.wav"
@@ -290,7 +323,7 @@ def test_split_audio_chunk_export() -> None:
                     # Mock slicing to return our mock chunk
                     mock_audio.__getitem__ = Mock(return_value=mock_chunk)
 
-                    result = split_audio(tmp_path, chunk_duration=5.0)
+                    split_audio(tmp_path, chunk_duration=5.0)
 
                     # Verify chunk.export was called
                     mock_chunk.export.assert_called()

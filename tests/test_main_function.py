@@ -13,7 +13,7 @@ from insanely_fast_whisper_api.utils import constants
 class TestMainFunction:
     """Test the main function (click command)."""
 
-    @patch('insanely_fast_whisper_api.__main__.uvicorn', None)
+    @patch("insanely_fast_whisper_api.__main__.uvicorn", None)
     def test_main_uvicorn_not_installed(self) -> None:
         """Test main function when uvicorn is not installed."""
         runner = CliRunner()
@@ -26,11 +26,11 @@ class TestMainFunction:
         assert "Uvicorn is not installed" in result.output
         assert "pip install uvicorn" in result.output
 
-    @patch('insanely_fast_whisper_api.__main__.uvicorn')
-    @patch('insanely_fast_whisper_api.__main__.load_logging_config')
-    @patch('insanely_fast_whisper_api.__main__.logging')
-    @patch('click.echo')
-    @patch('click.secho')
+    @patch("insanely_fast_whisper_api.__main__.uvicorn")
+    @patch("insanely_fast_whisper_api.__main__.load_logging_config")
+    @patch("insanely_fast_whisper_api.__main__.logging")
+    @patch("click.echo")
+    @patch("click.secho")
     def test_main_default_options(
         self,
         mock_secho: Mock,
@@ -68,13 +68,15 @@ class TestMainFunction:
 
         # Check output messages
         assert any("🚀 Starting" in call[0][0] for call in mock_secho.call_args_list)
-        assert any("🔗 Listening on:" in call[0][0] for call in mock_secho.call_args_list)
+        assert any(
+            "🔗 Listening on:" in call[0][0] for call in mock_secho.call_args_list
+        )
 
-    @patch('insanely_fast_whisper_api.__main__.uvicorn')
-    @patch('insanely_fast_whisper_api.__main__.load_logging_config')
-    @patch('insanely_fast_whisper_api.__main__.logging')
-    @patch('click.echo')
-    @patch('click.secho')
+    @patch("insanely_fast_whisper_api.__main__.uvicorn")
+    @patch("insanely_fast_whisper_api.__main__.load_logging_config")
+    @patch("insanely_fast_whisper_api.__main__.logging")
+    @patch("click.echo")
+    @patch("click.secho")
     def test_main_custom_options(
         self,
         mock_secho: Mock,
@@ -92,13 +94,20 @@ class TestMainFunction:
         runner = CliRunner()
 
         # Execute
-        result = runner.invoke(main, [
-            "--host", "127.0.0.1",
-            "--port", "8080",
-            "--workers", "4",
-            "--log-level", "debug",
-            "--reload"
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8080",
+                "--workers",
+                "4",
+                "--log-level",
+                "debug",
+                "--reload",
+            ],
+        )
 
         # Verify
         assert result.exit_code == 0
@@ -115,11 +124,11 @@ class TestMainFunction:
             log_config=mock_config,
         )
 
-    @patch('insanely_fast_whisper_api.__main__.uvicorn')
-    @patch('insanely_fast_whisper_api.__main__.load_logging_config')
-    @patch('insanely_fast_whisper_api.__main__.logging')
-    @patch('click.echo')
-    @patch('click.secho')
+    @patch("insanely_fast_whisper_api.__main__.uvicorn")
+    @patch("insanely_fast_whisper_api.__main__.load_logging_config")
+    @patch("insanely_fast_whisper_api.__main__.logging")
+    @patch("click.echo")
+    @patch("click.secho")
     def test_main_ssl_options(
         self,
         mock_secho: Mock,
@@ -135,9 +144,10 @@ class TestMainFunction:
         mock_uvicorn.run = Mock()
 
         # Create temporary SSL files
-        with tempfile.NamedTemporaryFile(delete=False) as key_file, \
-             tempfile.NamedTemporaryFile(delete=False) as cert_file:
-
+        with (
+            tempfile.NamedTemporaryFile(delete=False) as key_file,
+            tempfile.NamedTemporaryFile(delete=False) as cert_file,
+        ):
             key_path = key_file.name
             cert_path = cert_file.name
 
@@ -145,10 +155,9 @@ class TestMainFunction:
             runner = CliRunner()
 
             # Execute
-            result = runner.invoke(main, [
-                "--ssl-keyfile", key_path,
-                "--ssl-certfile", cert_path
-            ])
+            result = runner.invoke(
+                main, ["--ssl-keyfile", key_path, "--ssl-certfile", cert_path]
+            )
 
             # Verify
             assert result.exit_code == 0
@@ -174,11 +183,11 @@ class TestMainFunction:
             Path(key_path).unlink(missing_ok=True)
             Path(cert_path).unlink(missing_ok=True)
 
-    @patch('insanely_fast_whisper_api.__main__.uvicorn')
-    @patch('insanely_fast_whisper_api.__main__.load_logging_config')
-    @patch('insanely_fast_whisper_api.__main__.logging')
-    @patch('click.echo')
-    @patch('click.secho')
+    @patch("insanely_fast_whisper_api.__main__.uvicorn")
+    @patch("insanely_fast_whisper_api.__main__.load_logging_config")
+    @patch("insanely_fast_whisper_api.__main__.logging")
+    @patch("click.echo")
+    @patch("click.secho")
     def test_main_debug_flag(
         self,
         mock_secho: Mock,
@@ -217,11 +226,11 @@ class TestMainFunction:
         secho_calls = [call[0][0] for call in mock_secho.call_args_list]
         assert any("🐛 Debug mode is ON" in call for call in secho_calls)
 
-    @patch('insanely_fast_whisper_api.__main__.uvicorn')
-    @patch('insanely_fast_whisper_api.__main__.load_logging_config')
-    @patch('insanely_fast_whisper_api.__main__.logging')
-    @patch('click.echo')
-    @patch('click.secho')
+    @patch("insanely_fast_whisper_api.__main__.uvicorn")
+    @patch("insanely_fast_whisper_api.__main__.load_logging_config")
+    @patch("insanely_fast_whisper_api.__main__.logging")
+    @patch("click.echo")
+    @patch("click.secho")
     def test_main_debug_with_custom_log_level(
         self,
         mock_secho: Mock,
@@ -255,11 +264,11 @@ class TestMainFunction:
             log_config=mock_config,
         )
 
-    @patch('insanely_fast_whisper_api.__main__.uvicorn')
-    @patch('insanely_fast_whisper_api.__main__.load_logging_config')
-    @patch('insanely_fast_whisper_api.__main__.logging')
-    @patch('click.echo')
-    @patch('click.secho')
+    @patch("insanely_fast_whisper_api.__main__.uvicorn")
+    @patch("insanely_fast_whisper_api.__main__.load_logging_config")
+    @patch("insanely_fast_whisper_api.__main__.logging")
+    @patch("click.echo")
+    @patch("click.secho")
     def test_main_workers_message(
         self,
         mock_secho: Mock,
@@ -282,13 +291,15 @@ class TestMainFunction:
         # Verify
         assert result.exit_code == 0
         secho_calls = [call[0][0] for call in mock_secho.call_args_list]
-        assert any("⚙️  Running with 4 worker processes." in call for call in secho_calls)
+        assert any(
+            "⚙️  Running with 4 worker processes." in call for call in secho_calls
+        )
 
-    @patch('insanely_fast_whisper_api.__main__.uvicorn')
-    @patch('insanely_fast_whisper_api.__main__.load_logging_config')
-    @patch('insanely_fast_whisper_api.__main__.logging')
-    @patch('click.echo')
-    @patch('click.secho')
+    @patch("insanely_fast_whisper_api.__main__.uvicorn")
+    @patch("insanely_fast_whisper_api.__main__.load_logging_config")
+    @patch("insanely_fast_whisper_api.__main__.logging")
+    @patch("click.echo")
+    @patch("click.secho")
     def test_main_reload_message(
         self,
         mock_secho: Mock,
@@ -337,8 +348,15 @@ class TestMainFunction:
         assert "Starts the Insanely Fast Whisper API server" in result.output
         # Check that all options are present
         expected_options = [
-            "--host", "--port", "--workers", "--log-level",
-            "--reload", "--ssl-keyfile", "--ssl-certfile", "--debug", "--help"
+            "--host",
+            "--port",
+            "--workers",
+            "--log-level",
+            "--reload",
+            "--ssl-keyfile",
+            "--ssl-certfile",
+            "--debug",
+            "--help",
         ]
         for option in expected_options:
             assert option in result.output

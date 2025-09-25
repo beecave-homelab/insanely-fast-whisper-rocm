@@ -42,16 +42,6 @@ def test_disables_timestamps_when_generation_config_missing(
 
     backend.asr_pipe = DummyPipe()
 
-    monkeypatch.setattr(
-        "insanely_fast_whisper_api.audio.conversion.ensure_wav",
-        lambda p: pathlib.Path(p),
-    )
-    # Avoid real audio decoding/splitting for unit test speed/stability
-    monkeypatch.setattr(
-        "insanely_fast_whisper_api.audio.processing.split_audio",
-        lambda _p, chunk_duration, chunk_overlap, min_chunk_duration: [(str(_p), 0.0)],
-    )
-
     audio_file = tmp_path / "audio.wav"
     audio_file.write_bytes(b"0")
 

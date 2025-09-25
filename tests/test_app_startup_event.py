@@ -5,25 +5,27 @@ import logging
 from unittest.mock import Mock, patch
 
 from insanely_fast_whisper_api.api.app import create_app
-from insanely_fast_whisper_api.utils.constants import (
-    API_TITLE,
-    DEFAULT_MODEL,
-    HF_TOKEN,
-)
+from insanely_fast_whisper_api.utils.constants import API_TITLE, DEFAULT_MODEL, HF_TOKEN
 
 
 class TestAppStartupEvent:
     """Test the FastAPI application startup event handler."""
 
-    @patch('insanely_fast_whisper_api.api.app.download_model_if_needed')
-    @patch('insanely_fast_whisper_api.api.app.logger')
-    def test_startup_event_calls_model_download(self, mock_logger: Mock, mock_download: Mock) -> None:
+    @patch("insanely_fast_whisper_api.api.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_api.api.app.logger")
+    def test_startup_event_calls_model_download(
+        self, mock_logger: Mock, mock_download: Mock
+    ) -> None:
         """Test that startup event calls download_model_if_needed with correct parameters."""
         # Create app to trigger startup event setup
         app = create_app()
 
         # Get the startup event handler
-        startup_handlers = [handler for handler in app.router.on_startup if hasattr(handler, '__name__') and handler.__name__ == 'startup_event']
+        startup_handlers = [
+            handler
+            for handler in app.router.on_startup
+            if hasattr(handler, "__name__") and handler.__name__ == "startup_event"
+        ]
         assert len(startup_handlers) == 1
         startup_event = startup_handlers[0]
 
@@ -42,15 +44,21 @@ class TestAppStartupEvent:
             custom_logger=mock_logger,
         )
 
-    @patch('insanely_fast_whisper_api.api.app.download_model_if_needed')
-    @patch('insanely_fast_whisper_api.api.app.logger')
-    def test_startup_event_logs_startup_messages(self, mock_logger: Mock, mock_download: Mock) -> None:
+    @patch("insanely_fast_whisper_api.api.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_api.api.app.logger")
+    def test_startup_event_logs_startup_messages(
+        self, mock_logger: Mock, mock_download: Mock
+    ) -> None:
         """Test that startup event logs API title, version, and description."""
         # Create app to trigger startup event setup
         app = create_app()
 
         # Get the startup event handler
-        startup_handlers = [handler for handler in app.router.on_startup if hasattr(handler, '__name__') and handler.__name__ == 'startup_event']
+        startup_handlers = [
+            handler
+            for handler in app.router.on_startup
+            if hasattr(handler, "__name__") and handler.__name__ == "startup_event"
+        ]
         startup_event = startup_handlers[0]
 
         # Execute the startup event
@@ -73,9 +81,11 @@ class TestAppStartupEvent:
         assert any("API Description:" in msg for msg in log_messages)
         assert any("Available endpoints:" in msg for msg in log_messages)
 
-    @patch('insanely_fast_whisper_api.api.app.download_model_if_needed')
-    @patch('insanely_fast_whisper_api.api.app.logger')
-    def test_startup_event_logs_routes(self, mock_logger: Mock, mock_download: Mock) -> None:
+    @patch("insanely_fast_whisper_api.api.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_api.api.app.logger")
+    def test_startup_event_logs_routes(
+        self, mock_logger: Mock, mock_download: Mock
+    ) -> None:
         """Test that startup event logs all available routes."""
         # Create app with some test routes
         app = create_app()
@@ -86,7 +96,11 @@ class TestAppStartupEvent:
             return {"test": "data"}
 
         # Get the startup event handler
-        startup_handlers = [handler for handler in app.router.on_startup if hasattr(handler, '__name__') and handler.__name__ == 'startup_event']
+        startup_handlers = [
+            handler
+            for handler in app.router.on_startup
+            if hasattr(handler, "__name__") and handler.__name__ == "startup_event"
+        ]
         startup_event = startup_handlers[0]
 
         # Execute the startup event
@@ -101,16 +115,20 @@ class TestAppStartupEvent:
         call_args_list = mock_logger.info.call_args_list
 
         # Should have logged "Available endpoints:"
-        endpoints_logged = any("Available endpoints:" in str(call[0]) for call in call_args_list)
+        endpoints_logged = any(
+            "Available endpoints:" in str(call[0]) for call in call_args_list
+        )
         assert endpoints_logged
 
         # Should have processed routes (exact count depends on included router)
         route_calls = [call for call in call_args_list if len(call[0]) >= 2]
         assert len(route_calls) > 0
 
-    @patch('insanely_fast_whisper_api.api.app.download_model_if_needed')
-    @patch('insanely_fast_whisper_api.api.app.logger')
-    def test_startup_event_logs_route_descriptions_in_debug(self, mock_logger: Mock, mock_download: Mock) -> None:
+    @patch("insanely_fast_whisper_api.api.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_api.api.app.logger")
+    def test_startup_event_logs_route_descriptions_in_debug(
+        self, mock_logger: Mock, mock_download: Mock
+    ) -> None:
         """Test that route descriptions are logged in debug mode."""
         # Set logger to DEBUG level
         mock_logger.isEnabledFor.side_effect = lambda level: level == logging.DEBUG
@@ -124,7 +142,11 @@ class TestAppStartupEvent:
             return {"test": "data"}
 
         # Get the startup event handler
-        startup_handlers = [handler for handler in app.router.on_startup if hasattr(handler, '__name__') and handler.__name__ == 'startup_event']
+        startup_handlers = [
+            handler
+            for handler in app.router.on_startup
+            if hasattr(handler, "__name__") and handler.__name__ == "startup_event"
+        ]
         startup_event = startup_handlers[0]
 
         # Execute the startup event
@@ -136,12 +158,18 @@ class TestAppStartupEvent:
             loop.close()
 
         # Verify debug logging was called for route descriptions
-        debug_calls = [call for call in mock_logger.debug.call_args_list if "Description:" in str(call[0])]
+        debug_calls = [
+            call
+            for call in mock_logger.debug.call_args_list
+            if "Description:" in str(call[0])
+        ]
         assert len(debug_calls) > 0
 
-    @patch('insanely_fast_whisper_api.api.app.download_model_if_needed')
-    @patch('insanely_fast_whisper_api.api.app.logger')
-    def test_startup_event_skips_route_descriptions_when_not_debug(self, mock_logger: Mock, mock_download: Mock) -> None:
+    @patch("insanely_fast_whisper_api.api.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_api.api.app.logger")
+    def test_startup_event_skips_route_descriptions_when_not_debug(
+        self, mock_logger: Mock, mock_download: Mock
+    ) -> None:
         """Test that route descriptions are not logged when not in debug mode."""
         # Set logger to INFO level (not DEBUG)
         mock_logger.isEnabledFor.side_effect = lambda level: level != logging.DEBUG
@@ -150,7 +178,11 @@ class TestAppStartupEvent:
         app = create_app()
 
         # Get the startup event handler
-        startup_handlers = [handler for handler in app.router.on_startup if hasattr(handler, '__name__') and handler.__name__ == 'startup_event']
+        startup_handlers = [
+            handler
+            for handler in app.router.on_startup
+            if hasattr(handler, "__name__") and handler.__name__ == "startup_event"
+        ]
         startup_event = startup_handlers[0]
 
         # Execute the startup event
@@ -162,19 +194,29 @@ class TestAppStartupEvent:
             loop.close()
 
         # Verify debug logging was NOT called for route descriptions
-        debug_calls = [call for call in mock_logger.debug.call_args_list if "Description:" in str(call[0])]
+        debug_calls = [
+            call
+            for call in mock_logger.debug.call_args_list
+            if "Description:" in str(call[0])
+        ]
         assert len(debug_calls) == 0
 
-    @patch('insanely_fast_whisper_api.api.app.download_model_if_needed')
-    @patch('insanely_fast_whisper_api.api.app.logger')
-    def test_startup_event_handles_multiple_route_types(self, mock_logger: Mock, mock_download: Mock) -> None:
+    @patch("insanely_fast_whisper_api.api.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_api.api.app.logger")
+    def test_startup_event_handles_multiple_route_types(
+        self, mock_logger: Mock, mock_download: Mock
+    ) -> None:
         """Test that startup event handles different types of routes."""
         # Create app
         app = create_app()
 
         # The app should have various routes from the included router
         # Get the startup event handler
-        startup_handlers = [handler for handler in app.router.on_startup if hasattr(handler, '__name__') and handler.__name__ == 'startup_event']
+        startup_handlers = [
+            handler
+            for handler in app.router.on_startup
+            if hasattr(handler, "__name__") and handler.__name__ == "startup_event"
+        ]
         startup_event = startup_handlers[0]
 
         # Execute the startup event
@@ -189,7 +231,9 @@ class TestAppStartupEvent:
         call_args_list = mock_logger.info.call_args_list
 
         # Should have logged "Available endpoints:"
-        endpoints_logged = any("Available endpoints:" in str(call[0]) for call in call_args_list)
+        endpoints_logged = any(
+            "Available endpoints:" in str(call[0]) for call in call_args_list
+        )
         assert endpoints_logged
 
         # Should have processed routes (exact count depends on included router)

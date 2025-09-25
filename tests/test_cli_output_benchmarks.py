@@ -63,7 +63,9 @@ class TestOutputAndBenchmarks:
         mock_txt_formatter.get_file_extension.return_value = "txt"
 
         mock_srt_formatter = Mock()
-        mock_srt_formatter.format.return_value = "1\n00:00:00,000 --> 00:00:02,000\nTest transcription"
+        mock_srt_formatter.format.return_value = (
+            "1\n00:00:00,000 --> 00:00:02,000\nTest transcription"
+        )
         mock_srt_formatter.get_file_extension.return_value = "srt"
 
         def get_formatter(format_name: str) -> Mock:

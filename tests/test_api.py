@@ -57,8 +57,8 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
         "insanely_fast_whisper_api.core.asr_backend.HuggingFaceBackend._validate_device",
         lambda self: None,
     )
-    app.dependency_overrides[get_file_handler] = (
-        lambda: FileHandler(upload_dir=str(tmp_path))
+    app.dependency_overrides[get_file_handler] = lambda: FileHandler(
+        upload_dir=str(tmp_path)
     )
     client = TestClient(app)
     try:
@@ -120,9 +120,7 @@ def test_translation_with_stabilization_options(
     assert call_kwargs.get("vad_threshold") == 0.8
 
 
-def test_transcription_endpoint_validation(
-    client: TestClient, tmp_path: Path
-) -> None:
+def test_transcription_endpoint_validation(client: TestClient, tmp_path: Path) -> None:
     """Test input validation for the transcription endpoint."""
     # Create unsupported file under a temp directory
     bad_file = tmp_path / "test.txt"
@@ -137,9 +135,7 @@ def test_transcription_endpoint_validation(
     assert "Unsupported file format" in response.json()["detail"]
 
 
-def test_translation_endpoint_validation(
-    client: TestClient, tmp_path: Path
-) -> None:
+def test_translation_endpoint_validation(client: TestClient, tmp_path: Path) -> None:
     """Test input validation for the translation endpoint."""
     bad_file = tmp_path / "test.txt"
     bad_file.write_bytes(b"test content")
