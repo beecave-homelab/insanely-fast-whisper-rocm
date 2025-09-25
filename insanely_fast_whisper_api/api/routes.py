@@ -14,6 +14,7 @@ from insanely_fast_whisper_api.api.dependencies import (
     get_file_handler,
 )
 from insanely_fast_whisper_api.api.responses import ResponseFormatter
+from insanely_fast_whisper_api.core.integrations.stable_ts import stabilize_timestamps
 from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_api.utils import (
     DEFAULT_DEMUCS,
@@ -122,11 +123,15 @@ async def create_transcription(
             task=task,
             timestamp_type=timestamp_type,
             original_filename=file.filename,
-            stabilize=stabilize,
-            demucs=demucs,
-            vad=vad,
-            vad_threshold=vad_threshold,
         )
+        # Optional stabilization (post-process) applied here for API
+        if stabilize:
+            try:
+                result = stabilize_timestamps(
+                    result, demucs=demucs, vad=vad, vad_threshold=vad_threshold
+                )
+            except Exception as stab_exc:  # noqa: BLE001
+                logger.error("Stabilization failed: %s", stab_exc, exc_info=True)
         logger.info("Transcription completed successfully")
 
         # Validate response_format
@@ -229,11 +234,15 @@ async def create_translation(
             task="translate",
             timestamp_type=timestamp_type,
             original_filename=file.filename,
-            stabilize=stabilize,
-            demucs=demucs,
-            vad=vad,
-            vad_threshold=vad_threshold,
         )
+        # Optional stabilization (post-process) applied here for API
+        if stabilize:
+            try:
+                result = stabilize_timestamps(
+                    result, demucs=demucs, vad=vad, vad_threshold=vad_threshold
+                )
+            except Exception as stab_exc:  # noqa: BLE001
+                logger.error("Stabilization failed: %s", stab_exc, exc_info=True)
         logger.info("Translation completed successfully")
         logger.debug("Translation result: %s", result)
 

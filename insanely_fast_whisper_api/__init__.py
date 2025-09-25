@@ -1,34 +1,32 @@
-"""Insanely Fast Whisper API.
+"""Public surface for the Insanely Fast Whisper API package.
 
-A FastAPI wrapper around a custom Whisper-based ASR pipeline with audio
-chunking support.
+The module re-exports common audio utilities, the lightweight test-friendly
+`ASRPipeline`, and (when available) the optional `benchmarks` subpackage to
+preserve backward compatibility with existing integrations.
 """
 
-from insanely_fast_whisper_api.utils.constants import API_VERSION
+from __future__ import annotations
 
-__author__ = "elvee"
-__email__ = "lowie@beecave.nl"
-__version__ = API_VERSION
-
-# Audio utilities
-import insanely_fast_whisper_api.utils.constants as constants
 from insanely_fast_whisper_api.audio import (
     cleanup_temp_files,
     get_audio_duration,
     merge_chunk_results,
     split_audio,
 )
-
-# Core functionality
-# from .core import ASRPipeline, run_asr_pipeline # Old import
 from insanely_fast_whisper_api.core import ASRPipeline
+from insanely_fast_whisper_api.utils import constants
+
+try:
+    from insanely_fast_whisper_api import benchmarks
+except ModuleNotFoundError:  # pragma: no cover
+    benchmarks = None  # type: ignore[assignment]
 
 __all__ = [
     "ASRPipeline",
+    "benchmarks",
+    "cleanup_temp_files",
     "constants",
     "get_audio_duration",
-    "split_audio",
-    "cleanup_temp_files",
     "merge_chunk_results",
-    "__version__",
+    "split_audio",
 ]

@@ -8,9 +8,7 @@ from typing import Any
 
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from insanely_fast_whisper_api.core.formatters import (
-    FORMATTERS,
-)
+from insanely_fast_whisper_api.core.formatters import FORMATTERS
 from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_JSON,
     RESPONSE_FORMAT_SRT,
@@ -18,63 +16,68 @@ from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_VERBOSE_JSON,
     RESPONSE_FORMAT_VTT,
 )
+from insanely_fast_whisper_api.utils.format_time import format_srt_time, format_vtt_time
 
 
 class ResponseFormatter:
     """Strategy pattern implementation for response formatting."""
 
-    # --- Internal helper utilities -------------------------------------------------
+    # Note: Subtitle formatting (SRT/VTT) is delegated to core FORMATTERS to
+    # avoid duplicate logic and ensure consistent behavior across API/CLI/WebUI.
+
+    # --- Backward-compatibility helpers (used in tests) -------------------------
     @staticmethod
     def _seconds_to_timestamp(seconds: float, for_vtt: bool = False) -> str:
-        """Convert float seconds to SRT/VTT timestamp string.
+        """Convert seconds to a timestamp string.
+
+        Delegates to explicit utilities and exists for test compatibility.
 
         Args:
-            seconds (float): The timestamp in seconds.
-            for_vtt (bool): If True, format for WebVTT (uses dot as separator).
+            seconds: Timestamp in seconds.
+            for_vtt: Whether to return a VTT-style timestamp.
 
         Returns:
-            str: The formatted timestamp string (SRT or VTT style).
+            Timestamp string in SRT or VTT style.
         """
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        secs = int(seconds % 60)
-        millis = int((seconds - int(seconds)) * 1000)
-        if for_vtt:
-            return f"{hours:02d}:{minutes:02d}:{secs:02d}.{millis:03d}"
-        return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+        return format_vtt_time(seconds) if for_vtt else format_srt_time(seconds)
 
     @staticmethod
     def _segments_to_srt(segments: list[dict]) -> str:
-        """Convert segments list to SRT formatted string.
+        """Convert segments to SRT string.
+
+        Thin wrapper that mirrors previous behavior while relying on
+        the shared timestamp utilities.
 
         Args:
-            segments (list[dict]): ASR segments with 'start', 'end', and 'text'.
+            segments: List of segment dicts containing 'start', 'end', 'text'.
 
         Returns:
-            str: A string containing SRT formatted subtitle cues.
+            A string containing SRT-formatted cues.
         """
         srt_lines: list[str] = []
         for i, seg in enumerate(segments, start=1):
-            start_ts = ResponseFormatter._seconds_to_timestamp(seg.get("start", 0.0))
-            end_ts = ResponseFormatter._seconds_to_timestamp(seg.get("end", 0.0))
+            start_ts = ResponseFormatter._seconds_to_timestamp(
+                seg.get("start", 0.0), for_vtt=False
+            )
+            end_ts = ResponseFormatter._seconds_to_timestamp(
+                seg.get("end", 0.0), for_vtt=False
+            )
             text = seg.get("text", "").strip()
-            srt_lines.extend([
-                str(i),
-                f"{start_ts} --> {end_ts}",
-                text,
-                "",
-            ])  # blank line after cue
+            srt_lines.extend([str(i), f"{start_ts} --> {end_ts}", text, ""])
         return "\n".join(srt_lines).strip()
 
     @staticmethod
     def _segments_to_vtt(segments: list[dict]) -> str:
-        """Convert segments list to WebVTT formatted string.
+        """Convert segments to WebVTT string.
+
+        Thin wrapper that mirrors previous behavior while relying on
+        the shared timestamp utilities.
 
         Args:
-            segments (list[dict]): ASR segments with 'start', 'end', and 'text'.
+            segments: List of segment dicts containing 'start', 'end', 'text'.
 
         Returns:
-            str: A string containing WebVTT formatted subtitle cues.
+            A string containing WebVTT-formatted cues.
         """
         vtt_lines: list[str] = ["WEBVTT", ""]
         for seg in segments:
@@ -85,7 +88,7 @@ class ResponseFormatter:
                 seg.get("end", 0.0), for_vtt=True
             )
             text = seg.get("text", "").strip()
-            vtt_lines.extend([f"{start_ts} --> {end_ts}", text, ""])  # blank line
+            vtt_lines.extend([f"{start_ts} --> {end_ts}", text, ""])
         return "\n".join(vtt_lines).strip()
 
     @staticmethod

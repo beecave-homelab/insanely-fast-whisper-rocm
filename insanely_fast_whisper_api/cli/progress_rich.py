@@ -128,10 +128,7 @@ class RichProgressReporter(ProgressCallback):
         Args:
             index: Chunk index.
         """
-        if (
-            not self.enabled
-            or self._progress is None
-        ):
+        if not self.enabled or self._progress is None:
             return
         # Advance the bar by one chunk
         if self._tasks.transcription is not None:
@@ -207,9 +204,7 @@ class RichProgressReporter(ProgressCallback):
         if not self.enabled or self._progress is None:
             return
         if self._tasks.export is None:
-            self._tasks.export = self._progress.add_task(
-                "Export", total=total_items
-            )
+            self._tasks.export = self._progress.add_task("Export", total=total_items)
 
     def on_export_item_done(self, index: int, label: str) -> None:  # noqa: ARG002
         """Advance export progress.

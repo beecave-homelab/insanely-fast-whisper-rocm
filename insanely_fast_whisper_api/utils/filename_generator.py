@@ -141,11 +141,9 @@ class FilenameGenerator:
             # warning. In a real application, this might raise an error or have
             # more robust handling.
             print(
-
-                    "Warning: Invalid timezone '"
-                    f"{target_tz_str}"
-                    "' specified via TZ/APP_TIMEZONE. Falling back to UTC."
-
+                "Warning: Invalid timezone '"
+                f"{target_tz_str}"
+                "' specified via TZ/APP_TIMEZONE. Falling back to UTC."
             )
             target_tz = ZoneInfo("UTC")
 

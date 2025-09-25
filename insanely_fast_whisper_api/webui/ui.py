@@ -226,10 +226,8 @@ def create_ui_components(
     with gr.Blocks(title="Insanely Fast Whisper - Local WebUI") as demo:
         gr.Markdown("# 🎙️ Insanely Fast Whisper - Local WebUI")
         gr.Markdown(
-
-                "Transcribe or translate audio and video files using Whisper "
-                "models directly in your browser."
-
+            "Transcribe or translate audio and video files using Whisper "
+            "models directly in your browser."
         )
 
         with gr.Row():

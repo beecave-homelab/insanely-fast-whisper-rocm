@@ -309,12 +309,35 @@ def transcribe(
         # Conditionally apply timestamp stabilization
         if config.stabilize:
             logger.info("Applying timestamp stabilization...")
+            if progress_tracker_instance is not None:
+                # Show an indeterminate progress while stabilization runs
+                desc = (
+                    f"Stabilizing timestamps (demucs={config.demucs}, "
+                    f"vad={config.vad}, threshold={config.vad_threshold}) "
+                    f"for {original_file_name_for_desc}"
+                )
+                progress_tracker_instance(None, desc=desc)
+            # Relay detailed stabilization progress messages to the UI
+
+            def _stab_progress(msg: str) -> None:
+                if progress_tracker_instance is not None:
+                    progress_tracker_instance(
+                        None,
+                        desc=f"{msg} ({original_file_name_for_desc})",
+                    )
+
             result = stabilize_timestamps(
                 result,
                 demucs=config.demucs,
                 vad=config.vad,
                 vad_threshold=config.vad_threshold,
+                progress_cb=_stab_progress,
             )
+            if progress_tracker_instance is not None:
+                progress_tracker_instance(
+                    None,
+                    desc=(f"Stabilization complete for {original_file_name_for_desc}"),
+                )
 
         logger.info("Transcription completed successfully for %s", audio_file_path)
 
@@ -365,6 +388,10 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
     all_results_data = []
     processed_files_summary = []
 
+    # Initialize default Gradio button updates (hidden) early so error paths can
+    # safely reference them.
+    dl_btn_hidden_update = gr.update(visible=False, value=None, interactive=False)
+
     # output_base_dir is where pipeline saves JSON and where our ZIPs will go.
     output_base_dir = Path(file_handling_config.temp_uploads_dir)
     output_base_dir.mkdir(parents=True, exist_ok=True)
@@ -390,19 +417,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 total_files_for_session=num_files,
             )
 
-            # FIX: The asr_pipeline.process() returns the transcription data directly,
-            # not wrapped in a "raw_result" field. result_dict IS the raw result.
-            # Apply word-level timestamp stabilization if requested
-            if transcription_config.stabilize:
-                try:
-                    result_dict = stabilize_timestamps(
-                        result_dict,
-                        demucs=transcription_config.demucs,
-                        vad=transcription_config.vad,
-                        vad_threshold=transcription_config.vad_threshold,
-                    )
-                except Exception as stab_err:  # pragma: no cover
-                    logger.error("Stabilization failed: %s", stab_err, exc_info=True)
+            # The asr_pipeline.process() returns the transcription data directly.
+            # Stabilization is performed inside transcribe() when enabled, so we
+            # do not repeat it here to avoid duplicate work.
             raw_transcription_result = result_dict
             # This is the path to the JSON file saved by the pipeline
             json_file_path_from_pipeline = result_dict.get("output_file_path")
@@ -475,15 +492,14 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             transcription_output_val = f"Error processing {file_name_for_log}: {e}"
             json_output_val = {"error": str(e), "file": file_name_for_log}
             raw_result_state_val = {"error": str(e)}
-            dl_btn_hidden = gr.DownloadButton(visible=False, interactive=False)
             return (
                 transcription_output_val,
                 json_output_val,
                 raw_result_state_val,
-                dl_btn_hidden,
-                dl_btn_hidden,
-                dl_btn_hidden,
-                dl_btn_hidden,
+                dl_btn_hidden_update,
+                dl_btn_hidden_update,
+                dl_btn_hidden_update,
+                dl_btn_hidden_update,
             )
         except (
             OSError,
@@ -548,7 +564,6 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         )
 
     # Initialize default Gradio button updates (hidden)
-    dl_btn_hidden_update = gr.update(visible=False, value=None, interactive=False)
     zip_btn_update = txt_btn_update = srt_btn_update = json_btn_update = (
         dl_btn_hidden_update
     )
