@@ -174,7 +174,7 @@ def _sentence_chunks(words: list[Word]) -> list[list[Word]]:
     Yields:
         A list of Word objects representing a sentence.
     """
-    sentence_ends = {'.', '!', '?'}
+    sentence_ends = {".", "!", "?"}
     current_sentence = []
     for word in words:
         current_sentence.append(word)
@@ -196,14 +196,14 @@ def _split_at_clause_boundaries(sentence: list[Word]) -> list[list[Word]]:
     """
     sentence_text = " ".join(w.text for w in sentence)
     # More sophisticated logic will be added later.
-    if sentence_text.count(',') < 2:
+    if sentence_text.count(",") < 2:
         return [sentence]
 
     clauses = []
     current_clause = []
     for word in sentence:
         current_clause.append(word)
-        if ',' in word.text:
+        if "," in word.text:
             clauses.append(current_clause)
             current_clause = []
     if current_clause:
@@ -334,9 +334,7 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                     len(chunk_text) / constants.MAX_CPS,
                     constants.MIN_SEGMENT_DURATION_SEC,
                 )
-                end_time = current_time + min(
-                    dur, constants.MAX_SEGMENT_DURATION_SEC
-                )
+                end_time = current_time + min(dur, constants.MAX_SEGMENT_DURATION_SEC)
                 chunk_tokens = chunk_text.split()
                 per = (end_time - current_time) / max(len(chunk_tokens), 1)
                 chunk_words = []
