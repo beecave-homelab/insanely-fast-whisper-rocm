@@ -174,12 +174,46 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
     # Pop any stray kwargs we don’t explicitly handle
     kwargs.clear()
 
+    benchmark_flags: dict[str, Any] | None = None
+    benchmark_gpu_stats: dict[str, Any] | None = None
+    gpu_sampler: object | None = None
+
     # ------------------------------------------------------------------ #
     # Pre-processing (video handling, language auto-detect, etc.)         #
     # ------------------------------------------------------------------ #
     processed_language = language or None
     temp_files: list[Path] = []
     reporter = TqdmProgressReporter(enabled=progress_enabled)
+
+    if benchmark:
+        benchmark_flags = {
+            "audio_file": str(audio_file),
+            "model": model,
+            "device": device,
+            "dtype": dtype,
+            "batch_size": batch_size,
+            "progress_group_size": progress_group_size,
+            "chunk_length": chunk_length,
+            "language": processed_language,
+            "output": str(output) if output else None,
+            "timestamp_type": timestamp_type,
+            "stabilize": stabilize,
+            "demucs": demucs,
+            "vad": vad,
+            "vad_threshold": vad_threshold,
+            "debug": debug,
+            "quiet": quiet,
+            "progress": progress_enabled,
+            "no_timestamps": no_timestamps,
+            "export_format": export_format,
+            "export_format_explicit": export_format_explicit,
+            "benchmark_extra": list(benchmark_extra),
+        }
+        from insanely_fast_whisper_api.benchmarks.collector import GpuUtilSampler
+
+        sampler = GpuUtilSampler()
+        if sampler.start():
+            gpu_sampler = sampler
 
     # Reduce logging verbosity when --quiet is used
     if quiet and not debug:
@@ -268,6 +302,11 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
 
         total_time = time.time() - start_time
 
+        if gpu_sampler is not None:
+            gpu_sampler.stop()
+            benchmark_gpu_stats = gpu_sampler.summary()
+            gpu_sampler = None
+
         # ------------------------------------------------------------------ #
         # Export & benchmark handling                                         #
         # ------------------------------------------------------------------ #
@@ -281,6 +320,8 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
             export_format_explicit=export_format_explicit,
             benchmark_enabled=benchmark,
             benchmark_extra=benchmark_extra,
+            benchmark_flags=benchmark_flags,
+            benchmark_gpu_stats=benchmark_gpu_stats,
             temp_files=temp_files,
             progress_cb=reporter,
             quiet=quiet,
@@ -323,6 +364,12 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
                 "💡 Re-run with --debug for more details", fg="yellow", err=True
             )
         sys.exit(1)
+    finally:
+        if gpu_sampler is not None:
+            try:
+                gpu_sampler.stop()
+            except Exception:  # pragma: no cover - defensive
+                pass
 
 
 # --------------------------------------------------------------------------- #
@@ -341,6 +388,8 @@ def _handle_output_and_benchmarks(
     export_format_explicit: bool,
     benchmark_enabled: bool,
     benchmark_extra: tuple[str, ...],
+    benchmark_flags: dict[str, Any] | None,
+    benchmark_gpu_stats: dict[str, Any] | None,
     temp_files: list[Path],
     progress_cb: ProgressCallback | None = None,
     quiet: bool = False,
@@ -360,6 +409,8 @@ def _handle_output_and_benchmarks(
         benchmark_enabled: Whether to collect benchmark metrics.
         benchmark_extra: Additional key=value entries to include in the
             benchmark record.
+        benchmark_flags: Mapping of CLI flag names to the values used.
+        benchmark_gpu_stats: Aggregated GPU utilisation statistics, if sampled.
         temp_files: List of temporary files to clean up after export.
         progress_cb: Optional progress callback to report export progress.
         quiet: If True, suppress non-essential messages (e.g., benchmark line).
@@ -449,13 +500,23 @@ def _handle_output_and_benchmarks(
         if benchmark_extra:
             extra_dict = dict(item.split("=", 1) for item in benchmark_extra)
 
+        # Merge CLI flags into the config snapshot without overwriting
+        # pre-existing config values. This avoids duplicating data across
+        # two separate groups ("config" vs "flags").
+        merged_config = dict(result.get("config_used") or {})
+        if benchmark_flags:
+            for k, v in benchmark_flags.items():
+                if k not in merged_config:
+                    merged_config[k] = v
+
         benchmark_path = collector.collect(
             audio_path=str(audio_file),
             task=task,
-            config=result.get("config_used"),
+            config=merged_config,
             runtime_seconds=result.get("runtime_seconds"),
             total_time=total_time,
             extra=extra_dict,
+            gpu_stats=benchmark_gpu_stats,
         )
         if not quiet:
             click.secho(f"📈 Benchmark saved to: {benchmark_path}", fg="green")

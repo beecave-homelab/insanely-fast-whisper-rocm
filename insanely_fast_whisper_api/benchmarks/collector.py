@@ -1,12 +1,27 @@
-"""Benchmark collection utilities for CLI instrumentation."""
+"""Benchmark collection utilities for CLI instrumentation.
+
+The collector persists a JSON document for each CLI run that enables
+post-mortem analysis. Besides core runtime details, the record now captures
+every CLI flag value and optional GPU utilisation statistics gathered via
+``pyamdgpuinfo`` when the library and compatible hardware are available.
+
+Benchmark outputs reside in ``benchmarks/`` by default and use a safe slug
+derived from the audio filename plus a UTC timestamp for uniqueness.
+"""
 
 from __future__ import annotations
 
 import json
 import re
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+try:  # pragma: no cover - optional dependency
+    import pyamdgpuinfo  # type: ignore
+except ImportError:  # pragma: no cover - optional dependency
+    pyamdgpuinfo = None  # type: ignore
 
 
 class BenchmarkCollector:
@@ -38,6 +53,7 @@ class BenchmarkCollector:
         runtime_seconds: float | None,
         total_time: float,
         extra: dict[str, str] | None = None,
+        gpu_stats: dict[str, Any] | None = None,
     ) -> Path:
         """Persist a benchmark record to disk and return its path.
 
@@ -48,6 +64,7 @@ class BenchmarkCollector:
             runtime_seconds: Model execution time as reported by the backend.
             total_time: End-to-end wall clock time.
             extra: Optional dictionary of additional metadata entries.
+            gpu_stats: Aggregated GPU utilisation metrics, if available.
 
         Returns:
             Path: Location of the written benchmark JSON file.
@@ -59,6 +76,7 @@ class BenchmarkCollector:
             "runtime_seconds": runtime_seconds,
             "total_time_seconds": total_time,
             "extra": extra or {},
+            "gpu_stats": gpu_stats or {},
             "recorded_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -81,3 +99,86 @@ class BenchmarkCollector:
         """
         sanitized = cls._SAFE_NAME_PATTERN.sub("-", value).strip("-._")
         return sanitized or "benchmark"
+
+
+class GpuUtilSampler:
+    """Sample GPU utilisation metrics using ``pyamdgpuinfo``.
+
+    The sampler polls the primary GPU at a fixed interval to build an average
+    utilisation profile. When ``pyamdgpuinfo`` or compatible hardware is not
+    available, the sampler becomes a no-op and returns ``None``.
+    """
+
+    def __init__(self, interval: float = 0.5) -> None:
+        """Initialise the sampler.
+
+        Args:
+            interval: Sampling interval in seconds.
+        """
+        self._interval = interval
+        self._samples: list[tuple[float, float]] = []
+        self._thread: threading.Thread | None = None
+        self._stop_event: threading.Event | None = None
+        self._gpu = None
+
+    def start(self) -> bool:
+        """Begin sampling in a background thread.
+
+        Returns:
+            ``True`` when sampling started successfully, ``False`` otherwise.
+        """
+        if pyamdgpuinfo is None:  # pragma: no cover - optional dependency
+            return False
+        try:  # pragma: no cover - hardware specific
+            self._gpu = pyamdgpuinfo.get_gpu(0)
+        except Exception:
+            self._gpu = None
+            return False
+        self._stop_event = threading.Event()
+        self._thread = threading.Thread(target=self._run_loop, daemon=True)
+        self._thread.start()
+        return True
+
+    def stop(self) -> None:
+        """Stop sampling and wait for the background thread to finish."""
+        if self._stop_event is not None:
+            self._stop_event.set()
+        if self._thread is not None:
+            self._thread.join(timeout=self._interval * 2)
+        self._stop_event = None
+        self._thread = None
+
+    def summary(self) -> dict[str, Any] | None:
+        """Return aggregated utilisation metrics.
+
+        Returns:
+            A dictionary containing average and peak GPU utilisation and VRAM
+            usage. ``None`` is returned when no samples were collected.
+        """
+        if not self._samples:
+            return None
+        loads = [sample[0] for sample in self._samples]
+        vram_bytes = [sample[1] for sample in self._samples]
+        sample_count = len(self._samples)
+        return {
+            "provider": "pyamdgpuinfo",
+            "sample_interval_seconds": self._interval,
+            "sample_count": sample_count,
+            "avg_gpu_load_percent": round((sum(loads) / sample_count) * 100, 2),
+            "max_gpu_load_percent": round(max(loads) * 100, 2),
+            "avg_vram_mb": round((sum(vram_bytes) / sample_count) / 1024**2, 2),
+            "max_vram_mb": round(max(vram_bytes) / 1024**2, 2),
+        }
+
+    def _run_loop(self) -> None:
+        """Continuously capture GPU utilisation until stopped."""
+        if self._gpu is None or self._stop_event is None:
+            return
+        while not self._stop_event.is_set():  # pragma: no cover - hardware specific
+            try:
+                load = float(self._gpu.query_load())
+                vram = float(self._gpu.query_vram_usage())
+            except Exception:
+                break
+            self._samples.append((load, vram))
+            self._stop_event.wait(self._interval)

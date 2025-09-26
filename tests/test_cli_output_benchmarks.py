@@ -1,7 +1,7 @@
 """Tests for CLI output and benchmark handling."""
 
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 from insanely_fast_whisper_api.cli.commands import _handle_output_and_benchmarks
 from insanely_fast_whisper_api.core.progress import ProgressCallback
@@ -41,6 +41,8 @@ class TestOutputAndBenchmarks:
                     export_format_explicit=False,
                     benchmark_enabled=False,
                     benchmark_extra=(),
+                    benchmark_flags=None,
+                    benchmark_gpu_stats=None,
                     temp_files=[],
                     progress_cb=None,
                     quiet=False,
@@ -91,6 +93,8 @@ class TestOutputAndBenchmarks:
                     export_format_explicit=False,
                     benchmark_enabled=False,
                     benchmark_extra=(),
+                    benchmark_flags=None,
+                    benchmark_gpu_stats=None,
                     temp_files=[],
                     progress_cb=None,
                     quiet=False,
@@ -125,6 +129,8 @@ class TestOutputAndBenchmarks:
                     export_format_explicit=True,
                     benchmark_enabled=False,
                     benchmark_extra=(),
+                    benchmark_flags=None,
+                    benchmark_gpu_stats=None,
                     temp_files=[],
                     progress_cb=None,
                     quiet=False,
@@ -135,7 +141,7 @@ class TestOutputAndBenchmarks:
                 assert args[0][0] == "Test content"
                 assert args[1]["encoding"] == "utf-8"
 
-    @patch("insanely_fast_whisper_api.cli.commands.BenchmarkCollector")
+    @patch("insanely_fast_whisper_api.benchmarks.collector.BenchmarkCollector")
     def test_benchmark_enabled(self, mock_collector_class: Mock) -> None:
         """Test benchmark collection when enabled."""
         mock_collector = Mock()
@@ -155,6 +161,8 @@ class TestOutputAndBenchmarks:
                         export_format_explicit=False,
                         benchmark_enabled=True,
                         benchmark_extra=("key1=value1", "key2=value2"),
+                        benchmark_flags=None,
+                        benchmark_gpu_stats=None,
                         temp_files=[],
                         progress_cb=None,
                         quiet=False,
@@ -186,6 +194,8 @@ class TestOutputAndBenchmarks:
                         export_format_explicit=False,
                         benchmark_enabled=False,
                         benchmark_extra=(),
+                        benchmark_flags=None,
+                        benchmark_gpu_stats=None,
                         temp_files=[],
                         progress_cb=None,
                         quiet=False,
@@ -220,6 +230,8 @@ class TestOutputAndBenchmarks:
                     export_format_explicit=False,
                     benchmark_enabled=False,
                     benchmark_extra=(),
+                    benchmark_flags=None,
+                    benchmark_gpu_stats=None,
                     temp_files=[],
                     progress_cb=mock_progress,
                     quiet=False,
@@ -227,7 +239,7 @@ class TestOutputAndBenchmarks:
 
                 # Verify progress callbacks were made
                 mock_progress.on_export_started.assert_called_once_with(1)
-                mock_progress.on_export_item_done.assert_called_once()
+                mock_progress.on_export_item_done.assert_called_once_with(0, ANY)
 
     @patch("insanely_fast_whisper_api.cli.commands.cleanup_temp_files")
     def test_temp_file_cleanup(self, mock_cleanup: Mock) -> None:
@@ -246,6 +258,8 @@ class TestOutputAndBenchmarks:
                     export_format_explicit=False,
                     benchmark_enabled=False,
                     benchmark_extra=(),
+                    benchmark_flags=None,
+                    benchmark_gpu_stats=None,
                     temp_files=temp_files,
                     progress_cb=None,
                     quiet=False,
