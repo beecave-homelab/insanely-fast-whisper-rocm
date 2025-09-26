@@ -200,6 +200,40 @@ AUDIO_CHUNK_MIN_DURATION = float(
     os.getenv("AUDIO_CHUNK_MIN_DURATION", "5.0")
 )  # Minimum 5 seconds
 
+
+# Subtitle readability configuration
+# These constants control SRT/VTT formatting for better readability
+MAX_LINE_CHARS = int(os.getenv("MAX_LINE_CHARS", "42"))  # Max characters per line
+MAX_LINES_PER_BLOCK = int(
+    os.getenv("MAX_LINES_PER_BLOCK", "2")
+)  # Max lines per subtitle block
+MAX_BLOCK_CHARS = int(
+    os.getenv("MAX_BLOCK_CHARS", str(MAX_LINE_CHARS * MAX_LINES_PER_BLOCK))
+)  # Hard limit for block characters
+MAX_BLOCK_CHARS_SOFT = int(
+    os.getenv("MAX_BLOCK_CHARS_SOFT", "90")
+)  # Soft limit for block characters
+MIN_CPS = float(os.getenv("MIN_CPS", "12.0"))  # Minimum characters per second
+MAX_CPS = float(os.getenv("MAX_CPS", "17.0"))  # Maximum characters per second
+MIN_SEGMENT_DURATION_SEC = float(
+    os.getenv("MIN_SEGMENT_DURATION_SEC", "1.2")
+)  # Min segment duration
+MAX_SEGMENT_DURATION_SEC = float(
+    os.getenv("MAX_SEGMENT_DURATION_SEC", "5.5")
+)  # Max segment duration
+DISPLAY_BUFFER_SEC = float(
+    os.getenv("DISPLAY_BUFFER_SEC", "0.2")
+)  # Buffer for display timing
+
+# Words and phrases for clause splitting and merging heuristics
+SOFT_BOUNDARY_WORDS = os.getenv(
+    "SOFT_BOUNDARY_WORDS", "and,but,or,so,for,nor,yet"
+).split(",")
+INTERJECTION_WHITELIST = os.getenv(
+    "INTERJECTION_WHITELIST", "um,uh,ah,er,like"
+).split(",")
+
+
 # --- Timestamp Stabilization defaults ---
 DEFAULT_STABILIZE = os.getenv("STABILIZE_DEFAULT", "false").lower() == "true"
 DEFAULT_DEMUCS = os.getenv("DEMUCS_DEFAULT", "false").lower() == "true"
