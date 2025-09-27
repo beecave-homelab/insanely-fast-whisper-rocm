@@ -129,6 +129,7 @@ pdm run cli transcribe audio.mp3  # CLI
 - **Transcription**: Audio to text in source language
 - **Translation**: Audio to English
 - **Native SDPA Acceleration**: Hugging Face `sdpa` attention implementation for faster processing on compatible hardware.
+- **Readable Subtitles (SRT/VTT)**: A new segmentation pipeline that creates well-formed, readable subtitles by default. This feature respects line length, duration, and characters-per-second (CPS) constraints to produce professional-quality subtitles. It can be toggled with the `USE_READABLE_SUBTITLES` environment variable.
 - **Word-level Timestamp Stabilization**: Optional integration with [`stable-ts`](https://github.com/jianfch/stable-ts). Enable via `--stabilize` (CLI) or corresponding API/WebUI options to obtain refined word-aligned segments.
 - **Video & Audio Formats**: Support for standard audio files (.wav, .flac, .mp3, .m4a) **and** popular video containers (.mp4, .mkv, .webm, .mov) via automatic audio extraction with FFmpeg
 - **Filename Standardization**: Predictable and configurable output naming
@@ -323,7 +324,7 @@ The application uses a hierarchical approach for loading `.env` files, managed b
 - **[setup script](./scripts/setup_config.py)**: A template file in the project root. Users should copy this to create their configuration files.
 - **`~/.config/insanely-fast-whisper-api/.env`**: The primary user-specific configuration file. This is the recommended place for all user customizations.
 - **Project `.env`** (Optional): Can be used for development-specific settings or non-sensitive project defaults.
-- **[insanely_fast_whisper_api/utils/constants.py](./insanely_fast_whisper_api/utils/constants.py)**: Defines and provides centralized access to all configuration variables after they are loaded from the environment and `.env` files.
+- **[insanely_fast_whisper_api/utils/constants.py](./insanely_fast_whisper_api/utils/constants.py)**: Defines and provides centralized access to all configuration variables after they are loaded from the environment and `.env` files. This includes the `USE_READABLE_SUBTITLES` flag, which defaults to `true`.
 - **[insanely_fast_whisper_api/utils/env_loader.py](./insanely_fast_whisper_api/utils/env_loader.py)**: Contains the logic for loading `.env` files hierarchically and managing debug print statements based on `LOG_LEVEL` or CLI flags.
 - **[logging_config.yaml](./insanely_fast_whisper_api/logging_config.yaml)**: Configures the application's logging behavior.
 

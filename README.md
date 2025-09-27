@@ -19,6 +19,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **High Performance**: Optimized processing with configurable batch sizes and model parameters
 - **Multiple Output Formats**: Support for JSON, TXT, and SRT subtitle formats
 - **Standardized Filenames**: Consistent, timestamped output naming across all interfaces
+- **Readable Subtitles (SRT/VTT)**: Advanced segmentation pipeline that creates well-formed, readable subtitles by default, respecting line length, duration, and characters-per-second (CPS) constraints. This can be toggled with the `USE_READABLE_SUBTITLES` environment variable.
 - **Word-level Timestamp Stabilization (CLI, API & WebUI)**: Optional `--stabilize` flag (powered by [stable-ts](https://github.com/jianfch/stable-ts)) greatly refines chunk timestamps, producing accurate word-aligned SRT/VTT output
 - **Noise Reduction & Voice Activity Detection (CLI, API & WebUI)**: Optional `--demucs` and `--vad` flags provide Demucs-based denoising and intelligent speech-region detection (adjustable `--vad-threshold`) for cleaner, more accurate transcripts
 
@@ -165,6 +166,12 @@ For private or gated models, set the `HF_TOKEN` environment variable with your A
 ## Configuration
 
 The API can be configured using environment variables in `~/.config/insanely-fast-whisper-api/.env`. A template with all available options is generated automatically by the configuration setup script mentioned above.
+
+Key configuration options include:
+
+- `WHISPER_MODEL`: The Whisper model to use (e.g., `openai/whisper-large-v3`).
+- `WHISPER_DEVICE`: The device to run on (`0` for CUDA, `mps` for Apple Silicon, `cpu`).
+- `USE_READABLE_SUBTITLES`: `true` or `false`. Enables the new readable subtitle segmentation pipeline. Defaults to `true`.
 
 For a detailed explanation of the configuration system, including hierarchical loading and key files, please see the [`Configuration System` section in `project-overview.md`](./project-overview.md#configuration-system).
 
