@@ -427,6 +427,7 @@ def _handle_output_and_benchmarks(
         "text": result["text"],  # TxtFormatter uses this
         # Prefer the stable-ts key name
         "segments": result.get("segments") or result.get("chunks", []),
+        "chunks": result.get("chunks", []),
         "metadata": {
             "audio_file": str(audio_file.resolve()),
             "total_time_seconds": round(total_time, 2),

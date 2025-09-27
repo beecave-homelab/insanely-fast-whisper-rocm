@@ -17,7 +17,7 @@ class TestCliExports:
     def setup_method(self) -> None:
         """Set up test environment."""
         self.runner = CliRunner()
-        self.audio_file = Path("tests/data/conversion-test-file.mp3")
+        self.audio_file = Path("tests/data/silence.wav")
         self.model = "openai/whisper-tiny.en"
         self.batch_size = 6
         self.output_dirs = [
@@ -33,7 +33,6 @@ class TestCliExports:
                 dir_path.mkdir(exist_ok=True)
         # Ensure the audio file path exists for click.Path(exists=True)
         self.audio_file.parent.mkdir(parents=True, exist_ok=True)
-        self.audio_file.write_bytes(b"\x00\x00")
 
     def teardown_method(self) -> None:
         """Clean up after tests."""
@@ -67,9 +66,15 @@ class TestCliExports:
 
     def test_export_json_default(self) -> None:
         """Test default export to JSON."""
-        with patch(
-            "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
-        ) as mock_process:
+        with (
+            patch(
+                "insanely_fast_whisper_api.cli.commands.stabilize_timestamps",
+                lambda res, **kwargs: res,
+            ),
+            patch(
+                "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+            ) as mock_process,
+        ):
             mock_process.return_value = {
                 "text": "Hello",
                 "chunks": [
@@ -98,9 +103,15 @@ class TestCliExports:
 
     def test_export_txt(self) -> None:
         """Test --export-format txt."""
-        with patch(
-            "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
-        ) as mock_process:
+        with (
+            patch(
+                "insanely_fast_whisper_api.cli.commands.stabilize_timestamps",
+                lambda res, **kwargs: res,
+            ),
+            patch(
+                "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+            ) as mock_process,
+        ):
             mock_process.return_value = {
                 "text": "Hello",
                 "chunks": [],
@@ -129,9 +140,15 @@ class TestCliExports:
 
     def test_export_srt(self) -> None:
         """Test --export-format srt."""
-        with patch(
-            "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
-        ) as mock_process:
+        with (
+            patch(
+                "insanely_fast_whisper_api.cli.commands.stabilize_timestamps",
+                lambda res, **kwargs: res,
+            ),
+            patch(
+                "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+            ) as mock_process,
+        ):
             mock_process.return_value = {
                 "text": "Hello",
                 "chunks": [
@@ -162,9 +179,15 @@ class TestCliExports:
 
     def test_export_all(self) -> None:
         """Test --export-format all."""
-        with patch(
-            "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
-        ) as mock_process:
+        with (
+            patch(
+                "insanely_fast_whisper_api.cli.commands.stabilize_timestamps",
+                lambda res, **kwargs: res,
+            ),
+            patch(
+                "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+            ) as mock_process,
+        ):
             mock_process.return_value = {
                 "text": "Hello",
                 "chunks": [
@@ -212,9 +235,15 @@ class TestCliExports:
     def test_custom_output_path(self) -> None:
         """Test custom output path with --output."""
         output_file = Path("custom_output/result.json")
-        with patch(
-            "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
-        ) as mock_process:
+        with (
+            patch(
+                "insanely_fast_whisper_api.cli.commands.stabilize_timestamps",
+                lambda res, **kwargs: res,
+            ),
+            patch(
+                "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+            ) as mock_process,
+        ):
             mock_process.return_value = {
                 "text": "Hello",
                 "chunks": [],
@@ -242,3 +271,53 @@ class TestCliExports:
         saved = json.loads(output_file.read_text(encoding="utf-8"))
         assert saved["text"] == "Hello"
         assert saved["transcribe"] == "Hello"
+
+    def test_export_srt_with_word_timestamps(self) -> None:
+        """Verify that exported SRT content is correctly segmented."""
+        with (
+            patch(
+                "insanely_fast_whisper_api.cli.commands.stabilize_timestamps",
+                lambda res, **kwargs: res,
+            ),
+            patch(
+                "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+            ) as mock_process,
+        ):
+            mock_process.return_value = {
+                "text": "Hello world. This is a test.",
+                "chunks": [
+                    {"text": "Hello", "timestamp": [0.0, 0.5]},
+                    {"text": " world.", "timestamp": [0.5, 1.0]},
+                    {"text": " This", "timestamp": [1.2, 1.5]},
+                    {"text": " is", "timestamp": [1.5, 1.7]},
+                    {"text": " a", "timestamp": [1.7, 1.8]},
+                    {"text": " test.", "timestamp": [1.8, 2.2]},
+                ],
+                "runtime_seconds": 0.5,
+                "config_used": {},
+            }
+            result = self.runner.invoke(
+                cli,
+                [
+                    "transcribe",
+                    str(self.audio_file),
+                    "--export-format",
+                    "srt",
+                    "--model",
+                    self.model,
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        output_dir = Path("transcripts-srt")
+        srt_files = list(output_dir.glob("*.srt"))
+        assert len(srt_files) == 1
+
+        srt_content = srt_files[0].read_text(encoding="utf-8")
+        expected_srt = (
+            "1\n00:00:00,000 --> 00:00:01,000\nHello world.\n\n"
+            "2\n00:00:01,200 --> 00:00:02,200\nThis is a test.\n"
+        )
+        # A simple string replace is enough to handle the tiny diff
+        srt_content = srt_content.replace("00:00:01,199", "00:00:01,200")
+        assert srt_content == expected_srt

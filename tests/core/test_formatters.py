@@ -49,8 +49,13 @@ class TestFormatters:
         # Note: The _result_to_words heuristic might still pick this up as word-like.
         # This test assumes the fallback is triggered.
         formatted_srt = SrtFormatter.format(result)
-        assert "1\n00:00:00,000 --> 00:00:01,500\nThis is a sentence.\n" in formatted_srt
-        assert "This is another sentence that is\nvery long and should be wrapped." in formatted_srt
+        assert (
+            "1\n00:00:00,000 --> 00:00:01,500\nThis is a sentence.\n" in formatted_srt
+        )
+        assert (
+            "This is another sentence that is\nvery long and should be wrapped."
+            in formatted_srt
+        )
 
     def test_vtt_formatter_with_word_timestamps(self) -> None:
         """Verify VttFormatter uses segmentation with word-level timestamps."""
@@ -91,4 +96,7 @@ class TestFormatters:
         }
         formatted_vtt = VttFormatter.format(result)
         assert "00:00:00.000 --> 00:00:01.500\nThis is a sentence.\n" in formatted_vtt
-        assert "This is another sentence that is\nvery long and should be wrapped." in formatted_vtt
+        assert (
+            "This is another sentence that is\nvery long and should be wrapped."
+            in formatted_vtt
+        )

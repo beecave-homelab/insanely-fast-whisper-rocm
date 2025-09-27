@@ -4,13 +4,68 @@ This module contains classes for formatting transcription results
 in different output formats (text, SRT subtitles, JSON).
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from typing import Any
 
+from insanely_fast_whisper_api.core.segmentation import Word, segment_words, split_lines
+from insanely_fast_whisper_api.utils.constants import USE_READABLE_SUBTITLES
 from insanely_fast_whisper_api.utils.format_time import format_srt_time, format_vtt_time
 
 logger = logging.getLogger(__name__)
+
+
+def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
+    """Extract `Word` objects from a transcription result if available.
+
+    This helper checks for word-level timestamps and normalizes them into a
+    list of `Word` objects. It supports both `chunks` and `segments` keys.
+
+    Args:
+        result: The transcription result from the ASR pipeline.
+
+    Returns:
+        A list of `Word` objects if word-level timestamps are found, otherwise
+        ``None``.
+    """
+    words_list = []
+    # Prioritize 'chunks' if it looks like word-level data
+    chunks = result.get("chunks")
+    if isinstance(chunks, list) and chunks and "timestamp" in chunks[0]:
+        for chunk in chunks:
+            text = chunk.get("text", "").strip()
+            timestamp = chunk.get("timestamp")
+            if text and isinstance(timestamp, (list, tuple)) and len(timestamp) == 2:
+                start, end = timestamp
+                if isinstance(start, (int, float)) and isinstance(end, (int, float)):
+                    words_list.append(Word(text=text, start=start, end=end))
+
+    if words_list:
+        # Heuristic: if the average word duration is very short, it's likely word-level
+        avg_duration = sum(w.end - w.start for w in words_list) / len(words_list)
+        if avg_duration < 1.5:  # Words are typically short
+            return words_list
+
+    # Fallback to 'segments' if they contain word-level data
+    segments = result.get("segments")
+    if isinstance(segments, list):
+        for segment in segments:
+            words = segment.get("words")
+            if isinstance(words, list) and words and isinstance(words[0], dict):
+                for word_data in words:
+                    text = word_data.get("word", "").strip()
+                    start = word_data.get("start")
+                    end = word_data.get("end")
+                    if (
+                        text
+                        and isinstance(start, (int, float))
+                        and isinstance(end, (int, float))
+                    ):
+                        words_list.append(Word(text=text, start=start, end=end))
+
+    return words_list if words_list else None
 
 
 class BaseFormatter:
@@ -77,14 +132,67 @@ class SrtFormatter(BaseFormatter):
     def format(cls, result: dict[str, Any]) -> str:
         """Format as SRT subtitles with timestamps.
 
+        This method uses a segmentation pipeline to create readable subtitles
+        if word-level timestamps are available. Otherwise, it falls back to
+        formatting raw chunks.
+
         Args:
-            result: The transcription result from ASRPipeline
+            result: The transcription result from ASRPipeline.
 
         Returns:
-            str: The formatted SRT subtitles.
-
+            The formatted SRT subtitles as a string.
         """
         logger.debug(f"[SrtFormatter] Formatting result: keys={list(result.keys())}")
+
+        # Attempt to use the new segmentation pipeline first
+        if USE_READABLE_SUBTITLES:
+            words = _result_to_words(result)
+            if words:
+                logger.debug("[SrtFormatter] Found words, using segmentation.")
+                segments = segment_words(words)
+                srt_content = []
+                for i, segment in enumerate(segments, 1):
+                    start = format_srt_time(segment.start)
+                    end = format_srt_time(segment.end)
+                    srt_content.append(f"{i}\n{start} --> {end}\n{segment.text}\n")
+                return "\n".join(srt_content)
+
+        # Fallback to old chunk-based formatting if no words are found
+        logger.debug("[SrtFormatter] No word-level timestamps, using chunk fallback.")
+        try:
+            chunks = result.get("chunks", [])
+            if not chunks:
+                logger.warning("[SrtFormatter] No 'chunks' found in result.")
+                return ""
+
+            srt_content = []
+            for i, chunk in enumerate(chunks, 1):
+                try:
+                    timestamp = chunk.get("timestamp")
+                    if not isinstance(timestamp, (list, tuple)) or len(timestamp) != 2:
+                        continue
+
+                    start_sec, end_sec = timestamp
+                    start = format_srt_time(start_sec)
+                    end = format_srt_time(end_sec)
+                    text = chunk.get("text", "").strip()
+
+                    # Apply line splitting for readability
+                    formatted_text = split_lines(text)
+
+                    srt_content.append(f"{i}\n{start} --> {end}\n{formatted_text}\n")
+                except (TypeError, KeyError, AttributeError, IndexError) as chunk_e:
+                    logger.error(
+                        f"[SrtFormatter] Failed to format chunk #{i}: {chunk_e}"
+                    )
+            return "\n".join(srt_content)
+
+        except (TypeError, KeyError, AttributeError, IndexError) as e:
+            logger.exception(f"[SrtFormatter] Failed to format SRT: {e}")
+            return ""
+
+        # Fallback to old chunk-based formatting if no words are found
+        logger.debug("[SrtFormatter] No word-level timestamps, using chunk fallback.")
         try:
             segments = result.get("segments", [])
             chunks_candidate = result.get("chunks", [])
@@ -194,6 +302,7 @@ class SrtFormatter(BaseFormatter):
                         f"[SrtFormatter] Failed to format chunk #{i}: {chunk_e}"
                     )
             return "\n".join(srt_content)
+
         except (TypeError, KeyError, AttributeError, IndexError) as e:
             logger.exception(f"[SrtFormatter] Failed to format SRT: {e}")
             return ""
@@ -216,78 +325,59 @@ class VttFormatter(BaseFormatter):
     def format(cls, result: dict[str, Any]) -> str:
         """Format as WebVTT subtitles with timestamps.
 
+        This method uses a segmentation pipeline to create readable subtitles
+        if word-level timestamps are available. Otherwise, it falls back to
+        formatting raw chunks.
+
         Args:
-            result: The transcription result from ASRPipeline
+            result: The transcription result from ASRPipeline.
 
         Returns:
-            str: The formatted WebVTT subtitles.
-
+            The formatted WebVTT subtitles as a string.
         """
         logger.debug(f"[VttFormatter] Formatting result: keys={list(result.keys())}")
+
+        # Attempt to use the new segmentation pipeline first
+        if USE_READABLE_SUBTITLES:
+            words = _result_to_words(result)
+            if words:
+                logger.debug("[VttFormatter] Found words, using segmentation.")
+                segments = segment_words(words)
+                vtt_content = ["WEBVTT\n"]
+                for segment in segments:
+                    start = format_vtt_time(segment.start)
+                    end = format_vtt_time(segment.end)
+                    vtt_content.append(f"{start} --> {end}\n{segment.text}\n")
+                return "\n".join(vtt_content)
+
+        # Fallback to old chunk-based formatting if no words are found
+        logger.debug("[VttFormatter] No word-level timestamps, using chunk fallback.")
         try:
-            segments = result.get("segments", [])
-            chunks_candidate = result.get("chunks", [])
-
-            def _has_valid_timestamp(lst: list[dict]) -> bool:
-                return any(
-                    (
-                        (c.get("start") is not None and c.get("end") is not None)
-                        or (
-                            isinstance(c.get("timestamp"), (list, tuple))
-                            and len(c.get("timestamp")) == 2
-                            and c.get("timestamp")[0] is not None
-                            and c.get("timestamp")[1] is not None
-                        )
-                    )
-                    for c in lst
-                )
-
-            # Select whichever list yields more valid entries
-            segments_valid = [c for c in segments if _has_valid_timestamp([c])]
-            chunks_valid = [c for c in chunks_candidate if _has_valid_timestamp([c])]
-            chunks = (
-                segments_valid
-                if len(segments_valid) >= len(chunks_valid)
-                else chunks_valid
-            )
+            chunks = result.get("chunks", [])
             if not chunks:
-                logger.warning(
-                    "[VttFormatter] No 'segments' or 'chunks' found in result."
-                )
+                logger.warning("[VttFormatter] No 'chunks' found in result.")
                 return "WEBVTT\n\n"
 
             vtt_content = ["WEBVTT\n"]
-            for i, chunk in enumerate(chunks, 1):
+            for chunk in chunks:
                 try:
-                    # Support both {'start': ..., 'end': ...} and
-                    # {'timestamp': [start, end]}
-                    ts_pair = (
-                        chunk.get("timestamp")
-                        if isinstance(chunk.get("timestamp"), (list, tuple))
-                        else None
-                    )
-                    start_sec = chunk.get("start")
-                    end_sec = chunk.get("end")
-                    if (
-                        (start_sec is None or end_sec is None)
-                        and ts_pair
-                        and len(ts_pair) == 2
-                    ):
-                        start_sec, end_sec = ts_pair[0], ts_pair[1]
-                    if start_sec is None or end_sec is None:
-                        logger.warning(
-                            "[Formatter] Skipping chunk #%d with missing timestamp", i
-                        )
+                    timestamp = chunk.get("timestamp")
+                    if not isinstance(timestamp, (list, tuple)) or len(timestamp) != 2:
                         continue
+
+                    start_sec, end_sec = timestamp
                     start = format_vtt_time(start_sec)
                     end = format_vtt_time(end_sec)
-                    text = chunk["text"].replace("\n", " ").strip()
-                    vtt_content.append(f"{start} --> {end}\n{text}\n")
+                    text = chunk.get("text", "").strip()
+
+                    # Apply line splitting for readability
+                    formatted_text = split_lines(text)
+
+                    vtt_content.append(f"{start} --> {end}\n{formatted_text}\n")
                 except (TypeError, KeyError, AttributeError, IndexError) as chunk_e:
-                    logger.error(
-                        f"[VttFormatter] Failed to format chunk #{i}: {chunk_e}"
-                    )
+                    logger.error(f"[VttFormatter] Failed to format chunk: {chunk_e}")
             return "\n".join(vtt_content)
+
         except (TypeError, KeyError, AttributeError, IndexError) as e:
             logger.exception(f"[VttFormatter] Failed to format VTT: {e}")
             return "WEBVTT\n\n"

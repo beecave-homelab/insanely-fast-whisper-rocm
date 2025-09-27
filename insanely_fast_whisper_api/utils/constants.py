@@ -203,6 +203,10 @@ AUDIO_CHUNK_MIN_DURATION = float(
 
 # Subtitle readability configuration
 # These constants control SRT/VTT formatting for better readability
+USE_READABLE_SUBTITLES = (
+    os.getenv("USE_READABLE_SUBTITLES", "true").lower() == "true"
+)  # Master switch for the new segmentation pipeline
+
 MAX_LINE_CHARS = int(os.getenv("MAX_LINE_CHARS", "42"))  # Max characters per line
 MAX_LINES_PER_BLOCK = int(
     os.getenv("MAX_LINES_PER_BLOCK", "2")
@@ -229,9 +233,9 @@ DISPLAY_BUFFER_SEC = float(
 SOFT_BOUNDARY_WORDS = os.getenv(
     "SOFT_BOUNDARY_WORDS", "and,but,or,so,for,nor,yet"
 ).split(",")
-INTERJECTION_WHITELIST = os.getenv(
-    "INTERJECTION_WHITELIST", "um,uh,ah,er,like"
-).split(",")
+INTERJECTION_WHITELIST = os.getenv("INTERJECTION_WHITELIST", "um,uh,ah,er,like").split(
+    ","
+)
 
 
 # --- Timestamp Stabilization defaults ---
