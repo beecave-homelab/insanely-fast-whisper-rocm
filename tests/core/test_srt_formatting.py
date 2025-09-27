@@ -30,7 +30,9 @@ class TestSrtFormattingEnhancements:
         result = segment_words(words)
         assert len(result) == 1
         assert result[0].text.count("\n") == 1  # Two lines
-        assert all(len(line) <= constants.MAX_LINE_CHARS for line in result[0].text.split("\n"))
+        assert all(
+            len(line) <= constants.MAX_LINE_CHARS for line in result[0].text.split("\n")
+        )
 
     def test_balanced_two_line_splits(self) -> None:
         """Test that two-line blocks are balanced and avoid super-short lines."""
@@ -83,7 +85,9 @@ class TestSrtFormattingEnhancements:
         ]
         result = segment_words(words)
         assert all(
-            constants.MIN_CPS <= len(seg.text) / (seg.end - seg.start) <= constants.MAX_CPS
+            constants.MIN_CPS
+            <= len(seg.text) / (seg.end - seg.start)
+            <= constants.MAX_CPS
             for seg in result
         )
 
