@@ -31,12 +31,84 @@ set -e
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ROOT_DIR=$(cd "$SCRIPT_DIR/.." && pwd)
 
+# Colors (auto-disabled if not a TTY or NO_COLOR is set)
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+  # Use ANSI escapes with $'\e' so sequences are real ESC chars.
+  # shellcheck disable=SC2034  # exported for readability
+  BOLD=$'\e[1m'
+  DIM=$'\e[2m'
+  RED=$'\e[31m'
+  GREEN=$'\e[32m'
+  YELLOW=$'\e[33m'
+  BLUE=$'\e[34m'
+  MAGENTA=$'\e[35m'
+  CYAN=$'\e[36m'
+  RESET=$'\e[0m'
+else
+  BOLD=""; DIM=""; RED=""; GREEN=""; YELLOW=""; BLUE=""; MAGENTA=""; CYAN=""; RESET=""
+fi
+
+# Graceful cancellation of running commands
+CHILD_PID=""
+CHILD_PGID=""
+
+_kill_child_group() {
+  local signal="$1"
+  if [[ -n "$CHILD_PGID" ]]; then
+    # Kill the entire process group
+    kill -"$signal" -"$CHILD_PGID" 2>/dev/null || true
+  elif [[ -n "$CHILD_PID" ]]; then
+    kill -"$signal" "$CHILD_PID" 2>/dev/null || true
+  fi
+}
+
+on_interrupt() {
+  echo -e "${RED}${BOLD}\n[!] Interrupt received — stopping current run...${RESET}"
+  _kill_child_group INT
+  # Wait a short grace period, then escalate if still alive
+  sleep 2
+  if [[ -n "$CHILD_PID" ]] && kill -0 "$CHILD_PID" 2>/dev/null; then
+    echo -e "${YELLOW}[!] Escalating to SIGTERM...${RESET}"
+    _kill_child_group TERM
+    sleep 2
+  fi
+  if [[ -n "$CHILD_PID" ]] && kill -0 "$CHILD_PID" 2>/dev/null; then
+    echo -e "${RED}[!] Forcing stop with SIGKILL...${RESET}"
+    _kill_child_group KILL
+  fi
+  echo -e "${YELLOW}${BOLD}Benchmark aborted by user (exit 130).${RESET}"
+  exit 130
+}
+
+trap on_interrupt INT TERM
+
+run_cmd_str() {
+  # Run the provided command string in its own process group so we can
+  # terminate all children (e.g., pdm -> python -> transformers) at once.
+  local cmd_str="$1"
+  # Using setsid to start a new session and process group
+  setsid bash -c "$cmd_str" &
+  CHILD_PID=$!
+  # Query the process group id for the child
+  CHILD_PGID=$(ps -o pgid= -p "$CHILD_PID" 2>/dev/null | tr -d ' ')
+  # Fallback to child PID as PGID if lookup failed
+  if [[ -z "$CHILD_PGID" ]]; then
+    CHILD_PGID="$CHILD_PID"
+  fi
+  wait "$CHILD_PID"
+}
+
 # Defaults (can be overridden by flags)
-MODEL="openai/whisper-medium"
+# Multiple models supported; defaults to two models.
+MODELS=(
+  "openai/whisper-medium"
+  "distil-whisper/distil-large-v3"
+)
+MODEL=""               # Back-compat single-model flag; accumulated into MODELS
 DEVICE=""              # Let CLI defaults apply when empty
 DTYPE=""               # float16|float32
 LANGUAGE=""            # e.g. en; empty=auto
-EXPORT_FORMAT="srt"     # all|json|srt|txt
+EXPORT_FORMAT="all"     # all|json|srt|txt
 TIMESTAMP_TYPES=(chunk word)
 BATCH_CHUNK="12"        # default batch for chunk timestamps
 BATCH_WORD="4"          # default batch for word timestamps
@@ -59,53 +131,66 @@ declare -a BENCHMARK_EXTRAS
 
 print_usage() {
   cat <<USAGE
-Usage: scripts/benchmark.sh [options]
+${BOLD}${CYAN}Usage:${RESET} scripts/benchmark.sh [options]
 
-Options:
-  -a, --audio PATH              Audio file to process (can be repeated)
-  -m, --model NAME              Model name (default: $MODEL)
-      --device NAME             Device for inference (e.g., cuda:0, cpu)
-      --dtype {float16,float32} Data type for inference
-  -l, --language CODE           Language code (empty=auto)
-      --export-format FMT       Export format: all|json|srt|txt (default: $EXPORT_FORMAT)
-      --timestamp-types LIST    Comma-separated: chunk,word (default: chunk,word)
-      --batch-sizes LIST        Comma-separated: CHUNK,WORD (default: ${BATCH_CHUNK},${BATCH_WORD})
-      --batch-chunk N           Batch size for chunk timestamps (overrides first item)
-      --batch-word N            Batch size for word timestamps (overrides second item)
-      --progress-group-size N   Chunks per progress update
-      --chunk-length N          Audio chunk length in seconds
-      --no-timestamps           Disable timestamps entirely
+${BOLD}${CYAN}Options:${RESET}
+  -a, --audio PATH                    Audio file to process (can be repeated)
+  -m, --model NAME                    Model name (can be repeated). Defaults:
+                                      openai/whisper-medium, distil-whisper/distil-large-v3
+      --models LIST                   Comma-separated model list (overrides defaults)
+      --device NAME                   Device for inference (e.g., cuda:0, cpu)
+      --dtype {float16,float32}       Data type for inference
+      --language CODE                 Language code (empty=auto)
+      --export-format FMT             Export format: all|json|srt|txt (default: $EXPORT_FORMAT)
+      --timestamp-types LIST          Comma-separated: chunk,word (default: chunk,word)
+      --batch-sizes LIST              Comma-separated: CHUNK,WORD (default: ${BATCH_CHUNK},${BATCH_WORD})
+      --batch-chunk N                 Batch size for chunk timestamps (overrides first item)
+      --batch-word N                  Batch size for word timestamps (overrides second item)
+      --progress-group-size N         Chunks per progress update
+      --chunk-length N                Audio chunk length in seconds
+      --no-timestamps                 Disable timestamps entirely
 
-  Stable-ts options:
+  ${BOLD}${CYAN}Stable-ts options:${RESET}
       --stabilize | --no-stabilize    Enable/disable stable-ts post-processing (default: ${STABILIZE})
       --demucs | --no-demucs          Enable/disable Demucs in stable-ts (default: ${DEMUCS})
       --vad | --no-vad                Enable/disable VAD in stable-ts (default: ${VAD})
       --vad-threshold F               VAD threshold (e.g., 0.35)
 
-  Output & UX:
-      --output PATH             Explicit output file path (single-format only)
+  ${BOLD}${CYAN}Output & UX:${RESET}
+      --output PATH                   Explicit output file path (single-format only)
       --benchmark | --no-benchmark    Toggle benchmark collection (default: ${BENCHMARK})
-      --benchmark-extra K=V     Extra benchmark field (repeatable)
-      --quiet | --no-quiet      Minimize console output (default: ${QUIET})
-      --progress | --no-progress Show progress UI (default: ${PROGRESS})
-      --repeats N               Run each configuration N times (default: ${REPEATS})
-      --dry-run                 Print commands without running them
+      --benchmark-extra K=V           Extra benchmark field (repeatable)
+      --quiet | --no-quiet            Minimize console output (default: ${QUIET})
+      --progress | --no-progress      Show progress UI (default: ${PROGRESS})
+      --repeats N                     Run each configuration N times (default: ${REPEATS})
+      --dry-run                       Print commands without running them
 
-  -h, --help                    Show this help and exit
+  -h, --help                          Show this help and exit
 
-Examples:
-  scripts/benchmark.sh \
-    -a uploads/sample.mp3 -m openai/whisper-medium --timestamp-types word \
-    --batch-word 4 --export-format srt --benchmark --quiet
+${BOLD}${CYAN}Examples:${RESET}
+  ${BOLD}${GREEN}$ scripts/benchmark.sh${RESET}
+      -a uploads/sample.mp3
+      -m openai/whisper-medium
+      --timestamp-types word
+      --batch-word 4
+      --export-format srt
+      --benchmark
+      --quiet
 
-  scripts/benchmark.sh \
-    -a uploads/a.mp3 -a uploads/b.mp3 --batch-sizes 8,2 --repeats 2 \
-    --stabilize --vad --vad-threshold 0.35
+  ${BOLD}${GREEN}$ scripts/benchmark.sh${RESET}
+      -a upload-a.mp3
+      -a upload-b.mp3
+      --batch-sizes 8,2
+      --repeats 2
+      --stabilize
+      --vad
+      --vad-threshold 0.35
 USAGE
 }
 
 # Parse arguments (supports both --opt=value and --opt value)
 parse_args() {
+  local seen_model_flag=false
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -h|--help)
@@ -115,9 +200,17 @@ parse_args() {
       --audio=*)
         AUDIO_FILES+=("${1#*=}"); shift ;;
       -m|--model)
-        MODEL="$2"; shift 2 ;;
+        if [[ $seen_model_flag == false ]]; then MODELS=(); seen_model_flag=true; fi
+        MODELS+=("$2"); shift 2 ;;
       --model=*)
-        MODEL="${1#*=}"; shift ;;
+        if [[ $seen_model_flag == false ]]; then MODELS=(); seen_model_flag=true; fi
+        MODELS+=("${1#*=}"); shift ;;
+      --models)
+        if [[ $seen_model_flag == false ]]; then MODELS=(); seen_model_flag=true; fi
+        IFS=',' read -r -a MODELS <<< "$2"; shift 2 ;;
+      --models=*)
+        if [[ $seen_model_flag == false ]]; then MODELS=(); seen_model_flag=true; fi
+        IFS=',' read -r -a MODELS <<< "${1#*=}"; shift ;;
       --device)
         DEVICE="$2"; shift 2 ;;
       --device=*)
@@ -215,7 +308,7 @@ parse_args() {
 ensure_defaults() {
   # If no audio specified, try a sensible default used in this repo
   if [[ ${#AUDIO_FILES[@]} -eq 0 ]]; then
-    DEFAULT_AUDIO="uploads/audio-overview-hoe-je-iets-vraagt-bepaalt-wat-je-krijgt-5.mp3"
+    DEFAULT_AUDIO="uploads/Automating_Your_Inbox__Master_Microsoft_Copilot_Studio_for_Intelligent_Summaries.mp3"
     if [[ -f "$ROOT_DIR/$DEFAULT_AUDIO" ]]; then
       AUDIO_FILES+=("$DEFAULT_AUDIO")
     else
@@ -237,18 +330,37 @@ ensure_defaults() {
     normalized=(chunk)
   fi
   TIMESTAMP_TYPES=("${normalized[@]}")
+
+  # If user only provided legacy --model once, append it
+  if [[ -n "$MODEL" ]]; then
+    MODELS=("$MODEL")
+  fi
+  # Ensure at least one model
+  if [[ ${#MODELS[@]} -eq 0 ]]; then
+    MODELS=(
+      "openai/whisper-medium"
+      "distil-whisper/distil-large-v3"
+    )
+  fi
 }
 
 build_cmd() {
   local audio="$1"
   local ts_type="$2"
   local batch_size="$3"
+  local model_name="$4"
+  local fmt_list="${5:-$EXPORT_FORMAT}"
 
   local cmd=(pdm run cli transcribe)
   cmd+=("--timestamp-type" "$ts_type")
-  cmd+=("--export-format" "$EXPORT_FORMAT")
+  # Add one or more --export-format flags (supports "srt json" space-separated)
+  IFS=' ' read -r -a __fmts <<< "$fmt_list"
+  if [[ ${#__fmts[@]} -eq 0 ]]; then __fmts=($EXPORT_FORMAT); fi
+  for __f in "${__fmts[@]}"; do
+    cmd+=("--export-format" "$__f")
+  done
   cmd+=("--batch-size" "$batch_size")
-  cmd+=("--model" "$MODEL")
+  cmd+=("--model" "$model_name")
 
   # Optional flags only when set
   if [[ -n "$DEVICE" ]]; then cmd+=("--device" "$DEVICE"); fi
@@ -269,8 +381,8 @@ build_cmd() {
   if [[ "$PROGRESS" == true ]]; then cmd+=("--progress"); else cmd+=("--no-progress"); fi
   if [[ "$QUIET" == true ]]; then cmd+=("--quiet"); fi
 
-  # output path only valid when single format selected
-  if [[ -n "$OUTPUT_PATH" && "$EXPORT_FORMAT" != "all" ]]; then
+  # output path only valid when single format selected and provided by user
+  if [[ -n "$OUTPUT_PATH" && "$fmt_list" != "all" ]]; then
     cmd+=("--output" "$OUTPUT_PATH")
   fi
 
@@ -289,42 +401,46 @@ main() {
   ensure_defaults
 
   echo "== Benchmark configuration =="
-  echo "Model:        $MODEL"
-  echo "Device:       ${DEVICE:-<default>}"
-  echo "DType:        ${DTYPE:-<default>}"
-  echo "Language:     ${LANGUAGE:-auto}"
-  echo "Export:       $EXPORT_FORMAT"
-  echo "Timestamp(s): ${TIMESTAMP_TYPES[*]}"
-  echo "Batch(chunk): $BATCH_CHUNK"
-  echo "Batch(word):  $BATCH_WORD"
-  echo "Stabilize:    $STABILIZE  Demucs: $DEMUCS  VAD: $VAD  VAD_TH: ${VAD_THRESHOLD:-<n/a>}"
-  echo "Progress:     $PROGRESS   Quiet: $QUIET  Benchmark: $BENCHMARK  Repeats: $REPEATS"
-  echo "Audio files:  ${AUDIO_FILES[*]}"
+  echo -e "${BOLD}${CYAN}== Benchmark configuration ==${RESET}"
+  echo -e "${BOLD}Models:${RESET}        ${MAGENTA}${MODELS[*]}${RESET}"
+  echo -e "${BOLD}Device:${RESET}        ${YELLOW}${DEVICE:-<default>} ${RESET}"
+  echo -e "${BOLD}DType:${RESET}         ${YELLOW}${DTYPE:-<default>} ${RESET}"
+  echo -e "${BOLD}Language:${RESET}      ${YELLOW}${LANGUAGE:-auto} ${RESET}"
+  echo -e "${BOLD}Export:${RESET}        ${GREEN}${EXPORT_FORMAT}${RESET}"
+  echo -e "${BOLD}Timestamp(s):${RESET}  ${GREEN}${TIMESTAMP_TYPES[*]}${RESET}"
+  echo -e "${BOLD}Batch(chunk):${RESET}  ${GREEN}${BATCH_CHUNK}${RESET}"
+  echo -e "${BOLD}Batch(word): ${RESET}  ${GREEN}${BATCH_WORD}${RESET}"
+  echo -e "${BOLD}Stabilize:${RESET}     ${YELLOW}$STABILIZE${RESET}  ${BOLD}Demucs:${RESET} ${YELLOW}$DEMUCS${RESET}  ${BOLD}VAD:${RESET} ${YELLOW}$VAD${RESET}  ${BOLD}VAD_TH:${RESET} ${YELLOW}${VAD_THRESHOLD:-<n/a>}${RESET}"
+  echo -e "${BOLD}Progress:${RESET}      ${YELLOW}$PROGRESS${RESET}   ${BOLD}Quiet:${RESET} ${YELLOW}$QUIET${RESET}  ${BOLD}Benchmark:${RESET} ${YELLOW}$BENCHMARK${RESET}  ${BOLD}Repeats:${RESET} ${YELLOW}$REPEATS${RESET}"
+  echo -e "${BOLD}Audio files:${RESET}   ${BLUE}${AUDIO_FILES[*]}${RESET}"
   echo
 
-  for audio in "${AUDIO_FILES[@]}"; do
-    for ts_type in "${TIMESTAMP_TYPES[@]}"; do
-      # Resolve batch by timestamp type
-      if [[ "$ts_type" == "chunk" ]]; then
-        batch="$BATCH_CHUNK"
-      else
-        batch="$BATCH_WORD"
-      fi
-
-      echo "-- Running: $audio | ts=$ts_type | batch=$batch"
-      for ((i=1; i<=REPEATS; i++)); do
-        echo "   Attempt $i/$REPEATS"
-        cmd_str=$(build_cmd "$audio" "$ts_type" "$batch")
-        echo "   Command: $cmd_str"
-        if [[ "$DRY_RUN" == false ]]; then
-          # shellcheck disable=SC2086
-          eval $cmd_str
+  for model_name in "${MODELS[@]}"; do
+    echo -e "${BOLD}${MAGENTA}== Model: ${model_name} ==${RESET}"
+    for audio in "${AUDIO_FILES[@]}"; do
+      for ts_type in "${TIMESTAMP_TYPES[@]}"; do
+        # Resolve batch by timestamp type
+        if [[ "$ts_type" == "chunk" ]]; then
+          batch="$BATCH_CHUNK"
+        else
+          batch="$BATCH_WORD"
         fi
+
+        echo -e "${YELLOW}-- Running:${RESET} ${BLUE}$audio${RESET} ${DIM}| ts=${ts_type} | batch=${batch}${RESET}"
+        for ((i=1; i<=REPEATS; i++)); do
+          echo -e "   ${DIM}Attempt $i/$REPEATS${RESET}"
+          # Single invocation; CLI handles 'all' or any provided format(s)
+          cmd_str=$(build_cmd "$audio" "$ts_type" "$batch" "$model_name" "$EXPORT_FORMAT")
+          echo -e "   ${BOLD}Command:${RESET} ${CYAN}$cmd_str${RESET}"
+          if [[ "$DRY_RUN" == false ]]; then
+            run_cmd_str "$cmd_str"
+          fi
+        done
       done
     done
   done
 
-  echo "Benchmarks run successfully"
+  echo -e "${GREEN}${BOLD}Benchmarks run successfully${RESET}"
 }
 
 main "$@"

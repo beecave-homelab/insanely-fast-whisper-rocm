@@ -106,7 +106,7 @@ bench = [
 excludes = ["torch==2.0.1", "torch==2.3.0", "torch==2.4.1", "torch==2.6.0"]
 
 # ------------------------------
-# Ruff (linter + formatter + import sorting)
+#   Ruff (linter + formatter)
 # ------------------------------
 [tool.ruff]
 line-length = 88
@@ -149,7 +149,7 @@ known-first-party = ["insanely_fast_whisper_api"]
 "tests/**/*.py" = ["E501"]
 
 # ------------------------------
-# Pytest & Coverage
+#       Pytest & Coverage
 # ------------------------------
 [tool.pytest.ini_options]
 addopts = "-q --cov=insanely_fast_whisper_api --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=html --cov-fail-under=85"
