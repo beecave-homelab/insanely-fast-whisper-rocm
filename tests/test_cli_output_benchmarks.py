@@ -267,3 +267,103 @@ class TestOutputAndBenchmarks:
 
                 # Verify temp file cleanup was called
                 mock_cleanup.assert_called_once_with(temp_files)
+
+    @patch("insanely_fast_whisper_api.benchmarks.collector.BenchmarkCollector")
+    @patch("insanely_fast_whisper_api.cli.commands.FORMATTERS")
+    def test_benchmark_includes_srt_quality(
+        self, mock_formatters: Mock, mock_collector_class: Mock
+    ) -> None:
+        """When exporting SRT with benchmarking enabled, include format_quality.srt.score."""
+        # Arrange formatters to include SRT output
+        mock_json_formatter = Mock()
+        mock_json_formatter.format.return_value = '{"ok": true}'
+        mock_json_formatter.get_file_extension.return_value = "json"
+
+        mock_srt_formatter = Mock()
+        mock_srt_formatter.format.return_value = (
+            "1\n00:00:00,000 --> 00:00:02,000\nHello world.\n\n"
+            "2\n00:00:02,100 --> 00:00:04,500\nThis is a test.\n"
+        )
+        mock_srt_formatter.get_file_extension.return_value = "srt"
+
+        def get_formatter(name: str) -> Mock:
+            if name == "json":
+                return mock_json_formatter
+            if name == "srt":
+                return mock_srt_formatter
+            return Mock()
+
+        mock_formatters.__getitem__.side_effect = get_formatter
+
+        # Mock BenchmarkCollector
+        mock_collector = Mock()
+        mock_collector.collect.return_value = Path("benchmark.json")
+        mock_collector_class.return_value = mock_collector
+
+        # Act
+        with (
+            patch("pathlib.Path.mkdir"),
+            patch("pathlib.Path.write_text"),
+            patch("click.secho"),
+        ):
+            _handle_output_and_benchmarks(
+                task="transcribe",
+                audio_file=self.audio_file,
+                result=self.result,
+                total_time=self.total_time,
+                output=None,
+                export_format="all",  # includes srt
+                export_format_explicit=False,
+                benchmark_enabled=True,
+                benchmark_extra=(),
+                benchmark_flags=None,
+                benchmark_gpu_stats=None,
+                temp_files=[],
+                progress_cb=None,
+                quiet=True,
+            )
+
+        # Assert collector called with format_quality including srt.score
+        assert mock_collector.collect.called
+        _, kwargs = mock_collector.collect.call_args
+        # format_quality should exist and include srt with a float score
+        fq = kwargs.get("format_quality")
+        assert isinstance(fq, dict) and "srt" in fq
+        assert isinstance(fq["srt"], dict)
+        assert isinstance(fq["srt"].get("score"), float)
+
+    @patch("insanely_fast_whisper_api.benchmarks.collector.BenchmarkCollector")
+    def test_benchmark_path_printed_even_when_quiet(
+        self, mock_collector_class: Mock
+    ) -> None:
+        """Benchmark filepath should be printed even if --quiet is set."""
+        mock_collector = Mock()
+        mock_collector.collect.return_value = Path("benchmarks/dummy.json")
+        mock_collector_class.return_value = mock_collector
+
+        with (
+            patch("pathlib.Path.mkdir"),
+            patch("pathlib.Path.write_text"),
+            patch("click.secho") as mock_secho,
+        ):
+            _handle_output_and_benchmarks(
+                task="transcribe",
+                audio_file=self.audio_file,
+                result=self.result,
+                total_time=self.total_time,
+                output=None,
+                export_format="json",
+                export_format_explicit=False,
+                benchmark_enabled=True,
+                benchmark_extra=(),
+                benchmark_flags=None,
+                benchmark_gpu_stats=None,
+                temp_files=[],
+                progress_cb=None,
+                quiet=True,  # critical: quiet mode
+            )
+
+        # secho should have been called to print the benchmark path even when quiet
+        assert mock_secho.called
+        args, kwargs = mock_secho.call_args
+        assert "Benchmark saved to" in args[0]

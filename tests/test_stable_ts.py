@@ -258,7 +258,7 @@ def test_stabilize_transcribe_any_failure_with_postprocess(
     stabilized = st.stabilize_timestamps(sample_result)
 
     assert stabilized.get("stabilized") is True
-    assert stabilized.get("stabilization_path") == "postprocess"
+    assert stabilized.get("stabilization_path") == "postprocess_word_timestamps"
     assert "segments" in stabilized
 
 
