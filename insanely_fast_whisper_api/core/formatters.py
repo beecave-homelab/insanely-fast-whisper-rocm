@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any
 
 from insanely_fast_whisper_api.core.segmentation import Word, segment_words, split_lines
@@ -66,6 +67,56 @@ def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
                         words_list.append(Word(text=text, start=start, end=end))
 
     return words_list if words_list else None
+
+
+def build_quality_segments(result: dict[str, Any]) -> list[dict[str, Any]]:
+    """Build readability-aware segments for quality scoring.
+
+    Args:
+        result: Transcription result containing raw word-level timestamps.
+
+    Returns:
+        Segments with ``start``, ``end``, and ``text`` keys suitable for
+        `compute_srt_quality`. When word-level timestamps are available the
+        segments are synthesized via `segment_words` so they satisfy timing and
+        character-per-second constraints; otherwise the original segments/chunks
+        are returned.
+    """
+    words = _result_to_words(result)
+    if words:
+        quality_segments: list[dict[str, Any]] = []
+        for seg in segment_words(words):
+            quality_segments.append({
+                "start": float(seg.start),
+                "end": float(seg.end),
+                # Preserve line breaks for downstream line-length evaluation
+                "text": seg.text.strip(),
+            })
+        if quality_segments:
+            return quality_segments
+
+    fallback_segments: list[dict[str, Any]] = []
+    for chunk in result.get("segments") or result.get("chunks") or []:
+        text = str(chunk.get("text", "")).strip()
+        if not text:
+            continue
+        start = chunk.get("start")
+        end = chunk.get("end")
+        timestamp = chunk.get("timestamp")
+        if (start is None or end is None) and isinstance(timestamp, (list, tuple)):
+            if len(timestamp) == 2:
+                start, end = timestamp
+        if not isinstance(start, (int, float)) or not isinstance(end, (int, float)):
+            continue
+        if end <= start:
+            continue
+        fallback_segments.append({
+            "start": float(start),
+            "end": float(end),
+            "text": text,
+        })
+
+    return fallback_segments
 
 
 class BaseFormatter:
@@ -128,6 +179,21 @@ class TxtFormatter(BaseFormatter):
 class SrtFormatter(BaseFormatter):
     """Formatter for SRT (SubRip) subtitles."""
 
+    _HYPHEN_SPACING_PATTERN = re.compile(r"(?<=\w)\s*-\s*(?=\w)")
+
+    @classmethod
+    def _normalize_hyphen_spacing(cls, text: str) -> str:
+        """Collapse stray spaces around hyphens within words.
+
+        Args:
+            text: Raw caption text possibly containing spaced hyphens.
+
+        Returns:
+            Text with intra-word hyphen spacing normalized, e.g. 'co -pilot'
+            becomes 'co-pilot'.
+        """
+        return cls._HYPHEN_SPACING_PATTERN.sub("-", text)
+
     @classmethod
     def format(cls, result: dict[str, Any]) -> str:
         """Format as SRT subtitles with timestamps.
@@ -154,31 +220,53 @@ class SrtFormatter(BaseFormatter):
                 for i, segment in enumerate(segments, 1):
                     start = format_srt_time(segment.start)
                     end = format_srt_time(segment.end)
-                    srt_content.append(f"{i}\n{start} --> {end}\n{segment.text}\n")
+                    wrapped = split_lines(segment.text)
+                    normalized_text = cls._normalize_hyphen_spacing(wrapped)
+                    srt_content.append(f"{i}\n{start} --> {end}\n{normalized_text}\n")
                 return "\n".join(srt_content)
 
         # Fallback to old chunk-based formatting if no words are found
         logger.debug("[SrtFormatter] No word-level timestamps, using chunk fallback.")
         try:
-            chunks = result.get("chunks", [])
+            # Handle both 'chunks' from whisper and 'segments' from stable-ts
+            chunks = result.get("chunks") or result.get("segments", [])
             if not chunks:
-                logger.warning("[SrtFormatter] No 'chunks' found in result.")
+                logger.warning(
+                    "[SrtFormatter] No 'chunks' or 'segments' found in result."
+                )
                 return ""
+
+            # Apply timestamp validation to clean up overlapping segments
+            from insanely_fast_whisper_api.utils.timestamp_utils import (
+                validate_timestamps,
+            )
+
+            chunks = validate_timestamps(chunks)
 
             srt_content = []
             for i, chunk in enumerate(chunks, 1):
                 try:
-                    timestamp = chunk.get("timestamp")
-                    if not isinstance(timestamp, (list, tuple)) or len(timestamp) != 2:
+                    # Adapt to different timestamp formats
+                    start_sec, end_sec = -1, -1
+                    if (
+                        "timestamp" in chunk
+                        and isinstance(chunk["timestamp"], (list, tuple))
+                        and len(chunk["timestamp"]) == 2
+                    ):
+                        start_sec, end_sec = chunk["timestamp"]
+                    elif "start" in chunk and "end" in chunk:
+                        start_sec, end_sec = chunk["start"], chunk["end"]
+
+                    if start_sec == -1 or end_sec == -1:
                         continue
 
-                    start_sec, end_sec = timestamp
                     start = format_srt_time(start_sec)
                     end = format_srt_time(end_sec)
                     text = chunk.get("text", "").strip()
 
                     # Apply line splitting for readability
                     formatted_text = split_lines(text)
+                    formatted_text = cls._normalize_hyphen_spacing(formatted_text)
 
                     srt_content.append(f"{i}\n{start} --> {end}\n{formatted_text}\n")
                 except (TypeError, KeyError, AttributeError, IndexError) as chunk_e:
@@ -224,6 +312,13 @@ class SrtFormatter(BaseFormatter):
                     "[SrtFormatter] No 'segments' or 'chunks' found in result."
                 )
                 return ""
+
+            # Apply timestamp validation to clean up overlapping segments
+            from insanely_fast_whisper_api.utils.timestamp_utils import (
+                validate_timestamps,
+            )
+
+            chunks = validate_timestamps(chunks)
 
             def _get_start_end(c: dict) -> tuple[float | None, float | None]:
                 ts_val = c.get("timestamp")
@@ -290,19 +385,20 @@ class SrtFormatter(BaseFormatter):
                     start_sec, end_sec = _get_start_end(chunk)
                     if start_sec is None or end_sec is None:
                         logger.warning(
-                            "[Formatter] Skipping chunk #%d with missing timestamp", i
+                            "[Formatter] Skipping chunk #%d with missing timestamp",
+                            i,
                         )
                         continue
                     start = format_srt_time(start_sec)
                     end = format_srt_time(end_sec)
-                    text = chunk["text"].replace("\n", " ").strip()
+                    text = chunk.get("text", "").replace("\n", " ").strip()
+                    text = cls._normalize_hyphen_spacing(text)
                     srt_content.append(f"{i}\n{start} --> {end}\n{text}\n")
                 except (TypeError, KeyError, AttributeError, IndexError) as chunk_e:
                     logger.error(
                         f"[SrtFormatter] Failed to format chunk #{i}: {chunk_e}"
                     )
             return "\n".join(srt_content)
-
         except (TypeError, KeyError, AttributeError, IndexError) as e:
             logger.exception(f"[SrtFormatter] Failed to format SRT: {e}")
             return ""
@@ -353,19 +449,36 @@ class VttFormatter(BaseFormatter):
         # Fallback to old chunk-based formatting if no words are found
         logger.debug("[VttFormatter] No word-level timestamps, using chunk fallback.")
         try:
-            chunks = result.get("chunks", [])
+            chunks = result.get("chunks") or result.get("segments", [])
             if not chunks:
-                logger.warning("[VttFormatter] No 'chunks' found in result.")
+                logger.warning(
+                    "[VttFormatter] No 'chunks' or 'segments' found in result."
+                )
                 return "WEBVTT\n\n"
+
+            # Apply timestamp validation to clean up overlapping segments
+            from insanely_fast_whisper_api.utils.timestamp_utils import (
+                validate_timestamps,
+            )
+
+            chunks = validate_timestamps(chunks)
 
             vtt_content = ["WEBVTT\n"]
             for chunk in chunks:
                 try:
-                    timestamp = chunk.get("timestamp")
-                    if not isinstance(timestamp, (list, tuple)) or len(timestamp) != 2:
+                    start_sec, end_sec = -1, -1
+                    if (
+                        "timestamp" in chunk
+                        and isinstance(chunk["timestamp"], (list, tuple))
+                        and len(chunk["timestamp"]) == 2
+                    ):
+                        start_sec, end_sec = chunk["timestamp"]
+                    elif "start" in chunk and "end" in chunk:
+                        start_sec, end_sec = chunk["start"], chunk["end"]
+
+                    if start_sec == -1 or end_sec == -1:
                         continue
 
-                    start_sec, end_sec = timestamp
                     start = format_vtt_time(start_sec)
                     end = format_vtt_time(end_sec)
                     text = chunk.get("text", "").strip()

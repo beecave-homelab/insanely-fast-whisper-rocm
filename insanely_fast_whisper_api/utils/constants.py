@@ -182,11 +182,18 @@ TEMP_FILE_TTL_SECONDS = 3600  # Time-to-live for temporary files (1 hour)
 DEFAULT_TRANSCRIPTS_DIR = os.getenv(
     "WHISPER_TRANSCRIPTS_DIR", "transcripts"
 )  # Default directory for saving transcripts
-# For predictable behaviour in both application code and tests we FIX the
-# runtime timezone to UTC, disregarding the host/environment TZ.  If you need
-# configurable runtime timezone pass it explicitly where required instead of
-# relying on this constant.
-APP_TIMEZONE = "UTC"  # Application runtime timezone, also used for filename timestamps
+# Application runtime timezone, also used for filename timestamps.
+#
+# Honor, in order of precedence:
+# 1) APP_TIMEZONE (new, explicit)
+# 2) FILENAME_TIMEZONE (backwards-compat alias used by older tests/configs)
+# 3) TZ (common environment variable)
+#
+# Default remains 'UTC' to preserve existing test expectations.
+APP_TIMEZONE = os.getenv(
+    "APP_TIMEZONE",
+    os.getenv("FILENAME_TIMEZONE", os.getenv("TZ", "UTC")),
+)
 SAVE_TRANSCRIPTIONS = (
     os.getenv("SAVE_TRANSCRIPTIONS", "true").lower() == "true"
 )  # Whether to save transcriptions to disk
@@ -225,6 +232,9 @@ MIN_SEGMENT_DURATION_SEC = float(
 MAX_SEGMENT_DURATION_SEC = float(
     os.getenv("MAX_SEGMENT_DURATION_SEC", "5.5")
 )  # Max segment duration
+MIN_WORD_DURATION_SEC = float(
+    os.getenv("MIN_WORD_DURATION_SEC", "0.04")
+)  # Minimum word duration for sanitization
 DISPLAY_BUFFER_SEC = float(
     os.getenv("DISPLAY_BUFFER_SEC", "0.2")
 )  # Buffer for display timing
