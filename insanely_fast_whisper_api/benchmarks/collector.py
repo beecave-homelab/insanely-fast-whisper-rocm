@@ -6,7 +6,8 @@ every CLI flag value and optional GPU utilisation statistics gathered via
 ``pyamdgpuinfo`` when the library and compatible hardware are available.
 
 Benchmark outputs reside in ``benchmarks/`` by default and use a safe slug
-derived from the audio filename plus a UTC timestamp for uniqueness.
+derived from the audio filename plus a timestamp (in the configured
+application timezone) for uniqueness.
 """
 
 from __future__ import annotations
@@ -14,9 +15,12 @@ from __future__ import annotations
 import json
 import re
 import threading
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from insanely_fast_whisper_api.utils.constants import APP_TIMEZONE
 
 try:  # pragma: no cover - optional dependency
     import pyamdgpuinfo  # type: ignore
@@ -54,6 +58,7 @@ class BenchmarkCollector:
         total_time: float,
         extra: dict[str, str] | None = None,
         gpu_stats: dict[str, Any] | None = None,
+        format_quality: dict[str, Any] | None = None,
     ) -> Path:
         """Persist a benchmark record to disk and return its path.
 
@@ -65,10 +70,18 @@ class BenchmarkCollector:
             total_time: End-to-end wall clock time.
             extra: Optional dictionary of additional metadata entries.
             gpu_stats: Aggregated GPU utilisation metrics, if available.
+            format_quality: Optional mapping of format-specific quality metrics
+                (e.g., {"srt": {"score": 0.95, "details": {...}}}).
 
         Returns:
             Path: Location of the written benchmark JSON file.
         """
+        # Resolve target timezone from centralized configuration, fallback to UTC
+        try:
+            target_tz = ZoneInfo(APP_TIMEZONE)
+        except ZoneInfoNotFoundError:
+            target_tz = ZoneInfo("UTC")
+
         record = {
             "audio_path": audio_path,
             "task": task,
@@ -77,11 +90,15 @@ class BenchmarkCollector:
             "total_time_seconds": total_time,
             "extra": extra or {},
             "gpu_stats": gpu_stats or {},
-            "recorded_at": datetime.now(timezone.utc).isoformat(),
+            "format_quality": format_quality or {},
+            # Keep ISO8601; timezone-aware using configured timezone
+            "recorded_at": datetime.now(target_tz).isoformat(),
         }
 
         slug = self._slugify(Path(audio_path).stem or "benchmark")
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        # Filenames use the configured timezone while keeping the historical 'Z' suffix
+        # by convention across the codebase.
+        timestamp = datetime.now(target_tz).strftime("%Y%m%dT%H%M%SZ")
         filename = f"{slug}_{task}_{timestamp}.json"
         output_path = self.output_dir / filename
         output_path.write_text(json.dumps(record, indent=2), encoding="utf-8")

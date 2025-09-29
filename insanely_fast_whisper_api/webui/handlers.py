@@ -148,6 +148,25 @@ def _prepare_temp_downloadable_file(
         raise
 
 
+def _is_stabilization_corrupt(segments: list[dict]) -> bool:
+    """Check if the stabilized segments appear to be corrupt.
+
+    Returns:
+        bool: True if the segments are likely corrupt, False otherwise.
+    """
+    if not segments or len(segments) < 2:
+        return False
+
+    # Heuristic: If more than 50% of segments have identical timestamps,
+    # it's likely a sign of timestamp collapse.
+    first_timestamp = (segments[0].get("start"), segments[0].get("end"))
+    identical_count = sum(
+        1 for seg in segments if (seg.get("start"), seg.get("end")) == first_timestamp
+    )
+
+    return (identical_count / len(segments)) > 0.5
+
+
 def transcribe(
     audio_file_path: str,
     config: TranscriptionConfig,
@@ -326,13 +345,23 @@ def transcribe(
                         desc=f"{msg} ({original_file_name_for_desc})",
                     )
 
-            result = stabilize_timestamps(
+            original_result = result
+            stabilized_result = stabilize_timestamps(
                 result,
                 demucs=config.demucs,
                 vad=config.vad,
                 vad_threshold=config.vad_threshold,
                 progress_cb=_stab_progress,
             )
+
+            if _is_stabilization_corrupt(stabilized_result.get("segments", [])):
+                logger.warning(
+                    "Stabilization produced corrupted timestamps. "
+                    "Falling back to original transcription."
+                )
+                result = original_result
+            else:
+                result = stabilized_result
             if progress_tracker_instance is not None:
                 progress_tracker_instance(
                     None,

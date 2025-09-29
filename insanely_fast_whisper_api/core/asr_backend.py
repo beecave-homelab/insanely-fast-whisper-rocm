@@ -455,13 +455,17 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
 
+        # The pipeline may return 'chunks' or 'segments'. For consistency,
+        # we normalize to a 'segments' key and also keep 'chunks' for
+        # backward compatibility if it was the original key.
+        chunks = outputs.get("chunks")
+        segments = outputs.get("segments", chunks)
+
         result = {
             "text": outputs["text"].strip(),
-            "chunks": outputs.get(
-                "chunks"
-            ),  # .get() because it might not be present if return_timestamps=False
+            "chunks": chunks,  # Keep for backward compatibility
+            "segments": segments,  # Normalize to 'segments'
             "runtime_seconds": round(elapsed_time, 2),
-            # Add config used for this specific transcription for clarity
             "config_used": {
                 "model": self.config.model_name,
                 "device": self.effective_device,

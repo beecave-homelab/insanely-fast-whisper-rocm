@@ -26,7 +26,7 @@ from insanely_fast_whisper_api.core.errors import (
     DeviceNotFoundError,
     TranscriptionError,
 )
-from insanely_fast_whisper_api.core.formatters import FORMATTERS
+from insanely_fast_whisper_api.core.formatters import FORMATTERS, build_quality_segments
 from insanely_fast_whisper_api.core.progress import ProgressCallback
 from insanely_fast_whisper_api.utils import constants
 from insanely_fast_whisper_api.utils.file_utils import cleanup_temp_files
@@ -35,6 +35,7 @@ from insanely_fast_whisper_api.utils.filename_generator import (
     StandardFilenameStrategy,
     TaskType,
 )
+from insanely_fast_whisper_api.utils.srt_quality import compute_srt_quality
 
 try:
     from insanely_fast_whisper_api.core.integrations import stabilize_timestamps
@@ -123,6 +124,24 @@ def translate(audio_file: Path, **kwargs: dict) -> None:
 # --------------------------------------------------------------------------- #
 # Core execution logic                                                        #
 # --------------------------------------------------------------------------- #
+
+
+def _is_stabilization_corrupt(segments: list[dict]) -> bool:
+    """Check if the stabilized segments appear to be corrupt.
+
+    Returns:
+        bool: True if the segments are likely corrupt, False otherwise.
+    """
+    if not segments or len(segments) < 2:
+        return False
+
+    # Heuristic: If > 50% of segments have identical timestamps, it's corrupt.
+    first_timestamp = (segments[0].get("start"), segments[0].get("end"))
+    identical_count = sum(
+        1 for seg in segments if (seg.get("start"), seg.get("end")) == first_timestamp
+    )
+
+    return (identical_count / len(segments)) > 0.5
 
 
 def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: C901
@@ -259,21 +278,39 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
                 result.setdefault("audio_file_path", str(audio_file))
 
                 reporter.on_postprocess_started("stable-ts")
+                original_result = result
+                stabilized_result = None
+
                 if quiet:
                     with _suppress_output_fds():
-                        result = stabilize_timestamps(
+                        stabilized_result = stabilize_timestamps(
                             result,
                             demucs=demucs,
                             vad=vad,
                             vad_threshold=vad_threshold,
                         )
                 else:
-                    result = stabilize_timestamps(
+                    stabilized_result = stabilize_timestamps(
                         result,
                         demucs=demucs,
                         vad=vad,
                         vad_threshold=vad_threshold,
                     )
+
+                if stabilized_result and _is_stabilization_corrupt(
+                    stabilized_result.get("segments", [])
+                ):
+                    if not quiet:
+                        click.secho(
+                            "⚠️  Stabilization produced corrupted timestamps. "
+                            "Falling back to original.",
+                            fg="yellow",
+                        )
+                    result = original_result
+                elif stabilized_result:
+                    result = stabilized_result
+                # If stabilization failed and returned None, result remains
+                # original_result
                 # Emit granular completion lines instead of a generic message
                 if demucs:
                     reporter.on_postprocess_finished("demucs")
@@ -448,10 +485,23 @@ def _handle_output_and_benchmarks(
     except Exception:  # pragma: no cover
         pass
 
+    srt_text_captured: str | None = None
+    format_quality: dict[str, Any] | None = None
     for idx, fmt in enumerate(formats_to_export):
         formatter = FORMATTERS[fmt]
         content = formatter.format(detailed_result)
         ext = formatter.get_file_extension()
+        if fmt == "srt":
+            srt_text_captured = content
+            try:
+                quality_segments = build_quality_segments(detailed_result)
+                format_quality = compute_srt_quality(
+                    segments=quality_segments,
+                    srt_text=srt_text_captured,
+                )
+            except Exception:  # pragma: no cover - defensive logging
+                logger.exception("Failed to compute SRT quality metrics")
+                format_quality = None
 
         if output and export_format_explicit and fmt != "all":
             output_path = (
@@ -490,10 +540,6 @@ def _handle_output_and_benchmarks(
             except Exception:  # pragma: no cover
                 pass
 
-    # ------------------------------------------------------------------ #
-    # Benchmark (optional)                                               #
-    # ------------------------------------------------------------------ #
-    if benchmark_enabled:
         from insanely_fast_whisper_api.benchmarks.collector import BenchmarkCollector
 
         collector = BenchmarkCollector()
@@ -518,9 +564,10 @@ def _handle_output_and_benchmarks(
             total_time=total_time,
             extra=extra_dict,
             gpu_stats=benchmark_gpu_stats,
+            format_quality=format_quality,
         )
-        if not quiet:
-            click.secho(f"📈 Benchmark saved to: {benchmark_path}", fg="green")
+        # Print benchmark path even when --quiet is set
+        click.secho(f"📈 Benchmark saved to: {benchmark_path}", fg="green")
 
     # ------------------------------------------------------------------ #
     # Cleanup                                                            #

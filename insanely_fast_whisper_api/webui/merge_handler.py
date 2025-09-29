@@ -257,7 +257,9 @@ class SrtMerger(MergeHandler):
         self.entry_counter = 1
 
     def _is_valid_file_result(self, result_data: dict[str, Any]) -> bool:
-        return "chunks" in result_data and result_data["chunks"]
+        return ("chunks" in result_data and result_data["chunks"]) or (
+            "segments" in result_data and result_data["segments"]
+        )
 
     def _format_file_content(self, result_data: dict[str, Any]) -> str:
         srt_content = FORMATTERS["srt"].format(result_data)
@@ -299,47 +301,12 @@ class VttMerger(MergeHandler):
     """Merge handler for VTT format."""
 
     def _is_valid_file_result(self, result_data: dict[str, Any]) -> bool:
-        return "chunks" in result_data and result_data["chunks"]
+        return ("chunks" in result_data and result_data["chunks"]) or (
+            "segments" in result_data and result_data["segments"]
+        )
 
     def _format_file_content(self, result_data: dict[str, Any]) -> str:
-        chunks = result_data.get("chunks", [])
-        vtt_entries = []
-
-        for chunk in chunks:
-            text = chunk.get("text", "").strip()
-            if not text:
-                continue
-
-            timestamps = chunk.get("timestamp", [None, None])
-            start = timestamps[0] if len(timestamps) > 0 else None
-            end = timestamps[1] if len(timestamps) > 1 else None
-
-            start_time = self._format_vtt_time(start)
-            end_time = self._format_vtt_time(end)
-
-            vtt_entries.append(f"{start_time} --> {end_time}\n{text}")
-
-        return "\n\n".join(vtt_entries)
-
-    def _format_vtt_time(self, seconds: float | None) -> str:
-        """Format time for VTT.
-
-        Args:
-            seconds: The timestamp in seconds or None.
-
-        Returns:
-            str: VTT-formatted time string.
-        """
-        if seconds is None:
-            return "00:00:00.000"
-
-        whole_seconds = int(seconds)
-        milliseconds = int((seconds - whole_seconds) * 1000)
-        hours = whole_seconds // 3600
-        minutes = (whole_seconds % 3600) // 60
-        secs = whole_seconds % 60
-
-        return f"{hours:02d}:{minutes:02d}:{secs:02d}.{milliseconds:03d}"
+        return FORMATTERS["vtt"].format(result_data)
 
     def _finalize_content(self, content: str) -> str:
         return f"WEBVTT\n\n{content}" if content.strip() else "WEBVTT\n"

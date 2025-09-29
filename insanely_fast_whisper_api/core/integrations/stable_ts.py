@@ -8,9 +8,13 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from copy import deepcopy
 from pathlib import Path
 from typing import Any
+
+from insanely_fast_whisper_api.utils.timestamp_utils import (
+    normalize_timestamp_format,
+    validate_timestamps,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +32,6 @@ except ImportError as err:  # pragma: no cover
     stable_whisper = None  # type: ignore
     _postprocess = None
     _postprocess_alt = None
-
-__all__ = ["stabilize_timestamps"]
 
 
 def _to_dict(obj: object) -> dict[str, Any]:
@@ -54,52 +56,19 @@ def _to_dict(obj: object) -> dict[str, Any]:
 def _convert_to_stable(result: dict[str, Any]) -> dict[str, Any]:
     """Return *result* reshaped to match Whisper JSON expected by stable-ts."""
     logger.info("_convert_to_stable input keys=%s", list(result.keys()))
-    converted = deepcopy(result)
-    logger.info("_convert_to_stable: deep-copied result")
-    # Rename chunks -> segments if present
-    if "segments" not in converted and "chunks" in converted:
-        converted["segments"] = converted.pop("chunks")
-        logger.info("Renamed 'chunks' to 'segments'")
 
-    # Fix individual segment fields
+    # Use centralized normalization function
+    converted = normalize_timestamp_format(result)
+    logger.info("_convert_to_stable: normalized timestamp format")
+
+    # Fix individual segment fields and validate timestamps
     segments = converted.get("segments", [])
-    for seg in segments:
-        if (
-            isinstance(seg, dict)
-            and "timestamp" in seg
-            and isinstance(seg["timestamp"], (list, tuple))
-            and len(seg["timestamp"]) == 2
-        ):
-            seg["start"], seg["end"] = seg.pop("timestamp")
-        # Swap timestamps if they are in the wrong order and both are not None
-        if (
-            isinstance(seg, dict)
-            and seg.get("start") is not None
-            and seg.get("end") is not None
-            and seg["start"] > seg["end"]
-        ):
-            seg["start"], seg["end"] = seg["end"], seg["start"]
+    validated_segments = validate_timestamps(segments)
+    converted["segments"] = validated_segments
 
-    # Sort and de-overlap (handle missing/None starts by pushing them last)
-    segments.sort(
-        key=lambda s: s.get("start") if s.get("start") is not None else float("inf")
+    logger.info(
+        "_convert_to_stable returning %d validated segments", len(validated_segments)
     )
-    cleaned, last_end = [], 0.0
-    for seg in segments:
-        start, end = seg.get("start"), seg.get("end")
-        if start is None or end is None:
-            continue
-        if start < last_end:
-            duration = max(0.0, end - start)
-            start = last_end
-            end = last_end + duration
-        if start >= last_end:
-            seg["start"], seg["end"] = start, end
-            cleaned.append(seg)
-            last_end = end
-
-    converted["segments"] = cleaned
-    logger.info("_convert_to_stable returning %d cleaned segments", len(cleaned))
     return converted
 
 
