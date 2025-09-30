@@ -179,6 +179,7 @@ class BasePipeline(ABC):
                     result=final_result,
                 )
             )
+            progress_cb.on_completed()
             return final_result
         except Exception as e:
             logger.error(
@@ -200,6 +201,7 @@ class BasePipeline(ABC):
                     message=f"Pipeline failed: {str(e)}",
                 )
             )
+            progress_cb.on_completed()
             # Re-raise or handle as appropriate. For now, re-raise TranscriptionError.
             if not isinstance(e, TranscriptionError):
                 # Format string for logger and exception message for clarity
