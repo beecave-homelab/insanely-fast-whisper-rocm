@@ -1,15 +1,19 @@
-"""Tests for the startup event handler in insanely_fast_whisper_api/api/app.py."""
+"""Tests for the startup sequence in insanely_fast_whisper_api/api/app.py."""
 
 import asyncio
 import logging
 from unittest.mock import Mock, patch
 
-from insanely_fast_whisper_api.api.app import create_app
+from insanely_fast_whisper_api.api.app import create_app, run_startup_sequence
 from insanely_fast_whisper_api.utils.constants import API_TITLE, DEFAULT_MODEL, HF_TOKEN
 
 
 class TestAppStartupEvent:
-    """Test the FastAPI application startup event handler."""
+    """Test the FastAPI application startup sequence."""
+
+    @staticmethod
+    def _run_startup(app) -> None:
+        asyncio.run(run_startup_sequence(app))
 
     @patch("insanely_fast_whisper_api.api.app.download_model_if_needed")
     @patch("insanely_fast_whisper_api.api.app.logger")
@@ -17,25 +21,8 @@ class TestAppStartupEvent:
         self, mock_logger: Mock, mock_download: Mock
     ) -> None:
         """Test that startup event calls download_model_if_needed with correct parameters."""
-        # Create app to trigger startup event setup
         app = create_app()
-
-        # Get the startup event handler
-        startup_handlers = [
-            handler
-            for handler in app.router.on_startup
-            if hasattr(handler, "__name__") and handler.__name__ == "startup_event"
-        ]
-        assert len(startup_handlers) == 1
-        startup_event = startup_handlers[0]
-
-        # Execute the startup event (it's async, so we need to run it in event loop)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(startup_event())
-        finally:
-            loop.close()
+        self._run_startup(app)
 
         # Verify download_model_if_needed was called with correct parameters
         mock_download.assert_called_once_with(
@@ -50,24 +37,8 @@ class TestAppStartupEvent:
         self, mock_logger: Mock, mock_download: Mock
     ) -> None:
         """Test that startup event logs API title, version, and description."""
-        # Create app to trigger startup event setup
         app = create_app()
-
-        # Get the startup event handler
-        startup_handlers = [
-            handler
-            for handler in app.router.on_startup
-            if hasattr(handler, "__name__") and handler.__name__ == "startup_event"
-        ]
-        startup_event = startup_handlers[0]
-
-        # Execute the startup event
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(startup_event())
-        finally:
-            loop.close()
+        self._run_startup(app)
 
         # Verify logging calls - check that key messages were logged
         call_args_list = mock_logger.info.call_args_list
@@ -87,29 +58,13 @@ class TestAppStartupEvent:
         self, mock_logger: Mock, mock_download: Mock
     ) -> None:
         """Test that startup event logs all available routes."""
-        # Create app with some test routes
         app = create_app()
 
         # Add a test route for verification
         @app.get("/test-route")
         async def test_route() -> dict:
             return {"test": "data"}
-
-        # Get the startup event handler
-        startup_handlers = [
-            handler
-            for handler in app.router.on_startup
-            if hasattr(handler, "__name__") and handler.__name__ == "startup_event"
-        ]
-        startup_event = startup_handlers[0]
-
-        # Execute the startup event
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(startup_event())
-        finally:
-            loop.close()
+        self._run_startup(app)
 
         # Verify that routes were logged
         call_args_list = mock_logger.info.call_args_list
@@ -133,29 +88,13 @@ class TestAppStartupEvent:
         # Set logger to DEBUG level
         mock_logger.isEnabledFor.side_effect = lambda level: level == logging.DEBUG
 
-        # Create app with a route that has a description
         app = create_app()
 
         # Add a test route with description
         @app.get("/test-route", description="Test route description")
         async def test_route() -> dict:
             return {"test": "data"}
-
-        # Get the startup event handler
-        startup_handlers = [
-            handler
-            for handler in app.router.on_startup
-            if hasattr(handler, "__name__") and handler.__name__ == "startup_event"
-        ]
-        startup_event = startup_handlers[0]
-
-        # Execute the startup event
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(startup_event())
-        finally:
-            loop.close()
+        self._run_startup(app)
 
         # Verify debug logging was called for route descriptions
         debug_calls = [
@@ -174,24 +113,8 @@ class TestAppStartupEvent:
         # Set logger to INFO level (not DEBUG)
         mock_logger.isEnabledFor.side_effect = lambda level: level != logging.DEBUG
 
-        # Create app with a route that has a description
         app = create_app()
-
-        # Get the startup event handler
-        startup_handlers = [
-            handler
-            for handler in app.router.on_startup
-            if hasattr(handler, "__name__") and handler.__name__ == "startup_event"
-        ]
-        startup_event = startup_handlers[0]
-
-        # Execute the startup event
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(startup_event())
-        finally:
-            loop.close()
+        self._run_startup(app)
 
         # Verify debug logging was NOT called for route descriptions
         debug_calls = [
@@ -207,25 +130,8 @@ class TestAppStartupEvent:
         self, mock_logger: Mock, mock_download: Mock
     ) -> None:
         """Test that startup event handles different types of routes."""
-        # Create app
         app = create_app()
-
-        # The app should have various routes from the included router
-        # Get the startup event handler
-        startup_handlers = [
-            handler
-            for handler in app.router.on_startup
-            if hasattr(handler, "__name__") and handler.__name__ == "startup_event"
-        ]
-        startup_event = startup_handlers[0]
-
-        # Execute the startup event
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(startup_event())
-        finally:
-            loop.close()
+        self._run_startup(app)
 
         # Verify that APIRoutes were processed (non-APIRoutes should be skipped)
         call_args_list = mock_logger.info.call_args_list

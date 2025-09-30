@@ -26,6 +26,8 @@ from insanely_fast_whisper_api.utils import (
     FileHandler,
 )
 
+from tests.helpers import get_project_version
+
 
 class TestAppFactory:
     """Test the FastAPI application factory."""
@@ -40,9 +42,7 @@ class TestAppFactory:
         app = create_app()
         assert app.title == "Insanely Fast Whisper API"
         assert "FastAPI wrapper" in app.description
-        from insanely_fast_whisper_api import __version__ as pkg_version
-
-        assert app.version == pkg_version
+        assert app.version == get_project_version()
 
     def test_create_app_has_routes(self) -> None:
         """Test that the app includes the expected routes."""
@@ -64,9 +64,7 @@ class TestAppFactory:
             "A FastAPI wrapper around the insanely-fast-whisper tool."
             in app.description
         )
-        from insanely_fast_whisper_api import __version__ as pkg_version
-
-        assert app.version == pkg_version
+        assert app.version == get_project_version()
 
 
 class TestDependencies:
