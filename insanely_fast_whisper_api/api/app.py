@@ -5,6 +5,8 @@ the FastAPI application with all necessary routes and middleware.
 """
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
@@ -24,11 +26,50 @@ from insanely_fast_whisper_api.utils.download_hf_model import download_model_if_
 logger = logging.getLogger(__name__)
 
 
+async def run_startup_sequence(app: FastAPI) -> None:
+    """Initialize application state and log configuration on startup.
+
+    Args:
+        app: FastAPI instance that is being started.
+    """
+    logger.info(
+        "Attempting to download/verify Whisper model specified by WHISPER_MODEL "
+        "or default..."
+    )
+    download_model_if_needed(
+        model_name=DEFAULT_MODEL,
+        hf_token=HF_TOKEN,
+        custom_logger=logger,
+    )
+    logger.info("Model download/verification process for API startup complete.")
+
+    logger.info("=" * 50)
+    logger.info(f"Starting {API_TITLE} v{__version__}")
+    logger.info(f"API Description: {API_DESCRIPTION}")
+    logger.info("-" * 50)
+
+    logger.info("Available endpoints:")
+    for route in app.routes:
+        if isinstance(route, APIRoute):
+            methods = ", ".join(sorted(route.methods))
+            logger.info("  %s %s", f"{methods:<10}", route.path)
+            if route.description and logger.isEnabledFor(logging.DEBUG):
+                logger.debug("    Description: %s", route.description)
+    logger.info("=" * 50)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Run startup sequence using FastAPI's lifespan support."""
+    await run_startup_sequence(app)
+    yield
+
+
 def create_app() -> FastAPI:
     """Factory function to create and configure FastAPI application.
 
     This function implements the Factory pattern to create a properly configured
-    FastAPI application with all necessary middleware, routes, and startup events.
+    FastAPI application with all necessary middleware, routes, and lifespan events.
 
     Returns:
         FastAPI: Configured FastAPI application instance
@@ -40,6 +81,7 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
+        lifespan=lifespan,
     )
 
     # Add middleware
@@ -47,42 +89,5 @@ def create_app() -> FastAPI:
 
     # Include routes
     app.include_router(api_router)
-
-    # Configure startup event
-    @app.on_event("startup")
-    async def startup_event() -> None:
-        """Initialize application state and log configuration on startup.
-
-        This function runs when the FastAPI application starts up. It logs important
-        configuration information and validates the application's setup.
-        """
-        logger.info(
-            "Attempting to download/verify Whisper model specified by "
-            "WHISPER_MODEL or "
-            "default..."
-        )
-        # Using centralized constants from constants.py for model and
-        # token configuration
-        download_model_if_needed(
-            model_name=DEFAULT_MODEL,
-            hf_token=HF_TOKEN,
-            custom_logger=logger,
-        )
-        logger.info("Model download/verification process for API startup complete.")
-
-        logger.info("=" * 50)
-        logger.info("Starting %s v%s", API_TITLE, __version__)
-        logger.info("API Description: %s", API_DESCRIPTION)
-        logger.info("-" * 50)
-
-        # Log all available routes
-        logger.info("Available endpoints:")
-        for route in app.routes:
-            if isinstance(route, APIRoute):
-                methods = ", ".join(route.methods)
-                logger.info("  %s %s", f"{methods:<10}", route.path)
-                if route.description and logger.isEnabledFor(logging.DEBUG):
-                    logger.debug("    Description: %s", route.description)
-        logger.info("=" * 50)
 
     return app

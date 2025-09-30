@@ -1,14 +1,11 @@
-"""Response formatting utilities for the API.
+"""Format API responses for various payload styles."""
 
-This module implements the Strategy pattern for formatting different
-types of responses (JSON, text) from ASR processing results.
-"""
-
+from collections.abc import Callable
 from typing import Any
 
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from insanely_fast_whisper_api.core.formatters import FORMATTERS
+from insanely_fast_whisper_api.core.formatters import BaseFormatter, FORMATTERS
 from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_JSON,
     RESPONSE_FORMAT_SRT,
@@ -17,6 +14,10 @@ from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_VTT,
 )
 from insanely_fast_whisper_api.utils.format_time import format_srt_time, format_vtt_time
+
+
+FormatterCallable = Callable[[dict[str, Any]], str]
+FormatterLike = FormatterCallable | type[BaseFormatter] | BaseFormatter
 
 
 class ResponseFormatter:
@@ -64,7 +65,9 @@ class ResponseFormatter:
             )
             text = seg.get("text", "").strip()
             srt_lines.extend([str(i), f"{start_ts} --> {end_ts}", text, ""])
-        return "\n".join(srt_lines).strip()
+        if not srt_lines:
+            return ""
+        return "\n".join(srt_lines)
 
     @staticmethod
     def _segments_to_vtt(segments: list[dict]) -> str:
@@ -89,7 +92,49 @@ class ResponseFormatter:
             )
             text = seg.get("text", "").strip()
             vtt_lines.extend([f"{start_ts} --> {end_ts}", text, ""])
-        return "\n".join(vtt_lines).strip()
+        rendered = "\n".join(vtt_lines)
+        return rendered.rstrip("\n") if not segments else rendered
+
+    @staticmethod
+    def _get_formatter(name: str) -> FormatterLike:
+        """Return the formatter associated with ``name``.
+
+        Prefers overrides attached to the class (used in tests) before
+        falling back to the module-level `FORMATTERS` mapping.
+
+        Args:
+            name: Key identifying the formatter to retrieve.
+
+        Returns:
+            FormatterLike: Either a callable, formatter instance, or formatter class.
+        """
+        formatter_map = getattr(ResponseFormatter, "FORMATTERS", None)
+        if formatter_map is None:
+            return FORMATTERS[name]
+        return formatter_map[name]
+
+    @staticmethod
+    def _call_formatter(formatter: FormatterLike, payload: dict[str, Any]) -> str:
+        """Invoke a formatter that may be a class, instance, or callable.
+
+        Args:
+            formatter: Formatter candidate retrieved via `_get_formatter`.
+            payload: Result dictionary passed to the formatter implementation.
+
+        Returns:
+            str: Formatted subtitle text.
+        """
+        if isinstance(formatter, type) and issubclass(formatter, BaseFormatter):
+            return formatter.format(payload)
+        if isinstance(formatter, BaseFormatter):
+            return formatter.format(payload)
+
+        format_callable: Callable[..., str] = getattr(formatter, "format", formatter)
+
+        try:
+            return format_callable(payload)
+        except TypeError:
+            return format_callable()
 
     @staticmethod
     def format_transcription(
@@ -154,10 +199,12 @@ class ResponseFormatter:
         # Subtitle formats (SRT/VTT)
         if response_format in (RESPONSE_FORMAT_SRT, RESPONSE_FORMAT_VTT):
             if response_format == RESPONSE_FORMAT_SRT:
-                text_output = FORMATTERS["srt"].format(result)
+                formatter = ResponseFormatter._get_formatter("srt")
+                text_output = ResponseFormatter._call_formatter(formatter, result)
                 mime = "text/srt"
             else:
-                text_output = FORMATTERS["vtt"].format(result)
+                formatter = ResponseFormatter._get_formatter("vtt")
+                text_output = ResponseFormatter._call_formatter(formatter, result)
                 mime = "text/vtt"
             return PlainTextResponse(text_output, media_type=mime)
 
@@ -225,10 +272,16 @@ class ResponseFormatter:
         if response_format in (RESPONSE_FORMAT_SRT, RESPONSE_FORMAT_VTT):
             transcription_output = result.get("transcription", result)
             if response_format == RESPONSE_FORMAT_SRT:
-                text_output = FORMATTERS["srt"].format(transcription_output)
+                formatter = ResponseFormatter._get_formatter("srt")
+                text_output = ResponseFormatter._call_formatter(
+                    formatter, transcription_output
+                )
                 mime = "text/srt"
             else:
-                text_output = FORMATTERS["vtt"].format(transcription_output)
+                formatter = ResponseFormatter._get_formatter("vtt")
+                text_output = ResponseFormatter._call_formatter(
+                    formatter, transcription_output
+                )
                 mime = "text/vtt"
             return PlainTextResponse(text_output, media_type=mime)
 

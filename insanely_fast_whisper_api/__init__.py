@@ -7,6 +7,8 @@ preserve backward compatibility with existing integrations.
 
 from __future__ import annotations
 
+from importlib import metadata
+
 from insanely_fast_whisper_api.audio import (
     cleanup_temp_files,
     get_audio_duration,
@@ -16,6 +18,22 @@ from insanely_fast_whisper_api.audio import (
 from insanely_fast_whisper_api.core import ASRPipeline
 from insanely_fast_whisper_api.utils import constants
 
+
+def _resolve_package_version() -> str:
+    """Return the package version string for the distribution.
+
+    Returns:
+        str: Semantic version read from installed metadata or project constants.
+    """
+    try:
+        return metadata.version("insanely-fast-whisper-api")
+    except metadata.PackageNotFoundError:
+        candidate = getattr(constants, "API_VERSION", "")
+        return candidate or "0.0.0-dev"
+
+
+__version__ = _resolve_package_version()
+
 try:
     from insanely_fast_whisper_api import benchmarks
 except ModuleNotFoundError:  # pragma: no cover
@@ -23,6 +41,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 __all__ = [
     "ASRPipeline",
+    "__version__",
     "benchmarks",
     "cleanup_temp_files",
     "constants",
