@@ -56,9 +56,28 @@ def load_logging_config(debug: bool = False) -> dict:
     setup_timezone()
 
     # Load the YAML config
-    config_path = Path(__file__).parent / "logging_config.yaml"
-    with open(config_path, encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+    module_path = Path(__file__)
+    candidate_paths = [
+        module_path.parent / "logging_config.yaml",
+        module_path / "logging_config.yaml",
+    ]
+
+    config: dict
+    last_error: FileNotFoundError | None = None
+    for path in candidate_paths:
+        try:
+            with open(path, encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+        except FileNotFoundError as exc:
+            last_error = exc
+            continue
+        break
+    else:
+        raise (
+            last_error
+            if last_error is not None
+            else FileNotFoundError("logging_config.yaml not found")
+        )
 
     # Adjust log levels based on debug flag
     if debug:
@@ -72,6 +91,7 @@ def load_logging_config(debug: bool = False) -> dict:
 @click.command(
     context_settings=dict(help_option_names=["-h", "--help"]),
     short_help="Starts the Insanely Fast Whisper API server.",
+    help="Starts the Insanely Fast Whisper API server using Uvicorn.",
 )
 @click.option(
     "--host",
@@ -140,7 +160,7 @@ def main(
     ssl_certfile: str | None,
     debug: bool,
 ) -> None:
-    """Run the Insanely Fast Whisper API server using Uvicorn.
+    """Starts the Insanely Fast Whisper API server using Uvicorn.
 
     Raises:
         click.exceptions.Exit: If Uvicorn is not installed.

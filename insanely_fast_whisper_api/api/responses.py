@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from insanely_fast_whisper_api.core.formatters import BaseFormatter, FORMATTERS
+from insanely_fast_whisper_api.core.formatters import FORMATTERS, BaseFormatter
 from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_JSON,
     RESPONSE_FORMAT_SRT,
@@ -14,7 +14,6 @@ from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_VTT,
 )
 from insanely_fast_whisper_api.utils.format_time import format_srt_time, format_vtt_time
-
 
 FormatterCallable = Callable[[dict[str, Any]], str]
 FormatterLike = FormatterCallable | type[BaseFormatter] | BaseFormatter

@@ -486,22 +486,24 @@ def _handle_output_and_benchmarks(
         pass
 
     srt_text_captured: str | None = None
-    format_quality: dict[str, Any] | None = None
+    format_quality_by_format: dict[str, Any] = {}
     for idx, fmt in enumerate(formats_to_export):
         formatter = FORMATTERS[fmt]
         content = formatter.format(detailed_result)
         ext = formatter.get_file_extension()
         if fmt == "srt":
             srt_text_captured = content
-            try:
-                quality_segments = build_quality_segments(detailed_result)
-                format_quality = compute_srt_quality(
-                    segments=quality_segments,
-                    srt_text=srt_text_captured,
-                )
-            except Exception:  # pragma: no cover - defensive logging
-                logger.exception("Failed to compute SRT quality metrics")
-                format_quality = None
+            if benchmark_enabled:
+                try:
+                    quality_segments = build_quality_segments(detailed_result)
+                    srt_quality = compute_srt_quality(
+                        segments=quality_segments,
+                        srt_text=srt_text_captured,
+                    )
+                except Exception:  # pragma: no cover - defensive logging
+                    logger.exception("Failed to compute SRT quality metrics")
+                else:
+                    format_quality_by_format["srt"] = srt_quality
 
         if output and export_format_explicit and fmt != "all":
             output_path = (
@@ -540,6 +542,7 @@ def _handle_output_and_benchmarks(
             except Exception:  # pragma: no cover
                 pass
 
+    if benchmark_enabled:
         from insanely_fast_whisper_api.benchmarks.collector import BenchmarkCollector
 
         collector = BenchmarkCollector()
@@ -564,7 +567,7 @@ def _handle_output_and_benchmarks(
             total_time=total_time,
             extra=extra_dict,
             gpu_stats=benchmark_gpu_stats,
-            format_quality=format_quality,
+            format_quality=format_quality_by_format or None,
         )
         # Print benchmark path even when --quiet is set
         click.secho(f"📈 Benchmark saved to: {benchmark_path}", fg="green")
