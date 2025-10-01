@@ -4,6 +4,8 @@ import asyncio
 import logging
 from unittest.mock import Mock, patch
 
+from fastapi import FastAPI
+
 from insanely_fast_whisper_api.api.app import create_app, run_startup_sequence
 from insanely_fast_whisper_api.utils.constants import API_TITLE, DEFAULT_MODEL, HF_TOKEN
 
@@ -12,7 +14,7 @@ class TestAppStartupEvent:
     """Test the FastAPI application startup sequence."""
 
     @staticmethod
-    def _run_startup(app) -> None:
+    def _run_startup(app: FastAPI) -> None:
         asyncio.run(run_startup_sequence(app))
 
     @patch("insanely_fast_whisper_api.api.app.download_model_if_needed")
@@ -64,6 +66,7 @@ class TestAppStartupEvent:
         @app.get("/test-route")
         async def test_route() -> dict:
             return {"test": "data"}
+
         self._run_startup(app)
 
         # Verify that routes were logged
@@ -94,6 +97,7 @@ class TestAppStartupEvent:
         @app.get("/test-route", description="Test route description")
         async def test_route() -> dict:
             return {"test": "data"}
+
         self._run_startup(app)
 
         # Verify debug logging was called for route descriptions

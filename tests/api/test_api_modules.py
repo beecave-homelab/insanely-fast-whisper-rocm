@@ -12,6 +12,7 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi import FastAPI, UploadFile
 from fastapi.testclient import TestClient
+from tests.helpers import get_project_version
 
 from insanely_fast_whisper_api.api.app import create_app
 from insanely_fast_whisper_api.api.dependencies import (
@@ -25,8 +26,6 @@ from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_TEXT,
     FileHandler,
 )
-
-from tests.helpers import get_project_version
 
 
 class TestAppFactory:
