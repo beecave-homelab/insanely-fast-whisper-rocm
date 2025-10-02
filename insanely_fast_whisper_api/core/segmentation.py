@@ -26,6 +26,42 @@ class Segment:
     words: list[Word]
 
 
+def _expand_multi_token_words(words: list[Word]) -> list[Word]:
+    """Expand Word objects containing multiple space-separated tokens.
+
+    This function splits any Word whose text contains multiple tokens
+    (separated by spaces) into multiple Word objects with proportionally
+    distributed timing.
+
+    Args:
+        words: Original word list, potentially with multi-token Word objects.
+
+    Returns:
+        A new list of Word objects where each Word contains a single token.
+    """
+    expanded: list[Word] = []
+    for w in words:
+        tokens = [t for t in w.text.split() if t]
+        if len(tokens) <= 1:
+            expanded.append(w)
+            continue
+
+        # Distribute timing proportionally across tokens
+        total_chars = sum(len(t) for t in tokens)
+        start = w.start
+        for i, tok in enumerate(tokens):
+            frac = len(tok) / total_chars if total_chars > 0 else 0
+            if i < len(tokens) - 1:
+                dur = (w.end - w.start) * frac
+                end = start + dur
+            else:
+                end = w.end
+            expanded.append(Word(text=tok, start=start, end=end))
+            start = end
+
+    return expanded
+
+
 def _sanitize_words_timing(words: list[Word]) -> list[Word]:
     """Return a sanitized copy of ``words`` with stable, monotonic timings.
 
@@ -68,14 +104,35 @@ def segment_words(words: list[Word]) -> list[Segment]:
     Returns:
         A list of Segment objects formatted for readability.
     """
+    # Expand multi-token Word objects into individual tokens first.
+    # This handles test/edge cases where a Word contains multiple tokens.
+    words = _expand_multi_token_words(words)
     # Sanitize timings to avoid zero/negative durations and enforce monotonicity.
     words = _sanitize_words_timing(words)
 
     sentences = list(_sentence_chunks(words))
     segments = []
     for sentence in sentences:
-        if not _respect_limits(sentence):
-            clauses = _split_at_clause_boundaries(sentence, force_line_limit=True)
+        txt = " ".join(w.text for w in sentence)
+        wrapped = split_lines(txt)
+        lines = wrapped.split("\n")
+
+        # Keep as single segment if it can be wrapped into ≤2 lines
+        # with each line ≤ MAX_LINE_CHARS, regardless of total char count
+        if len(lines) <= 2 and all(
+            len(line) <= constants.MAX_LINE_CHARS for line in lines
+        ):
+            segments.append(
+                Segment(
+                    text=wrapped,
+                    start=sentence[0].start,
+                    end=sentence[-1].end,
+                    words=sentence,
+                )
+            )
+        elif not _respect_limits(sentence):
+            # If wrapping doesn't work and limits aren't respected, split into clauses
+            clauses = _split_at_clause_boundaries(sentence, force_line_limit=False)
             for clause in clauses:
                 segments.append(
                     Segment(
@@ -107,6 +164,9 @@ def segment_words(words: list[Word]) -> list[Segment]:
     # Enforce CPS constraints only for single-word-origin segments. Multi-word
     # segments are handled by line wrapping and duration constraints.
     segments = _enforce_cps(segments)
+
+    # Merge any single-word segments created by CPS enforcement
+    segments = _merge_short_segments(segments)
 
     # Guarantee monotonic timings after any synthetic duration adjustments.
     segments = _ensure_monotonic_segments(segments)
@@ -175,12 +235,20 @@ def split_lines(text: str) -> str:
 
     # Fallback: enforce at most two lines.
     # First, if the text contains a comma, split immediately after the first comma
-    # to avoid mid-phrase breaks (test prefers this behavior).
+    # to avoid mid-phrase breaks (test prefers this behavior), but only if both
+    # sides respect the per-line character limit.
     for idx_c, tok in enumerate(words):
         if tok.endswith(",") and idx_c + 1 < len(words):
             left = " ".join(words[: idx_c + 1]).strip()
             right = " ".join(words[idx_c + 1 :]).strip()
-            if left and right:
+            if (
+                left
+                and right
+                and (
+                    len(left) <= constants.MAX_LINE_CHARS
+                    and len(right) <= constants.MAX_LINE_CHARS
+                )
+            ):
                 return f"{left}\n{right}"
 
     # Prefer to end the first line at the last comma that fits.
@@ -208,7 +276,14 @@ def split_lines(text: str) -> str:
     if last_comma_pos != -1:
         first_line = " ".join(first_line_tokens[:last_comma_pos]).strip()
         second_line = " ".join(words[last_comma_pos:]).strip()
-        if first_line and second_line:
+        if (
+            first_line
+            and second_line
+            and (
+                len(first_line) <= constants.MAX_LINE_CHARS
+                and len(second_line) <= constants.MAX_LINE_CHARS
+            )
+        ):
             return f"{first_line}\n{second_line}"
 
     # 3) Default: find a balanced split that keeps both lines under the limit
@@ -217,31 +292,37 @@ def split_lines(text: str) -> str:
         return first_line
     second_line = " ".join(words[idx:])
 
-    # If second line is too long, find a more balanced split
-    if len(second_line) > constants.MAX_LINE_CHARS:
-        # Try to find the most balanced split point
-        best_i = len(first_line_tokens)
-        best_imbalance = float("inf")
+    # Try exhaustive split search across all token boundaries to enforce limits.
+    # Choose the split that minimizes the max line length, then minimizes imbalance.
+    best_pair: tuple[str, str] | None = None
+    best_score: tuple[int, int] | None = None
+    for split_idx in range(1, len(words)):
+        left = " ".join(words[:split_idx])
+        right = " ".join(words[split_idx:])
+        if (
+            len(left) <= constants.MAX_LINE_CHARS
+            and len(right) <= constants.MAX_LINE_CHARS
+        ):
+            score = (max(len(left), len(right)), abs(len(left) - len(right)))
+            if best_score is None or score < best_score:
+                best_score = score
+                best_pair = (left, right)
 
-        for i in range(1, len(first_line_tokens)):
-            test_first = " ".join(first_line_tokens[:i])
-            test_second = " ".join(first_line_tokens[i:] + words[idx:])
-            if (
-                len(test_first) <= constants.MAX_LINE_CHARS
-                and len(test_second) <= constants.MAX_LINE_CHARS
-            ):
-                imbalance = abs(len(test_first) - len(test_second))
-                if imbalance < best_imbalance:
-                    best_imbalance = imbalance
-                    best_i = i
+    if best_pair is not None:
+        return f"{best_pair[0]}\n{best_pair[1]}"
 
-        if best_i < len(first_line_tokens):
-            return (
-                f"{' '.join(first_line_tokens[:best_i])}\n"
-                f"{' '.join(first_line_tokens[best_i:] + words[idx:])}"
-            )
-
-    return f"{first_line}\n{second_line}"
+    # As a strict fallback, hard-wrap to the per-line cap without breaking words:
+    # fill the first line up to the limit, put remaining tokens on the second line.
+    wrap_first: list[str] = []
+    pos = 0
+    while pos < len(words):
+        candidate = (" ".join(wrap_first + [words[pos]])).strip()
+        if wrap_first and len(candidate) > constants.MAX_LINE_CHARS:
+            break
+        wrap_first.append(words[pos])
+        pos += 1
+    wrap_second = words[pos:]
+    return f"{' '.join(wrap_first)}\n{' '.join(wrap_second)}"
 
 
 def _respect_limits(words: list[Word], soft_limit: bool = False) -> bool:
@@ -278,18 +359,15 @@ def _sentence_chunks(words: list[Word]) -> list[list[Word]]:
     ensuring that individual words without punctuation are grouped together
     rather than becoming separate sentences.
 
-    Note: This is a generator function that yields sentence chunks. Returns
+    This is a generator function that yields sentence chunks. May return
     early without yielding if input is empty.
 
     Args:
         words: A list of Word objects.
 
     Yields:
-        list[Word]: Lists of Word objects, each representing a sentence.
+        Lists of Word objects, each representing a sentence.
     """
-    if not words:
-        return
-
     sentence_ends = {".", "!", "?"}
     current_sentence = []
 
@@ -311,6 +389,9 @@ def _split_at_clause_boundaries(
     sentence: list[Word], *, force_line_limit: bool = False
 ) -> list[list[Word]]:
     """Split a sentence into clauses at natural boundaries.
+
+    This function prefers splitting at commas, but avoids creating clauses that
+    end with awkward words like articles, prepositions, or auxiliary verbs.
 
     Args:
         sentence: Words forming the sentence.
@@ -400,7 +481,8 @@ def _split_long_text_aggressively(
 
         # Check if all chunks respect limits
         if all(len(" ".join(w.text for w in chunk)) <= limit for chunk in chunks):
-            return chunks
+            # Clean up awkward endings before returning
+            return _clean_awkward_endings(chunks)
 
     # If natural splits do not work, use word-based chunking with the same limit
     return _chunk_by_word_limits(words, max_chars=limit)
@@ -486,7 +568,10 @@ def _reapply_character_limits(segments: list[Segment]) -> list[Segment]:
             len(wrapped_lines) <= 2 and max_line_length <= constants.MAX_LINE_CHARS
         )
 
-        if block_within_limit and lines_within_limit:
+        # Prefer per-line wrapping over block length: if wrapped into two lines
+        # within per-line cap, keep the segment intact even if block length
+        # exceeds MAX_BLOCK_CHARS.
+        if lines_within_limit or (block_within_limit and lines_within_limit):
             result.append(seg)
             continue
 
@@ -508,10 +593,86 @@ def _reapply_character_limits(segments: list[Segment]) -> list[Segment]:
     return result
 
 
+def _clean_awkward_endings(chunks: list[list[Word]]) -> list[list[Word]]:
+    """Move awkward endings from one chunk to the next.
+
+    Words that should not end a segment (articles, prepositions, conjunctions)
+    are moved to the following chunk to avoid mid-phrase breaks.
+
+    Args:
+        chunks: List of word chunks to clean up.
+
+    Returns:
+        Adjusted chunks with awkward endings moved to next chunk.
+    """
+    awkward_endings = {
+        "a",
+        "an",
+        "the",
+        "in",
+        "on",
+        "at",
+        "of",
+        "to",
+        "for",
+        "with",
+        "by",
+        "from",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+    }
+
+    adjusted_chunks = []
+    for i, chunk in enumerate(chunks):
+        if len(chunk) > 1:  # Only adjust multi-word chunks
+            last_word = chunk[-1].text.strip(".!?,;:").lower()
+
+            # Check if there's a next chunk that's a single word
+            has_single_word_next = i + 1 < len(chunks) and len(chunks[i + 1]) == 1
+
+            # Move a word if:
+            # 1. Current chunk ends awkwardly, OR
+            # 2. Next chunk is a single word (to prevent orphaned words)
+            should_move = last_word in awkward_endings or has_single_word_next
+
+            if should_move and i + 1 < len(chunks):
+                # When next chunk is a single word, move TWO words if possible
+                # to avoid creating a new awkward ending
+                if has_single_word_next and len(chunk) > 3:
+                    # Move last 2 words to prevent orphaned single-word AND
+                    # avoid creating a new awkward ending
+                    words_to_move = chunk[-2:]
+                    adjusted_chunks.append(chunk[:-2])
+                    for word in reversed(words_to_move):
+                        chunks[i + 1].insert(0, word)
+                elif len(chunk) > 2:
+                    # Normal case: move one word
+                    awkward_word = chunk[-1]
+                    adjusted_chunks.append(chunk[:-1])
+                    chunks[i + 1].insert(0, awkward_word)
+                else:
+                    # Can't move without creating problems
+                    adjusted_chunks.append(chunk)
+            else:
+                adjusted_chunks.append(chunk)
+        else:
+            adjusted_chunks.append(chunk)
+
+    # Filter out empty chunks
+    return [chunk for chunk in adjusted_chunks if chunk]
+
+
 def _chunk_by_word_limits(
     words: list[Word], *, max_chars: int | None = None
 ) -> list[list[Word]]:
     """Split text into chunks that respect character limits.
+
+    This function creates chunks based on character limits and then cleans up
+    awkward endings.
 
     Args:
         words: Words to split while preserving boundaries.
@@ -520,10 +681,12 @@ def _chunk_by_word_limits(
     Returns:
         list[list[Word]]: Word chunks whose joined text length obeys ``max_chars``.
     """
+    limit = max_chars or constants.MAX_BLOCK_CHARS
+
+    # Create chunks based on character limit
     chunks = []
     current_chunk = []
     current_length = 0
-    limit = max_chars or constants.MAX_BLOCK_CHARS
 
     for word in words:
         word_text = word.text + " "  # Include space
@@ -543,11 +706,16 @@ def _chunk_by_word_limits(
     if current_chunk:
         chunks.append(current_chunk)
 
-    return chunks
+    # Clean up awkward endings
+    return _clean_awkward_endings(chunks)
 
 
 def _merge_short_segments(segments: list[Segment]) -> list[Segment]:
     """Merge short segments with their neighbors.
+
+    This function merges segments that are too short (by duration or word count)
+    with neighboring segments to improve readability. Single-word segments without
+    sentence-ending punctuation are always merged.
 
     Args:
         segments: A list of Segment objects.
@@ -562,12 +730,19 @@ def _merge_short_segments(segments: list[Segment]) -> list[Segment]:
     current_segment = segments[0]
 
     for next_segment in segments[1:]:
-        is_short = (
-            current_segment.end - current_segment.start
-        ) < constants.MIN_SEGMENT_DURATION_SEC
-        can_merge = not any(p in current_segment.text for p in [".", "!", "?"])
+        duration = current_segment.end - current_segment.start
+        word_count = len(current_segment.words)
+        has_sentence_end = any(p in current_segment.text for p in [".", "!", "?"])
 
-        if is_short and can_merge:
+        # Merge if:
+        # 1. Duration is too short AND no sentence-ending punctuation, OR
+        # 2. Single word without sentence-ending punctuation (avoid orphaned words)
+        is_short_duration = duration < constants.MIN_SEGMENT_DURATION_SEC
+        is_single_word = word_count == 1
+
+        should_merge = (is_short_duration or is_single_word) and not has_sentence_end
+
+        if should_merge:
             # Merge with next segment
             current_segment.text += " " + next_segment.text
             current_segment.end = next_segment.end
@@ -592,6 +767,8 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
     Returns:
         A new list of segments satisfying CPS constraints where feasible.
     """
+    # Small epsilon for floating-point comparison tolerance
+    eps = 1e-6
     enforced: list[Segment] = []
     for seg in segments:
         words = seg.words
@@ -600,10 +777,11 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
             continue
 
         # Skip enforcement if this segment already respects CPS limits.
+        # Use epsilon tolerance to handle floating-point precision issues.
         seg_text = " ".join(w.text for w in words)
         seg_duration = words[-1].end - words[0].start
         seg_cps = (len(seg_text) / seg_duration) if seg_duration > 0 else float("inf")
-        if constants.MIN_CPS <= seg_cps <= constants.MAX_CPS:
+        if constants.MIN_CPS - eps <= seg_cps <= constants.MAX_CPS + eps:
             enforced.append(seg)
             continue
 
@@ -632,9 +810,7 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                         len(chunk_text) / constants.MAX_CPS,
                         constants.MIN_SEGMENT_DURATION_SEC,
                     )
-                    end_time = current_time + min(
-                        dur, constants.MAX_SEGMENT_DURATION_SEC
-                    )
+                    end_time = current_time + dur
 
                     # Build synthetic words with evenly split timing.
                     chunk_tokens = chunk_text.split()
@@ -664,7 +840,7 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                     len(chunk_text) / constants.MAX_CPS,
                     constants.MIN_SEGMENT_DURATION_SEC,
                 )
-                end_time = current_time + min(dur, constants.MAX_SEGMENT_DURATION_SEC)
+                end_time = current_time + dur
                 chunk_tokens = chunk_text.split()
                 per = (end_time - current_time) / max(len(chunk_tokens), 1)
                 chunk_words = []

@@ -243,7 +243,7 @@ class SrtFormatter(BaseFormatter):
             if words:
                 logger.info(
                     "[SrtFormatter] Found %d words, using segmentation pipeline.",
-                    len(words)
+                    len(words),
                 )
                 segments = segment_words(words)
                 logger.info(
@@ -264,9 +264,7 @@ class SrtFormatter(BaseFormatter):
                 )
                 return "\n".join(srt_content)
             else:
-                logger.info(
-                    "[SrtFormatter] No words found, using fallback."
-                )
+                logger.info("[SrtFormatter] No words found, using fallback.")
 
         # Fallback to old chunk-based formatting if no words are found
         logger.debug("[SrtFormatter] No word-level timestamps, using chunk fallback.")

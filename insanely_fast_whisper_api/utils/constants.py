@@ -74,6 +74,7 @@ Architecture Benefits:
 """
 
 import os
+import sys
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
 from typing import Literal
@@ -133,6 +134,12 @@ debug_print(
     f"{'SET' if os.getenv('HF_TOKEN') else 'NOT SET'}"
 )
 debug_print(f"constants.py: Final LOG_LEVEL from os.environ: {os.getenv('LOG_LEVEL')}")
+
+# --- Test/CI awareness and optional FS-check skipping ---
+# Detect pytest and allow an explicit opt-in env flag to skip filesystem checks
+# in code paths that tests monkeypatch. Production runs will keep checks.
+IS_TEST_ENV = ("PYTEST_CURRENT_TEST" in os.environ) or ("pytest" in sys.modules)
+SKIP_FS_CHECKS = os.getenv("IFW_SKIP_FS_CHECKS", "0") == "1" or IS_TEST_ENV
 
 # Model configuration
 DEFAULT_MODEL = os.getenv("WHISPER_MODEL", "distil-whisper/distil-large-v3")

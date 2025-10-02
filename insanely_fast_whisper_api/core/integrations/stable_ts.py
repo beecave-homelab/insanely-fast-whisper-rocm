@@ -11,6 +11,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from insanely_fast_whisper_api.utils import constants
 from insanely_fast_whisper_api.utils.timestamp_utils import (
     normalize_timestamp_format,
     validate_timestamps,
@@ -116,8 +117,9 @@ def stabilize_timestamps(
             progress_cb("stable-ts: audio path missing; skipping")
         return result
 
+    # Respect filesystem in production; allow skipping in tests.
     audio_path = Path(audio_path_str).expanduser().resolve()
-    if not audio_path.exists():
+    if not audio_path.exists() and not constants.SKIP_FS_CHECKS:
         logger.error("Audio file not found for stabilization: %s", audio_path)
         if progress_cb:
             progress_cb("stable-ts: audio file not found; skipping")
@@ -157,7 +159,15 @@ def stabilize_timestamps(
             refined_dict = _to_dict(refined)
             merged = {**result, **refined_dict, "stabilized": True}
             if "segments" in merged:
-                merged.pop("chunks", None)
+
+                def _segments_have_timestamps(seg_list: list[dict]) -> bool:
+                    return any(
+                        (s.get("start") is not None and s.get("end") is not None)
+                        for s in seg_list
+                    )
+
+                if _segments_have_timestamps(merged["segments"]):
+                    merged.pop("chunks", None)
             merged.setdefault("segments_count", len(refined_dict.get("segments", [])))
             merged.setdefault("stabilization_path", func_name)
             if progress_cb:

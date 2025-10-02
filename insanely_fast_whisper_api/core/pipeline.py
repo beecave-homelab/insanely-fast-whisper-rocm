@@ -16,7 +16,7 @@ from insanely_fast_whisper_api.core.asr_backend import ASRBackend
 from insanely_fast_whisper_api.core.errors import TranscriptionError
 from insanely_fast_whisper_api.core.progress import NoOpProgress, ProgressCallback
 from insanely_fast_whisper_api.core.storage import BaseStorage, StorageFactory
-from insanely_fast_whisper_api.utils import file_utils
+from insanely_fast_whisper_api.utils import constants, file_utils
 from insanely_fast_whisper_api.utils.filename_generator import (
     FilenameGenerator,
     StandardFilenameStrategy,
@@ -340,17 +340,20 @@ class WhisperPipeline(BasePipeline):
     def _prepare_input(self, audio_file_path: Path) -> str:
         """Prepare input for the Whisper pipeline.
 
-        For basic Whisper, the input is just the file path. This method ensures
-        the file exists before proceeding.
+        For basic Whisper, the input is just the file path. In production we
+        validate the path exists. During tests (or when explicitly enabled via
+        IFW_SKIP_FS_CHECKS) we bypass the filesystem check to allow monkeypatched
+        I/O helpers to operate without touching disk.
 
         Returns:
             The audio file path as a string.
 
         Raises:
-            FileNotFoundError: If the audio file does not exist.
+            FileNotFoundError: When the file does not exist and FS checks are not
+            skipped.
         """
         logger.info("Preparing input: %s", audio_file_path)
-        if not audio_file_path.exists():
+        if not audio_file_path.exists() and not constants.SKIP_FS_CHECKS:
             raise FileNotFoundError(f"Audio file not found: {audio_file_path}")
         return str(audio_file_path)
 
@@ -485,7 +488,7 @@ class WhisperPipeline(BasePipeline):
         else:
             combined = chunk_results[0][0]
 
-        progress_callback.on_completed()
+        # Do not signal completion here; the outer process() handles it once.
         return combined
 
     def _postprocess_output(

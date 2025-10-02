@@ -43,7 +43,7 @@ def merge_chunk_results(chunk_results: list[tuple[dict, float]]) -> dict[str, An
                         if isinstance(end_val, (int, float))
                         else None
                     )
-                    segment["timestamp"] = (adj_start, adj_end)
+                    segment["timestamp"] = [adj_start, adj_end]
 
                 # Adjust word timestamps if they exist (guard missing/None)
                 if "words" in segment and isinstance(segment["words"], list):
