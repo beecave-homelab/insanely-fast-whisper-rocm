@@ -333,8 +333,20 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
         hf_logging.set_verbosity_error()
 
+        # CRITICAL FIX: Disable chunk_length_s when using word-level timestamps
+        # to avoid Transformers bug where all words get the same timestamp.
+        # The manual chunking in pipeline.py handles audio splitting, so
+        # Transformers should process each chunk without further internal chunking.
+        chunk_length_value = self.config.chunk_length
+        if _return_timestamps_value == "word":
+            chunk_length_value = None
+            logger.debug(
+                "Disabling chunk_length_s for word-level timestamps to avoid "
+                "Transformers internal chunking conflict"
+            )
+
         pipeline_kwargs = {
-            "chunk_length_s": self.config.chunk_length,
+            "chunk_length_s": chunk_length_value,
             "batch_size": self.config.batch_size,
             "return_timestamps": _return_timestamps_value,
             "ignore_warning": True,

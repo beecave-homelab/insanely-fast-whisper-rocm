@@ -245,12 +245,17 @@ class CLIFacade:
             timestamp_type = "none"
 
         try:
+            # CRITICAL FIX: Do NOT pass original_filename for CLI usage.
+            # The pipeline will use the absolute path from audio_file_path,
+            # which is required for stabilization to locate the audio file.
+            # original_filename should only be used for uploaded files (API)
+            # where we want to preserve the upload's original name.
             return self.pipeline.process(
                 audio_file_path=str(audio_file_path),
                 language=language,
                 task=task,
                 timestamp_type=timestamp_type,  # type: ignore[arg-type]
-                original_filename=audio_file_path.name,
+                original_filename=None,  # Let pipeline use absolute path
                 progress_callback=progress_cb,
             )
         except TranscriptionError as exc:

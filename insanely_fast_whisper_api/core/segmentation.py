@@ -273,19 +273,36 @@ def _respect_limits(words: list[Word], soft_limit: bool = False) -> bool:
 def _sentence_chunks(words: list[Word]) -> list[list[Word]]:
     """Split a list of words into sentence chunks based on punctuation.
 
+    This function groups words into sentences by looking for sentence-ending
+    punctuation (., !, ?). It accumulates words until it finds punctuation,
+    ensuring that individual words without punctuation are grouped together
+    rather than becoming separate sentences.
+
+    Note: This is a generator function that yields sentence chunks. Returns
+    early without yielding if input is empty.
+
     Args:
         words: A list of Word objects.
 
     Yields:
-        A list of Word objects representing a sentence.
+        list[Word]: Lists of Word objects, each representing a sentence.
     """
+    if not words:
+        return
+
     sentence_ends = {".", "!", "?"}
     current_sentence = []
+
     for word in words:
         current_sentence.append(word)
-        if any(char in sentence_ends for char in word.text):
+        # Check if this word ends with sentence-ending punctuation
+        # Strip whitespace and check the last character
+        text_stripped = word.text.strip()
+        if text_stripped and text_stripped[-1] in sentence_ends:
             yield current_sentence
             current_sentence = []
+
+    # Yield any remaining words as a final sentence
     if current_sentence:
         yield current_sentence
 

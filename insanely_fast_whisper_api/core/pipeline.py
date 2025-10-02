@@ -503,9 +503,12 @@ class WhisperPipeline(BasePipeline):
         logger.info("Postprocessing ASR output for: %s", audio_file_path)
         # Example: Add original file name, task, and a processing timestamp
         processed_result = asr_output.copy()
-        # Use original_filename if provided, otherwise use the actual file path
+        # CRITICAL FIX: Store absolute path for audio file to ensure
+        # post-processing steps (like stabilization) can locate the file
+        # regardless of working directory changes.
+        # Use original_filename if provided, otherwise use the absolute file path
         processed_result["original_file"] = (
-            original_filename if original_filename else str(audio_file_path)
+            original_filename if original_filename else str(audio_file_path.resolve())
         )
         processed_result["task_type"] = task
         processed_result["processed_at"] = datetime.now(timezone.utc).isoformat()

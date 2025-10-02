@@ -51,20 +51,47 @@ def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
 
     # Fallback to 'segments' if they contain word-level data
     segments = result.get("segments")
-    if isinstance(segments, list):
-        for segment in segments:
-            words = segment.get("words")
-            if isinstance(words, list) and words and isinstance(words[0], dict):
-                for word_data in words:
-                    text = word_data.get("word", "").strip()
-                    start = word_data.get("start")
-                    end = word_data.get("end")
-                    if (
-                        text
-                        and isinstance(start, (int, float))
-                        and isinstance(end, (int, float))
-                    ):
-                        words_list.append(Word(text=text, start=start, end=end))
+    if isinstance(segments, list) and segments:
+        # Check if segments have a 'words' field (nested word-level data)
+        first_segment = segments[0]
+        if "words" in first_segment:
+            # Nested structure: segments contain words arrays
+            for segment in segments:
+                words = segment.get("words")
+                if isinstance(words, list) and words and isinstance(words[0], dict):
+                    for word_data in words:
+                        text = word_data.get("word", "").strip()
+                        start = word_data.get("start")
+                        end = word_data.get("end")
+                        if (
+                            text
+                            and isinstance(start, (int, float))
+                            and isinstance(end, (int, float))
+                        ):
+                            words_list.append(Word(text=text, start=start, end=end))
+        elif "start" in first_segment and "end" in first_segment:
+            # Flat structure: each segment IS a word (from stable-ts)
+            # Check if these look like word-level segments (short duration)
+            for segment in segments:
+                text = segment.get("text", "").strip()
+                start = segment.get("start")
+                end = segment.get("end")
+                if (
+                    text
+                    and isinstance(start, (int, float))
+                    and isinstance(end, (int, float))
+                ):
+                    words_list.append(Word(text=text, start=start, end=end))
+
+            # Only return if average duration suggests word-level data
+            if words_list:
+                total_duration = sum(w.end - w.start for w in words_list)
+                avg_duration = total_duration / len(words_list)
+                if avg_duration < 1.5:  # Words are typically short
+                    return words_list
+                else:
+                    # These are sentence-level segments, not words
+                    return None
 
     return words_list if words_list else None
 
@@ -214,8 +241,17 @@ class SrtFormatter(BaseFormatter):
         if USE_READABLE_SUBTITLES:
             words = _result_to_words(result)
             if words:
-                logger.debug("[SrtFormatter] Found words, using segmentation.")
+                logger.info(
+                    "[SrtFormatter] Found %d words, using segmentation pipeline.",
+                    len(words)
+                )
                 segments = segment_words(words)
+                logger.info(
+                    "[SrtFormatter] segment_words() produced %d segments "
+                    "from %d words.",
+                    len(segments),
+                    len(words),
+                )
                 srt_content = []
                 for i, segment in enumerate(segments, 1):
                     start = format_srt_time(segment.start)
@@ -223,7 +259,14 @@ class SrtFormatter(BaseFormatter):
                     wrapped = split_lines(segment.text)
                     normalized_text = cls._normalize_hyphen_spacing(wrapped)
                     srt_content.append(f"{i}\n{start} --> {end}\n{normalized_text}\n")
+                logger.info(
+                    "[SrtFormatter] Returning %d SRT segments.", len(srt_content)
+                )
                 return "\n".join(srt_content)
+            else:
+                logger.info(
+                    "[SrtFormatter] No words found, using fallback."
+                )
 
         # Fallback to old chunk-based formatting if no words are found
         logger.debug("[SrtFormatter] No word-level timestamps, using chunk fallback.")
