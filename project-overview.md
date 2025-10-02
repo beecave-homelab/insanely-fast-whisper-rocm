@@ -539,7 +539,80 @@ Consult `python -m insanely_fast_whisper_api.cli --help` for a full list of comm
 
 ---
 
-#### Quiet Mode (`--quiet`)
+## SRT/VTT Segmentation Details
+
+This project includes a readability-focused subtitle segmentation pipeline that
+turns word-level timestamps into professional SRT/VTT captions. The core logic
+is implemented in `insanely_fast_whisper_api/core/segmentation.py` and leveraged
+by `build_quality_segments()` in
+`insanely_fast_whisper_api/core/formatters.py` whenever word timestamps are
+available.
+
+- **[Inputs]**
+  - Word timestamps from Whisper or stable-ts.
+    - `result["chunks"]`: items contain `{"text": str, "timestamp": [start, end]}`.
+    - `result["segments"][i]["words"]`: items contain `{word, start, end}`.
+
+- **[Pipeline steps]** (see `segment_words()` in
+  `insanely_fast_whisper_api/core/segmentation.py`)
+  - `
+    _sanitize_words_timing()`: ensure minimal positive per-word duration and
+    monotonic word timings.
+  - Sentence and clause splitting:
+    - `_sentence_chunks()` splits at sentence-ending punctuation.
+    - `_split_at_clause_boundaries()` prefers comma boundaries; if still too
+      long, `_split_long_text_aggressively()` applies a character budget.
+  - Natural split points:
+    - `_find_natural_split_points()` identifies conjunction/connector words (e.g.,
+      `and`, `but`, `or`, `for`, `however`, `therefore`, etc.) as favorable
+      breakpoints to produce phrase-length cues.
+  - Merge overly short segments:
+    - `_merge_short_segments()` merges sub-minimal-duration pieces with neighbors.
+  - Single-word expansion for CPS:
+    - `_maybe_expand_single_word()` expands a single `Word` that contains
+      multiple tokens into individual tokens so CPS enforcement can operate.
+  - Re-apply character limits:
+    - `_reapply_character_limits()` uses `split_lines()` (2 lines max) and, if
+      required, `_split_long_text_aggressively()` to honor line/block limits.
+  - Characters-per-second enforcement:
+    - `_enforce_cps()` greedily splits to keep CPS within bounds even when the
+      segment duration is ≥ the minimum. This ensures readable density.
+  - Final monotonic timing:
+    - `_ensure_monotonic_segments()` guarantees non-decreasing segment starts and
+      adjusts word timings consistently.
+  - Line wrapping:
+    - `split_lines()` favors balanced two-line captions, prefers breaks at
+      commas and certain “soft boundary words”, and ensures each line respects
+      the character limit.
+
+- **[Constraints]** (in `insanely_fast_whisper_api/utils/constants.py`)
+  - `MAX_LINE_CHARS`: maximum characters per line (2 lines maximum).
+  - `MAX_BLOCK_CHARS`: maximum characters per subtitle block.
+  - `MIN_CPS`, `MAX_CPS`: characters-per-second bounds for readability.
+  - `MIN_SEGMENT_DURATION_SEC`, `MAX_SEGMENT_DURATION_SEC`: duration bounds.
+  - `MIN_WORD_DURATION_SEC`: minimum enforced per-word duration.
+
+- **[Formatter integration]** (`insanely_fast_whisper_api/core/formatters.py`)
+  - `build_quality_segments(result)`:
+    - When word timestamps are present, it uses `segment_words()` and
+      preserves newline breaks in `"text"` for accurate line-level checks.
+    - Falls back to formatting raw chunks/segments when word timestamps are
+      unavailable, with timestamp validation to avoid overlaps.
+
+- **[Stabilization, VAD, Demucs]**
+  - These options influence recognition stability and raw word timings. With
+    `timestamp_type=word`, the segmentation pipeline normalizes layout and
+    readability similarly for stabilized and non-stabilized runs. To assess
+    recognition improvements, include accuracy metrics (e.g., WER/CER) in
+    benchmarks in addition to formatting quality checks.
+
+- **[Toggle]**
+  - Set `USE_READABLE_SUBTITLES=true` to enable the readability pipeline for
+    SRT/VTT output across interfaces.
+
+---
+
+### Quiet Mode (`--quiet`)
 
 Use `--quiet` to minimize console output. In quiet mode, the CLI shows only:
 
