@@ -272,8 +272,9 @@ def test_whisper_pipeline_merges_chunks_and_reports_progress(
     )
 
     assert result["text"] == "chunk one\n\nchunk two"
-    assert result["chunks"][0]["timestamp"] == (0.0, 1.0)
-    assert result["chunks"][1]["timestamp"] == (3.5, 5.5)
+    # Timestamps are normalized to lists by merge_chunk_results
+    assert result["chunks"][0]["timestamp"] == [0.0, 1.0]
+    assert result["chunks"][1]["timestamp"] == [3.5, 5.5]
     assert result["chunks"][1]["words"][0]["start"] == pytest.approx(3.7)
     assert result["runtime_seconds"] == 3.5
     assert result["config_used"]["chunking_used"] is True

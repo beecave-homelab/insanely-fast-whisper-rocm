@@ -39,9 +39,8 @@ class TestCentralizedConfiguration:
         """Test that environment variables properly override defaults."""
         test_env_vars = {
             "WHISPER_MODEL": "openai/whisper-tiny",
-            # FILENAME_TIMEZONE is an alias of APP_TIMEZONE in code, which is fixed
-            # to "UTC" for predictable behaviour. Keep env var present here to
-            # ensure it does not affect the constants module.
+            # Set APP_TIMEZONE explicitly to override FILENAME_TIMEZONE/TZ
+            "APP_TIMEZONE": "UTC",
             "FILENAME_TIMEZONE": "America/New_York",
             "HF_TOKEN": "test_token_123",
             "WHISPER_BATCH_SIZE": "8",
@@ -61,8 +60,7 @@ class TestCentralizedConfiguration:
 
             # Verify environment overrides work
             assert constants_module.DEFAULT_MODEL == "openai/whisper-tiny"
-            # In current implementation, FILENAME_TIMEZONE is fixed to UTC and
-            # not overridden by environment variables.
+            # APP_TIMEZONE takes precedence over FILENAME_TIMEZONE
             assert constants_module.FILENAME_TIMEZONE == "UTC"
             assert constants_module.HF_TOKEN == "test_token_123"
             assert constants_module.DEFAULT_BATCH_SIZE == 8

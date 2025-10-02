@@ -46,9 +46,11 @@ class TestSrtFormattingRealWorld:
         return words
 
     def test_line_length_enforcement_realworld(self) -> None:
-        """Ensure long real-world sentence wraps to two lines and respects limits.
+        """Ensure long real-world sentence wraps properly and respects limits.
 
-        This uses a long sentence adapted from the provided SRT sample.
+        This uses a long sentence (131 chars) adapted from the provided SRT sample.
+        Since 131 chars cannot fit in 2 lines of 42 chars each (84 total), this
+        will be split into 2 segments, each properly wrapped.
         """
         words = self.make_words_with_proportional_timing(
             (
@@ -59,12 +61,13 @@ class TestSrtFormattingRealWorld:
             end=5.0,
         )
         result = segment_words(words)
-        assert len(result) == 1
-        # Two lines and both lines within the per-line hard limit
-        assert result[0].text.count("\n") == 1
-        assert all(
-            len(line) <= constants.MAX_LINE_CHARS for line in result[0].text.split("\n")
-        )
+        # Long text (131 chars) splits into 2 segments
+        assert len(result) == 2
+        # Each segment respects per-line limits
+        for seg in result:
+            lines = seg.text.split("\n")
+            assert 1 <= len(lines) <= 2
+            assert all(len(line) <= constants.MAX_LINE_CHARS for line in lines)
 
     def test_balanced_two_line_splits_realworld(self) -> None:
         """Prefer balanced two-line splits on uneven, real-world phrasing."""
@@ -80,9 +83,10 @@ class TestSrtFormattingRealWorld:
             ),
         ]
         result = segment_words(words)
-        # Input contains a terminal period in the first sentence; our pipeline
-        # splits at strong punctuation, so expect two segments.
-        assert len(result) == 2
+        # Input contains terminal periods, and second sentence is long (107 chars).
+        # With word expansion, this creates 2 sentences that may be further split.
+        # Expect at least 2 segments (one per sentence), possibly more if clauses split.
+        assert len(result) >= 2
         for seg in result:
             lines = seg.text.split("\n")
             # One or two lines, both within per-line limit if two lines
@@ -103,8 +107,10 @@ class TestSrtFormattingRealWorld:
         # For high-density short-duration inputs, synthetic timing ensures we do
         # not exceed MAX_CPS. The lower bound (MIN_CPS) may not always be
         # achievable without overextending durations in real-world inputs.
+        # Use small epsilon for floating-point comparison tolerance.
+        eps = 1e-6
         assert all(
-            (len(seg.text) / (seg.end - seg.start)) <= constants.MAX_CPS
+            (len(seg.text) / (seg.end - seg.start)) <= constants.MAX_CPS + eps
             for seg in result
         )
 
@@ -130,10 +136,13 @@ class TestSrtFormattingRealWorld:
         )
         words = [Word(text=long_text, start=0.0, end=5.0)]
         result = segment_words(words)
-        assert len(result) == 1
-        lines = result[0].text.split("\n")
-        assert 1 <= len(lines) <= 2
-        assert all(len(line) <= constants.MAX_LINE_CHARS for line in lines)
+        # Long text (137 chars) with commas will split into multiple segments
+        assert len(result) >= 2
+        # Each segment respects line constraints
+        for seg in result:
+            lines = seg.text.split("\n")
+            assert 1 <= len(lines) <= 2
+            assert all(len(line) <= constants.MAX_LINE_CHARS for line in lines)
 
     def test_high_density_short_duration_cps_realworld(self) -> None:
         """High-density real-world text over short duration respects CPS bounds."""

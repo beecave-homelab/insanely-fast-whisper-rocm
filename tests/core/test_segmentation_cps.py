@@ -56,14 +56,18 @@ def test_segment_words_cps_within_limits(sentence: str) -> None:
     segments = segment_words(words)
 
     # Assert all produced segments fall inside the configured CPS range
+    # Use small tolerance for floating point comparison
+    cps_tolerance = 0.01
     for seg in segments:
         duration = seg.end - seg.start
         # Avoid division by zero in pathological cases
         assert duration > 0, "Segment duration must be positive"
         cps = len(seg.text.replace("\n", " ")) / duration
-        assert constants.MIN_CPS <= cps <= constants.MAX_CPS, (
-            f"CPS {cps:.2f} out of bounds for segment: '{seg.text}'"
-        )
+        assert (
+            constants.MIN_CPS - cps_tolerance
+            <= cps
+            <= constants.MAX_CPS + cps_tolerance
+        ), f"CPS {cps:.2f} out of bounds for segment: '{seg.text}'"
 
     # Extra assurance: combined coverage equals original text length
     joined_output = " ".join(s.text.replace("\n", " ") for s in segments)

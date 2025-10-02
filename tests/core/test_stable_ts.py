@@ -9,8 +9,11 @@ from typing import Any
 import pytest
 
 MODULE_PATH = (
-    Path(__file__).parent.parent
-    / "insanely_fast_whisper_api/core/integrations/stable_ts.py"
+    Path(__file__).parent.parent.parent
+    / "insanely_fast_whisper_api"
+    / "core"
+    / "integrations"
+    / "stable_ts.py"
 )
 
 spec = importlib.util.spec_from_file_location("stable_ts", str(MODULE_PATH))
@@ -398,3 +401,184 @@ def test_to_dict_comprehensive() -> None:
     assert "NoMethodsObj object at" in no_methods_result["text"]
     assert st._to_dict(42) == {"text": "42"}
     assert st._to_dict([1, 2, 3]) == {"text": "[1, 2, 3]"}
+
+
+def test_stabilize_with_progress_callback_unavailable() -> None:
+    """Test stabilize_timestamps with progress_cb when stable_whisper unavailable."""
+    result = {"text": "test", "original_file": "/test.mp3"}
+    messages: list[str] = []
+
+    def progress_cb(msg: str) -> None:
+        messages.append(msg)
+
+    # Force stable_whisper to None
+    st.stable_whisper = None  # type: ignore
+    stabilized = st.stabilize_timestamps(result, progress_cb=progress_cb)
+
+    assert stabilized == result
+    assert any("unavailable" in msg for msg in messages)
+
+
+def test_stabilize_with_progress_callback_missing_path() -> None:
+    """Test stabilize_timestamps with progress_cb when audio path missing."""
+    result = {"text": "test"}  # No audio path
+    messages: list[str] = []
+
+    def progress_cb(msg: str) -> None:
+        messages.append(msg)
+
+    # Ensure stable_whisper is available (mock it)
+    mock_sw = SimpleNamespace()
+    st.stable_whisper = mock_sw  # type: ignore
+
+    stabilized = st.stabilize_timestamps(result, progress_cb=progress_cb)
+
+    assert stabilized == result
+    assert any("missing" in msg for msg in messages)
+
+
+def test_stabilize_with_progress_callback_nonexistent_file(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test stabilize_timestamps with progress_cb when audio file doesn't exist."""
+    result = {"text": "test", "original_file": "/absolutely/nonexistent/path.mp3"}
+    messages: list[str] = []
+
+    def progress_cb(msg: str) -> None:
+        messages.append(msg)
+
+    # Ensure stable_whisper is available
+    mock_sw = SimpleNamespace()
+    st.stable_whisper = mock_sw  # type: ignore
+
+    # Ensure SKIP_FS_CHECKS is False so the file check is enforced
+    from insanely_fast_whisper_api.utils import constants
+
+    monkeypatch.setattr(constants, "SKIP_FS_CHECKS", False)
+
+    stabilized = st.stabilize_timestamps(result, progress_cb=progress_cb)
+
+    assert stabilized == result
+    assert any("not found" in msg for msg in messages)
+
+
+def test_stabilize_with_progress_callback_success_postprocess(
+    monkeypatch: pytest.MonkeyPatch, sample_result: dict[str, Any]
+) -> None:
+    """Test stabilize_timestamps with progress_cb during successful postprocess."""
+    messages: list[str] = []
+
+    def progress_cb(msg: str) -> None:
+        messages.append(msg)
+
+    def mock_postprocess(
+        converted: dict[str, Any], audio: str, **kwargs: object
+    ) -> dict[str, Any]:
+        return {
+            "segments": [{"text": "processed", "start": 0.0, "end": 1.0}],
+            "text": "processed result",
+        }
+
+    mock_sw = SimpleNamespace(transcribe_any=lambda *a, **k: None)
+    monkeypatch.setattr(st, "stable_whisper", mock_sw, raising=False)
+    monkeypatch.setattr(st, "_postprocess", mock_postprocess, raising=False)
+
+    stabilized = st.stabilize_timestamps(sample_result, progress_cb=progress_cb)
+
+    assert stabilized.get("stabilized") is True
+    assert len(messages) > 0
+    assert any("running" in msg for msg in messages)
+    assert any("successful" in msg for msg in messages)
+
+
+def test_stabilize_with_progress_callback_success_lambda(
+    monkeypatch: pytest.MonkeyPatch, sample_result: dict[str, Any]
+) -> None:
+    """Test stabilize_timestamps with progress_cb during successful lambda path."""
+    messages: list[str] = []
+
+    def progress_cb(msg: str) -> None:
+        messages.append(msg)
+
+    def fake_transcribe_any(
+        inference_func: Callable[[], dict[str, Any]],
+        audio: str,
+        denoiser: str | None = None,
+        vad: bool = False,
+        vad_threshold: float = 0.35,
+        check_sorted: bool = False,
+        **kwargs: dict[str, Any],
+    ) -> dict[str, Any]:
+        base = inference_func()
+        base.setdefault("segments", [])
+        base["segments"].append({"text": "!", "start": 3.0, "end": 3.5})
+        return base
+
+    mock_sw = SimpleNamespace(transcribe_any=fake_transcribe_any)
+    monkeypatch.setattr(st, "stable_whisper", mock_sw, raising=False)
+    monkeypatch.setattr(st, "_postprocess", None, raising=False)
+    monkeypatch.setattr(st, "_postprocess_alt", None, raising=False)
+
+    stabilized = st.stabilize_timestamps(
+        sample_result, demucs=True, vad=True, vad_threshold=0.4, progress_cb=progress_cb
+    )
+
+    assert stabilized.get("stabilized") is True
+    assert len(messages) > 0
+    assert any("demucs=True" in msg for msg in messages)
+    assert any("successful" in msg for msg in messages)
+
+
+def test_stabilize_with_progress_callback_all_fail(
+    monkeypatch: pytest.MonkeyPatch, sample_result: dict[str, Any]
+) -> None:
+    """Test stabilize_timestamps with progress_cb when all methods fail."""
+    messages: list[str] = []
+
+    def progress_cb(msg: str) -> None:
+        messages.append(msg)
+
+    def failing_func(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("Failed")
+
+    mock_sw = SimpleNamespace(transcribe_any=failing_func)
+    monkeypatch.setattr(st, "stable_whisper", mock_sw, raising=False)
+    monkeypatch.setattr(st, "_postprocess", failing_func, raising=False)
+
+    stabilized = st.stabilize_timestamps(sample_result, progress_cb=progress_cb)
+
+    assert stabilized == sample_result
+    assert len(messages) > 0
+    assert any("failed" in msg for msg in messages)
+
+
+def test_stabilize_postprocess_typeerror_fallback(
+    monkeypatch: pytest.MonkeyPatch, sample_result: dict[str, Any]
+) -> None:
+    """Test stabilize_timestamps when postprocess raises TypeError and falls back."""
+    call_count = {"count": 0}
+
+    def mock_postprocess_with_typeerror(
+        converted: dict[str, Any], audio: str, **kwargs: object
+    ) -> dict[str, Any]:
+        call_count["count"] += 1
+        if call_count["count"] == 1:
+            # First call with extra kwargs raises TypeError
+            raise TypeError("Unexpected keyword argument")
+        # Second call with minimal args succeeds
+        return {
+            "segments": [{"text": "fallback", "start": 0.0, "end": 1.0}],
+            "text": "fallback result",
+        }
+
+    mock_sw = SimpleNamespace(transcribe_any=lambda *a, **k: None)
+    monkeypatch.setattr(st, "stable_whisper", mock_sw, raising=False)
+    monkeypatch.setattr(
+        st, "_postprocess", mock_postprocess_with_typeerror, raising=False
+    )
+
+    stabilized = st.stabilize_timestamps(sample_result, demucs=True, vad=True)
+
+    assert stabilized.get("stabilized") is True
+    assert call_count["count"] == 2  # Called twice due to TypeError fallback
+    assert stabilized.get("stabilization_path") == "postprocess_word_timestamps"

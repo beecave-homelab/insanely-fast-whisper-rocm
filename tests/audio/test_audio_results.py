@@ -118,8 +118,8 @@ def test_merge_chunk_results_word_timestamps() -> None:
     assert first_chunk_words[1]["start"] == 0.6  # Unchanged
 
     second_chunk_words = result["chunks"][1]["words"]
-    assert second_chunk_words[0]["start"] == 2.5  # Adjusted by chunk start time
-    assert second_chunk_words[1]["start"] == 2.6  # Adjusted by chunk start time
+    assert second_chunk_words[0]["start"] == 2.5  # 0.0 + 2.5
+    assert second_chunk_words[1]["start"] == 2.9  # 0.4 + 2.5
 
 
 def test_merge_chunk_results_config_used() -> None:
@@ -179,10 +179,10 @@ def test_merge_chunk_results_tuple_timestamps() -> None:
 
     result = merge_chunk_results(chunk_results)
 
-    # Check tuple timestamps are handled correctly
+    # Check tuple timestamps are converted to lists
     assert len(result["chunks"]) == 2
-    assert result["chunks"][0]["timestamp"] == (0.0, 2.5)
-    assert result["chunks"][1]["timestamp"] == (2.5, 4.5)
+    assert result["chunks"][0]["timestamp"] == [0.0, 2.5]
+    assert result["chunks"][1]["timestamp"] == [2.5, 4.5]
 
 
 def test_merge_chunk_results_missing_text() -> None:
@@ -266,7 +266,7 @@ def test_merge_chunk_results_mixed_timestamp_types() -> None:
 
     result = merge_chunk_results(chunk_results)
 
-    # Both types should be handled correctly
+    # Both types should be normalized to lists
     assert len(result["chunks"]) == 2
     assert result["chunks"][0]["timestamp"] == [0.0, 2.5]  # Original
-    assert result["chunks"][1]["timestamp"] == (2.5, 4.5)  # Adjusted tuple
+    assert result["chunks"][1]["timestamp"] == [2.5, 4.5]  # Adjusted tuple

@@ -96,9 +96,9 @@ def test_extract_audio_from_video_valid_file() -> None:
             assert call_args["ar"] == 16000
             assert call_args["vn"] is None
 
-            # Verify result path exists
+            # Verify result path format
             assert result.endswith(".wav")
-            os.unlink(result)
+            # Note: file doesn't exist since ffmpeg is mocked
     finally:
         os.unlink(tmp_path)
 
@@ -121,9 +121,20 @@ def test_extract_audio_from_video_ffmpeg_error() -> None:
         mock_error.stderr = b"FFmpeg error message"
 
         with patch("insanely_fast_whisper_api.audio.processing.ffmpeg") as mock_ffmpeg:
-            mock_ffmpeg.Error = Exception
+            # Mock ffmpeg.Error to be a proper exception class
+            mock_ffmpeg.Error = type(
+                "FFmpegError", (Exception,), {"stderr": b"FFmpeg error"}
+            )
+
             mock_ffmpeg_input = Mock()
-            mock_ffmpeg_input.output.side_effect = mock_error
+            mock_ffmpeg_output = Mock()
+            mock_ffmpeg_input.output.return_value = mock_ffmpeg_output
+            mock_ffmpeg_output.overwrite_output.return_value = mock_ffmpeg_output
+
+            # Make run() raise ffmpeg.Error
+            error_instance = mock_ffmpeg.Error()
+            error_instance.stderr = b"FFmpeg error message"
+            mock_ffmpeg_output.run.side_effect = error_instance
 
             mock_ffmpeg.input.return_value = mock_ffmpeg_input
 
@@ -152,7 +163,7 @@ def test_extract_audio_from_video_custom_parameters() -> None:
 
             mock_ffmpeg.input.return_value = mock_ffmpeg_input
 
-            result = extract_audio_from_video(
+            _result = extract_audio_from_video(
                 tmp_path, output_format="mp3", sample_rate=44100, channels=2
             )
 
@@ -162,7 +173,7 @@ def test_extract_audio_from_video_custom_parameters() -> None:
             assert call_args["ac"] == 2
             assert call_args["ar"] == 44100
 
-            os.unlink(result)
+            # Note: result path returned but file doesn't exist since ffmpeg is mocked
     finally:
         os.unlink(tmp_path)
 
@@ -173,9 +184,12 @@ def test_split_audio_valid_parameters() -> None:
         tmp_path = tmp.name
 
     try:
-        # Mock AudioSegment
+        # Mock AudioSegment - must be subscriptable for slicing operations
         mock_audio = Mock()
         mock_audio.__len__ = Mock(return_value=30000)  # 30 seconds
+        mock_chunk = Mock()
+        mock_audio.__getitem__ = Mock(return_value=mock_chunk)
+        mock_chunk.export = Mock()
 
         with patch(
             "insanely_fast_whisper_api.audio.processing.AudioSegment"
