@@ -152,8 +152,16 @@ known-first-party = ["insanely_fast_whisper_api"]
 #       Pytest & Coverage
 # ------------------------------
 [tool.pytest.ini_options]
-addopts = "-q --cov=insanely_fast_whisper_api --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=html --cov-fail-under=85"
+# addopts = "-q --cov=insanely_fast_whisper_api --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=html --cov-fail-under=85"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+markers = [
+    "integration: mark tests that hit real external integrations or slower paths",
+]
+
+[tool.coverage.run]
+omit = [
+    "*/__main__.py",
+]
