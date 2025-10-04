@@ -47,42 +47,35 @@ class TestDebugPrint:
     """Test suite for debug_print function."""
 
     @patch("insanely_fast_whisper_api.utils.env_loader.SHOW_DEBUG_PRINTS", True)
-    @patch("builtins.print")
-    def test_debug_print__prints_when_enabled(self, mock_print: MagicMock) -> None:
-        """Test that debug_print outputs when SHOW_DEBUG_PRINTS is True."""
+    @patch("insanely_fast_whisper_api.utils.env_loader.logger")
+    def test_debug_print__prints_when_enabled(self, mock_logger: MagicMock) -> None:
+        """Test that debug_print logs at DEBUG level when SHOW_DEBUG_PRINTS is True."""
         from insanely_fast_whisper_api.utils.env_loader import debug_print
 
         debug_print("Test message")
 
-        mock_print.assert_called_once()
-        call_args = mock_print.call_args[0][0]
-        assert "ENV_LOADER_DEBUG" in call_args
-        assert "Test message" in call_args
+        mock_logger.debug.assert_called_once_with("Test message")
 
     @patch("insanely_fast_whisper_api.utils.env_loader.SHOW_DEBUG_PRINTS", False)
-    @patch("builtins.print")
-    def test_debug_print__silent_when_disabled(self, mock_print: MagicMock) -> None:
+    @patch("insanely_fast_whisper_api.utils.env_loader.logger")
+    def test_debug_print__silent_when_disabled(self, mock_logger: MagicMock) -> None:
         """Test that debug_print is silent when SHOW_DEBUG_PRINTS is False."""
         from insanely_fast_whisper_api.utils.env_loader import debug_print
 
         debug_print("Test message")
 
-        mock_print.assert_not_called()
+        mock_logger.debug.assert_not_called()
 
     @patch("insanely_fast_whisper_api.utils.env_loader.SHOW_DEBUG_PRINTS", True)
-    @patch("builtins.print")
-    def test_debug_print__includes_timestamp(self, mock_print: MagicMock) -> None:
-        """Test that debug_print includes a formatted timestamp."""
+    @patch("insanely_fast_whisper_api.utils.env_loader.logger")
+    def test_debug_print__uses_logger(self, mock_logger: MagicMock) -> None:
+        """Test that debug_print uses logger.debug with proper message."""
         from insanely_fast_whisper_api.utils.env_loader import debug_print
 
-        debug_print("Test")
+        debug_print("Test message")
 
-        call_args = mock_print.call_args[0][0]
-        # Check format: YYYY-MM-DD HH:MM:SS,mmm
-        assert " - " in call_args
-        # Should have a timestamp at the start
-        parts = call_args.split(" - ")
-        assert len(parts) >= 3
+        # Verify logger.debug was called with the exact message
+        mock_logger.debug.assert_called_once_with("Test message")
 
 
 class TestEnvLoaderBehavior:
