@@ -145,11 +145,16 @@ def _is_stabilization_corrupt(segments: list[dict]) -> bool:
 
 
 def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: C901
-    """Execute *task* (“transcribe” or “translate”) on *audio_file*.
+    """Execute *task* ("transcribe" or "translate") on *audio_file*.
 
     All CLI flags arrive in **kwargs.
     """
     start_time = time.time()
+    logger.debug(
+        "Starting task: %s, audio=%s",
+        task,
+        audio_file,
+    )
 
     # ------------------------------------------------------------------ #
     # Extract and normalise arguments                                    #
@@ -234,6 +239,13 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
         if sampler.start():
             gpu_sampler = sampler
 
+    # Enable DEBUG-level logging when --debug is used
+    if debug:
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.DEBUG)
+        logging.getLogger("insanely_fast_whisper_api").setLevel(logging.DEBUG)
+        logger.debug("Debug logging enabled via --debug flag")
+
     # Reduce logging verbosity when --quiet is used
     if quiet and not debug:
         root_logger = logging.getLogger()
@@ -257,6 +269,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
         if not no_timestamps:
             return_timestamps_value = "word" if timestamp_type == "word" else True
 
+        # Configuration details logged by facade at INFO level
         result = cli_facade.process_audio(
             audio_file_path=audio_file,
             model=model,
@@ -269,6 +282,12 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
             task=task,
             return_timestamps_value=return_timestamps_value,
             progress_cb=reporter,
+        )
+        logger.debug(
+            "ASR completed: %d chars, %d chunks, runtime=%.2fs",
+            len(result.get("text", "")),
+            len(result.get("chunks", [])),
+            result.get("runtime_seconds", 0.0),
         )
 
         # Optional stable-ts post-processing
@@ -338,10 +357,12 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
             )
 
         total_time = time.time() - start_time
+        logger.debug("Total task execution time: %.2fs", total_time)
 
         if gpu_sampler is not None:
             gpu_sampler.stop()
             benchmark_gpu_stats = gpu_sampler.summary()
+            logger.debug("GPU sampling summary: %s", benchmark_gpu_stats)
             gpu_sampler = None
 
         # ------------------------------------------------------------------ #
@@ -433,6 +454,8 @@ def _handle_output_and_benchmarks(
 ) -> None:
     """Handle file export and benchmark writing.
 
+    Logs debug information about export formats and benchmark collection.
+
     Args:
         task: Task name ("transcribe" or "translate").
         audio_file: Path to the original audio file.
@@ -457,6 +480,15 @@ def _handle_output_and_benchmarks(
         formats_to_export = ("json", "txt", "srt")
     else:
         formats_to_export = (export_format,)
+
+    logger.debug(
+        "_handle_output_and_benchmarks: task=%s, export_format=%s, "
+        "formats_to_export=%s, benchmark_enabled=%s",
+        task,
+        export_format,
+        formats_to_export,
+        benchmark_enabled,
+    )
 
     # Build a “detailed result” once for all formatters
     detailed_result = {
@@ -496,10 +528,15 @@ def _handle_output_and_benchmarks(
             if benchmark_enabled:
                 try:
                     quality_segments = build_quality_segments(detailed_result)
+                    logger.debug(
+                        "Built %d quality segments for SRT quality scoring",
+                        len(quality_segments),
+                    )
                     srt_quality = compute_srt_quality(
                         segments=quality_segments,
                         srt_text=srt_text_captured,
                     )
+                    logger.debug("SRT quality metrics: %s", srt_quality)
                 except Exception:  # pragma: no cover - defensive logging
                     logger.exception("Failed to compute SRT quality metrics")
                 else:
@@ -527,6 +564,13 @@ def _handle_output_and_benchmarks(
 
         try:
             output_path.write_text(content, encoding="utf-8")
+            content_size = len(content) if isinstance(content, str) else 0
+            logger.debug(
+                "Saved %s output to: %s (size=%d bytes)",
+                fmt.upper(),
+                output_path,
+                content_size,
+            )
             click.secho(f"💾 Saved {fmt.upper()} to: {output_path}", fg="green")
         except OSError as exc:
             click.secho(f"❌ Failed to save {fmt.upper()}: {exc}", fg="red", err=True)
@@ -549,6 +593,7 @@ def _handle_output_and_benchmarks(
         extra_dict: dict[str, str] | None = None
         if benchmark_extra:
             extra_dict = dict(item.split("=", 1) for item in benchmark_extra)
+            logger.debug("Benchmark extra metadata: %s", extra_dict)
 
         # Merge CLI flags into the config snapshot without overwriting
         # pre-existing config values. This avoids duplicating data across
@@ -559,6 +604,7 @@ def _handle_output_and_benchmarks(
                 if k not in merged_config:
                     merged_config[k] = v
 
+        # Benchmark details logged by collector
         benchmark_path = collector.collect(
             audio_path=str(audio_file),
             task=task,

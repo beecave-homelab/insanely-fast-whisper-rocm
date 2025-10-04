@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import dataclasses
+import logging
 
 from insanely_fast_whisper_api.utils import constants
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -104,13 +107,17 @@ def segment_words(words: list[Word]) -> list[Segment]:
     Returns:
         A list of Segment objects formatted for readability.
     """
+    logger.debug("segment_words: processing %d input words", len(words))
     # Expand multi-token Word objects into individual tokens first.
     # This handles test/edge cases where a Word contains multiple tokens.
     words = _expand_multi_token_words(words)
+    logger.debug("After expansion: %d words", len(words))
     # Sanitize timings to avoid zero/negative durations and enforce monotonicity.
     words = _sanitize_words_timing(words)
+    logger.debug("After sanitization: %d words", len(words))
 
     sentences = list(_sentence_chunks(words))
+    logger.debug("Split into %d sentence chunks", len(sentences))
     segments = []
     for sentence in sentences:
         txt = " ".join(w.text for w in sentence)
@@ -151,7 +158,9 @@ def segment_words(words: list[Word]) -> list[Segment]:
                     words=sentence,
                 )
             )
+    logger.debug("Before merge_short_segments: %d segments", len(segments))
     segments = _merge_short_segments(segments)
+    logger.debug("After merge_short_segments: %d segments", len(segments))
 
     # Expand single-word segments into sub-words (based on whitespace) so CPS
     # enforcement can operate meaningfully on realistic units.
@@ -163,18 +172,23 @@ def segment_words(words: list[Word]) -> list[Segment]:
 
     # Enforce CPS constraints only for single-word-origin segments. Multi-word
     # segments are handled by line wrapping and duration constraints.
+    logger.debug("Before enforce_cps: %d segments", len(segments))
     segments = _enforce_cps(segments)
+    logger.debug("After enforce_cps: %d segments", len(segments))
 
     # Merge any single-word segments created by CPS enforcement
     segments = _merge_short_segments(segments)
+    logger.debug("After second merge_short_segments: %d segments", len(segments))
 
     # Guarantee monotonic timings after any synthetic duration adjustments.
     segments = _ensure_monotonic_segments(segments)
+    logger.debug("After ensure_monotonic: %d segments", len(segments))
 
     # Apply final text formatting (line wrapping) per segment.
     for seg in segments:
         seg.text = split_lines(seg.text)
 
+    logger.debug("segment_words returning %d final segments", len(segments))
     return segments
 
 

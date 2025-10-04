@@ -380,6 +380,11 @@ class WhisperPipeline(BasePipeline):
             language,
             timestamp_type,
         )
+        logger.debug(
+            "_execute_asr params: backend=%s, chunk_length=%d",
+            type(self.asr_backend).__name__,
+            self.asr_backend.config.chunk_length,
+        )
         # Determine return_timestamps_value for the backend based on timestamp_type
         if timestamp_type == "word":
             return_timestamps_value: bool | str = "word"
@@ -403,6 +408,11 @@ class WhisperPipeline(BasePipeline):
             chunk_overlap=0.0,
         )
         total_chunks = len(chunk_data)
+        logger.debug(
+            "Audio split into %d chunks (chunk_duration=%.1fs)",
+            total_chunks,
+            self.asr_backend.config.chunk_length,
+        )
         # Store tuples of (result, start_time) for the merge step
         chunk_results: list[tuple[dict[str, Any], float]] = []
 
@@ -448,6 +458,17 @@ class WhisperPipeline(BasePipeline):
                     return_timestamps_value=return_timestamps_value,
                     progress_cb=progress_proxy,
                 )
+                logger.debug(
+                    "Chunk %d/%d processed: text_len=%d, segments=%d",
+                    idx,
+                    total_chunks,
+                    len(asr_raw_result.get("text", "")),
+                    len(
+                        asr_raw_result.get("segments")
+                        or asr_raw_result.get("chunks")
+                        or []
+                    ),
+                )
 
                 self._notify_listeners(
                     ProgressEvent(
@@ -485,8 +506,15 @@ class WhisperPipeline(BasePipeline):
 
         if total_chunks > 1:
             combined = audio_results.merge_chunk_results(chunk_results)
+            logger.debug(
+                "Merged %d chunks: combined_text_len=%d, combined_segments=%d",
+                total_chunks,
+                len(combined.get("text", "")),
+                len(combined.get("segments") or combined.get("chunks") or []),
+            )
         else:
             combined = chunk_results[0][0]
+            logger.debug("Single chunk result: no merging needed")
 
         # Do not signal completion here; the outer process() handles it once.
         return combined
@@ -504,6 +532,12 @@ class WhisperPipeline(BasePipeline):
             The post-processed result dictionary with added metadata.
         """
         logger.info("Postprocessing ASR output for: %s", audio_file_path)
+        logger.debug(
+            "_postprocess_output input: text_len=%d, segments=%d, task=%s",
+            len(asr_output.get("text", "")),
+            len(asr_output.get("segments") or asr_output.get("chunks") or []),
+            task,
+        )
         # Example: Add original file name, task, and a processing timestamp
         processed_result = asr_output.copy()
         # CRITICAL FIX: Store absolute path for audio file to ensure

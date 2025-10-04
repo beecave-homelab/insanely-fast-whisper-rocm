@@ -31,6 +31,11 @@ def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
         A list of `Word` objects if word-level timestamps are found, otherwise
         ``None``.
     """
+    logger.debug(
+        "_result_to_words: examining result with chunks=%s, segments=%s",
+        "chunks" in result,
+        "segments" in result,
+    )
     words_list = []
     # Prioritize 'chunks' if it looks like word-level data
     chunks = result.get("chunks")
@@ -46,7 +51,13 @@ def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
     if words_list:
         # Heuristic: if the average word duration is very short, it's likely word-level
         avg_duration = sum(w.end - w.start for w in words_list) / len(words_list)
+        logger.debug(
+            "Found %d potential words from chunks, avg_duration=%.3fs",
+            len(words_list),
+            avg_duration,
+        )
         if avg_duration < 1.5:  # Words are typically short
+            logger.debug("Returning %d words (avg_duration < 1.5s)", len(words_list))
             return words_list
 
     # Fallback to 'segments' if they contain word-level data
@@ -87,12 +98,30 @@ def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
             if words_list:
                 total_duration = sum(w.end - w.start for w in words_list)
                 avg_duration = total_duration / len(words_list)
+                logger.debug(
+                    "Flat segment structure: %d items, avg_duration=%.3fs",
+                    len(words_list),
+                    avg_duration,
+                )
                 if avg_duration < 1.5:  # Words are typically short
+                    logger.debug(
+                        "Returning %d words from segments (avg_duration < 1.5s)",
+                        len(words_list),
+                    )
                     return words_list
                 else:
                     # These are sentence-level segments, not words
+                    logger.debug(
+                        "Rejecting as sentence-level (avg_duration=%.3fs >= 1.5s)",
+                        avg_duration,
+                    )
                     return None
 
+    result_count = len(words_list) if words_list else 0
+    logger.debug(
+        "_result_to_words returning: %s words",
+        result_count if result_count else "None",
+    )
     return words_list if words_list else None
 
 
@@ -109,8 +138,10 @@ def build_quality_segments(result: dict[str, Any]) -> list[dict[str, Any]]:
         character-per-second constraints; otherwise the original segments/chunks
         are returned.
     """
+    logger.debug("build_quality_segments: processing result")
     words = _result_to_words(result)
     if words:
+        logger.debug("Building quality segments from %d words", len(words))
         quality_segments: list[dict[str, Any]] = []
         for seg in segment_words(words):
             quality_segments.append({
@@ -120,8 +151,13 @@ def build_quality_segments(result: dict[str, Any]) -> list[dict[str, Any]]:
                 "text": seg.text.strip(),
             })
         if quality_segments:
+            logger.debug(
+                "Returning %d quality segments from word-level data",
+                len(quality_segments),
+            )
             return quality_segments
 
+    logger.debug("No word-level data; using fallback segments from chunks/segments")
     fallback_segments: list[dict[str, Any]] = []
     for chunk in result.get("segments") or result.get("chunks") or []:
         text = str(chunk.get("text", "")).strip()

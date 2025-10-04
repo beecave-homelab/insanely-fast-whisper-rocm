@@ -407,6 +407,14 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             )
 
         try:
+            logger.debug(
+                "Calling ASR pipeline: audio=%s, chunk_length_s=%s, batch_size=%d, "
+                "return_timestamps=%s",
+                audio_file_path,
+                chunk_length_value,
+                self.config.batch_size,
+                _return_timestamps_value,
+            )
             outputs = self.asr_pipe(str(audio_file_path), **pipeline_kwargs)
         except RuntimeError as e:
             # Check if this is the specific tensor size mismatch error in
@@ -472,6 +480,14 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         # backward compatibility if it was the original key.
         chunks = outputs.get("chunks")
         segments = outputs.get("segments", chunks)
+        logger.debug(
+            "Raw ASR pipeline output: text_len=%d, chunks=%d, segments=%d, "
+            "elapsed=%.2fs",
+            len(outputs.get("text", "")),
+            len(chunks) if chunks else 0,
+            len(segments) if segments else 0,
+            elapsed_time,
+        )
 
         result = {
             "text": outputs["text"].strip(),
@@ -492,4 +508,41 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         logger.info(
             "Transcription completed in %.2fs for %s", elapsed_time, audio_file_path
         )
+        logger.debug(
+            "Returning normalized result: text_len=%d, segments=%d, chunks=%d",
+            len(result["text"]),
+            len(result["segments"]) if result["segments"] else 0,
+            len(result["chunks"]) if result["chunks"] else 0,
+        )
         return result
+
+    def close(self) -> None:
+        """Release model resources and free accelerator caches.
+
+        This method deletes the internal Transformers pipeline instance and
+        attempts to free device memory on supported backends (CUDA/MPS). It is
+        safe to call multiple times.
+
+        Notes:
+            - After calling this, the next invocation will lazily recreate the
+              pipeline on demand.
+        """
+        try:
+            if getattr(self, "asr_pipe", None) is not None:
+                # Explicitly drop references to model/tokenizer/feature_extractor
+                self.asr_pipe = None
+        finally:
+            # Best-effort device cache cleanup
+            try:
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:  # pragma: no cover - defensive cleanup
+                pass
+            try:
+                if hasattr(torch, "mps") and torch.backends.mps.is_available():
+                    torch.mps.empty_cache()  # type: ignore[attr-defined]
+            except Exception:  # pragma: no cover - defensive cleanup
+                pass
+
+    # Backwards-friendly alias
+    release = close

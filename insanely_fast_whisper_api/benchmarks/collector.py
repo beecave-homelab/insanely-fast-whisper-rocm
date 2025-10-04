@@ -13,6 +13,7 @@ application timezone) for uniqueness.
 from __future__ import annotations
 
 import json
+import logging
 import re
 import threading
 from datetime import datetime
@@ -21,6 +22,8 @@ from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from insanely_fast_whisper_api.utils.constants import APP_TIMEZONE
+
+logger = logging.getLogger(__name__)
 
 try:  # pragma: no cover - optional dependency
     import pyamdgpuinfo  # type: ignore
@@ -82,6 +85,16 @@ class BenchmarkCollector:
         except ZoneInfoNotFoundError:
             target_tz = ZoneInfo("UTC")
 
+        logger.debug(
+            "BenchmarkCollector.collect: audio=%s, task=%s, runtime=%.2fs, "
+            "total_time=%.2fs, has_gpu_stats=%s",
+            audio_path,
+            task,
+            runtime_seconds or 0.0,
+            total_time,
+            gpu_stats is not None,
+        )
+
         record = {
             "audio_path": audio_path,
             "task": task,
@@ -94,6 +107,11 @@ class BenchmarkCollector:
             # Keep ISO8601; timezone-aware using configured timezone
             "recorded_at": datetime.now(target_tz).isoformat(),
         }
+        logger.debug(
+            "Benchmark record: format_quality_keys=%s, extra_keys=%s",
+            list((format_quality or {}).keys()),
+            list((extra or {}).keys()),
+        )
 
         slug = self._slugify(Path(audio_path).stem or "benchmark")
         # Filenames use the configured timezone while keeping the historical 'Z' suffix
@@ -102,6 +120,7 @@ class BenchmarkCollector:
         filename = f"{slug}_{task}_{timestamp}.json"
         output_path = self.output_dir / filename
         output_path.write_text(json.dumps(record, indent=2), encoding="utf-8")
+        logger.debug("Benchmark written to: %s", output_path)
         return output_path
 
     @classmethod
