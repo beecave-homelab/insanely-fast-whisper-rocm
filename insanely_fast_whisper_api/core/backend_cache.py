@@ -11,10 +11,11 @@ close and remove cache entries when their refcount hits zero.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import threading
+from collections.abc import Hashable, Iterator
 from dataclasses import dataclass
-from collections.abc import Hashable
 
 from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackend,
@@ -44,11 +45,18 @@ _LOCK = threading.RLock()
 _EAGER_RELEASE = os.getenv("IFW_EAGER_MODEL_RELEASE", "0") in ("1", "true", "True")
 
 
-def _make_key(cfg: HuggingFaceBackendConfig) -> tuple[Hashable, ...]:
+def _make_key(
+    cfg: HuggingFaceBackendConfig,
+    *,
+    save_transcriptions: bool,
+    output_dir: str,
+) -> tuple[Hashable, ...]:
     """Create a stable key for the given backend configuration.
 
     Args:
         cfg: Backend configuration.
+        save_transcriptions: Whether the pipeline persists JSON outputs.
+        output_dir: Directory that stores transcript artefacts.
 
     Returns:
         A tuple suitable for use as a dict key.
@@ -60,6 +68,8 @@ def _make_key(cfg: HuggingFaceBackendConfig) -> tuple[Hashable, ...]:
         int(cfg.batch_size),
         int(cfg.chunk_length),
         int(cfg.progress_group_size),
+        bool(save_transcriptions),
+        os.path.abspath(output_dir),
     )
 
 
@@ -82,7 +92,12 @@ def acquire_pipeline(
     Returns:
         A (pipeline, key) tuple.
     """
-    key = _make_key(cfg)
+    normalized_output_dir = os.path.abspath(output_dir)
+    key = _make_key(
+        cfg,
+        save_transcriptions=save_transcriptions,
+        output_dir=normalized_output_dir,
+    )
     with _LOCK:
         entry = _CACHE.get(key)
         if entry is None:
@@ -90,7 +105,7 @@ def acquire_pipeline(
             pipeline = WhisperPipeline(
                 asr_backend=backend,
                 save_transcriptions=save_transcriptions,
-                output_dir=output_dir,
+                output_dir=normalized_output_dir,
             )
             entry = _CacheEntry(backend=backend, pipeline=pipeline, ref_count=0)
             _CACHE[key] = entry
@@ -135,3 +150,31 @@ def clear_cache(force_close: bool = False) -> None:
                 except Exception:  # pragma: no cover - defensive cleanup
                     pass
         _CACHE.clear()
+
+
+@contextlib.contextmanager
+def borrow_pipeline(
+    cfg: HuggingFaceBackendConfig,
+    *,
+    save_transcriptions: bool = True,
+    output_dir: str = "transcripts",
+) -> Iterator[WhisperPipeline]:
+    """Context manager that acquires and releases a cached pipeline safely.
+
+    Args:
+        cfg: Backend configuration used for cache lookup.
+        save_transcriptions: Whether the borrowed pipeline should persist results.
+        output_dir: Destination directory for persisted transcripts.
+
+    Yields:
+        WhisperPipeline: The cached pipeline instance matching ``cfg``.
+    """
+    pipeline, key = acquire_pipeline(
+        cfg,
+        save_transcriptions=save_transcriptions,
+        output_dir=output_dir,
+    )
+    try:
+        yield pipeline
+    finally:
+        release_pipeline(key)

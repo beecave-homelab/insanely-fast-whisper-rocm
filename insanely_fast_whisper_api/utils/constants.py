@@ -83,7 +83,6 @@ from dotenv import load_dotenv
 
 from insanely_fast_whisper_api.utils.env_loader import (
     PROJECT_ROOT,
-    SHOW_DEBUG_PRINTS,
     USER_CONFIG_DIR,
     USER_ENV_EXISTS,
     USER_ENV_FILE,
@@ -101,39 +100,18 @@ __all__ = [
     "PROJECT_ROOT",
 ]
 
-# --- Initial debug message based on SHOW_DEBUG_PRINTS from env_loader ---
-debug_print("constants.py: Starting .env loading process...")
-debug_print(
-    f"constants.py: SHOW_DEBUG_PRINTS={SHOW_DEBUG_PRINTS}"
-    "(derived from CLI args and initial .env LOG_LEVEL scan)"
-)
-# Project root .env is now loaded by env_loader.py before constants.py is
-# fully processed.
-# constants.py will now load the user-specific .env file.
-
-# 2. Load user-specific .env next.
-#    Variables here will override anything from project root or shell.
-# User config dir is already created if it didn't exist.
-# User config dir creation is handled in debug_helpers.py if it doesn't exist
-debug_print(f"constants.py: Checking for user .env at: {USER_ENV_FILE}")
+# --- Load user-specific .env (overrides project .env) ---
 if USER_ENV_EXISTS:
-    debug_print("constants.py: Found user .env file. Loading...")
+    debug_print(f"Loading user .env: {USER_ENV_FILE}")
     load_dotenv(USER_ENV_FILE, override=True)
-else:
-    debug_print("constants.py: User .env file NOT found.")
-debug_print("constants.py: Finished .env loading process.")
+
+# --- Log final environment state ---
 debug_print(
-    f"constants.py: WHISPER_MODEL from os.environ: {os.getenv('WHISPER_MODEL')}"
+    f"Config loaded from .env: model={os.getenv('WHISPER_MODEL')}, "
+    f"batch_size={os.getenv('WHISPER_BATCH_SIZE')}, "
+    f"log_level={os.getenv('LOG_LEVEL', 'INFO')} "
+    f"(CLI flags will override when specified)"
 )
-debug_print(
-    "constants.py: WHISPER_BATCH_SIZE from os.environ: "
-    f"{os.getenv('WHISPER_BATCH_SIZE')}"
-)
-debug_print(
-    "constants.py: HF_TOKEN from os.environ: "
-    f"{'SET' if os.getenv('HF_TOKEN') else 'NOT SET'}"
-)
-debug_print(f"constants.py: Final LOG_LEVEL from os.environ: {os.getenv('LOG_LEVEL')}")
 
 # --- Test/CI awareness and optional FS-check skipping ---
 # Detect pytest and allow an explicit opt-in env flag to skip filesystem checks
@@ -231,13 +209,13 @@ MAX_BLOCK_CHARS = int(
 MAX_BLOCK_CHARS_SOFT = int(
     os.getenv("MAX_BLOCK_CHARS_SOFT", "90")
 )  # Soft limit for block characters
-MIN_CPS = float(os.getenv("MIN_CPS", "12.0"))  # Minimum characters per second
-MAX_CPS = float(os.getenv("MAX_CPS", "17.0"))  # Maximum characters per second
+MIN_CPS = float(os.getenv("MIN_CPS", "8.0"))  # Minimum characters per second
+MAX_CPS = float(os.getenv("MAX_CPS", "22.0"))  # Maximum characters per second
 MIN_SEGMENT_DURATION_SEC = float(
-    os.getenv("MIN_SEGMENT_DURATION_SEC", "1.2")
+    os.getenv("MIN_SEGMENT_DURATION_SEC", "0.9")
 )  # Min segment duration
 MAX_SEGMENT_DURATION_SEC = float(
-    os.getenv("MAX_SEGMENT_DURATION_SEC", "5.5")
+    os.getenv("MAX_SEGMENT_DURATION_SEC", "4.0")
 )  # Max segment duration
 MIN_WORD_DURATION_SEC = float(
     os.getenv("MIN_WORD_DURATION_SEC", "0.04")

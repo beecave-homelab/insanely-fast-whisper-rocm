@@ -23,6 +23,7 @@ from transformers import (
 )
 from transformers.utils import logging as hf_logging
 
+from insanely_fast_whisper_api.core.cancellation import CancellationToken
 from insanely_fast_whisper_api.core.errors import (
     DeviceNotFoundError,
     TranscriptionError,
@@ -58,6 +59,7 @@ class ASRBackend(ABC):  # pylint: disable=too-few-public-methods
         return_timestamps_value: bool | str,
         # Potentially other common config options can go here
         progress_cb: ProgressCallback | None = None,
+        cancellation_token: CancellationToken | None = None,
     ) -> dict[str, Any]:
         """Processes the audio file and returns the result."""
 
@@ -256,6 +258,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         task: str,
         return_timestamps_value: bool | str,
         progress_cb: ProgressCallback | None = None,
+        cancellation_token: CancellationToken | None = None,
     ) -> dict[str, Any]:
         """Process an audio file and return the transcription result.
 
@@ -265,6 +268,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             task: "transcribe" or "translate".
             return_timestamps_value: Whether/how to return timestamps.
             progress_cb: Optional progress reporter.
+            cancellation_token: Optional cooperative cancellation token.
 
         Returns:
             dict[str, Any]: Result with text, optional chunks, runtime, and
@@ -274,8 +278,12 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             TranscriptionError: If model loading or inference fails.
         """
         cb = progress_cb or NoOpProgress()
+        if cancellation_token is not None:
+            cancellation_token.raise_if_cancelled()
         if self.asr_pipe is None:
             self._initialize_pipeline(progress_cb=cb)
+            if cancellation_token is not None:
+                cancellation_token.raise_if_cancelled()
 
         start_time = time.perf_counter()
 
@@ -415,6 +423,8 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 self.config.batch_size,
                 _return_timestamps_value,
             )
+            if cancellation_token is not None:
+                cancellation_token.raise_if_cancelled()
             outputs = self.asr_pipe(str(audio_file_path), **pipeline_kwargs)
         except RuntimeError as e:
             # Check if this is the specific tensor size mismatch error in
@@ -437,6 +447,8 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 fallback_kwargs["return_timestamps"] = True  # chunk-level timestamps
 
                 try:
+                    if cancellation_token is not None:
+                        cancellation_token.raise_if_cancelled()
                     outputs = self.asr_pipe(str(audio_file_path), **fallback_kwargs)
                     logger.info(
                         "Successfully completed transcription with chunk-level "
@@ -474,6 +486,9 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
 
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
+
+        if cancellation_token is not None:
+            cancellation_token.raise_if_cancelled()
 
         # The pipeline may return 'chunks' or 'segments'. For consistency,
         # we normalize to a 'segments' key and also keep 'chunks' for

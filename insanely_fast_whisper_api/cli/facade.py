@@ -1,5 +1,7 @@
 """CLI facade for simplified access to core ASR functionality."""
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 from typing import Any
@@ -8,6 +10,7 @@ from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )
+from insanely_fast_whisper_api.core.cancellation import CancellationToken
 from insanely_fast_whisper_api.core.errors import TranscriptionError
 from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_api.core.progress import ProgressCallback
@@ -119,39 +122,35 @@ class CLIFacade:
         task: str = "transcribe",
         return_timestamps_value: bool | str = True,
         progress_cb: ProgressCallback | None = None,
+        cancellation_token: CancellationToken | None = None,
     ) -> dict[str, Any]:
         """Process an audio file via the ASR backend.
 
-        Supports transcription and translation depending on the ``task``.
+        Supports transcription and translation depending on ``task``.
 
         Args:
-            audio_file_path (Path): Path to the audio file.
-            model (str | None): Optional model name to use.
-            device (str | None): Optional device for inference.
-            dtype (str): Data type for inference.
-            batch_size (int | None): Optional batch size for processing.
-            chunk_length (int): Audio chunk length in seconds.
-            progress_group_size (int | None): Chunks per progress update group. If
-                None, defaults to constants.DEFAULT_PROGRESS_GROUP_SIZE.
-            language (str | None): Optional language code for processing.
-            task (str): Task to perform ("transcribe" or "translate").
-            return_timestamps_value (bool | str): Whether/how to return
-                timestamps. Pass True/False or a string mode supported by the
-                backend.
+            audio_file_path: Path to the audio file on disk.
+            model: Optional model name to use.
+            device: Optional device for inference.
+            dtype: Data type for inference.
+            batch_size: Optional batch size for processing.
+            chunk_length: Audio chunk length in seconds.
+            progress_group_size: Chunks per progress update group. Defaults to
+                :data:`~insanely_fast_whisper_api.utils.constants.DEFAULT_PROGRESS_GROUP_SIZE`
+                when ``None``.
+            language: Optional language code for processing.
+            task: Task to perform ("transcribe" or "translate").
+            return_timestamps_value: Whether/how to return timestamps.
+            progress_cb: Optional progress callback for granular updates.
+            cancellation_token: Cooperative cancellation token.
 
         Returns:
-            dict[str, Any]: Results payload with transcription/translation
-            outputs as provided by the pipeline or direct backend fallback.
-
-        Args:
-            progress_cb: Optional progress callback used to emit granular
-                progress events for model loading, audio I/O, inference, and
-                export. Pass ``None`` to disable progress reporting.
+            dict[str, Any]: Transcription or translation payload.
 
         Raises:
             RuntimeError: If the ASR backend cannot be initialized.
-            TranscriptionError: If the pipeline fails and the fallback
-                behaviour is disabled or encounters an error itself.
+            TranscriptionError: When the pipeline fails and fallback processing
+                is unavailable or also fails.
         """
         # Get config from environment with defaults
         config = self.get_env_config()
@@ -235,6 +234,7 @@ class CLIFacade:
                 task=task,
                 return_timestamps_value=return_timestamps_value,
                 progress_cb=progress_cb,
+                cancellation_token=cancellation_token,
             )
 
         if return_timestamps_value == "word":
@@ -257,6 +257,7 @@ class CLIFacade:
                 timestamp_type=timestamp_type,  # type: ignore[arg-type]
                 original_filename=None,  # Let pipeline use absolute path
                 progress_callback=progress_cb,
+                cancellation_token=cancellation_token,
             )
         except TranscriptionError as exc:
             missing_file = "audio file not found" in str(exc).lower()
@@ -274,6 +275,7 @@ class CLIFacade:
                 task=task,
                 return_timestamps_value=return_timestamps_value,
                 progress_cb=progress_cb,
+                cancellation_token=cancellation_token,
             )
 
 

@@ -5,6 +5,8 @@ and exporting results in the WebUI. It serves as an intermediary between
 the UI components and the ASR pipeline.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import zipfile
@@ -16,14 +18,16 @@ from typing import Any, Literal
 import gradio as gr
 
 from insanely_fast_whisper_api.audio.processing import extract_audio_from_video
-from insanely_fast_whisper_api.core.asr_backend import (
-    HuggingFaceBackend,
-    HuggingFaceBackendConfig,
+from insanely_fast_whisper_api.core.asr_backend import HuggingFaceBackendConfig
+from insanely_fast_whisper_api.core.backend_cache import borrow_pipeline
+from insanely_fast_whisper_api.core.cancellation import CancellationToken
+from insanely_fast_whisper_api.core.errors import (
+    TranscriptionCancelledError,
+    TranscriptionError,
 )
-from insanely_fast_whisper_api.core.errors import TranscriptionError
 from insanely_fast_whisper_api.core.formatters import FORMATTERS
 from insanely_fast_whisper_api.core.integrations.stable_ts import stabilize_timestamps
-from insanely_fast_whisper_api.core.pipeline import ProgressEvent, WhisperPipeline
+from insanely_fast_whisper_api.core.pipeline import ProgressEvent
 from insanely_fast_whisper_api.utils import (
     DEFAULT_BATCH_SIZE,
     DEFAULT_DEMUCS,
@@ -200,6 +204,17 @@ def transcribe(
         )
         original_file_name_for_desc = Path(audio_file_path).name
 
+        cancellation_token = CancellationToken()
+
+        def _ensure_not_cancelled() -> None:
+            if progress_tracker_instance is not None and getattr(
+                progress_tracker_instance, "cancelled", False
+            ):
+                cancellation_token.cancel()
+            cancellation_token.raise_if_cancelled()
+
+        _ensure_not_cancelled()
+
         # --- Video detection & audio extraction ---
         temp_files: list[str] = []
         if Path(audio_file_path).suffix.lower() in constants.SUPPORTED_VIDEO_FORMATS:
@@ -213,6 +228,8 @@ def transcribe(
                 logger.error("Video conversion failed: %s", conv_err)
                 raise TranscriptionError(str(conv_err)) from conv_err
 
+        _ensure_not_cancelled()
+
         # Initial progress update for this file's segment
         base_progress = current_file_idx / total_files_for_session
         if progress_tracker_instance is not None:
@@ -224,7 +241,9 @@ def transcribe(
                 ),
             )
 
-        # Initialize the ASR backend
+        _ensure_not_cancelled()
+
+        # Build backend config and acquire a cached pipeline
         backend_config = HuggingFaceBackendConfig(
             model_name=config.model,
             device=config.device,
@@ -233,97 +252,113 @@ def transcribe(
             chunk_length=config.chunk_length,
             progress_group_size=constants.DEFAULT_PROGRESS_GROUP_SIZE,
         )
-        backend = HuggingFaceBackend(config=backend_config)
+        result: dict[str, Any]
 
-        # Initialize the ASR pipeline
-        asr_pipeline = WhisperPipeline(
-            asr_backend=backend,
+        _ensure_not_cancelled()
+
+        with borrow_pipeline(
+            backend_config,
             save_transcriptions=file_config.save_transcriptions,
             output_dir=file_config.temp_uploads_dir,
-        )
+        ) as asr_pipeline:
+            progress_listener = None
 
-        # Adapt progress_callback to the new listener pattern
-        if progress_tracker_instance is not None:
-            # progress_listener needs access to base_progress,
-            # current_file_idx, total_files_for_session and
-            # original_file_name_for_desc for consistent messaging.
+            if progress_tracker_instance is not None:
+                # progress_listener needs access to base_progress,
+                # current_file_idx, total_files_for_session and
+                # original_file_name_for_desc for consistent messaging.
 
-            def progress_listener(event: ProgressEvent) -> None:
-                # Use original_file_name_for_desc captured from outer scope
-                nonlocal base_progress
+                def _progress_listener(event: ProgressEvent) -> None:
+                    if cancellation_token.cancelled:
+                        return
+                    if getattr(progress_tracker_instance, "cancelled", False):
+                        cancellation_token.cancel()
+                        return
 
-                if event.message:
-                    desc_message = f"{event.message} ({original_file_name_for_desc})"
-                else:
-                    desc_message = (
-                        f"{event.event_type} for {original_file_name_for_desc}"
+                    # Use original_file_name_for_desc captured from outer scope
+                    nonlocal base_progress
+
+                    if event.message:
+                        desc_message = (
+                            f"{event.message} ({original_file_name_for_desc})"
+                        )
+                    else:
+                        desc_message = (
+                            f"{event.event_type} for {original_file_name_for_desc}"
+                        )
+
+                    current_event_fraction_within_file = (
+                        None  # 0.0 to 1.0 for the current file's internal progress
                     )
+                    if event.event_type == "pipeline_start":
+                        current_event_fraction_within_file = 0.0
+                    elif (
+                        event.event_type == "chunk_start"
+                        and event.total_chunks
+                        and event.total_chunks > 0
+                        and event.chunk_num is not None
+                    ):
+                        current_event_fraction_within_file = (
+                            event.chunk_num - 1
+                        ) / event.total_chunks
+                    elif (
+                        event.event_type == "chunk_complete"
+                        and event.total_chunks
+                        and event.total_chunks > 0
+                        and event.chunk_num is not None
+                    ):
+                        current_event_fraction_within_file = (
+                            event.chunk_num / event.total_chunks
+                        )
+                    elif event.event_type == "pipeline_complete":
+                        current_event_fraction_within_file = 1.0
 
-                current_event_fraction_within_file = (
-                    None  # 0.0 to 1.0 for the current file's internal progress
+                    if current_event_fraction_within_file is not None:
+                        # Scale the per-file fraction to its share of the overall
+                        # progress. Each file contributes equally to the session.
+                        overall_fraction = base_progress + (
+                            current_event_fraction_within_file / total_files_for_session
+                        )
+                        progress_tracker_instance(overall_fraction, desc=desc_message)
+                    else:
+                        # For other events, show indeterminate progress or just update
+                        # description
+                        progress_tracker_instance(None, desc=desc_message)
+
+                progress_listener = _progress_listener
+                asr_pipeline.add_listener(progress_listener)
+
+            # App-level chunking parameters (config.chunk_duration, etc.) are not
+            # directly used by the new pipeline in this basic setup.
+            # If that specific chunking logic is needed, it has to be implemented
+            # within the WhisperPipeline._prepare_input or a pre-processing step.
+            # The current HuggingFaceBackend relies on the model's internal chunking
+            # (chunk_length_s).
+            if config.chunk_duration is not None and config.chunk_overlap is not None:
+                logger.warning(
+                    "App-level chunk_duration and chunk_overlap are set in config, "
+                    "but the current refactored pipeline does not use them directly. "
+                    "Transcription will use the model's internal chunking."
                 )
-                if event.event_type == "pipeline_start":
-                    current_event_fraction_within_file = 0.0
-                elif (
-                    event.event_type == "chunk_start"
-                    and event.total_chunks
-                    and event.total_chunks > 0
-                    and event.chunk_num is not None
-                ):
-                    current_event_fraction_within_file = (
-                        event.chunk_num - 1
-                    ) / event.total_chunks
-                elif (
-                    event.event_type == "chunk_complete"
-                    and event.total_chunks
-                    and event.total_chunks > 0
-                    and event.chunk_num is not None
-                ):
-                    current_event_fraction_within_file = (
-                        event.chunk_num / event.total_chunks
-                    )
-                elif event.event_type == "pipeline_complete":
-                    current_event_fraction_within_file = 1.0
 
-                if current_event_fraction_within_file is not None:
-                    # Scale current_event_fraction (0-1 for this file) to its portion
-                    # of the total progress. Each file contributes
-                    # 1/total_files_for_session to the total progress.
-                    overall_fraction = base_progress + (
-                        current_event_fraction_within_file / total_files_for_session
-                    )
-                    progress_tracker_instance(overall_fraction, desc=desc_message)
-                else:
-                    # For other events, show indeterminate progress or just update
-                    # description
-                    progress_tracker_instance(None, desc=desc_message)
+            _ensure_not_cancelled()
+            try:
+                result = asr_pipeline.process(
+                    audio_file_path=audio_file_path,
+                    language=(
+                        config.language
+                        if config.language and config.language.lower() != "none"
+                        else None
+                    ),
+                    task=config.task,
+                    timestamp_type=config.timestamp_type,
+                    cancellation_token=cancellation_token,
+                )
+            finally:
+                if progress_listener is not None:
+                    asr_pipeline.remove_listener(progress_listener)
 
-            asr_pipeline.add_listener(progress_listener)
-
-        # App-level chunking parameters (config.chunk_duration, config.chunk_overlap)
-        # are not directly used by the new pipeline in this basic setup.
-        # If that specific chunking logic is needed, it has to be implemented
-        # within the WhisperPipeline._prepare_input or as a pre-processing step.
-        # The current HuggingFaceBackend relies on the model's internal chunking
-        # (chunk_length_s).
-        if config.chunk_duration is not None and config.chunk_overlap is not None:
-            logger.warning(
-                "App-level chunk_duration and chunk_overlap are set in config, "
-                "but the current refactored pipeline does not use them directly. "
-                "Transcription will use the model's internal chunking."
-            )
-
-        # Run the transcription using the new process method
-        result = asr_pipeline.process(
-            audio_file_path=audio_file_path,
-            language=(
-                config.language
-                if config.language and config.language.lower() != "none"
-                else None
-            ),
-            task=config.task,
-            timestamp_type=config.timestamp_type,
-        )
+        _ensure_not_cancelled()
 
         # Conditionally apply timestamp stabilization
         if config.stabilize:
@@ -339,12 +374,20 @@ def transcribe(
             # Relay detailed stabilization progress messages to the UI
 
             def _stab_progress(msg: str) -> None:
+                if cancellation_token.cancelled:
+                    return
+                if progress_tracker_instance is not None and getattr(
+                    progress_tracker_instance, "cancelled", False
+                ):
+                    cancellation_token.cancel()
+                    return
                 if progress_tracker_instance is not None:
                     progress_tracker_instance(
                         None,
                         desc=f"{msg} ({original_file_name_for_desc})",
                     )
 
+            _ensure_not_cancelled()
             original_result = result
             stabilized_result = stabilize_timestamps(
                 result,
@@ -353,6 +396,7 @@ def transcribe(
                 vad_threshold=config.vad_threshold,
                 progress_cb=_stab_progress,
             )
+            _ensure_not_cancelled()
 
             if _is_stabilization_corrupt(stabilized_result.get("segments", [])):
                 logger.warning(
@@ -367,6 +411,8 @@ def transcribe(
                     None,
                     desc=(f"Stabilization complete for {original_file_name_for_desc}"),
                 )
+
+            _ensure_not_cancelled()
 
         logger.info("Transcription completed successfully for %s", audio_file_path)
 
@@ -385,6 +431,9 @@ def transcribe(
 
         return result
 
+    except TranscriptionCancelledError as exc:
+        logger.info("Transcription cancelled for %s", audio_file_path)
+        raise exc
     except Exception as e:
         logger.error("Error during transcription: %s", str(e))
         raise TranscriptionError(f"Transcription failed: {str(e)}") from e
@@ -412,6 +461,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
     Returns:
         Tuple of Gradio UI component updates for transcription output, JSON output,
         raw result, and download buttons.
+
+    Raises:
+        TranscriptionCancelledError: If a user-triggered cancellation stops processing.
 
     """
     all_results_data = []
@@ -501,6 +553,12 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     desc=f"Completed file {idx + 1}/{num_files}: {file_name_for_log}",
                 )
 
+        except TranscriptionCancelledError:
+            logger.info(
+                "Transcription cancelled by user during processing of %s",
+                file_name_for_log,
+            )
+            raise
         except TranscriptionError as e:
             logger.error("Error transcribing %s: %s", file_name_for_log, e)
             processed_files_summary.append(f"{file_name_for_log}: Error - {e}")

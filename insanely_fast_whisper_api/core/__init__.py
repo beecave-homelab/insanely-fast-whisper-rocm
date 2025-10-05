@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from insanely_fast_whisper_api.core.asr_backend import ASRBackend
+from insanely_fast_whisper_api.core.cancellation import CancellationToken
 from insanely_fast_whisper_api.core.errors import (
     DeviceNotFoundError,
     TranscriptionError,
@@ -158,6 +159,7 @@ class ASRPipeline(BasePipeline):  # type: ignore[misc]
         task: str,
         timestamp_type: str,
         progress_callback: Callable[[str], None] | None = None,
+        cancellation_token: CancellationToken | None = None,
     ) -> dict[str, Any]:
         """Return a canned transcription result from the dummy backend.
 
@@ -167,13 +169,19 @@ class ASRPipeline(BasePipeline):  # type: ignore[misc]
             task: Requested task (``"transcribe"`` or ``"translate"``).
             timestamp_type: Requested timestamp granularity (ignored here).
             progress_callback: Optional callback forwarded by the base pipeline.
+            cancellation_token: Cooperative cancellation token forwarded to the
+                backend stub.
 
         Returns:
             dict[str, Any]: Deterministic transcription payload for fast tests.
         """
         _ = progress_callback  # Avoid unused-variable warnings in minimal stub.
         return self.asr_backend.process_audio(
-            prepared_data, language, task, return_timestamps_value=False
+            prepared_data,
+            language,
+            task,
+            return_timestamps_value=False,
+            cancellation_token=cancellation_token,
         )
 
     # pylint: disable=unused-argument

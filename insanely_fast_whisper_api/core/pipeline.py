@@ -1,5 +1,7 @@
 """ASR pipeline definition, including base classes and concrete implementations."""
 
+from __future__ import annotations
+
 import logging
 import time
 import uuid
@@ -13,6 +15,7 @@ from insanely_fast_whisper_api.audio import conversion as audio_conversion
 from insanely_fast_whisper_api.audio import processing as audio_processing
 from insanely_fast_whisper_api.audio import results as audio_results
 from insanely_fast_whisper_api.core.asr_backend import ASRBackend
+from insanely_fast_whisper_api.core.cancellation import CancellationToken
 from insanely_fast_whisper_api.core.errors import TranscriptionError
 from insanely_fast_whisper_api.core.progress import NoOpProgress, ProgressCallback
 from insanely_fast_whisper_api.core.storage import BaseStorage, StorageFactory
@@ -100,6 +103,13 @@ class BasePipeline(ABC):
         """Registers an observer for progress events."""
         self._listeners.append(callback)
 
+    def remove_listener(self, callback: ProgressCallback) -> None:
+        """Remove a previously registered progress listener if present."""
+        try:
+            self._listeners.remove(callback)
+        except ValueError:
+            pass
+
     def _notify_listeners(self, event: ProgressEvent) -> None:
         """Notifies all registered listeners about an event."""
         for listener in self._listeners:
@@ -116,6 +126,7 @@ class BasePipeline(ABC):
         timestamp_type: Literal["chunk", "word"],
         original_filename: str | None = None,
         progress_callback: ProgressCallback | None = None,
+        cancellation_token: CancellationToken | None = None,
         # Other common parameters for all pipelines
     ) -> dict[str, Any]:
         """Template method defining the overall ASR algorithm skeleton.
@@ -141,22 +152,32 @@ class BasePipeline(ABC):
         )
 
         progress_cb = progress_callback or NoOpProgress()
+        token = cancellation_token
 
         try:
+            if token is not None:
+                token.raise_if_cancelled()
             prepared_data = self._prepare_input(input_path)
+            if token is not None:
+                token.raise_if_cancelled()
             processed_result = self._execute_asr(
                 prepared_data,
                 language,
                 task,
                 timestamp_type,
                 progress_cb,
+                token,
             )
+            if token is not None:
+                token.raise_if_cancelled()
             final_result = self._postprocess_output(
                 processed_result, absolute_audio_path, task, original_filename
             )
 
             saved_file_path = None
             if self.save_transcriptions:
+                if token is not None:
+                    token.raise_if_cancelled()
                 saved_file_path = self._save_result(
                     final_result, absolute_audio_path, task, original_filename
                 )
@@ -241,6 +262,7 @@ class BasePipeline(ABC):
         task: str,
         timestamp_type: str,
         progress_callback: ProgressCallback,
+        cancellation_token: CancellationToken | None,
     ) -> dict[str, Any]:
         """Execute the core ASR task using the backend. Returns raw ASR output."""
 
@@ -364,6 +386,7 @@ class WhisperPipeline(BasePipeline):
         task: str,
         timestamp_type: str,
         progress_callback: ProgressCallback,
+        cancellation_token: CancellationToken | None,
     ) -> dict[str, Any]:
         """Execute ASR for a single audio file, handling chunking internally.
 
@@ -373,6 +396,11 @@ class WhisperPipeline(BasePipeline):
         Raises:
             TranscriptionError: If the backend fails to process the audio.
         """
+        token = cancellation_token
+
+        if token is not None:
+            token.raise_if_cancelled()
+
         logger.info(
             "Executing ASR for: %s, task: %s, lang: %s, timestamps: %s",
             prepared_data,
@@ -396,8 +424,13 @@ class WhisperPipeline(BasePipeline):
             return_timestamps_value = False
 
         progress_callback.on_audio_loading_started(prepared_data)
+        if token is not None:
+            token.raise_if_cancelled()
         converted_path = audio_conversion.ensure_wav(prepared_data)
         progress_callback.on_audio_loading_finished(duration_sec=None)
+
+        if token is not None:
+            token.raise_if_cancelled()
 
         # Split the audio into chunks so we can provide deterministic progress
         # updates to observers (e.g. Gradio's progress bar). ``split_audio``
@@ -438,6 +471,8 @@ class WhisperPipeline(BasePipeline):
 
         try:
             for idx, (chunk_path, chunk_start_time) in enumerate(chunk_data, start=1):
+                if token is not None:
+                    token.raise_if_cancelled()
                 self._notify_listeners(
                     ProgressEvent(
                         event_type="chunk_start",
@@ -457,7 +492,10 @@ class WhisperPipeline(BasePipeline):
                     task=task,
                     return_timestamps_value=return_timestamps_value,
                     progress_cb=progress_proxy,
+                    cancellation_token=token,
                 )
+                if token is not None:
+                    token.raise_if_cancelled()
                 logger.debug(
                     "Chunk %d/%d processed: text_len=%d, segments=%d",
                     idx,
@@ -499,6 +537,9 @@ class WhisperPipeline(BasePipeline):
             if cleanup_paths:
                 file_utils.cleanup_temp_files(cleanup_paths)
 
+        if token is not None:
+            token.raise_if_cancelled()
+
         if not chunk_results:
             # This case should ideally not be hit if split_audio always returns
             # at least one item, but as a safeguard:
@@ -506,6 +547,8 @@ class WhisperPipeline(BasePipeline):
 
         if total_chunks > 1:
             combined = audio_results.merge_chunk_results(chunk_results)
+            if token is not None:
+                token.raise_if_cancelled()
             logger.debug(
                 "Merged %d chunks: combined_text_len=%d, combined_segments=%d",
                 total_chunks,
@@ -515,6 +558,9 @@ class WhisperPipeline(BasePipeline):
         else:
             combined = chunk_results[0][0]
             logger.debug("Single chunk result: no merging needed")
+
+        if token is not None:
+            token.raise_if_cancelled()
 
         # Do not signal completion here; the outer process() handles it once.
         return combined

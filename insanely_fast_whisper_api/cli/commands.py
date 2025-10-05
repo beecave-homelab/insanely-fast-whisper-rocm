@@ -10,6 +10,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import os
+import signal
 import sys
 import time
 from pathlib import Path
@@ -22,8 +23,10 @@ from insanely_fast_whisper_api.audio.processing import extract_audio_from_video
 from insanely_fast_whisper_api.cli.common_options import audio_options
 from insanely_fast_whisper_api.cli.facade import cli_facade
 from insanely_fast_whisper_api.cli.progress_tqdm import TqdmProgressReporter
+from insanely_fast_whisper_api.core.cancellation import CancellationToken
 from insanely_fast_whisper_api.core.errors import (
     DeviceNotFoundError,
+    TranscriptionCancelledError,
     TranscriptionError,
 )
 from insanely_fast_whisper_api.core.formatters import FORMATTERS, build_quality_segments
@@ -208,6 +211,21 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
     processed_language = language or None
     temp_files: list[Path] = []
     reporter = TqdmProgressReporter(enabled=progress_enabled)
+    cancellation_token = CancellationToken()
+
+    def _ensure_not_cancelled() -> None:
+        if cancellation_token.cancelled:
+            raise TranscriptionCancelledError("Transcription cancelled by user")
+
+    previous_signal_handlers: list[tuple[int, Any]] = []
+
+    def _register_signal(sig: int) -> None:
+        previous_signal_handlers.append((sig, signal.getsignal(sig)))
+        signal.signal(sig, lambda signum, frame: cancellation_token.cancel())
+
+    _register_signal(signal.SIGINT)
+    if hasattr(signal, "SIGTERM"):
+        _register_signal(signal.SIGTERM)
 
     if benchmark:
         benchmark_flags = {
@@ -261,6 +279,8 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
         finally:
             reporter.on_postprocess_finished("extract-audio")
 
+    _ensure_not_cancelled()
+
     # ------------------------------------------------------------------ #
     # Execute the ASR backend via the facade                              #
     # ------------------------------------------------------------------ #
@@ -270,6 +290,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
             return_timestamps_value = "word" if timestamp_type == "word" else True
 
         # Configuration details logged by facade at INFO level
+        _ensure_not_cancelled()
         result = cli_facade.process_audio(
             audio_file_path=audio_file,
             model=model,
@@ -282,7 +303,9 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
             task=task,
             return_timestamps_value=return_timestamps_value,
             progress_cb=reporter,
+            cancellation_token=cancellation_token,
         )
+        _ensure_not_cancelled()
         logger.debug(
             "ASR completed: %d chars, %d chunks, runtime=%.2fs",
             len(result.get("text", "")),
@@ -292,6 +315,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
 
         # Optional stable-ts post-processing
         if stabilize:
+            _ensure_not_cancelled()
             try:
                 # Ensure the result contains the audio path for stable-ts
                 result.setdefault("audio_file_path", str(audio_file))
@@ -299,6 +323,8 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
                 reporter.on_postprocess_started("stable-ts")
                 original_result = result
                 stabilized_result = None
+
+                _ensure_not_cancelled()
 
                 if quiet:
                     with _suppress_output_fds():
@@ -308,6 +334,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
                             vad=vad,
                             vad_threshold=vad_threshold,
                         )
+                        _ensure_not_cancelled()
                 else:
                     stabilized_result = stabilize_timestamps(
                         result,
@@ -315,6 +342,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
                         vad=vad,
                         vad_threshold=vad_threshold,
                     )
+                    _ensure_not_cancelled()
 
                 if stabilized_result and _is_stabilization_corrupt(
                     stabilized_result.get("segments", [])
@@ -347,6 +375,8 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
                         f"⚠️  stable-ts post-processing failed: {exc}", fg="yellow"
                     )
 
+        _ensure_not_cancelled()
+
         # INFO-level summary (lazy logging) — skip when quiet
         if not quiet:
             logger.info(
@@ -364,6 +394,8 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
             benchmark_gpu_stats = gpu_sampler.summary()
             logger.debug("GPU sampling summary: %s", benchmark_gpu_stats)
             gpu_sampler = None
+
+        _ensure_not_cancelled()
 
         # ------------------------------------------------------------------ #
         # Export & benchmark handling                                         #
@@ -383,11 +415,17 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
             temp_files=temp_files,
             progress_cb=reporter,
             quiet=quiet,
+            cancellation_token=cancellation_token,
         )
 
     # ------------------------------------------------------------------ #
     # Error handling                                                      #
     # ------------------------------------------------------------------ #
+    except TranscriptionCancelledError:
+        reporter.on_error("Cancelled by user")
+        click.secho("\n⚠️ Operation cancelled by user.", fg="yellow", err=True)
+        sys.exit(130)
+
     except DeviceNotFoundError as exc:
         reporter.on_error(str(exc))
         click.secho(f"\n❌ Device error: {exc}", fg="red", err=True)
@@ -423,6 +461,8 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
             )
         sys.exit(1)
     finally:
+        for sig, handler in previous_signal_handlers:
+            signal.signal(sig, handler)
         if gpu_sampler is not None:
             try:
                 gpu_sampler.stop()
@@ -451,6 +491,7 @@ def _handle_output_and_benchmarks(
     temp_files: list[Path],
     progress_cb: ProgressCallback | None = None,
     quiet: bool = False,
+    cancellation_token: CancellationToken | None = None,
 ) -> None:
     """Handle file export and benchmark writing.
 
@@ -474,7 +515,15 @@ def _handle_output_and_benchmarks(
         temp_files: List of temporary files to clean up after export.
         progress_cb: Optional progress callback to report export progress.
         quiet: If True, suppress non-essential messages (e.g., benchmark line).
+        cancellation_token: Optional cooperative cancellation token.
+
+    Raises:
+        TranscriptionCancelledError: If cancellation is requested during export
+            or benchmark collection.
     """
+    if cancellation_token is not None and cancellation_token.cancelled:
+        raise TranscriptionCancelledError("Transcription cancelled by user")
+
     # Decide which formats to export
     if export_format == "all":
         formats_to_export = ("json", "txt", "srt")
@@ -520,6 +569,8 @@ def _handle_output_and_benchmarks(
     srt_text_captured: str | None = None
     format_quality_by_format: dict[str, Any] = {}
     for idx, fmt in enumerate(formats_to_export):
+        if cancellation_token is not None and cancellation_token.cancelled:
+            raise TranscriptionCancelledError("Transcription cancelled by user")
         formatter = FORMATTERS[fmt]
         content = formatter.format(detailed_result)
         ext = formatter.get_file_extension()
@@ -563,6 +614,8 @@ def _handle_output_and_benchmarks(
             )
 
         try:
+            if cancellation_token is not None and cancellation_token.cancelled:
+                raise TranscriptionCancelledError("Transcription cancelled by user")
             output_path.write_text(content, encoding="utf-8")
             content_size = len(content) if isinstance(content, str) else 0
             logger.debug(
@@ -587,6 +640,8 @@ def _handle_output_and_benchmarks(
                 pass
 
     if benchmark_enabled:
+        if cancellation_token is not None and cancellation_token.cancelled:
+            raise TranscriptionCancelledError("Transcription cancelled by user")
         from insanely_fast_whisper_api.benchmarks.collector import BenchmarkCollector
 
         collector = BenchmarkCollector()
