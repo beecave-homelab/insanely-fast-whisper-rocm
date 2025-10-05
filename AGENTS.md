@@ -284,6 +284,20 @@ A PR is mergeable only when both pass.
 
 ---
 
-### Final note
+## 15) Testing workflow & coverage
 
-If you need to deviate (e.g., third-party naming or unavoidable import patterns), add a **short comment** explaining why and keep the ignore as narrow as possible.
+* **TDD first**: Follow the Red → Green → Refactor loop for every change. Start with a failing test placed under the matching `tests/...` subpackage, write the minimum production code to pass, then refactor both sides while keeping tests fast, deterministic, and hermetic.
+* **Command discipline**: Prefix every Python invocation with `pdm run`. The default `pdm run pytest` run skips `integration`, `slow`, `e2e`, and `gpu` markers; opt in with `pdm run pytest -m "integration or e2e"` or `pdm run pytest -m "slow or gpu"` when needed.
+* **Coverage target**: Maintain ≥85% coverage for each `insanely_fast_whisper_api/` module. Use `pdm run pytest -q --cov=insanely_fast_whisper_api --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=html --cov-fail-under=85` and inspect `htmlcov/index.html` to chase uncovered lines.
+* **Iteration loop**: When fixing failures, iterate subdir by subdir. Run `pdm run pytest -q tests/<subdir>` to list failures, reproduce individual node IDs, apply the smallest fix, rerun the focused scope, then expand back to the full subdir.
+* **Determinism aids**: Normalize timestamps, UUIDs, paths, and ordering in assertions. Favor tiny fixtures, dependency overrides, parametrization, and property tests to keep suites lean.
+
+---
+
+## 16) Module-specific testing guidance
+
+* **Fixtures & data**: Generate tiny WAV fixtures (~0.25 s, 16 kHz, mono) and deterministic fake ASR backends. Use `tmp_path` for artifacts, clean up temp files, and avoid committing large binaries.
+* **API**: Build the FastAPI app via its factory in tests, override `get_asr_pipeline()` and `get_file_handler()`, and mock startup hooks. Validate `/v1/audio/transcriptions` and `/v1/audio/translations` responses across `json`, `text`, `srt`, and `vtt` formats using normalized snapshots; prefer `httpx.AsyncClient` with `asgi_lifespan` and mark boundary-heavy cases `integration`.
+* **Audio**: Mock ffmpeg and pydub in unit tests. Assert `ensure_wav()` passthrough for WAV inputs, conversion for others, and proper cleanup on failure. Verify chunking and merging helpers for ordering, overlap, and error handling without leaking temp files.
+* **CLI**: Exercise commands with `click.testing.CliRunner` for unit coverage, verifying argument normalization and exit codes. Use subprocess-based runs on tiny WAV fixtures for integration tests and assert exported artifacts.
+* **WebUI & utils**: Freeze time for timestamp assertions, mock hardware probes (`torch.cuda.is_available()`, `torch.mps.is_available()`), and snapshot merged outputs after normalizing variable fields. Inject `now_func`, `uuid_func`, and RNG hooks to eliminate flakes.
