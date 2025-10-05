@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import contextlib
 import tempfile
 import unittest.mock
 import zipfile
 from pathlib import Path
 
+import pytest
+
+from insanely_fast_whisper_api.core.errors import TranscriptionCancelledError
 from insanely_fast_whisper_api.utils.filename_generator import TaskType
 from insanely_fast_whisper_api.webui import handlers
 from insanely_fast_whisper_api.webui.handlers import (
@@ -113,17 +117,18 @@ def test_transcribe_handler_fallback_on_corrupted_stabilization() -> None:
     }
 
     # 2. Mock dependencies
+    mock_pipeline_instance = unittest.mock.MagicMock()
+    mock_pipeline_instance.process.return_value = original_result
+
     with (
         unittest.mock.patch(
-            "insanely_fast_whisper_api.webui.handlers.WhisperPipeline"
-        ) as mock_pipeline_class,
+            "insanely_fast_whisper_api.webui.handlers.borrow_pipeline",
+            return_value=contextlib.nullcontext(mock_pipeline_instance),
+        ) as mock_borrow,
         unittest.mock.patch(
             "insanely_fast_whisper_api.webui.handlers.stabilize_timestamps"
         ) as mock_stabilize,
     ):
-        # Setup mocks
-        mock_pipeline_instance = mock_pipeline_class.return_value
-        mock_pipeline_instance.process.return_value = original_result
         mock_stabilize.return_value = corrupted_result
 
         # 3. Call the handler with stabilization enabled
@@ -132,8 +137,36 @@ def test_transcribe_handler_fallback_on_corrupted_stabilization() -> None:
         final_result = handlers.transcribe("/fake/audio.mp3", config, file_config)
 
     # 4. Assertions
+    mock_borrow.assert_called_once()
+    mock_pipeline_instance.add_listener.assert_called_once()
+    mock_pipeline_instance.remove_listener.assert_called_once_with(unittest.mock.ANY)
     mock_stabilize.assert_called_once()
     # Check that the final result is the ORIGINAL data, not the corrupted data
     assert final_result["text"] == "This is a valid transcription."
     assert len(final_result["segments"]) == 2
     assert final_result["segments"][0]["start"] == 0.0
+
+
+def test_transcribe_raises_on_progress_cancellation() -> None:
+    """Ensure transcribe aborts when the progress tracker signals cancellation."""
+
+    class _CancelledProgress:
+        cancelled = True
+
+        def __call__(self, *args: object, **kwargs: object) -> None:  # noqa: D401 - no-op
+            return
+
+    config = TranscriptionConfig()
+    file_config = FileHandlingConfig()
+
+    with unittest.mock.patch(
+        "insanely_fast_whisper_api.webui.handlers.borrow_pipeline"
+    ) as mock_borrow:
+        mock_borrow.side_effect = AssertionError("borrow_pipeline should not be called")
+        with pytest.raises(TranscriptionCancelledError):
+            handlers.transcribe(
+                "/tmp/audio.wav",
+                config,
+                file_config,
+                progress_tracker_instance=_CancelledProgress(),
+            )

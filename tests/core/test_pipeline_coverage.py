@@ -328,6 +328,7 @@ def test_execute_asr_timestamp_type_else_case(tmp_path: pathlib.Path) -> None:
             task="transcribe",
             timestamp_type="unknown",  # Unknown type
             progress_callback=NoOpProgress(),
+            cancellation_token=None,
         )
 
     # Verify return_timestamps_value was False (default)
@@ -370,4 +371,5 @@ def test_execute_asr_no_chunks_error(tmp_path: pathlib.Path) -> None:
                 task="transcribe",
                 timestamp_type="chunk",
                 progress_callback=NoOpProgress(),
+                cancellation_token=None,
             )
