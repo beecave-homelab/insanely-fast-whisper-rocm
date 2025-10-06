@@ -281,24 +281,35 @@ class SrtFormatter(BaseFormatter):
                     "[SrtFormatter] Found %d words, using segmentation pipeline.",
                     len(words),
                 )
-                segments = segment_words(words)
-                logger.info(
-                    "[SrtFormatter] segment_words() produced %d segments "
-                    "from %d words.",
-                    len(segments),
-                    len(words),
-                )
-                srt_content = []
-                for i, segment in enumerate(segments, 1):
-                    start = format_srt_time(segment.start)
-                    end = format_srt_time(segment.end)
-                    wrapped = split_lines(segment.text)
-                    normalized_text = cls._normalize_hyphen_spacing(wrapped)
-                    srt_content.append(f"{i}\n{start} --> {end}\n{normalized_text}\n")
-                logger.info(
-                    "[SrtFormatter] Returning %d SRT segments.", len(srt_content)
-                )
-                return "\n".join(srt_content)
+                # CRITICAL FIX: For word-level timestamps, check if they appear corrupted
+                # (e.g., all timestamps are the same value indicating a backend bug)
+                word_timestamps = [w.start for w in words[:10]]  # Check first 10 words
+                has_timing_bug = len(set(word_timestamps)) <= 1  # All same timestamp
+
+                if has_timing_bug:
+                    logger.warning(
+                        "[SrtFormatter] Detected word-level timestamp bug (all words have same timestamp). "
+                        "Using fallback chunk-based formatting to avoid gaps."
+                    )
+                else:
+                    segments = segment_words(words)
+                    logger.info(
+                        "[SrtFormatter] segment_words() produced %d segments "
+                        "from %d words.",
+                        len(segments),
+                        len(words),
+                    )
+                    srt_content = []
+                    for i, segment in enumerate(segments, 1):
+                        start = format_srt_time(segment.start)
+                        end = format_srt_time(segment.end)
+                        wrapped = split_lines(segment.text)
+                        normalized_text = cls._normalize_hyphen_spacing(wrapped)
+                        srt_content.append(f"{i}\n{start} --> {end}\n{normalized_text}\n")
+                    logger.info(
+                        "[SrtFormatter] Returning %d SRT segments.", len(srt_content)
+                    )
+                    return "\n".join(srt_content)
             else:
                 logger.info("[SrtFormatter] No words found, using fallback.")
 

@@ -424,6 +424,13 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
     except TranscriptionCancelledError:
         reporter.on_error("Cancelled by user")
         click.secho("\n⚠️ Operation cancelled by user.", fg="yellow", err=True)
+        # Cleanup backend resources on cancellation to release GPU memory
+        try:
+            if hasattr(cli_facade, "backend") and cli_facade.backend is not None:
+                cli_facade.backend.close()
+                logger.debug("Backend resources released after cancellation")
+        except Exception as e:
+            logger.warning("Failed to cleanup backend after cancellation: %s", e)
         sys.exit(130)
 
     except DeviceNotFoundError as exc:

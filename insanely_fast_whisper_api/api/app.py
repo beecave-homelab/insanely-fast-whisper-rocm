@@ -14,6 +14,7 @@ from fastapi.routing import APIRoute
 from insanely_fast_whisper_api import __version__
 from insanely_fast_whisper_api.api.middleware import add_middleware
 from insanely_fast_whisper_api.api.routes import router as api_router
+from insanely_fast_whisper_api.core.backend_cache import clear_cache
 from insanely_fast_whisper_api.utils.constants import (
     API_DESCRIPTION,
     API_TITLE,
@@ -60,9 +61,18 @@ async def run_startup_sequence(app: FastAPI) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Run startup sequence using FastAPI's lifespan support."""
+    """Run startup sequence using FastAPI's lifespan support.
+
+    This context manager handles both startup and shutdown of the application.
+    On shutdown, it clears the backend cache to release GPU memory and prevent
+    resource leaks.
+    """
     await run_startup_sequence(app)
     yield
+    # Cleanup on shutdown: release all cached backends to free GPU memory
+    logger.info("Shutting down API - clearing backend cache")
+    clear_cache(force_close=True)
+    logger.info("Cache cleared successfully")
 
 
 def create_app() -> FastAPI:

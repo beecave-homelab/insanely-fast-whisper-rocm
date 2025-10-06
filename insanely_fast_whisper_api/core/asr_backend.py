@@ -6,6 +6,7 @@ focusing on the Hugging Face Transformers integration.
 
 from __future__ import annotations
 
+import gc
 import logging
 import time
 import warnings
@@ -558,6 +559,8 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                     torch.mps.empty_cache()  # type: ignore[attr-defined]
             except Exception:  # pragma: no cover - defensive cleanup
                 pass
+            # Force immediate garbage collection to reclaim memory
+            gc.collect()
 
     # Backwards-friendly alias
     release = close

@@ -24,6 +24,7 @@ from insanely_fast_whisper_api.core.errors import (
     TranscriptionError,
 )
 from insanely_fast_whisper_api.core.pipeline import BasePipeline
+from insanely_fast_whisper_api.core.progress import ProgressCallback
 
 
 class _DummyBackend(ASRBackend):
@@ -45,6 +46,8 @@ class _DummyBackend(ASRBackend):
         language: str | None,
         task: str,
         return_timestamps_value: bool | str,
+        progress_cb: ProgressCallback | None = None,
+        cancellation_token: CancellationToken | None = None,
     ) -> dict[str, Any]:
         # A fake but realistic looking result that unit-tests can introspect.
         return {

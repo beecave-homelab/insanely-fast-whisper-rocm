@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import logging
 import time
 import uuid
@@ -10,6 +11,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal, TypeVar, cast
+
+import torch
 
 from insanely_fast_whisper_api.audio import conversion as audio_conversion
 from insanely_fast_whisper_api.audio import processing as audio_processing
@@ -522,6 +525,21 @@ class WhisperPipeline(BasePipeline):
                     )
                 )
                 chunk_results.append((asr_raw_result, chunk_start_time))
+
+                # CRITICAL FIX: Free GPU memory after each chunk to prevent accumulation
+                # that causes memory access faults on long audio files (>20 minutes).
+                # See: to-do/fix-backend-cache-resource-cleanup.md
+                try:
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    if hasattr(torch, "mps") and torch.backends.mps.is_available():
+                        torch.mps.empty_cache()  # type: ignore[attr-defined]
+                except Exception:  # pragma: no cover - defensive cleanup
+                    pass
+
+                # Force garbage collection to reclaim CPU memory from processed chunks
+                gc.collect()
+
                 completed_index = idx - 1
                 try:
                     progress_callback.on_chunk_done(completed_index)

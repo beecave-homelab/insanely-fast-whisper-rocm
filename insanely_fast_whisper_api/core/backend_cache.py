@@ -12,6 +12,7 @@ close and remove cache entries when their refcount hits zero.
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
 import threading
 from collections.abc import Hashable, Iterator
@@ -22,6 +23,8 @@ from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackendConfig,
 )
 from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -147,8 +150,13 @@ def clear_cache(force_close: bool = False) -> None:
             for entry in _CACHE.values():
                 try:
                     entry.backend.close()
-                except Exception:  # pragma: no cover - defensive cleanup
-                    pass
+                except Exception as e:  # pragma: no cover - defensive cleanup
+                    # Log the exception with stack trace for debugging
+                    logger.warning(
+                        "Failed to close backend during cache clear: %s",
+                        e,
+                        exc_info=True,
+                    )
         _CACHE.clear()
 
 
