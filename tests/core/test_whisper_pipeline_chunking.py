@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 from insanely_fast_whisper_api.core.asr_backend import ASRBackend
+from insanely_fast_whisper_api.core.cancellation import CancellationToken
 from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_api.core.progress import ProgressCallback
 
@@ -33,6 +34,7 @@ class _RecordingBackend(ASRBackend):
         task: str,
         return_timestamps_value: bool | str,
         progress_cb: ProgressCallback | None = None,
+        cancellation_token: CancellationToken | None = None,
     ) -> dict[str, Any]:
         """Record invocation details and return the next queued response.
 
@@ -42,6 +44,7 @@ class _RecordingBackend(ASRBackend):
             task: Requested Whisper task (``transcribe`` or ``translate``).
             return_timestamps_value: Timestamp flag forwarded by the pipeline.
             progress_cb: Progress callback proxy supplied by the pipeline.
+            cancellation_token: Cooperative cancellation token.
 
         Returns:
             dict[str, Any]: Copy of the canned response for deterministic tests.

@@ -157,8 +157,9 @@ class TestSrtFormattingRealWorld:
             )
         ]
         result = segment_words(words)
+        # Allow small floating-point tolerance for CPS upper bound
         assert all(
-            (len(seg.text) / (seg.end - seg.start)) <= constants.MAX_CPS
+            (len(seg.text) / (seg.end - seg.start)) <= constants.MAX_CPS + 1e-9
             for seg in result
         )
 

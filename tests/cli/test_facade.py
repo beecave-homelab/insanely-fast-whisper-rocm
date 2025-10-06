@@ -9,6 +9,7 @@ import pytest
 
 from insanely_fast_whisper_api.cli.facade import CLIFacade
 from insanely_fast_whisper_api.core.asr_backend import HuggingFaceBackendConfig
+from insanely_fast_whisper_api.core.cancellation import CancellationToken
 from insanely_fast_whisper_api.core.errors import TranscriptionError
 from insanely_fast_whisper_api.core.progress import ProgressCallback
 
@@ -32,6 +33,7 @@ class RecordingBackend:
         task: str,
         return_timestamps_value: bool | str,
         progress_cb: ProgressCallback | None = None,
+        cancellation_token: CancellationToken | None = None,
     ) -> dict[str, str | None]:
         """Record the invocation and emit a predictable payload.
 
@@ -74,6 +76,7 @@ class RecordingPipeline:
         timestamp_type: str,
         original_filename: str,
         progress_callback: ProgressCallback | None = None,
+        cancellation_token: CancellationToken | None = None,
     ) -> dict[str, str | None]:
         """Record processing calls and return a deterministic payload.
 

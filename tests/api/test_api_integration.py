@@ -93,12 +93,10 @@ class TestTranscriptionEndpoint:
         assert response.status_code == 400
         assert "Unsupported file format" in response.json()["detail"]
 
-    @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
-    @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
+    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
     def test_transcription_endpoint_success_json(
         self,
-        mock_backend: Mock,
-        mock_pipeline: Mock,
+        mock_borrow: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
@@ -107,7 +105,7 @@ class TestTranscriptionEndpoint:
         # Setup mocks
         mock_pipeline_instance = Mock()
         mock_pipeline_instance.process.return_value = mock_asr_result
-        mock_pipeline.return_value = mock_pipeline_instance
+        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
 
         # Make request
         response = client.post(
@@ -139,12 +137,10 @@ class TestTranscriptionEndpoint:
         assert call_args["task"] == "transcribe"
         assert call_args["timestamp_type"] == "chunk"
 
-    @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
-    @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
+    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
     def test_transcription_endpoint_success_text(
         self,
-        mock_backend: Mock,
-        mock_pipeline: Mock,
+        mock_borrow: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
@@ -153,7 +149,7 @@ class TestTranscriptionEndpoint:
         # Setup mocks
         mock_pipeline_instance = Mock()
         mock_pipeline_instance.process.return_value = mock_asr_result
-        mock_pipeline.return_value = mock_pipeline_instance
+        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
 
         # Make request with text response format
         response = client.post(
@@ -172,23 +168,19 @@ class TestTranscriptionEndpoint:
         assert response.headers["content-type"] == "text/plain; charset=utf-8"
         assert response.text == "Hello, this is a test transcription."
 
-    @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
-    @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
+    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
     def test_transcription_endpoint_dependency_injection(
         self,
-        mock_backend: Mock,
-        mock_pipeline: Mock,
+        mock_borrow: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
     ) -> None:
         """Test that dependency injection works correctly."""
         # Setup mocks
-        mock_backend_instance = Mock()
-        mock_backend.return_value = mock_backend_instance
         mock_pipeline_instance = Mock()
         mock_pipeline_instance.process.return_value = mock_asr_result
-        mock_pipeline.return_value = mock_pipeline_instance
+        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
 
         # Make request with specific parameters
         _ = client.post(
@@ -204,17 +196,14 @@ class TestTranscriptionEndpoint:
             },
         )
 
-        # Verify backend was configured correctly
-        mock_backend.assert_called_once()
-        backend_config = mock_backend.call_args[1]["config"]
+        # Verify borrow_pipeline was called with the correct configuration
+        mock_borrow.assert_called_once()
+        backend_config = mock_borrow.call_args[0][0]
         assert backend_config.model_name == constants.DEFAULT_MODEL
         assert backend_config.device == constants.DEFAULT_DEVICE
         assert backend_config.batch_size == constants.DEFAULT_BATCH_SIZE
         assert backend_config.dtype == constants.DEFAULT_DTYPE
         assert backend_config.chunk_length == constants.DEFAULT_CHUNK_LENGTH
-
-        # Verify pipeline was created with backend
-        mock_pipeline.assert_called_once_with(asr_backend=mock_backend_instance)
 
 
 class TestTranslationEndpoint:
@@ -232,12 +221,10 @@ class TestTranslationEndpoint:
         assert response.status_code == 400
         assert "Unsupported file format" in response.json()["detail"]
 
-    @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
-    @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
+    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
     def test_translation_endpoint_success_json(
         self,
-        mock_backend: Mock,
-        mock_pipeline: Mock,
+        mock_borrow: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
@@ -246,7 +233,7 @@ class TestTranslationEndpoint:
         # Setup mocks
         mock_pipeline_instance = Mock()
         mock_pipeline_instance.process.return_value = mock_asr_result
-        mock_pipeline.return_value = mock_pipeline_instance
+        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
 
         # Make request
         response = client.post(
@@ -271,12 +258,10 @@ class TestTranslationEndpoint:
         assert call_args["task"] == "translate"
         assert call_args["language"] == "es"
 
-    @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
-    @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
+    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
     def test_translation_endpoint_success_text(
         self,
-        mock_backend: Mock,
-        mock_pipeline: Mock,
+        mock_borrow: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
@@ -285,7 +270,7 @@ class TestTranslationEndpoint:
         # Setup mocks
         mock_pipeline_instance = Mock()
         mock_pipeline_instance.process.return_value = mock_asr_result
-        mock_pipeline.return_value = mock_pipeline_instance
+        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
 
         # Make request with text response format
         response = client.post(
@@ -303,14 +288,12 @@ class TestTranslationEndpoint:
 class TestFileHandling:
     """Test file handling in the refactored routes."""
 
-    @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
-    @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
+    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
     @patch("insanely_fast_whisper_api.utils.FileHandler.cleanup")
     def test_file_cleanup_called(
         self,
         mock_cleanup: Mock,
-        mock_backend: Mock,
-        mock_pipeline: Mock,
+        mock_borrow: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
@@ -319,7 +302,7 @@ class TestFileHandling:
         # Setup mocks
         mock_pipeline_instance = Mock()
         mock_pipeline_instance.process.return_value = mock_asr_result
-        mock_pipeline.return_value = mock_pipeline_instance
+        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
 
         # Make request
         response = client.post(
@@ -331,24 +314,20 @@ class TestFileHandling:
         assert response.status_code == 200
         mock_cleanup.assert_called_once()
 
-    @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
-    @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
+    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
     @patch("insanely_fast_whisper_api.utils.FileHandler.cleanup")
     def test_file_cleanup_called_on_error(
         self,
         mock_cleanup: Mock,
-        mock_backend: Mock,
-        mock_pipeline: Mock,
+        mock_borrow: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
     ) -> None:
         """Test that file cleanup is called even when processing fails."""
         # Setup mocks to raise an exception during processing
-        mock_backend_instance = Mock()
-        mock_backend.return_value = mock_backend_instance
         mock_pipeline_instance = Mock()
         mock_pipeline_instance.process.side_effect = Exception("Processing failed")
-        mock_pipeline.return_value = mock_pipeline_instance
+        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
 
         # Make request - expect it to raise an exception due to our mock
         try:
@@ -383,23 +362,19 @@ class TestBackwardsCompatibility:
         response = client.get("/v1/audio/translations")
         assert response.status_code == 405  # Method not allowed (POST required)
 
-    @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
-    @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
+    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
     def test_parameter_names_unchanged(
         self,
-        mock_backend: Mock,
-        mock_pipeline: Mock,
+        mock_borrow: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
     ) -> None:
         """Test that parameter names remain the same for backwards compatibility."""
-        # Setup mocks properly
-        mock_backend_instance = Mock()
-        mock_backend.return_value = mock_backend_instance
+        # Setup mocks
         mock_pipeline_instance = Mock()
         mock_pipeline_instance.process.return_value = mock_asr_result
-        mock_pipeline.return_value = mock_pipeline_instance
+        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
 
         # This should not raise validation errors for parameter names
         response = client.post(
@@ -422,12 +397,9 @@ class TestBackwardsCompatibility:
         # Should succeed with proper mocking
         assert response.status_code == 200
 
-        # Verify the backend was configured with the test parameters
-        mock_backend.assert_called_once()
-        backend_config = mock_backend.call_args[1]["config"]
+        # Verify borrow_pipeline was called with the correct configuration
+        mock_borrow.assert_called_once()
+        backend_config = mock_borrow.call_args[0][0]
         assert backend_config.model_name == constants.DEFAULT_MODEL
         assert backend_config.device == constants.DEFAULT_DEVICE
         assert backend_config.batch_size == constants.DEFAULT_BATCH_SIZE
-
-        # Verify pipeline was created with backend
-        mock_pipeline.assert_called_once_with(asr_backend=mock_backend_instance)

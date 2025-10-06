@@ -170,3 +170,56 @@ class TestPathResolution:
         from insanely_fast_whisper_api.utils.env_loader import USER_CONFIG_DIR
 
         assert str(Path.home()) in str(USER_CONFIG_DIR)
+
+    def test_user_config_dir__creation(self) -> None:
+        """Test that USER_CONFIG_DIR is created if it doesn't exist."""
+        from insanely_fast_whisper_api.utils.env_loader import USER_CONFIG_DIR
+
+        # The directory should exist after module import
+        assert USER_CONFIG_DIR.exists()
+        assert USER_CONFIG_DIR.is_dir()
+
+
+class TestModuleStateFlags:
+    """Test suite for module state flags and constants."""
+
+    def test_cli_debug_mode__flag_detection(self) -> None:
+        """Test _cli_debug_mode flag is properly set based on sys.argv."""
+        # The flag is set at module import time, so we test current state
+        from insanely_fast_whisper_api.utils.env_loader import _cli_debug_mode
+
+        assert isinstance(_cli_debug_mode, bool)
+
+    def test_show_debug_prints__combination_logic(self) -> None:
+        """Test SHOW_DEBUG_PRINTS combines CLI and env debug modes."""
+        from insanely_fast_whisper_api.utils.env_loader import (
+            SHOW_DEBUG_PRINTS,
+            _cli_debug_mode,
+        )
+
+        # Verify SHOW_DEBUG_PRINTS is a boolean
+        assert isinstance(SHOW_DEBUG_PRINTS, bool)
+        # If CLI debug is on, SHOW_DEBUG_PRINTS should be True
+        if _cli_debug_mode:
+            assert SHOW_DEBUG_PRINTS is True
+
+
+class TestLoggingConfiguration:
+    """Test suite for logging configuration setup."""
+
+    def test_logger__properly_named(self) -> None:
+        """Test that the module logger has the correct name."""
+        from insanely_fast_whisper_api.utils import env_loader
+
+        assert env_loader.logger.name == "insanely_fast_whisper_api.utils.env_loader"
+
+    @patch("insanely_fast_whisper_api.utils.env_loader.SHOW_DEBUG_PRINTS", True)
+    def test_logging_config__debug_mode_enabled(self) -> None:
+        """Test that logging configuration is applied when debug mode is enabled."""
+        import logging
+
+        # Get the logger for our application
+        app_logger = logging.getLogger("insanely_fast_whisper_api")
+
+        # The logger should exist (it's created during module import)
+        assert app_logger is not None

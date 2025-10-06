@@ -69,38 +69,33 @@ class TestAppFactory:
 class TestDependencies:
     """Test dependency injection providers."""
 
-    @patch("insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend")
-    @patch("insanely_fast_whisper_api.api.dependencies.WhisperPipeline")
-    def test_get_asr_pipeline_creates_pipeline(
-        self, mock_pipeline: Mock, mock_backend: Mock
-    ) -> None:
+    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
+    def test_get_asr_pipeline_creates_pipeline(self, mock_borrow: Mock) -> None:
         """Test that get_asr_pipeline creates a properly configured pipeline."""
         # Setup mocks
-        mock_backend_instance = Mock()
-        mock_backend.return_value = mock_backend_instance
         mock_pipeline_instance = Mock()
-        mock_pipeline.return_value = mock_pipeline_instance
+        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
 
-        # Call the dependency
-        result = get_asr_pipeline(
+        # Call the dependency - it's a generator, so we need to call next() on it
+        gen = get_asr_pipeline(
             model="test-model",
             device="cpu",
             batch_size=4,
             dtype="float32",
             model_chunk_length=30,
         )
+        result = next(gen)
 
-        # Verify backend configuration
-        mock_backend.assert_called_once()
-        backend_config = mock_backend.call_args[1]["config"]
+        # Verify borrow_pipeline was called with correct configuration
+        mock_borrow.assert_called_once()
+        backend_config = mock_borrow.call_args[0][0]
         assert backend_config.model_name == "test-model"
         assert backend_config.device == "cpu"
         assert backend_config.batch_size == 4
         assert backend_config.dtype == "float32"
         assert backend_config.chunk_length == 30
 
-        # Verify pipeline creation
-        mock_pipeline.assert_called_once_with(asr_backend=mock_backend_instance)
+        # Verify the pipeline instance is returned
         assert result == mock_pipeline_instance
 
     def test_get_file_handler_returns_file_handler(self) -> None:

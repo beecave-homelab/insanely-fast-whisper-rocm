@@ -10,12 +10,16 @@ from pathlib import Path
 
 import pytest
 
-from insanely_fast_whisper_api.core.errors import TranscriptionCancelledError
+from insanely_fast_whisper_api.core.errors import (
+    TranscriptionCancelledError,
+    TranscriptionError,
+)
 from insanely_fast_whisper_api.utils.filename_generator import TaskType
 from insanely_fast_whisper_api.webui import handlers
 from insanely_fast_whisper_api.webui.handlers import (
     FileHandlingConfig,
     TranscriptionConfig,
+    _is_stabilization_corrupt,
     _prepare_temp_downloadable_file,
 )
 from insanely_fast_whisper_api.webui.zip_creator import (
@@ -138,8 +142,8 @@ def test_transcribe_handler_fallback_on_corrupted_stabilization() -> None:
 
     # 4. Assertions
     mock_borrow.assert_called_once()
-    mock_pipeline_instance.add_listener.assert_called_once()
-    mock_pipeline_instance.remove_listener.assert_called_once_with(unittest.mock.ANY)
+    # add_listener/remove_listener are only called when progress_tracker is provided
+    # Since we're not providing one, they shouldn't be called
     mock_stabilize.assert_called_once()
     # Check that the final result is the ORIGINAL data, not the corrupted data
     assert final_result["text"] == "This is a valid transcription."
@@ -170,3 +174,304 @@ def test_transcribe_raises_on_progress_cancellation() -> None:
                 file_config,
                 progress_tracker_instance=_CancelledProgress(),
             )
+
+
+def test_prepare_temp_downloadable_file_txt() -> None:
+    """Test _prepare_temp_downloadable_file with TXT format."""
+    raw_data = {"text": "This is a test transcription."}
+
+    with tempfile.TemporaryDirectory() as temp_dir_str:
+        temp_dir = Path(temp_dir_str)
+        txt_path_str = _prepare_temp_downloadable_file(
+            raw_data=raw_data,
+            format_type="txt",
+            original_audio_stem="test_audio",
+            temp_dir=temp_dir,
+            task=TaskType.TRANSCRIBE,
+        )
+
+        txt_path = Path(txt_path_str)
+        assert txt_path.exists()
+        txt_content = txt_path.read_text(encoding="utf-8")
+        assert "This is a test transcription." in txt_content
+
+
+def test_prepare_temp_downloadable_file_invalid_format() -> None:
+    """Test _prepare_temp_downloadable_file raises ValueError for invalid format."""
+    raw_data = {"text": "Test"}
+
+    with tempfile.TemporaryDirectory() as temp_dir_str:
+        temp_dir = Path(temp_dir_str)
+        with pytest.raises(ValueError, match="No formatter available"):
+            _prepare_temp_downloadable_file(
+                raw_data=raw_data,
+                format_type="invalid_format",
+                original_audio_stem="test",
+                temp_dir=temp_dir,
+                task=TaskType.TRANSCRIBE,
+            )
+
+
+def test_prepare_temp_downloadable_file_oserror() -> None:
+    """Test _prepare_temp_downloadable_file raises OSError when write fails."""
+    raw_data = {"text": "Test"}
+
+    # Use a non-writable path to trigger OSError
+    with pytest.raises(OSError):
+        _prepare_temp_downloadable_file(
+            raw_data=raw_data,
+            format_type="txt",
+            original_audio_stem="test",
+            temp_dir=Path("/nonexistent/path"),
+            task=TaskType.TRANSCRIBE,
+        )
+
+
+def test_transcribe_with_video_input() -> None:
+    """Test transcribe function with video input (audio extraction)."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create a fake video file
+        video_path = Path(temp_dir) / "test_video.mp4"
+        video_path.write_text("fake video content")
+
+        mock_pipeline_instance = unittest.mock.MagicMock()
+        mock_pipeline_instance.process.return_value = {"text": "transcribed"}
+
+        with (
+            unittest.mock.patch(
+                "insanely_fast_whisper_api.webui.handlers.borrow_pipeline",
+                return_value=contextlib.nullcontext(mock_pipeline_instance),
+            ),
+            unittest.mock.patch(
+                "insanely_fast_whisper_api.webui.handlers.extract_audio_from_video"
+            ) as mock_extract,
+        ):
+            mock_extract.return_value = str(Path(temp_dir) / "extracted.wav")
+
+            config = TranscriptionConfig()
+            file_config = FileHandlingConfig()
+            result = handlers.transcribe(str(video_path), config, file_config)
+
+            mock_extract.assert_called_once()
+            assert result["text"] == "transcribed"
+
+
+def test_transcribe_with_video_extraction_error() -> None:
+    """Test transcribe function handles video extraction errors."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        video_path = Path(temp_dir) / "test_video.mp4"
+        video_path.write_text("fake video")
+
+        with (
+            unittest.mock.patch(
+                "insanely_fast_whisper_api.webui.handlers.extract_audio_from_video"
+            ) as mock_extract,
+        ):
+            mock_extract.side_effect = RuntimeError("Extraction failed")
+
+            config = TranscriptionConfig()
+            file_config = FileHandlingConfig()
+
+            from insanely_fast_whisper_api.core.errors import TranscriptionError
+
+            with pytest.raises(TranscriptionError, match="Extraction failed"):
+                handlers.transcribe(str(video_path), config, file_config)
+
+
+def test_transcribe_with_progress_tracker() -> None:
+    """Test transcribe with progress tracker instance."""
+    mock_pipeline_instance = unittest.mock.MagicMock()
+    mock_pipeline_instance.process.return_value = {"text": "test"}
+
+    # Mock progress tracker
+    mock_progress = unittest.mock.MagicMock()
+    mock_progress.cancelled = False
+
+    with unittest.mock.patch(
+        "insanely_fast_whisper_api.webui.handlers.borrow_pipeline",
+        return_value=contextlib.nullcontext(mock_pipeline_instance),
+    ):
+        config = TranscriptionConfig()
+        file_config = FileHandlingConfig()
+        result = handlers.transcribe(
+            "/fake/audio.wav",
+            config,
+            file_config,
+            progress_tracker_instance=mock_progress,
+        )
+
+        assert result["text"] == "test"
+        # Progress tracker should have been called
+        assert mock_progress.call_count > 0
+        # Listener should have been added and removed
+        mock_pipeline_instance.add_listener.assert_called_once()
+        mock_pipeline_instance.remove_listener.assert_called_once()
+
+
+def test_transcribe_with_chunk_duration_warning() -> None:
+    """Test transcribe logs warning when chunk_duration is set."""
+    mock_pipeline_instance = unittest.mock.MagicMock()
+    mock_pipeline_instance.process.return_value = {"text": "test"}
+
+    with (
+        unittest.mock.patch(
+            "insanely_fast_whisper_api.webui.handlers.borrow_pipeline",
+            return_value=contextlib.nullcontext(mock_pipeline_instance),
+        ),
+        unittest.mock.patch(
+            "insanely_fast_whisper_api.webui.handlers.logger"
+        ) as mock_logger,
+    ):
+        config = TranscriptionConfig(chunk_duration=15.0, chunk_overlap=1.0)
+        file_config = FileHandlingConfig()
+        handlers.transcribe("/fake/audio.wav", config, file_config)
+
+        # Should log a warning about chunk_duration
+        assert any(
+            "chunk_duration" in str(call) for call in mock_logger.warning.call_args_list
+        )
+
+
+def test_is_stabilization_corrupt_with_duplicate_timestamps() -> None:
+    """Test _is_stabilization_corrupt detects duplicate timestamps."""
+    # More than 50% of segments have identical timestamps
+    corrupt_segments = [
+        {"start": 5.0, "end": 5.0, "text": "segment1"},
+        {"start": 5.0, "end": 5.0, "text": "segment2"},
+        {"start": 5.0, "end": 5.0, "text": "segment3"},
+        {"start": 6.0, "end": 7.0, "text": "segment4"},
+    ]
+    assert _is_stabilization_corrupt(corrupt_segments) is True
+
+
+def test_is_stabilization_corrupt_with_valid_timestamps() -> None:
+    """Test _is_stabilization_corrupt returns False for valid timestamps."""
+    valid_segments = [
+        {"start": 0.0, "end": 1.0, "text": "segment1"},
+        {"start": 1.0, "end": 2.0, "text": "segment2"},
+        {"start": 2.0, "end": 3.0, "text": "segment3"},
+    ]
+    assert _is_stabilization_corrupt(valid_segments) is False
+
+
+def test_is_stabilization_corrupt_with_empty_list() -> None:
+    """Test _is_stabilization_corrupt handles empty segment list."""
+    assert _is_stabilization_corrupt([]) is False
+
+
+def test_is_stabilization_corrupt_with_single_segment() -> None:
+    """Test _is_stabilization_corrupt handles single segment."""
+    single_segment = [{"start": 0.0, "end": 1.0, "text": "only one"}]
+    assert _is_stabilization_corrupt(single_segment) is False
+
+
+def test_process_transcription_request_single_file() -> None:
+    """Test process_transcription_request with a single file."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        audio_path = Path(temp_dir) / "test.wav"
+        audio_path.write_text("fake audio")
+
+        mock_result = {
+            "text": "Test transcription",
+            "output_file_path": str(Path(temp_dir) / "test.json"),
+        }
+
+        with unittest.mock.patch(
+            "insanely_fast_whisper_api.webui.handlers.transcribe",
+            return_value=mock_result,
+        ):
+            config = TranscriptionConfig()
+            file_config = FileHandlingConfig(temp_uploads_dir=temp_dir)
+
+            result = handlers.process_transcription_request(
+                [str(audio_path)],
+                config,
+                file_config,
+            )
+
+            # Should return a tuple with 7 elements
+            assert len(result) == 7
+            # First element is transcription output text
+            assert isinstance(result[0], str)
+            assert "Test transcription" in result[0]
+
+
+def test_process_transcription_request_multiple_files() -> None:
+    """Test process_transcription_request with multiple files."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        audio_path1 = Path(temp_dir) / "test1.wav"
+        audio_path2 = Path(temp_dir) / "test2.wav"
+        audio_path1.write_text("fake audio 1")
+        audio_path2.write_text("fake audio 2")
+
+        mock_result1 = {
+            "text": "Transcription 1",
+            "output_file_path": str(Path(temp_dir) / "test1.json"),
+        }
+        mock_result2 = {
+            "text": "Transcription 2",
+            "output_file_path": str(Path(temp_dir) / "test2.json"),
+        }
+
+        with unittest.mock.patch(
+            "insanely_fast_whisper_api.webui.handlers.transcribe",
+            side_effect=[mock_result1, mock_result2],
+        ):
+            config = TranscriptionConfig()
+            file_config = FileHandlingConfig(temp_uploads_dir=temp_dir)
+
+            result = handlers.process_transcription_request(
+                [str(audio_path1), str(audio_path2)],
+                config,
+                file_config,
+            )
+
+            assert len(result) == 7
+            # For multiple files, should show summary message
+            assert "Successfully processed 2 files" in str(result[0]) or "2" in str(
+                result[0]
+            )
+
+
+def test_process_transcription_request_with_error() -> None:
+    """Test process_transcription_request handles transcription errors."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        audio_path = Path(temp_dir) / "test.wav"
+        audio_path.write_text("fake audio")
+
+        with unittest.mock.patch(
+            "insanely_fast_whisper_api.webui.handlers.transcribe",
+            side_effect=TranscriptionError("Test error"),
+        ):
+            config = TranscriptionConfig()
+            file_config = FileHandlingConfig(temp_uploads_dir=temp_dir)
+
+            result = handlers.process_transcription_request(
+                [str(audio_path)],
+                config,
+                file_config,
+            )
+
+            # Should return error in the output
+            assert "Error" in result[0] or "error" in str(result[1])
+
+
+def test_process_transcription_request_with_cancellation() -> None:
+    """Test process_transcription_request propagates cancellation."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        audio_path = Path(temp_dir) / "test.wav"
+        audio_path.write_text("fake audio")
+
+        with unittest.mock.patch(
+            "insanely_fast_whisper_api.webui.handlers.transcribe",
+            side_effect=TranscriptionCancelledError("Cancelled"),
+        ):
+            config = TranscriptionConfig()
+            file_config = FileHandlingConfig(temp_uploads_dir=temp_dir)
+
+            with pytest.raises(TranscriptionCancelledError):
+                handlers.process_transcription_request(
+                    [str(audio_path)],
+                    config,
+                    file_config,
+                )

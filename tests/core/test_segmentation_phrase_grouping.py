@@ -105,7 +105,8 @@ def test_segment_words_groups_into_phrases_with_commas() -> None:
         dur = s.end - s.start
         assert dur > 0
         cps = len(clean_text) / dur
-        assert constants.MIN_CPS <= cps <= constants.MAX_CPS
+        # Allow small floating-point tolerance (1e-9) for CPS upper bound
+        assert constants.MIN_CPS <= cps <= constants.MAX_CPS + 1e-9
 
 
 def test_build_quality_segments_groups_word_timestamps_into_readable_segments() -> None:

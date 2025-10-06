@@ -57,14 +57,11 @@ def test_normalize_with_fastapi_param_real() -> None:
     # Import after mocking
     from insanely_fast_whisper_api.api.dependencies import get_asr_pipeline
 
-    # Mock the backend classes to avoid actual initialization
+    # Mock borrow_pipeline to avoid actual initialization
     with (
         patch(
-            "insanely_fast_whisper_api.api.dependencies.HuggingFaceBackend"
-        ) as mock_backend_class,
-        patch(
-            "insanely_fast_whisper_api.api.dependencies.WhisperPipeline"
-        ) as mock_pipeline_class,
+            "insanely_fast_whisper_api.api.dependencies.borrow_pipeline"
+        ) as mock_borrow,
         patch(
             "insanely_fast_whisper_api.api.dependencies.HuggingFaceBackendConfig"
         ) as mock_config_class,
@@ -72,10 +69,8 @@ def test_normalize_with_fastapi_param_real() -> None:
         # Create mock instances
         mock_config = MagicMock()
         mock_config_class.return_value = mock_config
-        mock_backend = MagicMock()
-        mock_backend_class.return_value = mock_backend
         mock_pipeline = MagicMock()
-        mock_pipeline_class.return_value = mock_pipeline
+        mock_borrow.return_value.__enter__.return_value = mock_pipeline
 
         class MockFastAPIParam:
             """Mock FastAPI parameter object for testing _normalize function."""
@@ -87,9 +82,10 @@ def test_normalize_with_fastapi_param_real() -> None:
 
         # Call get_asr_pipeline with a FastAPI param - this should trigger the _normalize function
         mock_param = MockFastAPIParam("custom_model")
-        result = get_asr_pipeline(model=mock_param)
+        gen = get_asr_pipeline(model=mock_param)
+        result = next(gen)
 
-        # Verify the pipeline was created
+        # Verify the pipeline was returned
         assert result is mock_pipeline
         # Verify config was created with the normalized value
         mock_config_class.assert_called_once()
