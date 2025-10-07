@@ -281,14 +281,16 @@ class SrtFormatter(BaseFormatter):
                     "[SrtFormatter] Found %d words, using segmentation pipeline.",
                     len(words),
                 )
-                # CRITICAL FIX: For word-level timestamps, check if they appear corrupted
-                # (e.g., all timestamps are the same value indicating a backend bug)
+                # CRITICAL FIX: For word-level timestamps:
+                # Check if they appear corrupted (e.g., all timestamps
+                # are the same value indicating a backend bug)
                 word_timestamps = [w.start for w in words[:10]]  # Check first 10 words
                 has_timing_bug = len(set(word_timestamps)) <= 1  # All same timestamp
 
                 if has_timing_bug:
                     logger.warning(
-                        "[SrtFormatter] Detected word-level timestamp bug (all words have same timestamp). "
+                        "[SrtFormatter] Detected word-level timestamp bug "
+                        "(all words have same timestamp). "
                         "Using fallback chunk-based formatting to avoid gaps."
                     )
                 else:
@@ -305,7 +307,9 @@ class SrtFormatter(BaseFormatter):
                         end = format_srt_time(segment.end)
                         wrapped = split_lines(segment.text)
                         normalized_text = cls._normalize_hyphen_spacing(wrapped)
-                        srt_content.append(f"{i}\n{start} --> {end}\n{normalized_text}\n")
+                        srt_content.append(
+                            f"{i}\n{start} --> {end}\n{normalized_text}\n"
+                        )
                     logger.info(
                         "[SrtFormatter] Returning %d SRT segments.", len(srt_content)
                     )
@@ -329,7 +333,26 @@ class SrtFormatter(BaseFormatter):
                 validate_timestamps,
             )
 
-            chunks = validate_timestamps(chunks)
+            normalized_chunks: list[dict[str, Any]] = []
+            for chunk in chunks:
+                normalized = dict(chunk)
+                has_start = isinstance(normalized.get("start"), (int, float))
+                has_end = isinstance(normalized.get("end"), (int, float))
+                timestamp = normalized.get("timestamp")
+                if (
+                    (not has_start or not has_end)
+                    and isinstance(timestamp, (list, tuple))
+                    and len(timestamp) == 2
+                ):
+                    start_val, end_val = timestamp
+                    if isinstance(start_val, (int, float)) and isinstance(
+                        end_val, (int, float)
+                    ):
+                        normalized["start"] = start_val
+                        normalized["end"] = end_val
+                normalized_chunks.append(normalized)
+
+            chunks = validate_timestamps(normalized_chunks)
 
             srt_content = []
             for i, chunk in enumerate(chunks, 1):

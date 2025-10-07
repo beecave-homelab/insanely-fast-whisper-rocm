@@ -126,8 +126,10 @@ def segment_words(words: list[Word]) -> list[Segment]:
 
         # Keep as single segment if it can be wrapped into ≤2 lines
         # with each line ≤ MAX_LINE_CHARS, regardless of total char count
-        if len(lines) <= 2 and all(
-            len(line) <= constants.MAX_LINE_CHARS for line in lines
+        if (
+            len(lines) <= 2
+            and all(len(line) <= constants.MAX_LINE_CHARS for line in lines)
+            and _respect_limits(sentence)
         ):
             segments.append(
                 Segment(
@@ -169,16 +171,17 @@ def segment_words(words: list[Word]) -> list[Segment]:
     # After word expansion, re-apply character limits to ensure segments
     # are appropriately sized for readability
     segments = _reapply_character_limits(segments)
-
     # Enforce CPS constraints only for single-word-origin segments. Multi-word
     # segments are handled by line wrapping and duration constraints.
     logger.debug("Before enforce_cps: %d segments", len(segments))
     segments = _enforce_cps(segments)
     logger.debug("After enforce_cps: %d segments", len(segments))
-
-    # Merge any single-word segments created by CPS enforcement
     segments = _merge_short_segments(segments)
     logger.debug("After second merge_short_segments: %d segments", len(segments))
+    segments = _enforce_duration_limits(segments)
+    logger.debug("After enforce_duration_limits: %d segments", len(segments))
+    segments = _merge_short_segments(segments)
+    logger.debug("After third merge_short_segments: %d segments", len(segments))
 
     # Guarantee monotonic timings after any synthetic duration adjustments.
     segments = _ensure_monotonic_segments(segments)
@@ -924,6 +927,79 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                 )
             )
             start_idx = end_idx + 1
+
+    return enforced
+
+
+def _enforce_duration_limits(segments: list[Segment]) -> list[Segment]:
+    """Split segments that exceed the maximum allowed duration.
+
+    Args:
+        segments: Candidate segments after CPS enforcement.
+
+    Returns:
+        Segments whose durations do not exceed ``MAX_SEGMENT_DURATION_SEC``.
+    """
+    max_duration = constants.MAX_SEGMENT_DURATION_SEC
+    min_duration = constants.MIN_SEGMENT_DURATION_SEC
+    eps = 1e-6
+    enforced: list[Segment] = []
+
+    for seg in segments:
+        duration = seg.end - seg.start
+        if duration <= max_duration + eps or not seg.words:
+            enforced.append(seg)
+            continue
+
+        chunk_words: list[Word] = []
+        for word in seg.words:
+            if not chunk_words:
+                chunk_words.append(word)
+                continue
+
+            tentative_duration = word.end - chunk_words[0].start
+            if tentative_duration <= max_duration + eps:
+                chunk_words.append(word)
+                continue
+
+            enforced.append(
+                Segment(
+                    text=" ".join(w.text for w in chunk_words),
+                    start=chunk_words[0].start,
+                    end=chunk_words[-1].end,
+                    words=list(chunk_words),
+                )
+            )
+            chunk_words = [word]
+
+        if not chunk_words:
+            continue
+
+        trailing_duration = chunk_words[-1].end - chunk_words[0].start
+        if trailing_duration < min_duration - eps and enforced:
+            prev_seg = enforced.pop()
+            combined_words = prev_seg.words + chunk_words
+            combined_duration = combined_words[-1].end - combined_words[0].start
+            if combined_duration <= max_duration + eps:
+                enforced.append(
+                    Segment(
+                        text=" ".join(w.text for w in combined_words),
+                        start=combined_words[0].start,
+                        end=combined_words[-1].end,
+                        words=combined_words,
+                    )
+                )
+                continue
+            enforced.append(prev_seg)
+
+        enforced.append(
+            Segment(
+                text=" ".join(w.text for w in chunk_words),
+                start=chunk_words[0].start,
+                end=chunk_words[-1].end,
+                words=list(chunk_words),
+            )
+        )
 
     return enforced
 
