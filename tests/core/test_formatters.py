@@ -258,6 +258,54 @@ class TestFormatters:
         # Should have at least one valid entry
         assert "Valid" in formatted or formatted == ""
 
+    def test_srt_formatter__mid_sentence_splitting_with_word_timestamps(self) -> None:
+        """SrtFormatter should split long spoken passages using word timings."""
+        words = [
+            {"text": word, "timestamp": [idx * 0.4, idx * 0.4 + 0.4]}
+            for idx, word in enumerate([
+                "This",
+                "very",
+                "long",
+                "introduction",
+                "about",
+                "weighted",
+                "scorecards",
+                "continues",
+                "without",
+                "pause",
+                "even",
+                "as",
+                "the",
+                "speaker",
+                "keeps",
+                "adding",
+                "details",
+                "that",
+                "should",
+                "still",
+                "form",
+                "multiple",
+                "readable",
+                "captions.",
+            ])
+        ]
+        result = {"text": " ".join(word["text"] for word in words), "chunks": words}
+
+        formatted = SrtFormatter.format(result)
+        cues = [block for block in formatted.strip().split("\n\n") if block.strip()]
+        assert len(cues) >= 3
+
+        def _parse_timestamp(timestamp: str) -> float:
+            hh, mm, rest = timestamp.split(":")
+            ss, ms = rest.split(",")
+            return int(hh) * 3600 + int(mm) * 60 + int(ss) + int(ms) / 1000
+
+        for cue in cues:
+            _, timing_line, *_ = cue.splitlines()
+            start_raw, end_raw = [part.strip() for part in timing_line.split("-->")]
+            duration = _parse_timestamp(end_raw) - _parse_timestamp(start_raw)
+            assert duration <= 4.5 + 1e-3
+
     def test_vtt_formatter__get_file_extension(self) -> None:
         """VttFormatter should return correct file extension."""
         assert VttFormatter.get_file_extension() == "vtt"
