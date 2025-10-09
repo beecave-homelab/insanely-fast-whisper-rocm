@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 from typing import Any
 
 from insanely_fast_whisper_api.core.segmentation import Word, segment_words, split_lines
+from insanely_fast_whisper_api.utils import constants
 from insanely_fast_whisper_api.utils.constants import USE_READABLE_SUBTITLES
 from insanely_fast_whisper_api.utils.format_time import format_srt_time, format_vtt_time
 
@@ -59,6 +61,13 @@ def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
         if avg_duration < 1.5:  # Words are typically short
             logger.debug("Returning %d words (avg_duration < 1.5s)", len(words_list))
             return words_list
+        else:
+            # Reject as sentence-level data; clear the list to avoid returning it later
+            logger.debug(
+                "Rejecting chunks as sentence-level (avg_duration=%.3fs >= 1.5s)",
+                avg_duration,
+            )
+            words_list = []
 
     # Fallback to 'segments' if they contain word-level data
     segments = result.get("segments")
@@ -138,10 +147,17 @@ def build_quality_segments(result: dict[str, Any]) -> list[dict[str, Any]]:
         character-per-second constraints; otherwise the original segments/chunks
         are returned.
     """
-    logger.debug("build_quality_segments: processing result")
+    logger.info("[build_quality_segments] Processing result for quality scoring")
     words = _result_to_words(result)
     if words:
-        logger.debug("Building quality segments from %d words", len(words))
+        word_span = words[-1].end - words[0].start if words else 0
+        avg_word_dur = sum(w.end - w.start for w in words) / len(words)
+        logger.info(
+            "[build_quality_segments] Found %d words (span=%.1fs, avg_dur=%.3fs)",
+            len(words),
+            word_span,
+            avg_word_dur,
+        )
         quality_segments: list[dict[str, Any]] = []
         for seg in segment_words(words):
             quality_segments.append({
@@ -151,13 +167,23 @@ def build_quality_segments(result: dict[str, Any]) -> list[dict[str, Any]]:
                 "text": seg.text.strip(),
             })
         if quality_segments:
-            logger.debug(
-                "Returning %d quality segments from word-level data",
+            max_dur = max(seg["end"] - seg["start"] for seg in quality_segments)
+            # Find the longest segment for debugging
+            longest_seg = max(quality_segments, key=lambda s: s["end"] - s["start"])
+            logger.info(
+                "[build_quality_segments] Returning %d segments, max_duration=%.2fs",
                 len(quality_segments),
+                max_dur,
             )
+            if max_dur > 10:
+                logger.warning(
+                    "[build_quality_segments] Long segment: %.2fs, text=%r",
+                    max_dur,
+                    longest_seg.get("text", "")[:100]
+                )
             return quality_segments
 
-    logger.debug("No word-level data; using fallback segments from chunks/segments")
+    logger.info("[build_quality_segments] No words found, using fallback from raw chunks/segments")
     fallback_segments: list[dict[str, Any]] = []
     for chunk in result.get("segments") or result.get("chunks") or []:
         text = str(chunk.get("text", "")).strip()
@@ -328,13 +354,12 @@ class SrtFormatter(BaseFormatter):
                 )
                 return ""
 
-            # Apply timestamp validation to clean up overlapping segments
-            from insanely_fast_whisper_api.utils.timestamp_utils import (
-                validate_timestamps,
-            )
-
+            # Normalize timestamp format (convert "timestamp" tuples to "start"/"end")
             normalized_chunks: list[dict[str, Any]] = []
             for chunk in chunks:
+                # Skip non-dict chunks (error injection edge case)
+                if not isinstance(chunk, dict):
+                    continue
                 normalized = dict(chunk)
                 has_start = isinstance(normalized.get("start"), (int, float))
                 has_end = isinstance(normalized.get("end"), (int, float))
@@ -352,7 +377,13 @@ class SrtFormatter(BaseFormatter):
                         normalized["end"] = end_val
                 normalized_chunks.append(normalized)
 
+            # Apply timestamp validation to clean up overlapping segments
+            from insanely_fast_whisper_api.utils.timestamp_utils import (
+                validate_timestamps,
+            )
+
             chunks = validate_timestamps(normalized_chunks)
+            chunks = cls._split_chunks_by_duration(chunks)
 
             srt_content = []
             for i, chunk in enumerate(chunks, 1):
@@ -430,6 +461,7 @@ class SrtFormatter(BaseFormatter):
             )
 
             chunks = validate_timestamps(chunks)
+            chunks = cls._split_chunks_by_duration(chunks)
 
             def _get_start_end(c: dict) -> tuple[float | None, float | None]:
                 ts_val = c.get("timestamp")
@@ -524,6 +556,79 @@ class SrtFormatter(BaseFormatter):
         """
         return "srt"
 
+    @staticmethod
+    def _split_chunks_by_duration(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Split chunks so each duration respects ``MAX_SEGMENT_DURATION_SEC``.
+
+        Args:
+            chunks: Normalized chunk dictionaries containing ``text`` and timing
+                information.
+
+        Returns:
+            Chunks with durations capped at ``constants.MAX_SEGMENT_DURATION_SEC``.
+        """
+        if not chunks:
+            return []
+
+        max_duration = constants.MAX_SEGMENT_DURATION_SEC
+        epsilon = 1e-6
+        split: list[dict[str, Any]] = []
+
+        for chunk in chunks:
+            text = str(chunk.get("text", "")).strip()
+            if not text:
+                split.append(chunk)
+                continue
+
+            start = chunk.get("start")
+            end = chunk.get("end")
+            timestamp = chunk.get("timestamp")
+            if (start is None or end is None) and isinstance(timestamp, (list, tuple)):
+                if len(timestamp) == 2:
+                    start, end = timestamp
+
+            if not isinstance(start, (int, float)) or not isinstance(end, (int, float)):
+                split.append(chunk)
+                continue
+
+            duration = float(end) - float(start)
+            if duration <= max_duration + epsilon:
+                split.append(chunk)
+                continue
+
+            words = text.split()
+            if not words:
+                split.append(chunk)
+                continue
+
+            segment_count = max(1, math.ceil(duration / max_duration))
+            segment_count = min(segment_count, len(words))
+            # Ensure monotonic coverage of tokens.
+            for index in range(segment_count):
+                token_start = math.floor(index * len(words) / segment_count)
+                token_end = math.floor((index + 1) * len(words) / segment_count)
+                if token_start == token_end:
+                    token_end = min(token_start + 1, len(words))
+                token_slice = words[token_start:token_end]
+                if not token_slice:
+                    continue
+
+                sub_start = float(start) + (duration * index) / segment_count
+                sub_end = float(start) + (duration * (index + 1)) / segment_count
+                if sub_end > float(end):
+                    sub_end = float(end)
+
+                new_chunk = dict(chunk)
+                new_chunk["text"] = " ".join(token_slice)
+                new_chunk["start"] = sub_start
+                new_chunk["end"] = sub_end
+                has_timestamp = isinstance(new_chunk.get("timestamp"), (list, tuple))
+                if has_timestamp:
+                    new_chunk["timestamp"] = [sub_start, sub_end]
+                split.append(new_chunk)
+
+        return split
+
 
 class VttFormatter(BaseFormatter):
     """Formatter for WebVTT subtitles."""
@@ -567,12 +672,29 @@ class VttFormatter(BaseFormatter):
                 )
                 return "WEBVTT\n\n"
 
+            # Normalize timestamp format (convert "timestamp" tuples to "start"/"end")
+            normalized_chunks: list[dict[str, Any]] = []
+            for chunk in chunks:
+                # Skip non-dict chunks (error injection edge case)
+                if not isinstance(chunk, dict):
+                    continue
+                normalized = dict(chunk)
+                timestamp = normalized.get("timestamp")
+                if (
+                    isinstance(timestamp, (list, tuple))
+                    and len(timestamp) == 2
+                    and isinstance(timestamp[0], (int, float))
+                    and isinstance(timestamp[1], (int, float))
+                ):
+                    normalized["start"], normalized["end"] = timestamp
+                normalized_chunks.append(normalized)
+
             # Apply timestamp validation to clean up overlapping segments
             from insanely_fast_whisper_api.utils.timestamp_utils import (
                 validate_timestamps,
             )
 
-            chunks = validate_timestamps(chunks)
+            chunks = validate_timestamps(normalized_chunks)
 
             vtt_content = ["WEBVTT\n"]
             for chunk in chunks:

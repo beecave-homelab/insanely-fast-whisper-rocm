@@ -123,6 +123,14 @@ def segment_words(words: list[Word]) -> list[Segment]:
         txt = " ".join(w.text for w in sentence)
         wrapped = split_lines(txt)
         lines = wrapped.split("\n")
+        sent_dur = sentence[-1].end - sentence[0].start
+        
+        logger.info(
+            "Processing sentence: dur=%.2fs, len=%d chars, text=%r",
+            sent_dur,
+            len(txt),
+            txt[:60]
+        )
 
         # Keep as single segment if it can be wrapped into ≤2 lines
         # with each line ≤ MAX_LINE_CHARS, regardless of total char count
@@ -131,6 +139,7 @@ def segment_words(words: list[Word]) -> list[Segment]:
             and all(len(line) <= constants.MAX_LINE_CHARS for line in lines)
             and _respect_limits(sentence)
         ):
+            logger.info("  -> Branch A: wrapping works + respects limits")
             segments.append(
                 Segment(
                     text=wrapped,
@@ -141,8 +150,11 @@ def segment_words(words: list[Word]) -> list[Segment]:
             )
         elif not _respect_limits(sentence):
             # If wrapping doesn't work and limits aren't respected, split into clauses
+            logger.info("  -> Branch B: doesn't respect limits, splitting into clauses")
             clauses = _split_at_clause_boundaries(sentence, force_line_limit=False)
+            logger.info("  -> Split into %d clauses", len(clauses))
             for clause in clauses:
+                clause_dur = clause[-1].end - clause[0].start
                 segments.append(
                     Segment(
                         text=" ".join(w.text for w in clause),
@@ -151,7 +163,9 @@ def segment_words(words: list[Word]) -> list[Segment]:
                         words=clause,
                     )
                 )
+                logger.info("  -> Clause: dur=%.2fs", clause_dur)
         else:
+            logger.info("  -> Branch C: wrapping doesn't work, but respects limits")
             segments.append(
                 Segment(
                     text=" ".join(w.text for w in sentence),
@@ -444,18 +458,65 @@ def _split_at_clause_boundaries(
     ):
         return _split_long_text_aggressively(sentence, max_chars=hard_limit)
 
-    # If we have clauses but some are still too long, recursively split them
+    # If we have clauses but some are still too long (by char or duration), split them
     final_clauses = []
     for clause in clauses:
         clause_text = " ".join(w.text for w in clause)
+        clause_duration = clause[-1].end - clause[0].start
         clause_limit = hard_limit or constants.MAX_BLOCK_CHARS
-        if len(clause_text) > clause_limit:
-            sub_clauses = _split_long_text_aggressively(clause, max_chars=clause_limit)
+        
+        # Check both character length AND duration
+        if len(clause_text) > clause_limit or clause_duration > constants.MAX_SEGMENT_DURATION_SEC:
+            # Split this clause into smaller chunks
+            logger.info(
+                "    Clause exceeds limits (dur=%.2fs, len=%d), splitting by duration",
+                clause_duration,
+                len(clause_text)
+            )
+            sub_clauses = _split_by_duration(clause, constants.MAX_SEGMENT_DURATION_SEC)
+            logger.info("    -> Split into %d sub-clauses", len(sub_clauses))
+            for sub in sub_clauses:
+                sub_dur = sub[-1].end - sub[0].start
+                logger.info("      Sub-clause: dur=%.2fs", sub_dur)
             final_clauses.extend(sub_clauses)
         else:
             final_clauses.append(clause)
 
     return final_clauses
+
+
+def _split_by_duration(words: list[Word], max_duration: float) -> list[list[Word]]:
+    """Split words into chunks where each chunk duration <= max_duration.
+
+    Args:
+        words: List of Word objects to split.
+        max_duration: Maximum duration (in seconds) for each chunk.
+
+    Returns:
+        List of word chunks, each respecting the duration limit.
+    """
+    if not words:
+        return []
+
+    chunks = []
+    current_chunk = [words[0]]
+
+    for word in words[1:]:
+        # Calculate duration if we add this word
+        potential_duration = word.end - current_chunk[0].start
+
+        if potential_duration > max_duration:
+            # Current chunk would exceed limit, finalize it and start new one
+            chunks.append(current_chunk)
+            current_chunk = [word]
+        else:
+            current_chunk.append(word)
+
+    # Don't forget the last chunk
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    return chunks
 
 
 def _split_long_text_aggressively(
@@ -760,10 +821,17 @@ def _merge_short_segments(segments: list[Segment]) -> list[Segment]:
         should_merge = (is_short_duration or is_single_word) and not has_sentence_end
 
         if should_merge:
-            # Merge with next segment
-            current_segment.text += " " + next_segment.text
-            current_segment.end = next_segment.end
-            current_segment.words.extend(next_segment.words)
+            # Check if merging would exceed MAX_SEGMENT_DURATION_SEC
+            merged_duration = next_segment.end - current_segment.start
+            if merged_duration <= constants.MAX_SEGMENT_DURATION_SEC:
+                # Safe to merge
+                current_segment.text += " " + next_segment.text
+                current_segment.end = next_segment.end
+                current_segment.words.extend(next_segment.words)
+            else:
+                # Merging would exceed duration limit, finalize current and move on
+                merged_segments.append(current_segment)
+                current_segment = next_segment
         else:
             merged_segments.append(current_segment)
             current_segment = next_segment

@@ -67,9 +67,16 @@ def _convert_to_stable(result: dict[str, Any]) -> dict[str, Any]:
     validated_segments = validate_timestamps(segments)
     converted["segments"] = validated_segments
 
-    logger.info(
-        "_convert_to_stable returning %d validated segments", len(validated_segments)
-    )
+    # Debug: check if segments are word-level or sentence-level
+    if validated_segments:
+        sample_seg = validated_segments[0]
+        avg_seg_dur = sum(s["end"] - s["start"] for s in validated_segments[:10]) / min(10, len(validated_segments))
+        logger.info(
+            "_convert_to_stable: %d segments, avg_dur=%.3fs, sample_text=%r",
+            len(validated_segments),
+            avg_seg_dur,
+            sample_seg.get("text", "")[:30]
+        )
     return converted
 
 
@@ -168,6 +175,17 @@ def stabilize_timestamps(
 
                 if _segments_have_timestamps(merged["segments"]):
                     merged.pop("chunks", None)
+
+            # Debug: check output from stable-ts
+            output_segs = merged.get("segments", [])
+            if output_segs:
+                avg_out_dur = sum(s["end"] - s["start"] for s in output_segs[:10]) / min(10, len(output_segs))
+                logger.info(
+                    "stable-ts output: %d segments, avg_dur=%.3fs",
+                    len(output_segs),
+                    avg_out_dur
+                )
+
             merged.setdefault("segments_count", len(refined_dict.get("segments", [])))
             merged.setdefault("stabilization_path", func_name)
             if progress_cb:
@@ -194,9 +212,14 @@ def stabilize_timestamps(
             check_sorted=False,
         )
         refined_dict = _to_dict(refined)
-        logger.info(
-            "stable-ts succeeded: segments=%d", len(refined_dict.get("segments", []))
-        )
+        output_segs = refined_dict.get("segments", [])
+        if output_segs:
+            avg_out_dur = sum(s.get("end", 0) - s.get("start", 0) for s in output_segs[:10]) / min(10, len(output_segs))
+            logger.info(
+                "stable-ts (transcribe_any) output: %d segments, avg_dur=%.3fs",
+                len(output_segs),
+                avg_out_dur
+            )
         if progress_cb:
             progress_cb("stable-ts: refinement successful")
         merged = {**result, **refined_dict, "stabilized": True}
