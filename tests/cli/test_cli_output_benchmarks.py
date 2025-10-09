@@ -326,11 +326,24 @@ class TestOutputAndBenchmarks:
         # Assert collector called with format_quality including srt.score
         assert mock_collector.collect.called
         _, kwargs = mock_collector.collect.call_args
-        # format_quality should exist and include srt with a float score
+        # format_quality should exist and include detailed srt diagnostics
         fq = kwargs.get("format_quality")
         assert isinstance(fq, dict) and "srt" in fq
-        assert isinstance(fq["srt"], dict)
-        assert isinstance(fq["srt"].get("score"), float)
+        srt_details = fq["srt"]
+        assert isinstance(srt_details, dict)
+        assert isinstance(srt_details.get("score"), float)
+        details = srt_details["details"]
+        assert set(details) >= {
+            "overlap_violations",
+            "hyphen_normalization_ok",
+            "line_length_violations",
+            "line_length_violation_ratio",
+            "cps_within_range_ratio",
+            "duration_stats",
+            "cps_histogram",
+            "boundary_counts",
+            "sample_offenders",
+        }
 
     @patch("insanely_fast_whisper_api.benchmarks.collector.BenchmarkCollector")
     def test_benchmark_path_printed_even_when_quiet(

@@ -174,6 +174,70 @@ class TestSrtFormattingEnhancements:
         assert len(result) == 2  # Merged first two sentences
         assert result[0].end - result[0].start >= constants.MIN_SEGMENT_DURATION_SEC
 
+    def test_fallback_splits_long_chunks_by_duration(self) -> None:
+        """Chunk fallback should split long durations into bounded SRT blocks."""
+        long_duration = constants.MAX_SEGMENT_DURATION_SEC * 3.0
+        chunk_text = " ".join(
+            [
+                "Focusing",
+                "on",
+                "distilled",
+                "insights",
+                "helps",
+                "teams",
+                "move",
+                "faster",
+                "with",
+                "confidence",
+                "around",
+                "mission",
+                "critical",
+                "software",
+                "decisions",
+                "and",
+                "keeps",
+                "stakeholders",
+                "aligned",
+                "throughout",
+                "the",
+                "evaluation",
+                "process",
+                "even",
+                "when",
+                "constraints",
+                "shift",
+                "unexpectedly",
+                "mid",
+                "project",
+            ]
+        )
+
+        result = {
+            "chunks": [
+                {
+                    "text": chunk_text,
+                    "start": 0.0,
+                    "end": long_duration,
+                }
+            ]
+        }
+
+        srt_output = SrtFormatter.format(result)
+        blocks = [block for block in srt_output.strip().split("\n\n") if block.strip()]
+        assert len(blocks) > 1, "Expected long chunk to split into multiple segments"
+
+        tolerance = 1e-6
+        for block in blocks:
+            lines = block.split("\n")
+            assert len(lines) >= 2
+            timing_line = lines[1]
+            assert "-->" in timing_line
+            start_raw, end_raw = timing_line.split("-->")
+            start_seconds = self._parse_srt_time(start_raw.strip())
+            end_seconds = self._parse_srt_time(end_raw.strip())
+            duration = end_seconds - start_seconds
+            assert duration <= constants.MAX_SEGMENT_DURATION_SEC + tolerance
+
     def test_srt_overlapping_timestamps_validation(self) -> None:
         """Test that SRT formatter handles overlapping timestamps correctly.
 

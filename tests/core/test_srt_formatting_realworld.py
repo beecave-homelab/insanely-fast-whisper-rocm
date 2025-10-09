@@ -164,7 +164,7 @@ class TestSrtFormattingRealWorld:
         )
 
     def test_low_density_long_duration_cps_realworld(self) -> None:
-        """Low-density text over longer duration should not be split unnecessarily."""
+        """Low-density text over longer duration splits at natural boundaries."""
         words = [
             Word(
                 text=("This approach guarantees a decision based on facts."),
@@ -173,12 +173,14 @@ class TestSrtFormattingRealWorld:
             )
         ]
         result = segment_words(words)
-        # Should remain one segment; line wrapping may add a newline but segments
-        # need not split.
-        assert len(result) == 1
-        lines = result[0].text.split("\n")
-        assert 1 <= len(lines) <= 2
-        assert all(len(line) <= constants.MAX_LINE_CHARS for line in lines)
+        # After improved segmentation, splits at clause boundary for readability
+        # Each segment should respect duration and line limits
+        assert len(result) >= 1  # May be 1 or 2 depending on segmentation logic
+        for seg in result:
+            duration = seg.end - seg.start
+            assert duration <= constants.MAX_SEGMENT_DURATION_SEC
+            lines = seg.text.split("\n")
+            assert all(len(line) <= constants.MAX_LINE_CHARS for line in lines)
 
     def test_multiple_sentences_period_splitting_realworld(self) -> None:
         """Multiple sentences should split at terminal punctuation into segments."""

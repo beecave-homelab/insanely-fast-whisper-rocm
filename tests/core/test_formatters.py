@@ -313,3 +313,97 @@ class TestFormatters:
     def test_srt_formatter__get_file_extension(self) -> None:
         """SrtFormatter should return correct file extension."""
         assert SrtFormatter.get_file_extension() == "srt"
+
+
+class TestResultToWords:
+    """Test suite for _result_to_words helper function."""
+
+    def test_result_to_words__detects_sparse_word_timestamps(self) -> None:
+        """_result_to_words should detect word-level data even with sparse timing.
+
+        This reproduces the benchmark bug where word detection rejects valid
+        word-level timestamps when average duration >= 1.5s (sparse audio with
+        long silences between words).
+        """
+        from insanely_fast_whisper_api.core.formatters import _result_to_words
+
+        # Sparse words: 27.34s total / 12 words = 2.28s avg
+        # This should STILL be detected as word-level data
+        result = {
+            "chunks": [
+                {"text": "It", "timestamp": [0.0, 0.5]},
+                {"text": "demands", "timestamp": [3.0, 3.7]},
+                {"text": "that", "timestamp": [6.0, 6.2]},
+                {"text": "we,", "timestamp": [9.0, 9.1]},
+                {"text": "as", "timestamp": [12.0, 12.1]},
+                {"text": "the", "timestamp": [15.0, 15.1]},
+                {"text": "procuring", "timestamp": [18.0, 18.7]},
+                {"text": "entity,", "timestamp": [21.0, 21.5]},
+                {"text": "precisely", "timestamp": [24.0, 24.6]},
+                {"text": "priorities", "timestamp": [27.0, 27.7]},
+                {"text": "up", "timestamp": [30.0, 30.1]},
+                {"text": "front.", "timestamp": [33.0, 33.3]},
+            ]
+        }
+
+        words = _result_to_words(result)
+
+        # Debug: print what happened
+        if words:
+            total_duration = sum(w.end - w.start for w in words)
+            avg_duration = total_duration / len(words)
+            print(f"\n✓ Words detected: {len(words)}")
+            print(f"  Total duration of words: {total_duration:.2f}s")
+            print(f"  Average word duration: {avg_duration:.2f}s")
+            # Calculate span from first to last
+            span = words[-1].end - words[0].start
+            print(f"  Span (first to last): {span:.2f}s")
+        else:
+            print("\n✗ Words NOT detected (returned None)")
+
+        # Should detect as word-level data despite sparse timing
+        assert words is not None, (
+            "Word detection failed for sparse word timestamps. "
+            "Average duration was high due to silences, but these are "
+            "still individual words that should use the segmentation pipeline."
+        )
+        assert len(words) == 12
+
+    def test_result_to_words__rejects_sentence_level_chunks(self) -> None:
+        """_result_to_words should reject sentence-level chunks (not word-level).
+
+        When chunks contain multi-word sentences with long durations,
+        they should be rejected as non-word-level data.
+        """
+        from insanely_fast_whisper_api.core.formatters import _result_to_words
+
+        # Sentence-level chunks: each chunk is a full sentence spanning multiple seconds
+        # Average duration: (23.84 + 24.96) / 2 = 24.4s - should reject
+        result = {
+            "chunks": [
+                {
+                    "text": "HR systems, and compliance with standards",
+                    "timestamp": [21.359, 45.199],  # 23.84s duration
+                },
+                {
+                    "text": "I'll be arguing that the control and",
+                    "timestamp": [65.258, 90.218],  # 24.96s duration
+                },
+            ]
+        }
+
+        words = _result_to_words(result)
+
+        if words:
+            total_duration = sum(w.end - w.start for w in words)
+            avg_duration = total_duration / len(words)
+            print(f"\n✗ Incorrectly detected as words: {len(words)}")
+            print(f"  Average duration: {avg_duration:.2f}s")
+        else:
+            print("\n✓ Correctly rejected as non-word-level")
+
+        # Should reject sentence-level data
+        assert words is None, (
+            "Sentence-level chunks were incorrectly detected as word-level. "
+            "Average chunk duration was 24.4s, which should fail the heuristic."
+        )
