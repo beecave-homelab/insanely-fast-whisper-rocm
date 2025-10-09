@@ -108,7 +108,7 @@ MODEL=""               # Back-compat single-model flag; accumulated into MODELS
 DEVICE=""              # Let CLI defaults apply when empty
 DTYPE=""               # float16|float32
 LANGUAGE=""            # e.g. en; empty=auto
-EXPORT_FORMAT="all"     # all|json|srt|txt
+EXPORT_FORMAT="srt"      # srt|json|txt|all
 TIMESTAMP_TYPES=(chunk word)
 BATCH_CHUNK="12"        # default batch for chunk timestamps
 BATCH_WORD="4"          # default batch for word timestamps
@@ -141,7 +141,7 @@ ${BOLD}${CYAN}Options:${RESET}
       --device NAME                   Device for inference (e.g., cuda:0, cpu)
       --dtype {float16,float32}       Data type for inference
       --language CODE                 Language code (empty=auto)
-      --export-format FMT             Export format: all|json|srt|txt (default: $EXPORT_FORMAT)
+      --export-format FMT             Export format: srt|json|txt|all (default: $EXPORT_FORMAT)
       --timestamp-types LIST          Comma-separated: chunk,word (default: chunk,word)
       --batch-sizes LIST              Comma-separated: CHUNK,WORD (default: ${BATCH_CHUNK},${BATCH_WORD})
       --batch-chunk N                 Batch size for chunk timestamps (overrides first item)
@@ -339,7 +339,7 @@ ensure_defaults() {
   if [[ ${#MODELS[@]} -eq 0 ]]; then
     MODELS=(
       "openai/whisper-medium"
-      "distil-whisper/distil-large-v3"
+      "distil-whisper/distil-large-v3.5"
     )
   fi
 }
@@ -350,6 +350,9 @@ build_cmd() {
   local batch_size="$3"
   local model_name="$4"
   local fmt_list="${5:-$EXPORT_FORMAT}"
+  local stabilize_flag="${6:-$STABILIZE}"
+  local demucs_flag="${7:-$DEMUCS}"
+  local vad_flag="${8:-$VAD}"
 
   local cmd=(pdm run cli transcribe)
   cmd+=("--timestamp-type" "$ts_type")
@@ -371,9 +374,9 @@ build_cmd() {
   if [[ "$NO_TIMESTAMPS" == true ]]; then cmd+=("--no-timestamps"); fi
 
   # stable-ts toggles
-  if [[ "$STABILIZE" == true ]]; then cmd+=("--stabilize"); else cmd+=("--no-stabilize"); fi
-  if [[ "$DEMUCS" == true ]]; then cmd+=("--demucs"); else cmd+=("--no-demucs"); fi
-  if [[ "$VAD" == true ]]; then cmd+=("--vad"); else cmd+=("--no-vad"); fi
+  if [[ "$stabilize_flag" == true ]]; then cmd+=("--stabilize"); else cmd+=("--no-stabilize"); fi
+  if [[ "$demucs_flag" == true ]]; then cmd+=("--demucs"); else cmd+=("--no-demucs"); fi
+  if [[ "$vad_flag" == true ]]; then cmd+=("--vad"); else cmd+=("--no-vad"); fi
   if [[ -n "$VAD_THRESHOLD" ]]; then cmd+=("--vad-threshold" "$VAD_THRESHOLD"); fi
 
   # UX toggles
@@ -419,6 +422,22 @@ main() {
     echo -e "${BOLD}${MAGENTA}== Model: ${model_name} ==${RESET}"
     for audio in "${AUDIO_FILES[@]}"; do
       for ts_type in "${TIMESTAMP_TYPES[@]}"; do
+        local stable_variants
+        if [[ "$ts_type" == "word" ]]; then
+          stable_variants=(
+            "baseline|false|false|false"
+            "stabilize|true|false|false"
+            "demucs|false|true|false"
+            "vad|false|false|true"
+            "stabilize_demucs|true|true|false"
+            "stabilize_vad|true|false|true"
+            "demucs_vad|false|true|true"
+            "stabilize_demucs_vad|true|true|true"
+          )
+        else
+          stable_variants=("default|$STABILIZE|$DEMUCS|$VAD")
+        fi
+
         # Resolve batch by timestamp type
         if [[ "$ts_type" == "chunk" ]]; then
           batch="$BATCH_CHUNK"
@@ -426,15 +445,23 @@ main() {
           batch="$BATCH_WORD"
         fi
 
-        echo -e "${YELLOW}-- Running:${RESET} ${BLUE}$audio${RESET} ${DIM}| ts=${ts_type} | batch=${batch}${RESET}"
-        for ((i=1; i<=REPEATS; i++)); do
-          echo -e "   ${DIM}Attempt $i/$REPEATS${RESET}"
-          # Single invocation; CLI handles 'all' or any provided format(s)
-          cmd_str=$(build_cmd "$audio" "$ts_type" "$batch" "$model_name" "$EXPORT_FORMAT")
-          echo -e "   ${BOLD}Command:${RESET} ${CYAN}$cmd_str${RESET}"
-          if [[ "$DRY_RUN" == false ]]; then
-            run_cmd_str "$cmd_str"
-          fi
+        for variant in "${stable_variants[@]}"; do
+          local variant_label
+          local variant_stabilize
+          local variant_demucs
+          local variant_vad
+          IFS='|' read -r variant_label variant_stabilize variant_demucs variant_vad <<< "$variant"
+
+          echo -e "${YELLOW}-- Running:${RESET} ${BLUE}$audio${RESET} ${DIM}| ts=${ts_type} | batch=${batch} | variant=${variant_label} | stabilize=${variant_stabilize} | demucs=${variant_demucs} | vad=${variant_vad}${RESET}"
+          for ((i=1; i<=REPEATS; i++)); do
+            echo -e "   ${DIM}Attempt $i/$REPEATS${RESET}"
+            # Single invocation; CLI handles selected export format(s)
+            cmd_str=$(build_cmd "$audio" "$ts_type" "$batch" "$model_name" "$EXPORT_FORMAT" "$variant_stabilize" "$variant_demucs" "$variant_vad")
+            echo -e "   ${BOLD}Command:${RESET} ${CYAN}$cmd_str${RESET}"
+            if [[ "$DRY_RUN" == false ]]; then
+              run_cmd_str "$cmd_str"
+            fi
+          done
         done
       done
     done
