@@ -42,10 +42,11 @@ except ImportError:  # pragma: no cover
     pyamdgpuinfo = None  # type: ignore
 
 try:
-    from pydantic import BaseModel  # type: ignore
+    from pydantic import BaseModel, ConfigDict  # type: ignore
 except ImportError:  # pragma: no cover
     # The core package already depends on pydantic; but guard just in case
-    BaseModel = object  # type: ignore
+    BaseModel = object  # type: ignore[assignment]
+    ConfigDict = dict  # type: ignore[misc,assignment]
 
 __all__ = [
     "BenchmarkResult",
@@ -70,15 +71,7 @@ class BenchmarkResult(BaseModel):  # type: ignore[misc]
 
     extra: dict[str, Any] | None = None
 
-    class Config:
-        """Pydantic configuration for the benchmark result model.
-
-        Notes:
-            The model is frozen to make instances hashable and safer to use as
-            values in collections.
-        """
-
-        frozen = True  # make it hashable / safe
+    model_config: ConfigDict = ConfigDict(frozen=True)
 
 
 class BenchmarkCollector:

@@ -59,6 +59,10 @@ get_variant_name() {
 
 # Group files by timestamp type
 declare -A files_by_ts_type
+# Track best performer per timestamp type
+declare -A best_score_by_type
+declare -A best_file_by_type
+declare -A best_variant_by_type
 
 for f in "${FILES[@]}"; do
     ts_type=$(get_timestamp_type "$f")
@@ -67,9 +71,30 @@ for f in "${FILES[@]}"; do
     else
         files_by_ts_type[$ts_type]="${files_by_ts_type[$ts_type]} $f"
     fi
+    
+    # Track best score for this timestamp type
+    score=$(jq -r '.format_quality.srt.score' "$f" 2>/dev/null)
+    if [ -n "$score" ] && [ "$score" != "null" ]; then
+        current_best="${best_score_by_type[$ts_type]:-0}"
+        # Use awk for floating point comparison
+        is_better=$(awk -v score="$score" -v best="$current_best" 'BEGIN { print (score > best) ? 1 : 0 }')
+        if [ "$is_better" -eq 1 ]; then
+            best_score_by_type[$ts_type]="$score"
+            best_file_by_type[$ts_type]="$f"
+            best_variant_by_type[$ts_type]=$(get_variant_name "$f")
+        fi
+    fi
 done
 
-colorize "$BOLD$BLUE" "📊 Benchmark Groups by Timestamp Type"
+# Extract model name from first file
+first_file="${FILES[0]}"
+model_name=$(jq -r '.config.model' "$first_file" 2>/dev/null)
+
+colorize "$BOLD$BLUE" "📊 Benchmark Overview"
+echo ""
+colorize "$CYAN" "  🤖 Model: ${model_name}"
+echo ""
+colorize "$BOLD$BLUE" "📊 Groups by Timestamp Type"
 echo ""
 for ts_type in "${!files_by_ts_type[@]}"; do
     count=$(echo "${files_by_ts_type[$ts_type]}" | wc -w)
@@ -81,7 +106,7 @@ echo ""
 for ts_type in "${!files_by_ts_type[@]}"; do
     colorize "$DIM" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    colorize "$BOLD$MAGENTA" "🎯 Timestamp Type: ${ts_type}"
+    colorize "$BOLD$MAGENTA" "🎯 Timestamp Type: ${ts_type} | Model: ${model_name}"
     echo ""
     
     # Convert space-separated string to array
@@ -174,3 +199,49 @@ done
 colorize "$DIM" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 colorize "$BOLD$GREEN" "✅ Comparison complete - Analyzed ${#FILES[@]} benchmarks across ${#files_by_ts_type[@]} timestamp type(s)"
+echo ""
+
+# Best Performers Summary
+colorize "$DIM" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+colorize "$BOLD$CYAN" "🏆 Best Performers Summary"
+echo ""
+colorize "$DIM" "Model: ${model_name}"
+echo ""
+
+for ts_type in "${!best_score_by_type[@]}"; do
+    best_file="${best_file_by_type[$ts_type]}"
+    best_variant="${best_variant_by_type[$ts_type]}"
+    best_score="${best_score_by_type[$ts_type]}"
+    
+    # Extract additional metrics from best file
+    max_dur=$(jq -r '.format_quality.srt.details.duration_stats.max_seconds' "$best_file" 2>/dev/null | cut -c1-4)
+    avg_dur=$(jq -r '.format_quality.srt.details.duration_stats.average_seconds' "$best_file" 2>/dev/null | cut -c1-4)
+    too_short=$(jq -r '.format_quality.srt.details.boundary_counts.too_short' "$best_file" 2>/dev/null)
+    within=$(jq -r '.format_quality.srt.details.boundary_counts.within_range' "$best_file" 2>/dev/null)
+    too_long=$(jq -r '.format_quality.srt.details.boundary_counts.too_long' "$best_file" 2>/dev/null)
+    segments=$((too_short + within + too_long))
+    srt_file="transcripts-srt/$(basename "$best_file" .json).srt"
+    
+    # Format score to 3 decimal places using awk
+    best_score_formatted=$(echo "$best_score" | awk '{printf "%.3f", $1}')
+    
+    colorize "$BOLD$MAGENTA" "📍 Timestamp Type: ${ts_type}"
+    colorize "$BOLD$GREEN" "   Winner: ${best_variant}"
+    echo ""
+    colorize "$YELLOW" "   📊 Quality Score: ${best_score_formatted}"
+    colorize "$CYAN" "   ⏱️  Duration: max=${max_dur}s, avg=${avg_dur}s"
+    colorize "$BLUE" "   📝 Segments: ${segments} total"
+    
+    # Color-code violations
+    if [ "$too_long" -gt 0 ]; then
+        colorize "$RED" "   ⚠️  Violations: ${too_short} too short, ${too_long} too long (${within} within range)"
+    else
+        colorize "$GREEN" "   ✅ Violations: ${too_short} too short, ${too_long} too long (${within} within range)"
+    fi
+    
+    colorize "$DIM" "   📄 File: ${srt_file}"
+    echo ""
+done
+
+colorize "$DIM" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
