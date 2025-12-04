@@ -1,9 +1,10 @@
 [project]
 name = "insanely-fast-whisper-api"
-version = "1.0.0"
+version = "1.0.1"
 description = "A FastAPI wrapper around a custom Whisper-based ASR pipeline (ROCM version)"
+requires-python = "~=3.10"
 authors = [
-    {name = "elvee", email = "lowie@beecave.nl"},
+    {name = "elvee"},
 ]
 dependencies = [
     "fastapi==0.116.1",
@@ -25,22 +26,26 @@ dependencies = [
     "huggingface-hub>=0.34.4",
     "soundfile>=0.12",
 ]
-requires-python = "~=3.10"
+
 
 [project.scripts]
 insanely-fast-whisper-cli = "insanely_fast_whisper_api.cli.cli:main"
 insanely-fast-whisper-webui = "insanely_fast_whisper_api.webui.app:launch_webui"
 insanely-fast-whisper-api = "insanely_fast_whisper_api.__main__:main"
 
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+
 [tool.hatch.metadata]
 allow-direct-references = true
 
+
 [tool.pdm]
 distribution = true
+
 
 [tool.pdm.scripts]
 start-webui = "insanely-fast-whisper-webui"
@@ -67,12 +72,14 @@ type = "index"
 exclude_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm"]
 include_packages = ["*"]
 
+
 [[tool.pdm.source]]
 name = "rocm-wheels"
 url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/"
 verify_ssl = true
 type = "find_links"
 include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm"]
+
 
 [project.optional-dependencies]
 dev = [
@@ -99,16 +106,21 @@ bench = [
 
 # bench-torch-2-0-1 = [
 #     "torch==2.0.1",
+#     "torchaudio==2.0.1",
 # ]
 # bench-torch-2-3-0 = [
-#     "torch==2.3.0"
+#     "torch==2.3.0",
+#     "torchaudio==2.3.0",
 # ]
 # bench-torch-2-4-1 = [
-#     "torch==2.4.1"
+#     "torch==2.4.1",
+#     "torchaudio==2.4.1",
 # ]
 # bench-torch-2-6-0 = [
-#     "torch==2.6.0"
+#     "torch==2.6.0",
+#     "torchaudio==2.6.0",
 # ]
+
 
 [tool.pdm.resolution]
 excludes = ["torch==2.0.1", "torch==2.3.0", "torch==2.4.1", "torch==2.6.0"]
@@ -121,6 +133,7 @@ line-length = 88
 target-version = "py310"                # adjust if you target 3.9/3.12
 preview = true                          # needed for DOC + FA rules
 src = ["insanely_fast_whisper_api"]     # first-party package path
+
 
 [tool.ruff.lint]
 select = [
@@ -139,8 +152,10 @@ select = [
 # Optional: stricter typing rules (discourage bare Any)
 extend-select = ["ANN401"]
 
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
 
 [tool.ruff.lint.isort]
 section-order = [
@@ -151,6 +166,7 @@ section-order = [
   "local-folder",
 ]
 known-first-party = ["insanely_fast_whisper_api"]
+
 
 [tool.ruff.lint.per-file-ignores]
 # Temporarily ignore long-line checks in tests
@@ -168,6 +184,7 @@ python_functions = ["test_*"]
 markers = [
     "integration: mark tests that hit real external integrations or slower paths",
 ]
+
 
 [tool.coverage.run]
 omit = [
