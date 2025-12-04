@@ -836,9 +836,8 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 },
                 formats=["txt", "srt", "json"],
             )
-            all_zip_builder.add_summary(include_stats=True)
 
-            all_zip_path, _ = all_zip_builder.build()  # Call build() to get the path
+            all_zip_path, _ = all_zip_builder.build()  # build() adds summary
 
             zip_btn_update = gr.update(
                 value=all_zip_path,  # Use the returned path
@@ -884,9 +883,8 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     },
                     formats=["txt"],
                 )
-                txt_zip_builder.add_summary(include_stats=True)
 
-                txt_zip_path, _ = txt_zip_builder.build()
+                txt_zip_path, _ = txt_zip_builder.build()  # build() adds summary
                 txt_btn_update = gr.update(
                     value=txt_zip_path,
                     visible=True,
@@ -931,9 +929,8 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     },
                     formats=["srt"],
                 )
-                srt_zip_builder.add_summary(include_stats=True)
 
-                srt_zip_path, _ = srt_zip_builder.build()
+                srt_zip_path, _ = srt_zip_builder.build()  # build() adds summary
                 srt_btn_update = gr.update(
                     value=srt_zip_path,
                     visible=True,
@@ -981,9 +978,8 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     },
                     formats=["json"],
                 )
-                json_zip_builder.add_summary(include_stats=True)
 
-                json_zip_path, _ = json_zip_builder.build()
+                json_zip_path, _ = json_zip_builder.build()  # build() adds summary
                 json_btn_update = gr.update(
                     value=json_zip_path,
                     visible=True,
