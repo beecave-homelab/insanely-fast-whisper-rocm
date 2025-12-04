@@ -48,8 +48,16 @@ start-webui-debug = "insanely-fast-whisper-webui --debug"
 start-api = "insanely-fast-whisper-api"
 start-api-verbose = "insanely-fast-whisper-api -v"
 cli = "insanely-fast-whisper-cli"
+
 setup-config = {call = "scripts.setup_config:main"}
 hf-models = {call = "scripts.hf_models:_main"}
+
+lint = "ruff check ."
+format = "ruff format ."
+fix = "ruff check --fix ."
+test = "pytest -q"
+test-cov = "pytest --cov=insanely_fast_whisper_api --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=term-missing:skip-covered --cov-report=xml"
+
 
 [[tool.pdm.source]]
 name = "pypi"
