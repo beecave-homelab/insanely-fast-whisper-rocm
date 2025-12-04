@@ -70,12 +70,15 @@ def _convert_to_stable(result: dict[str, Any]) -> dict[str, Any]:
     # Debug: check if segments are word-level or sentence-level
     if validated_segments:
         sample_seg = validated_segments[0]
-        avg_seg_dur = sum(s["end"] - s["start"] for s in validated_segments[:10]) / min(10, len(validated_segments))
+        max_segments = min(10, len(validated_segments))
+        avg_seg_dur = (
+            sum(s["end"] - s["start"] for s in validated_segments[:10]) / max_segments
+        )
         logger.info(
             "_convert_to_stable: %d segments, avg_dur=%.3fs, sample_text=%r",
             len(validated_segments),
             avg_seg_dur,
-            sample_seg.get("text", "")[:30]
+            sample_seg.get("text", "")[:30],
         )
     return converted
 
@@ -179,11 +182,14 @@ def stabilize_timestamps(
             # Debug: check output from stable-ts
             output_segs = merged.get("segments", [])
             if output_segs:
-                avg_out_dur = sum(s["end"] - s["start"] for s in output_segs[:10]) / min(10, len(output_segs))
+                max_segments = min(10, len(output_segs))
+                avg_out_dur = (
+                    sum(s["end"] - s["start"] for s in output_segs[:10]) / max_segments
+                )
                 logger.info(
                     "stable-ts output: %d segments, avg_dur=%.3fs",
                     len(output_segs),
-                    avg_out_dur
+                    avg_out_dur,
                 )
 
             merged.setdefault("segments_count", len(refined_dict.get("segments", [])))
@@ -214,11 +220,15 @@ def stabilize_timestamps(
         refined_dict = _to_dict(refined)
         output_segs = refined_dict.get("segments", [])
         if output_segs:
-            avg_out_dur = sum(s.get("end", 0) - s.get("start", 0) for s in output_segs[:10]) / min(10, len(output_segs))
+            max_segments = min(10, len(output_segs))
+            avg_out_dur = (
+                sum(s.get("end", 0) - s.get("start", 0) for s in output_segs[:10])
+                / max_segments
+            )
             logger.info(
                 "stable-ts (transcribe_any) output: %d segments, avg_dur=%.3fs",
                 len(output_segs),
-                avg_out_dur
+                avg_out_dur,
             )
         if progress_cb:
             progress_cb("stable-ts: refinement successful")

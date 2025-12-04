@@ -179,11 +179,14 @@ def build_quality_segments(result: dict[str, Any]) -> list[dict[str, Any]]:
                 logger.warning(
                     "[build_quality_segments] Long segment: %.2fs, text=%r",
                     max_dur,
-                    longest_seg.get("text", "")[:100]
+                    longest_seg.get("text", "")[:100],
                 )
             return quality_segments
 
-    logger.info("[build_quality_segments] No words found, using fallback from raw chunks/segments")
+    logger.info(
+        "[build_quality_segments] No words found, using fallback from raw "
+        "chunks/segments"
+    )
     fallback_segments: list[dict[str, Any]] = []
     for chunk in result.get("segments") or result.get("chunks") or []:
         text = str(chunk.get("text", "")).strip()

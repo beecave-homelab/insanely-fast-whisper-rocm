@@ -124,12 +124,12 @@ def segment_words(words: list[Word]) -> list[Segment]:
         wrapped = split_lines(txt)
         lines = wrapped.split("\n")
         sent_dur = sentence[-1].end - sentence[0].start
-        
+
         logger.info(
             "Processing sentence: dur=%.2fs, len=%d chars, text=%r",
             sent_dur,
             len(txt),
-            txt[:60]
+            txt[:60],
         )
 
         # Keep as single segment if it can be wrapped into ≤2 lines
@@ -464,14 +464,17 @@ def _split_at_clause_boundaries(
         clause_text = " ".join(w.text for w in clause)
         clause_duration = clause[-1].end - clause[0].start
         clause_limit = hard_limit or constants.MAX_BLOCK_CHARS
-        
+
         # Check both character length AND duration
-        if len(clause_text) > clause_limit or clause_duration > constants.MAX_SEGMENT_DURATION_SEC:
+        if (
+            len(clause_text) > clause_limit
+            or clause_duration > constants.MAX_SEGMENT_DURATION_SEC
+        ):
             # Split this clause into smaller chunks
             logger.info(
                 "    Clause exceeds limits (dur=%.2fs, len=%d), splitting by duration",
                 clause_duration,
-                len(clause_text)
+                len(clause_text),
             )
             sub_clauses = _split_by_duration(clause, constants.MAX_SEGMENT_DURATION_SEC)
             logger.info("    -> Split into %d sub-clauses", len(sub_clauses))

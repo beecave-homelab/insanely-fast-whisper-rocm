@@ -112,30 +112,26 @@ def compute_srt_quality(
                 cps_histogram["within_range"] += 1
             elif cps < constants.MIN_CPS:
                 cps_histogram["below_min"] += 1
-                cps_offenders.append(
-                    {
-                        "segment_index": index,
-                        "start": start,
-                        "end": end,
-                        "duration_seconds": float(dur),
-                        "cps": float(cps),
-                        "category": "below_min",
-                        "text": text,
-                    }
-                )
+                cps_offenders.append({
+                    "segment_index": index,
+                    "start": start,
+                    "end": end,
+                    "duration_seconds": float(dur),
+                    "cps": float(cps),
+                    "category": "below_min",
+                    "text": text,
+                })
             else:
                 cps_histogram["above_max"] += 1
-                cps_offenders.append(
-                    {
-                        "segment_index": index,
-                        "start": start,
-                        "end": end,
-                        "duration_seconds": float(dur),
-                        "cps": float(cps),
-                        "category": "above_max",
-                        "text": text,
-                    }
-                )
+                cps_offenders.append({
+                    "segment_index": index,
+                    "start": start,
+                    "end": end,
+                    "duration_seconds": float(dur),
+                    "cps": float(cps),
+                    "category": "above_max",
+                    "text": text,
+                })
         except Exception:
             # Ignore malformed segments
             continue
@@ -227,14 +223,12 @@ def _collect_line_length_offenders(text_lines: list[str]) -> list[dict[str, Any]
     max_chars = constants.MAX_LINE_CHARS
     for index, line in enumerate(text_lines, start=1):
         if len(line) > max_chars:
-            offenders.append(
-                {
-                    "line_index": index,
-                    "line": line,
-                    "length": len(line),
-                    "limit": max_chars,
-                }
-            )
+            offenders.append({
+                "line_index": index,
+                "line": line,
+                "length": len(line),
+                "limit": max_chars,
+            })
             if len(offenders) >= 5:
                 break
     return offenders
