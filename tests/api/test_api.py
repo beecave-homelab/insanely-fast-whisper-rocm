@@ -75,7 +75,12 @@ DUMMY_WAV_HEADER = b"RIFF$\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x
 def test_transcription_with_stabilization_options(
     mock_asr_pipeline: MagicMock, client: TestClient
 ) -> None:
-    """Test that stabilization options are passed to the pipeline for transcription."""
+    """Test that stabilization options are NOT passed to process(), but are handled separately.
+
+    The stabilize/demucs/vad/vad_threshold params are handled by stabilize_timestamps()
+    which is called AFTER asr_pipeline.process(). The process() method should only
+    receive the core ASR parameters.
+    """
     audio_file = io.BytesIO(DUMMY_WAV_HEADER)
     response = client.post(
         "/v1/audio/transcriptions",
@@ -89,17 +94,29 @@ def test_transcription_with_stabilization_options(
     )
     assert response.status_code == 200
     mock_asr_pipeline.process.assert_called_once()
-    call_args, call_kwargs = mock_asr_pipeline.process.call_args
-    assert call_kwargs.get("stabilize") is True
-    assert call_kwargs.get("demucs") is True
-    assert call_kwargs.get("vad") is True
-    assert call_kwargs.get("vad_threshold") == 0.7
+    _, call_kwargs = mock_asr_pipeline.process.call_args
+
+    # Verify stabilization params are NOT passed to process()
+    # They are handled by separate stabilize_timestamps() post-processing
+    assert "stabilize" not in call_kwargs
+    assert "demucs" not in call_kwargs
+    assert "vad" not in call_kwargs
+    assert "vad_threshold" not in call_kwargs
+
+    # Verify valid params ARE passed
+    assert "audio_file_path" in call_kwargs
+    assert call_kwargs.get("task") == "transcribe"
 
 
 def test_translation_with_stabilization_options(
     mock_asr_pipeline: MagicMock, client: TestClient
 ) -> None:
-    """Test that stabilization options are passed to the pipeline for translation."""
+    """Test that stabilization options are NOT passed to process(), but are handled separately.
+
+    The stabilize/demucs/vad/vad_threshold params are handled by stabilize_timestamps()
+    which is called AFTER asr_pipeline.process(). The process() method should only
+    receive the core ASR parameters.
+    """
     audio_file = io.BytesIO(DUMMY_WAV_HEADER)
     response = client.post(
         "/v1/audio/translations",
@@ -113,11 +130,18 @@ def test_translation_with_stabilization_options(
     )
     assert response.status_code == 200
     mock_asr_pipeline.process.assert_called_once()
-    call_args, call_kwargs = mock_asr_pipeline.process.call_args
-    assert call_kwargs.get("stabilize") is True
-    assert call_kwargs.get("demucs") is False
-    assert call_kwargs.get("vad") is True
-    assert call_kwargs.get("vad_threshold") == 0.8
+    _, call_kwargs = mock_asr_pipeline.process.call_args
+
+    # Verify stabilization params are NOT passed to process()
+    # They are handled by separate stabilize_timestamps() post-processing
+    assert "stabilize" not in call_kwargs
+    assert "demucs" not in call_kwargs
+    assert "vad" not in call_kwargs
+    assert "vad_threshold" not in call_kwargs
+
+    # Verify valid params ARE passed
+    assert "audio_file_path" in call_kwargs
+    assert call_kwargs.get("task") == "translate"
 
 
 def test_transcription_endpoint_validation(client: TestClient, tmp_path: Path) -> None:
