@@ -6,7 +6,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 > This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v1.0.0-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v1.0.1-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -79,14 +79,15 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v1.0.0** *(18-09-2025)*
+### 🏷️ **Current Version: v1.0.1** *(04-12-2025)*
 
-**Latest improvements**: Fixed chunked transcription timestamp merging by offsetting segment/word timestamps per chunk start time. Introduced breaking API changes to `split_audio()` and `merge_chunk_results()`.
+**Latest improvements**: Fixed WebUI batch ZIP summary duplication, refined benchmarking utilities, and expanded local tooling (CI runner and workflow helpers) while keeping the public API stable.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
 |---------|------|------|--------------|
+| **v1.0.1** | 04-12-2025 | 🐛 Patch | WebUI ZIP summary fix, benchmarking refinements, local CI + workflow tooling |
 | **v1.0.0** | 18-09-2025 | 🔄 Major | Timestamp merge fix; Breaking API for `split_audio()` and `merge_chunk_results()` |
 | **v0.10.0** | 23-07-2025 | ✨ Minor | M4A support & Stable-TS integration |
 | v0.9.1 | 19-07-2025 | 🐛 Patch | Translation & model override fixes |

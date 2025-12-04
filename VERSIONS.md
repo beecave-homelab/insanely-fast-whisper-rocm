@@ -4,13 +4,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v1.0.0-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v1.0.1-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v1.0.0` (Current) - *18-09-2025*](#v100-current---18-09-2025)
+- [`v1.0.1` (Current) - *04-12-2025*](#v101-current---04-12-2025)
+- [`v1.0.0` - *18-09-2025*](#v100---18-09-2025)
 - [`v0.10.1` - *16-09-2025*](#v0101---16-09-2025)
 - [`v0.10.0` - *23-07-2025*](#v0100---23-07-2025)
 - [`v0.9.1` - *19-07-2025*](#v091---19-07-2025)
@@ -43,7 +44,32 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v1.0.0` (Current) - *18-09-2025*
+### `v1.0.1` (Current) - *04-12-2025*
+
+#### 🐛 Patch Release: WebUI ZIP Fixes, Benchmarking & Tooling
+
+This release delivers a set of safe, backward-compatible improvements focused on WebUI stability, subtitle quality diagnostics, and local contributor tooling.
+
+#### 🐛 Bug Fixes in v1.0.1
+
+- **Fixed**: Duplicate `batch_summary.json` entries in WebUI batch ZIP archives.
+  - **Issue**: Multi-file downloads sometimes produced ZIPs with duplicate `batch_summary.json`, triggering warnings and wasting space.
+  - **Root Cause**: `BatchZipBuilder.add_summary()` was called manually before `build()`, which also adds a summary when `include_summary=True`.
+  - **Solution**: Removed explicit `add_summary()` calls in WebUI handlers and now rely on `build()` to add the summary exactly once.
+
+#### 🔧 Improvements in v1.0.1
+
+- **Improved**: Benchmark result model now uses Pydantic v2 `ConfigDict` configuration, removing deprecation warnings while keeping models frozen.
+- **Improved**: Segmentation and SRT quality utilities refined and covered by updated tests for better subtitle readability and diagnostics.
+- **Improved**: Local tooling with `scripts/local-ci.sh` and CI-friendly `pdm` scripts for linting, formatting, tests, and coverage.
+
+#### 📝 Key Commits in v1.0.1
+
+`4220ebd`, `80fc087`, `4e02cd1`, `9565c66`, `c837998`, `2ded632`, `cb1f571`, `28b4405`
+
+---
+
+### `v1.0.0` - *18-09-2025*
 
 #### 💥 Breaking Changes in v1.0.0
 
