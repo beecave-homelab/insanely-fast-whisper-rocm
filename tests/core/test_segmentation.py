@@ -73,7 +73,9 @@ def test_segment_words_enforces_max_duration_with_short_fragments() -> None:
     print(f"Created {len(segments)} segments:")
     for i, seg in enumerate(segments, 1):
         duration = seg.end - seg.start
-        print(f"  Seg {i}: {duration:.2f}s ({seg.start:.2f} → {seg.end:.2f}) | {seg.text!r}")
+        print(
+            f"  Seg {i}: {duration:.2f}s ({seg.start:.2f} → {seg.end:.2f}) | {seg.text!r}"
+        )
 
     # Assert all segments respect MAX_SEGMENT_DURATION_SEC
     for seg in segments:
@@ -115,7 +117,9 @@ def test_segment_words_splits_on_large_gaps() -> None:
     print(f"\nCreated {len(segments)} segments:")
     for i, seg in enumerate(segments, 1):
         duration = seg.end - seg.start
-        print(f"  Seg {i}: {duration:.2f}s ({seg.start:.2f} → {seg.end:.2f}) | {seg.text!r}")
+        print(
+            f"  Seg {i}: {duration:.2f}s ({seg.start:.2f} → {seg.end:.2f}) | {seg.text!r}"
+        )
 
     # Should split into multiple segments due to large gaps
     # At minimum, should not create a single 33s segment
@@ -134,24 +138,81 @@ def test_segment_words_splits_on_large_gaps() -> None:
 
 def test_merge_short_segments_respects_max_duration() -> None:
     """_merge_short_segments should not create segments exceeding MAX_SEGMENT_DURATION_SEC."""
-    from insanely_fast_whisper_api.core.segmentation import Segment, _merge_short_segments
+    from insanely_fast_whisper_api.core.segmentation import (
+        Segment,
+        _merge_short_segments,
+    )
     from insanely_fast_whisper_api.utils import constants
 
     # Create many short segments (each < MIN_SEGMENT_DURATION_SEC) without punctuation
     # These WILL be merged by _merge_short_segments()
     segments = [
-        Segment(text="It", start=0.0, end=0.5, words=[Word(text="It", start=0.0, end=0.5)]),
-        Segment(text="demands", start=3.0, end=3.7, words=[Word(text="demands", start=3.0, end=3.7)]),
-        Segment(text="that", start=6.0, end=6.2, words=[Word(text="that", start=6.0, end=6.2)]),
-        Segment(text="we", start=9.0, end=9.1, words=[Word(text="we", start=9.0, end=9.1)]),
-        Segment(text="as", start=12.0, end=12.1, words=[Word(text="as", start=12.0, end=12.1)]),
-        Segment(text="the", start=15.0, end=15.1, words=[Word(text="the", start=15.0, end=15.1)]),
-        Segment(text="procuring", start=18.0, end=18.7, words=[Word(text="procuring", start=18.0, end=18.7)]),
-        Segment(text="entity", start=21.0, end=21.5, words=[Word(text="entity", start=21.0, end=21.5)]),
-        Segment(text="precisely", start=24.0, end=24.6, words=[Word(text="precisely", start=24.0, end=24.6)]),
-        Segment(text="priorities", start=27.0, end=27.7, words=[Word(text="priorities", start=27.0, end=27.7)]),
-        Segment(text="up", start=30.0, end=30.1, words=[Word(text="up", start=30.0, end=30.1)]),
-        Segment(text="front", start=33.0, end=33.3, words=[Word(text="front", start=33.0, end=33.3)]),
+        Segment(
+            text="It", start=0.0, end=0.5, words=[Word(text="It", start=0.0, end=0.5)]
+        ),
+        Segment(
+            text="demands",
+            start=3.0,
+            end=3.7,
+            words=[Word(text="demands", start=3.0, end=3.7)],
+        ),
+        Segment(
+            text="that",
+            start=6.0,
+            end=6.2,
+            words=[Word(text="that", start=6.0, end=6.2)],
+        ),
+        Segment(
+            text="we", start=9.0, end=9.1, words=[Word(text="we", start=9.0, end=9.1)]
+        ),
+        Segment(
+            text="as",
+            start=12.0,
+            end=12.1,
+            words=[Word(text="as", start=12.0, end=12.1)],
+        ),
+        Segment(
+            text="the",
+            start=15.0,
+            end=15.1,
+            words=[Word(text="the", start=15.0, end=15.1)],
+        ),
+        Segment(
+            text="procuring",
+            start=18.0,
+            end=18.7,
+            words=[Word(text="procuring", start=18.0, end=18.7)],
+        ),
+        Segment(
+            text="entity",
+            start=21.0,
+            end=21.5,
+            words=[Word(text="entity", start=21.0, end=21.5)],
+        ),
+        Segment(
+            text="precisely",
+            start=24.0,
+            end=24.6,
+            words=[Word(text="precisely", start=24.0, end=24.6)],
+        ),
+        Segment(
+            text="priorities",
+            start=27.0,
+            end=27.7,
+            words=[Word(text="priorities", start=27.0, end=27.7)],
+        ),
+        Segment(
+            text="up",
+            start=30.0,
+            end=30.1,
+            words=[Word(text="up", start=30.0, end=30.1)],
+        ),
+        Segment(
+            text="front",
+            start=33.0,
+            end=33.3,
+            words=[Word(text="front", start=33.0, end=33.3)],
+        ),
     ]
 
     merged = _merge_short_segments(segments)
