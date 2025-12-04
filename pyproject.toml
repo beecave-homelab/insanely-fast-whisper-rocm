@@ -1,6 +1,6 @@
 [project]
 name = "insanely-fast-whisper-api"
-version = "1.0.1"
+version = "1.0.2"
 description = "A FastAPI wrapper around a custom Whisper-based ASR pipeline (ROCM version)"
 requires-python = "~=3.10"
 authors = [

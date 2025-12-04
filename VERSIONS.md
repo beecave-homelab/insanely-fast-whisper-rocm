@@ -4,13 +4,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v1.0.1-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v1.0.2-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v1.0.1` (Current) - *04-12-2025*](#v101-current---04-12-2025)
+- [`v1.0.2` (Current) - *05-12-2025*](#v102-current---05-12-2025)
+- [`v1.0.1` - *04-12-2025*](#v101---04-12-2025)
 - [`v1.0.0` - *18-09-2025*](#v100---18-09-2025)
 - [`v0.10.1` - *16-09-2025*](#v0101---16-09-2025)
 - [`v0.10.0` - *23-07-2025*](#v0100---23-07-2025)
@@ -44,7 +45,35 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v1.0.1` (Current) - *04-12-2025*
+### `v1.0.2` (Current) - *05-12-2025*
+
+#### 🐛 Patch Release: API Routes Fix & Code Cleanup
+
+This release focuses on code correctness and maintainability through TDD-driven fixes.
+
+#### 🐛 Bug Fixes in v1.0.2
+
+- **Fixed**: API routes passed invalid parameters (`stabilize`, `demucs`, `vad`, `vad_threshold`) to `WhisperPipeline.process()`.
+  - **Issue**: These parameters are not part of the `process()` method signature.
+  - **Root Cause**: Parameters were incorrectly forwarded; stabilization is handled separately by `stabilize_timestamps()` post-processing.
+  - **Solution**: Removed invalid parameters from `asr_pipeline.process()` calls in both `create_transcription` and `create_translation` routes.
+
+- **Fixed**: Dead code in `SrtFormatter.format()` (lines 427-550) was unreachable.
+  - **Issue**: ~124 lines of fallback formatting code appeared after a `return` statement.
+  - **Solution**: Removed the unreachable code block, reducing complexity and improving maintainability.
+
+#### 🧪 Tests in v1.0.2
+
+- **Added**: New `tests/api/test_routes_process_params.py` with 3 TDD tests verifying that stabilization parameters are NOT passed to `process()`.
+- **Updated**: Existing `tests/api/test_api.py` tests to assert correct behavior (params NOT in `process()` call).
+
+#### 📝 Key Commits in v1.0.2
+
+`9563a34`, `2eafe64`, `8ca2c8f`, `e13005e`
+
+---
+
+### `v1.0.1` - *04-12-2025*
 
 #### 🐛 Patch Release: WebUI ZIP Fixes, Benchmarking & Tooling
 
