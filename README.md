@@ -24,7 +24,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **Noise Reduction & Voice Activity Detection (CLI, API & WebUI)**: Optional `--demucs` and `--vad` flags provide Demucs-based denoising and intelligent speech-region detection (adjustable `--vad-threshold`) for cleaner, more accurate transcripts
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v1.0.2-informational)](#insanely-fast-whisper-rocm-rocm)
+[![Version](https://img.shields.io/badge/Version-v2.0.0-informational)](#insanely-fast-whisper-rocm-rocm)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface)

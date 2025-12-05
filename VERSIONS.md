@@ -4,13 +4,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v1.0.2-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v2.0.0-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v1.0.2` (Current) - *05-12-2025*](#v102-current---05-12-2025)
+- [`v2.0.0` (Current) - *05-12-2025*](#v200-current---05-12-2025)
+- [`v1.0.2` - *05-12-2025*](#v102---05-12-2025)
 - [`v1.0.1` - *04-12-2025*](#v101---04-12-2025)
 - [`v1.0.0` - *18-09-2025*](#v100---18-09-2025)
 - [`v0.10.1` - *16-09-2025*](#v0101---16-09-2025)
@@ -45,7 +46,40 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v1.0.2` (Current) - *05-12-2025*
+### `v2.0.0` (Current) - *05-12-2025*
+
+#### 🔄 Major Release: Modular Refactor & ROCm Package Rename
+
+This release introduces a modular package layout, renames the distribution and Python package to `insanely-fast-whisper-rocm` / `insanely_fast_whisper_rocm`, and adds model caching and readable subtitles backed by an expanded test suite.
+
+#### 💥 Breaking Changes in v2.0.0
+
+- **Package rename**: Python import path changed from `insanely_fast_whisper_api` to `insanely_fast_whisper_rocm`.
+  - **Migration**: Update all imports, e.g. `from insanely_fast_whisper_api.core import ASRPipeline` → `from insanely_fast_whisper_rocm.core import ASRPipeline`.
+- **Distribution & CLI rename**: Project name and CLI entry point changed from `insanely-fast-whisper-api` to `insanely-fast-whisper-rocm`.
+  - **Migration**: Replace usages of `insanely-fast-whisper-api` with `insanely-fast-whisper-rocm` in scripts, Dockerfiles, and shell commands.
+- **Config directory rename**: User configuration directory moved from `~/.config/insanely-fast-whisper-api/` to `~/.config/insanely-fast-whisper-rocm/`.
+  - **Migration**: Move or recreate your `.env` under the new directory.
+
+#### ✨ New Features in v2.0.0
+
+- **Model caching**: Improved backend configuration and caching behavior for Whisper models, reducing redundant downloads.
+- **Readable subtitles by default**: Enhanced SRT segmentation and formatting pipeline focused on readability (line lengths, CPS, duration bounds).
+- **Comprehensive test suite**: Expanded tests across CLI, API, WebUI and core utilities to protect the new modular layout.
+
+#### 🔧 Improvements in v2.0.0
+
+- **Modular package layout**: Core, audio, API, CLI, WebUI, benchmarks, and utilities are reorganized into a clearer first-party package `insanely_fast_whisper_rocm`.
+- **Import hygiene**: Imports standardized to the new package path, improving IDE support and maintainability.
+- **Documentation updates**: README and project-overview updated to reference the ROCm-focused package name consistently.
+
+#### 📝 Key Commits in v2.0.0
+
+`30210f9`, `3c50c27`, `3bb65c5`, `5c11b97`, `a9b7cde`
+
+---
+
+### `v1.0.2` - *05-12-2025*
 
 #### 🐛 Patch Release: API Routes Fix & Code Cleanup
 

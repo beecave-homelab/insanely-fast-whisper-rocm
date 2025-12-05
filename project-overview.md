@@ -6,7 +6,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 > This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v1.0.2-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v2.0.0-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -79,14 +79,15 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v1.0.2** *(05-12-2025)*
+### 🏷️ **Current Version: v2.0.0** *(05-12-2025)*
 
-**Latest improvements**: Removed invalid stabilization params from API routes and cleaned up dead code in formatters. Added TDD tests for route parameter validation.
+**Latest improvements**: Introduced modular package layout, renamed the distribution and Python package to `insanely-fast-whisper-rocm` / `insanely_fast_whisper_rocm`, and added model caching, readable subtitles, and a comprehensive test suite.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
 |---------|------|------|--------------|
+| **v2.0.0** | 05-12-2025 | 🔄 Major | Modular package refactor, package/CLI rename, model caching & readable subtitles |
 | **v1.0.2** | 05-12-2025 | 🐛 Patch | API routes param fix, dead code removal, TDD tests |
 | **v1.0.1** | 04-12-2025 | 🐛 Patch | WebUI ZIP summary fix, benchmarking refinements, local CI + workflow tooling |
 | **v1.0.0** | 18-09-2025 | 🔄 Major | Timestamp merge fix; Breaking API for `split_audio()` and `merge_chunk_results()` |
