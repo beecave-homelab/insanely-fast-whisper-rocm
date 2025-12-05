@@ -107,7 +107,7 @@ This release delivers a set of safe, backward-compatible improvements focused on
 - `merge_chunk_results()` parameter changed from `list[dict]` to `list[tuple[dict, float]]`.
   - Each tuple contains `(chunk_result_dict, chunk_start_time_seconds)`.
 
-These functions are part of the public API (re-exported from `insanely_fast_whisper_api/__init__.py`). Any external code calling them must be updated.
+These functions are part of the public API (re-exported from `insanely_fast_whisper_rocm/__init__.py`). Any external code calling them must be updated.
 
 #### 🐛 Bug Fixes in v1.0.0
 
@@ -120,7 +120,7 @@ These functions are part of the public API (re-exported from `insanely_fast_whis
 - If you previously used `split_audio(path, ...) -> list[str]`, update your code to handle start times:
 
   ```python
-  from insanely_fast_whisper_api.audio.processing import split_audio
+  from insanely_fast_whisper_rocm.audio.processing import split_audio
 
   for chunk_path, start_time in split_audio(path, chunk_duration=30.0):
       ...
@@ -129,7 +129,7 @@ These functions are part of the public API (re-exported from `insanely_fast_whis
 - If you previously used `merge_chunk_results(results: list[dict])`, now pass start times along with each result:
 
   ```python
-  from insanely_fast_whisper_api.audio.results import merge_chunk_results
+  from insanely_fast_whisper_rocm.audio.results import merge_chunk_results
 
   merged = merge_chunk_results([(result_dict, start_time_seconds) for ...])
   ```
@@ -260,7 +260,7 @@ This release focuses on standardizing application entrypoints, enhancing the CLI
 #### 🔧 **Improvements in v0.8.0**
 
 - **Refactored**: Standardized entrypoints for the API, WebUI, and CLI to use `__main__.py` modules, simplifying execution.
-- **Refactored**: Moved `formatters.py` to `insanely_fast_whisper_api/core/` and updated all relevant imports.
+- **Refactored**: Moved `formatters.py` to `insanely_fast_whisper_rocm/core/` and updated all relevant imports.
 - **Refactored**: Unified audio processing logic to support both transcription and translation seamlessly.
 
 #### 📝 Key Commits in v0.8.0
@@ -463,7 +463,7 @@ This release marks a significant architectural overhaul:
 
   ```python
   # ✅ New absolute imports
-  from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
+  from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
   
   # ❌ Deprecated relative imports
   # from .core.pipeline import WhisperPipeline
