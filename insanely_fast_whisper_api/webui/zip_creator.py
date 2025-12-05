@@ -188,8 +188,6 @@ class BatchZipBuilder:
 
         Raises:
             RuntimeError: If the ZIP archive is not open.
-            OSError | ValueError | TypeError | KeyError | AttributeError |
-                zipfile.BadZipFile: On formatting or write failures.
         """
         if not self._is_open:
             raise RuntimeError("ZIP archive is not open")

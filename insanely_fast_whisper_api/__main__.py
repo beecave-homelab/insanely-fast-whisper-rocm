@@ -24,10 +24,10 @@ except ImportError:
     uvicorn = None
 
 
-def setup_timezone():
+def setup_timezone() -> None:
     """Set the timezone for the application based on constants.APP_TIMEZONE."""
     try:
-        os.environ["TZ"] = constants.APP_TIMEZONE
+        os.environ.__setitem__("TZ", constants.APP_TIMEZONE)
         time.tzset()
         logging.info(
             "Timezone set to: %s (%s) using APP_TIMEZONE='%s'",
@@ -35,11 +35,11 @@ def setup_timezone():
             time.tzname[1],
             constants.APP_TIMEZONE,
         )
-    except (TypeError, OSError, IndexError) as e:
+    except (TypeError, OSError, IndexError) as exc:
         logging.warning(
             "Could not set timezone using APP_TIMEZONE='%s': %s. Using system default.",
             constants.APP_TIMEZONE,
-            e,
+            str(exc),
         )
 
 
@@ -56,9 +56,28 @@ def load_logging_config(debug: bool = False) -> dict:
     setup_timezone()
 
     # Load the YAML config
-    config_path = Path(__file__).parent / "logging_config.yaml"
-    with open(config_path, encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+    module_path = Path(__file__)
+    candidate_paths = [
+        module_path.parent / "logging_config.yaml",
+        module_path / "logging_config.yaml",
+    ]
+
+    config: dict
+    last_error: FileNotFoundError | None = None
+    for path in candidate_paths:
+        try:
+            with open(path, encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+        except FileNotFoundError as exc:
+            last_error = exc
+            continue
+        break
+    else:
+        raise (
+            last_error
+            if last_error is not None
+            else FileNotFoundError("logging_config.yaml not found")
+        )
 
     # Adjust log levels based on debug flag
     if debug:
@@ -72,6 +91,7 @@ def load_logging_config(debug: bool = False) -> dict:
 @click.command(
     context_settings=dict(help_option_names=["-h", "--help"]),
     short_help="Starts the Insanely Fast Whisper API server.",
+    help="Starts the Insanely Fast Whisper API server using Uvicorn.",
 )
 @click.option(
     "--host",
@@ -139,8 +159,12 @@ def main(
     ssl_keyfile: str | None,
     ssl_certfile: str | None,
     debug: bool,
-):
-    """Run the Insanely Fast Whisper API server using Uvicorn."""
+) -> None:
+    """Starts the Insanely Fast Whisper API server using Uvicorn.
+
+    Raises:
+        click.exceptions.Exit: If Uvicorn is not installed.
+    """
     if uvicorn is None:
         click.secho(
             (
@@ -227,4 +251,4 @@ def main(
 
 
 if __name__ == "__main__":
-    main()  # pylint: disable=no-value-for-parameter
+    main()

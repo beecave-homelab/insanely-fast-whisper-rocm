@@ -8,12 +8,15 @@ This module is responsible for:
   for the main .env loading sequence.
 """
 
+import logging
 import os
 import sys
-from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+# Use proper Python logging for environment loading
+logger = logging.getLogger(__name__)
 
 # Determine Project Root based on this file's location
 # Assumes this file is in insanely_fast_whisper_api/utils/
@@ -46,23 +49,40 @@ _env_debug_mode_temp = _env_log_level_temp == "DEBUG"
 
 SHOW_DEBUG_PRINTS = _cli_debug_mode or _env_debug_mode_temp
 
+# Configure logging early if debug mode is detected
+if SHOW_DEBUG_PRINTS:
+    logging.basicConfig(
+        level=logging.INFO,  # Keep root logger at INFO
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        force=True,
+    )
+    # Only enable DEBUG for our application's loggers
+    logging.getLogger("insanely_fast_whisper_api").setLevel(logging.DEBUG)
+    # Suppress noisy third-party loggers
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("torio").setLevel(logging.WARNING)
+    # MIOpen warnings are printed directly to stderr, not through Python logging,
+    # so we can't suppress them here. They're harmless workspace allocation attempts.
 
-def debug_print(message: str):
-    """Prints a message if SHOW_DEBUG_PRINTS is True, formatted like a log entry."""
+
+def debug_print(message: str) -> None:
+    """Log environment loading messages at DEBUG level if enabled.
+
+    Args:
+        message: The message to log.
+    """
     if SHOW_DEBUG_PRINTS:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S,%f")[:-3]
-        print(f"{timestamp} - ENV_LOADER_DEBUG - INFO - {message}")
+        logger.debug(message)
 
 
 # Perform the actual loading of the project root .env file here
-debug_print(f"env_loader.py: Checking for project .env at: {PROJECT_ROOT_ENV_FILE}")
 if _project_root_env_exists_temp:
-    debug_print("env_loader.py: Found project .env file. Loading now...")
+    debug_print(f"Loading project .env: {PROJECT_ROOT_ENV_FILE}")
     load_dotenv(
         PROJECT_ROOT_ENV_FILE, override=True
     )  # This is the main load for project root .env
 else:
-    debug_print("env_loader.py: Project .env file NOT found.")
+    debug_print(f"No project .env found at: {PROJECT_ROOT_ENV_FILE}")
 
 # Expose pre-checked existence and paths for constants.py to use for the main
 # load. PROJECT_ROOT_ENV_EXISTS is still useful if constants.py wants to know

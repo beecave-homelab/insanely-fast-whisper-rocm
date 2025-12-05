@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 # Use an official Python runtime as a parent image
 FROM python:3.10-slim
 
@@ -10,9 +12,10 @@ ENV TZ=Europe/Amsterdam
 ENV ROCM_PATH=/opt/rocm
 ENV HSA_OVERRIDE_GFX_VERSION=10.3.0
 
-# Install specific packages using pip
-RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \ 
+# Install OS-level deps needed for audio backends
+RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     ffmpeg \
+    libsndfile1 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -52,11 +55,12 @@ RUN pip install --no-cache-dir .
 
 # Added in case Gradio is used and needs to be accessible; remove if not needed.
 ENV GRADIO_SERVER_NAME="0.0.0.0"
+ENV TORCHAUDIO_USE_SOUNDFILE=1
 
-# Make port 8888 available to the world outside this container (standard for uvicorn)
-EXPOSE 8889
-EXPOSE 7861
+# Expose default internal ports (API/WebUI). Actual host bindings are controlled by Compose.
+EXPOSE 8888
+EXPOSE 7860
 
-# Define the command to run the application using uvicorn.
-# This points to the `app` instance in your `main.py` inside the installed package.
-CMD ["uvicorn", "insanely_fast_whisper_api.main:app", "--host", "0.0.0.0", "--port", "8888"]
+# Use the package entrypoint so host/port are controlled by env vars (API_HOST/API_PORT).
+# docker-compose.dev.yaml overrides this CMD to run the WebUI as needed.
+CMD ["insanely-fast-whisper-api"]

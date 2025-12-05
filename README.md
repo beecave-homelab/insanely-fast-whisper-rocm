@@ -19,11 +19,12 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **High Performance**: Optimized processing with configurable batch sizes and model parameters
 - **Multiple Output Formats**: Support for JSON, TXT, and SRT subtitle formats
 - **Standardized Filenames**: Consistent, timestamped output naming across all interfaces
+- **Readable Subtitles (SRT/VTT)**: Advanced segmentation pipeline that creates well-formed, readable subtitles by default, respecting line length, duration, and characters-per-second (CPS) constraints. This can be toggled with the `USE_READABLE_SUBTITLES` environment variable.
 - **Word-level Timestamp Stabilization (CLI, API & WebUI)**: Optional `--stabilize` flag (powered by [stable-ts](https://github.com/jianfch/stable-ts)) greatly refines chunk timestamps, producing accurate word-aligned SRT/VTT output
 - **Noise Reduction & Voice Activity Detection (CLI, API & WebUI)**: Optional `--demucs` and `--vad` flags provide Demucs-based denoising and intelligent speech-region detection (adjustable `--vad-threshold`) for cleaner, more accurate transcripts
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v1.0.0-informational)](#insanely-fast-whisper-api-rocm)
+[![Version](https://img.shields.io/badge/Version-v1.0.2-informational)](#insanely-fast-whisper-api-rocm)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface)
@@ -160,11 +161,17 @@ python -m insanely_fast_whisper_api.utils.download_hf_model --force
 python -m insanely_fast_whisper_api.utils.download_hf_model --cache_dir /path/to/cache
 ```
 
-For private or gated models, set the `HUGGINGFACE_TOKEN` environment variable with your API token.
+For private or gated models, set the `HF_TOKEN` environment variable with your API token.
 
 ## Configuration
 
 The API can be configured using environment variables in `~/.config/insanely-fast-whisper-api/.env`. A template with all available options is generated automatically by the configuration setup script mentioned above.
+
+Key configuration options include:
+
+- `WHISPER_MODEL`: The Whisper model to use (e.g., `openai/whisper-large-v3`).
+- `WHISPER_DEVICE`: The device to run on (`0` for CUDA, `mps` for Apple Silicon, `cpu`).
+- `USE_READABLE_SUBTITLES`: `true` or `false`. Enables the new readable subtitle segmentation pipeline. Defaults to `true`.
 
 For a detailed explanation of the configuration system, including hierarchical loading and key files, please see the [`Configuration System` section in `project-overview.md`](./project-overview.md#configuration-system).
 
@@ -190,7 +197,7 @@ To create or update your user-specific configuration file (`~/.config/insanely-f
 
 2. **Edit your configuration file:**
 
-    After running the script, open `~/.config/insanely-fast-whisper-api/.env` with your preferred text editor and customize the settings. Pay special attention to `HUGGINGFACE_TOKEN` if using gated models. Refer to [`.env.example`](./.env.example) in the project root for a full list of available options and their descriptions.
+    After running the script, open `~/.config/insanely-fast-whisper-api/.env` with your preferred text editor and customize the settings. Pay special attention to `HF_TOKEN` if using gated models. Refer to [`.env.example`](./.env.example) in the project root for a full list of available options and their descriptions.
 
     If no configuration file exists, the API will use these default values. The configuration file will be automatically created with default values on first run.
 
@@ -255,6 +262,10 @@ python -m insanely_fast_whisper_api.cli translate audio_file.mp3 --export-format
 ```
 
 For detailed commands and options, see [`project-overview.md`](./project-overview.md#cli-command-line-interface-details).
+
+#### Quiet mode (`--quiet`)
+
+Use `--quiet` to minimize console output. In quiet mode, only the Rich progress bar (when attached to a TTY) and the final saved-path line(s) are shown. Intermediate logs/messages are suppressed. This also hides third-party Demucs/VAD progress and HIP/MIOpen warnings when stabilization is enabled. See the CLI section in [`project-overview.md`](./project-overview.md#quiet-mode---quiet) for details.
 
 ### Output Files and Filename Conventions
 

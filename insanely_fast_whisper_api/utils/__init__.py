@@ -48,9 +48,7 @@ from insanely_fast_whisper_api.utils.constants import (
     USER_CONFIG_DIR,
     USER_ENV_FILE,
 )
-from insanely_fast_whisper_api.utils.download_hf_model import (
-    download_model_if_needed,
-)
+from insanely_fast_whisper_api.utils.download_hf_model import download_model_if_needed
 from insanely_fast_whisper_api.utils.file_utils import (
     FileHandler,
     cleanup_temp_files,

@@ -1,16 +1,11 @@
-"""Response formatting utilities for the API.
+"""Format API responses for various payload styles."""
 
-This module implements the Strategy pattern for formatting different
-types of responses (JSON, text) from ASR processing results.
-"""
-
+from collections.abc import Callable
 from typing import Any
 
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from insanely_fast_whisper_api.core.formatters import (
-    FORMATTERS,
-)
+from insanely_fast_whisper_api.core.formatters import FORMATTERS, BaseFormatter
 from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_JSON,
     RESPONSE_FORMAT_SRT,
@@ -18,63 +13,73 @@ from insanely_fast_whisper_api.utils import (
     RESPONSE_FORMAT_VERBOSE_JSON,
     RESPONSE_FORMAT_VTT,
 )
+from insanely_fast_whisper_api.utils.format_time import format_srt_time, format_vtt_time
+
+FormatterCallable = Callable[[dict[str, Any]], str]
+FormatterLike = FormatterCallable | type[BaseFormatter] | BaseFormatter
 
 
 class ResponseFormatter:
     """Strategy pattern implementation for response formatting."""
 
-    # --- Internal helper utilities -------------------------------------------------
+    # Note: Subtitle formatting (SRT/VTT) is delegated to core FORMATTERS to
+    # avoid duplicate logic and ensure consistent behavior across API/CLI/WebUI.
+
+    # --- Backward-compatibility helpers (used in tests) -------------------------
     @staticmethod
     def _seconds_to_timestamp(seconds: float, for_vtt: bool = False) -> str:
-        """Convert float seconds to SRT/VTT timestamp string.
+        """Convert seconds to a timestamp string.
+
+        Delegates to explicit utilities and exists for test compatibility.
 
         Args:
-            seconds (float): The timestamp in seconds.
-            for_vtt (bool): If True, format for WebVTT (uses dot as separator).
+            seconds: Timestamp in seconds.
+            for_vtt: Whether to return a VTT-style timestamp.
 
         Returns:
-            str: The formatted timestamp string (SRT or VTT style).
+            Timestamp string in SRT or VTT style.
         """
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        secs = int(seconds % 60)
-        millis = int((seconds - int(seconds)) * 1000)
-        if for_vtt:
-            return f"{hours:02d}:{minutes:02d}:{secs:02d}.{millis:03d}"
-        return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+        return format_vtt_time(seconds) if for_vtt else format_srt_time(seconds)
 
     @staticmethod
     def _segments_to_srt(segments: list[dict]) -> str:
-        """Convert segments list to SRT formatted string.
+        """Convert segments to SRT string.
+
+        Thin wrapper that mirrors previous behavior while relying on
+        the shared timestamp utilities.
 
         Args:
-            segments (list[dict]): ASR segments with 'start', 'end', and 'text'.
+            segments: List of segment dicts containing 'start', 'end', 'text'.
 
         Returns:
-            str: A string containing SRT formatted subtitle cues.
+            A string containing SRT-formatted cues.
         """
         srt_lines: list[str] = []
         for i, seg in enumerate(segments, start=1):
-            start_ts = ResponseFormatter._seconds_to_timestamp(seg.get("start", 0.0))
-            end_ts = ResponseFormatter._seconds_to_timestamp(seg.get("end", 0.0))
+            start_ts = ResponseFormatter._seconds_to_timestamp(
+                seg.get("start", 0.0), for_vtt=False
+            )
+            end_ts = ResponseFormatter._seconds_to_timestamp(
+                seg.get("end", 0.0), for_vtt=False
+            )
             text = seg.get("text", "").strip()
-            srt_lines.extend([
-                str(i),
-                f"{start_ts} --> {end_ts}",
-                text,
-                "",
-            ])  # blank line after cue
-        return "\n".join(srt_lines).strip()
+            srt_lines.extend([str(i), f"{start_ts} --> {end_ts}", text, ""])
+        if not srt_lines:
+            return ""
+        return "\n".join(srt_lines)
 
     @staticmethod
     def _segments_to_vtt(segments: list[dict]) -> str:
-        """Convert segments list to WebVTT formatted string.
+        """Convert segments to WebVTT string.
+
+        Thin wrapper that mirrors previous behavior while relying on
+        the shared timestamp utilities.
 
         Args:
-            segments (list[dict]): ASR segments with 'start', 'end', and 'text'.
+            segments: List of segment dicts containing 'start', 'end', 'text'.
 
         Returns:
-            str: A string containing WebVTT formatted subtitle cues.
+            A string containing WebVTT-formatted cues.
         """
         vtt_lines: list[str] = ["WEBVTT", ""]
         for seg in segments:
@@ -85,8 +90,50 @@ class ResponseFormatter:
                 seg.get("end", 0.0), for_vtt=True
             )
             text = seg.get("text", "").strip()
-            vtt_lines.extend([f"{start_ts} --> {end_ts}", text, ""])  # blank line
-        return "\n".join(vtt_lines).strip()
+            vtt_lines.extend([f"{start_ts} --> {end_ts}", text, ""])
+        rendered = "\n".join(vtt_lines)
+        return rendered.rstrip("\n") if not segments else rendered
+
+    @staticmethod
+    def _get_formatter(name: str) -> FormatterLike:
+        """Return the formatter associated with ``name``.
+
+        Prefers overrides attached to the class (used in tests) before
+        falling back to the module-level `FORMATTERS` mapping.
+
+        Args:
+            name: Key identifying the formatter to retrieve.
+
+        Returns:
+            FormatterLike: Either a callable, formatter instance, or formatter class.
+        """
+        formatter_map = getattr(ResponseFormatter, "FORMATTERS", None)
+        if formatter_map is None:
+            return FORMATTERS[name]
+        return formatter_map[name]
+
+    @staticmethod
+    def _call_formatter(formatter: FormatterLike, payload: dict[str, Any]) -> str:
+        """Invoke a formatter that may be a class, instance, or callable.
+
+        Args:
+            formatter: Formatter candidate retrieved via `_get_formatter`.
+            payload: Result dictionary passed to the formatter implementation.
+
+        Returns:
+            str: Formatted subtitle text.
+        """
+        if isinstance(formatter, type) and issubclass(formatter, BaseFormatter):
+            return formatter.format(payload)
+        if isinstance(formatter, BaseFormatter):
+            return formatter.format(payload)
+
+        format_callable: Callable[..., str] = getattr(formatter, "format", formatter)
+
+        try:
+            return format_callable(payload)
+        except TypeError:
+            return format_callable()
 
     @staticmethod
     def format_transcription(
@@ -151,10 +198,12 @@ class ResponseFormatter:
         # Subtitle formats (SRT/VTT)
         if response_format in (RESPONSE_FORMAT_SRT, RESPONSE_FORMAT_VTT):
             if response_format == RESPONSE_FORMAT_SRT:
-                text_output = FORMATTERS["srt"].format(result)
+                formatter = ResponseFormatter._get_formatter("srt")
+                text_output = ResponseFormatter._call_formatter(formatter, result)
                 mime = "text/srt"
             else:
-                text_output = FORMATTERS["vtt"].format(result)
+                formatter = ResponseFormatter._get_formatter("vtt")
+                text_output = ResponseFormatter._call_formatter(formatter, result)
                 mime = "text/vtt"
             return PlainTextResponse(text_output, media_type=mime)
 
@@ -222,10 +271,16 @@ class ResponseFormatter:
         if response_format in (RESPONSE_FORMAT_SRT, RESPONSE_FORMAT_VTT):
             transcription_output = result.get("transcription", result)
             if response_format == RESPONSE_FORMAT_SRT:
-                text_output = FORMATTERS["srt"].format(transcription_output)
+                formatter = ResponseFormatter._get_formatter("srt")
+                text_output = ResponseFormatter._call_formatter(
+                    formatter, transcription_output
+                )
                 mime = "text/srt"
             else:
-                text_output = FORMATTERS["vtt"].format(transcription_output)
+                formatter = ResponseFormatter._get_formatter("vtt")
+                text_output = ResponseFormatter._call_formatter(
+                    formatter, transcription_output
+                )
                 mime = "text/vtt"
             return PlainTextResponse(text_output, media_type=mime)
 

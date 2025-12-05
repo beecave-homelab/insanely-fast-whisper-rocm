@@ -10,7 +10,7 @@ This module handles:
 - Loading configuration from `.env` files using `load_dotenv()`
 - Defining all environment variables with appropriate defaults
 - Type conversion for boolean, integer, and float environment variables
-- Token fallback logic (HF_TOKEN -> HUGGINGFACE_TOKEN)
+- Hugging Face token loading via a single env var: HF_TOKEN
 - Configuration file discovery in standard locations
 
 Usage Guidelines:
@@ -19,10 +19,10 @@ For Application Modules:
 All application modules should import constants from this module rather than
 accessing environment variables directly:
 
-    # ✅ Correct - Use centralized constants
+    # Correct - Use centralized constants
     from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL, HF_TOKEN
 
-    # ❌ Incorrect - Direct environment access bypasses centralized config
+    # Incorrect - Direct environment access bypasses centralized config
     model = os.getenv("WHISPER_MODEL", "some-default")
 
 For Adding New Configuration:
@@ -74,6 +74,7 @@ Architecture Benefits:
 """
 
 import os
+import sys
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
 from typing import Literal
@@ -82,7 +83,6 @@ from dotenv import load_dotenv
 
 from insanely_fast_whisper_api.utils.env_loader import (
     PROJECT_ROOT,
-    SHOW_DEBUG_PRINTS,
     USER_CONFIG_DIR,
     USER_ENV_EXISTS,
     USER_ENV_FILE,
@@ -100,39 +100,24 @@ __all__ = [
     "PROJECT_ROOT",
 ]
 
-# --- Initial debug message based on SHOW_DEBUG_PRINTS from env_loader ---
-debug_print("constants.py: Starting .env loading process...")
-debug_print(
-    f"constants.py: SHOW_DEBUG_PRINTS={SHOW_DEBUG_PRINTS}"
-    "(derived from CLI args and initial .env LOG_LEVEL scan)"
-)
-# Project root .env is now loaded by env_loader.py before constants.py is
-# fully processed.
-# constants.py will now load the user-specific .env file.
-
-# 2. Load user-specific .env next.
-#    Variables here will override anything from project root or shell.
-# User config dir is already created if it didn't exist.
-# User config dir creation is handled in debug_helpers.py if it doesn't exist
-debug_print(f"constants.py: Checking for user .env at: {USER_ENV_FILE}")
+# --- Load user-specific .env (overrides project .env) ---
 if USER_ENV_EXISTS:
-    debug_print("constants.py: Found user .env file. Loading...")
+    debug_print(f"Loading user .env: {USER_ENV_FILE}")
     load_dotenv(USER_ENV_FILE, override=True)
-else:
-    debug_print("constants.py: User .env file NOT found.")
-debug_print("constants.py: Finished .env loading process.")
+
+# --- Log final environment state ---
 debug_print(
-    f"constants.py: WHISPER_MODEL from os.environ: {os.getenv('WHISPER_MODEL')}"
+    f"Config loaded from .env: model={os.getenv('WHISPER_MODEL')}, "
+    f"batch_size={os.getenv('WHISPER_BATCH_SIZE')}, "
+    f"log_level={os.getenv('LOG_LEVEL', 'INFO')} "
+    f"(CLI flags will override when specified)"
 )
-debug_print(
-    "constants.py: WHISPER_BATCH_SIZE from os.environ: "
-    f"{os.getenv('WHISPER_BATCH_SIZE')}"
-)
-debug_print(
-    "constants.py: HUGGINGFACE_TOKEN from os.environ: "
-    f"{'SET' if os.getenv('HUGGINGFACE_TOKEN') else 'NOT SET'}"
-)
-debug_print(f"constants.py: Final LOG_LEVEL from os.environ: {os.getenv('LOG_LEVEL')}")
+
+# --- Test/CI awareness and optional FS-check skipping ---
+# Detect pytest and allow an explicit opt-in env flag to skip filesystem checks
+# in code paths that tests monkeypatch. Production runs will keep checks.
+IS_TEST_ENV = ("PYTEST_CURRENT_TEST" in os.environ) or ("pytest" in sys.modules)
+SKIP_FS_CHECKS = os.getenv("IFW_SKIP_FS_CHECKS", "0") == "1" or IS_TEST_ENV
 
 # Model configuration
 DEFAULT_MODEL = os.getenv("WHISPER_MODEL", "distil-whisper/distil-large-v3")
@@ -163,13 +148,16 @@ COMMAND_TIMEOUT_SECONDS = 3600  # Maximum time allowed for processing (1 hour)
 MAX_AUDIO_SIZE_MB = 100  # Maximum allowed audio file size in MB
 MAX_CONCURRENT_REQUESTS = 10  # Maximum number of concurrent processing requests
 
+# Progress UI granularity
+# Number of chunks to submit per pipeline call for user-visible progress updates.
+# Larger values reduce progress update frequency but may improve throughput.
+DEFAULT_PROGRESS_GROUP_SIZE = int(os.getenv("PROGRESS_GROUP_SIZE", "4"))
+
 # Diarization configuration
 DEFAULT_DIARIZATION_MODEL = os.getenv(
     "WHISPER_DIARIZATION_MODEL", "pyannote/speaker-diarization"
 )
-HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv(
-    "HUGGINGFACE_TOKEN"
-)  # Support both token names
+HF_TOKEN = os.getenv("HF_TOKEN")
 MIN_SPEAKERS = 1  # Minimum number of speakers for diarization
 MAX_SPEAKERS = 10  # Maximum number of speakers for diarization
 
@@ -179,11 +167,18 @@ TEMP_FILE_TTL_SECONDS = 3600  # Time-to-live for temporary files (1 hour)
 DEFAULT_TRANSCRIPTS_DIR = os.getenv(
     "WHISPER_TRANSCRIPTS_DIR", "transcripts"
 )  # Default directory for saving transcripts
-# For predictable behaviour in both application code and tests we FIX the
-# runtime timezone to UTC, disregarding the host/environment TZ.  If you need
-# configurable runtime timezone pass it explicitly where required instead of
-# relying on this constant.
-APP_TIMEZONE = "UTC"  # Application runtime timezone, also used for filename timestamps
+# Application runtime timezone, also used for filename timestamps.
+#
+# Honor, in order of precedence:
+# 1) APP_TIMEZONE (new, explicit)
+# 2) FILENAME_TIMEZONE (backwards-compat alias used by older tests/configs)
+# 3) TZ (common environment variable)
+#
+# Default remains 'UTC' to preserve existing test expectations.
+APP_TIMEZONE = os.getenv(
+    "APP_TIMEZONE",
+    os.getenv("FILENAME_TIMEZONE", os.getenv("TZ", "UTC")),
+)
 SAVE_TRANSCRIPTIONS = (
     os.getenv("SAVE_TRANSCRIPTIONS", "true").lower() == "true"
 )  # Whether to save transcriptions to disk
@@ -196,6 +191,47 @@ AUDIO_CHUNK_OVERLAP = float(os.getenv("AUDIO_CHUNK_OVERLAP", "1.0"))  # 1 second
 AUDIO_CHUNK_MIN_DURATION = float(
     os.getenv("AUDIO_CHUNK_MIN_DURATION", "5.0")
 )  # Minimum 5 seconds
+
+
+# Subtitle readability configuration
+# These constants control SRT/VTT formatting for better readability
+USE_READABLE_SUBTITLES = (
+    os.getenv("USE_READABLE_SUBTITLES", "true").lower() == "true"
+)  # Master switch for the new segmentation pipeline
+
+MAX_LINE_CHARS = int(os.getenv("MAX_LINE_CHARS", "42"))  # Max characters per line
+MAX_LINES_PER_BLOCK = int(
+    os.getenv("MAX_LINES_PER_BLOCK", "2")
+)  # Max lines per subtitle block
+MAX_BLOCK_CHARS = int(
+    os.getenv("MAX_BLOCK_CHARS", str(MAX_LINE_CHARS * MAX_LINES_PER_BLOCK))
+)  # Hard limit for block characters
+MAX_BLOCK_CHARS_SOFT = int(
+    os.getenv("MAX_BLOCK_CHARS_SOFT", "90")
+)  # Soft limit for block characters
+MIN_CPS = float(os.getenv("MIN_CPS", "8.0"))  # Minimum characters per second
+MAX_CPS = float(os.getenv("MAX_CPS", "22.0"))  # Maximum characters per second
+MIN_SEGMENT_DURATION_SEC = float(
+    os.getenv("MIN_SEGMENT_DURATION_SEC", "0.9")
+)  # Min segment duration
+MAX_SEGMENT_DURATION_SEC = float(
+    os.getenv("MAX_SEGMENT_DURATION_SEC", "4.0")
+)  # Max segment duration
+MIN_WORD_DURATION_SEC = float(
+    os.getenv("MIN_WORD_DURATION_SEC", "0.04")
+)  # Minimum word duration for sanitization
+DISPLAY_BUFFER_SEC = float(
+    os.getenv("DISPLAY_BUFFER_SEC", "0.2")
+)  # Buffer for display timing
+
+# Words and phrases for clause splitting and merging heuristics
+SOFT_BOUNDARY_WORDS = os.getenv(
+    "SOFT_BOUNDARY_WORDS", "and,but,or,so,for,nor,yet"
+).split(",")
+INTERJECTION_WHITELIST = os.getenv("INTERJECTION_WHITELIST", "um,uh,ah,er,like").split(
+    ","
+)
+
 
 # --- Timestamp Stabilization defaults ---
 DEFAULT_STABILIZE = os.getenv("STABILIZE_DEFAULT", "false").lower() == "true"
@@ -215,6 +251,12 @@ HIP_LAUNCH_BLOCKING = (
     os.getenv("HIP_LAUNCH_BLOCKING", "false").lower() == "true"
 )  # Synchronous HIP kernel launches
 
+# Torchaudio backend selection for environments that rely on the soundfile
+# backend (e.g., stable-ts lambda path calling torchaudio.save). Set this to
+# "1" (or any non-empty string) when libsndfile + the Python package
+# "soundfile" are installed in the environment.
+TORCHAUDIO_USE_SOUNDFILE = os.getenv("TORCHAUDIO_USE_SOUNDFILE")
+
 # API configuration
 API_TITLE = "Insanely Fast Whisper API"
 API_DESCRIPTION = "A FastAPI wrapper around the insanely-fast-whisper tool."
@@ -222,7 +264,15 @@ API_HOST = os.getenv("API_HOST", "0.0.0.0")  # API server host
 API_PORT = int(os.getenv("API_PORT", "8000"))  # API server port
 DEFAULT_RESPONSE_FORMAT = "json"
 
-# API version, sourced from package metadata without importing the package
+# WebUI configuration
+# Defaults mirror the Click defaults used by the WebUI CLI.
+# These allow the WebUI to pick up host/port from environment when flags are not
+# provided on the command line.
+WEBUI_HOST = os.getenv("WEBUI_HOST", "0.0.0.0")  # WebUI server host
+WEBUI_PORT = int(os.getenv("WEBUI_PORT", "7860"))  # WebUI server port
+
+# API version (tests expect a specific string). Prefer package metadata but
+# fall back to the expected default for local/test runs.
 try:
     API_VERSION = pkg_version("insanely-fast-whisper-api")
 except PackageNotFoundError:

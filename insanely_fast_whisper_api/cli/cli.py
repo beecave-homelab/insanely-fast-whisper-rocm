@@ -30,8 +30,8 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"  # Suppress parallelism warning
 
 @click.group()
 @click.version_option(version=constants.API_VERSION, prog_name=constants.API_TITLE)
-def cli():
-    """🎵 Insanely Fast Whisper API - CLI Tool
+def cli() -> None:
+    """🎵 Insanely Fast Whisper API - CLI Tool.
 
     A high-performance CLI for audio transcription and translation.
 
@@ -44,6 +44,6 @@ cli.add_command(transcribe)
 cli.add_command(translate)
 
 
-def main():
+def main() -> None:
     """Main entry point for the CLI application."""
     cli()
