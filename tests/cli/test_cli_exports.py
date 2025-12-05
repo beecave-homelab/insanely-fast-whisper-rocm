@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from click.testing import CliRunner
 
-from insanely_fast_whisper_api.cli.cli import cli
+from insanely_fast_whisper_rocm.cli.cli import cli
 
 
 class TestCliExports:
@@ -68,11 +68,11 @@ class TestCliExports:
         """Test default export to JSON."""
         with (
             patch(
-                "insanely_fast_whisper_api.cli.commands.stabilize_timestamps",
+                "insanely_fast_whisper_rocm.cli.commands.stabilize_timestamps",
                 lambda res, **kwargs: res,
             ),
             patch(
-                "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+                "insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio"
             ) as mock_process,
         ):
             mock_process.return_value = {
@@ -105,11 +105,11 @@ class TestCliExports:
         """Test --export-format txt."""
         with (
             patch(
-                "insanely_fast_whisper_api.cli.commands.stabilize_timestamps",
+                "insanely_fast_whisper_rocm.cli.commands.stabilize_timestamps",
                 lambda res, **kwargs: res,
             ),
             patch(
-                "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+                "insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio"
             ) as mock_process,
         ):
             mock_process.return_value = {
@@ -142,11 +142,11 @@ class TestCliExports:
         """Test --export-format srt."""
         with (
             patch(
-                "insanely_fast_whisper_api.cli.commands.stabilize_timestamps",
+                "insanely_fast_whisper_rocm.cli.commands.stabilize_timestamps",
                 lambda res, **kwargs: res,
             ),
             patch(
-                "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+                "insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio"
             ) as mock_process,
         ):
             mock_process.return_value = {
@@ -181,11 +181,11 @@ class TestCliExports:
         """Test --export-format all."""
         with (
             patch(
-                "insanely_fast_whisper_api.cli.commands.stabilize_timestamps",
+                "insanely_fast_whisper_rocm.cli.commands.stabilize_timestamps",
                 lambda res, **kwargs: res,
             ),
             patch(
-                "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+                "insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio"
             ) as mock_process,
         ):
             mock_process.return_value = {
@@ -237,11 +237,11 @@ class TestCliExports:
         output_file = Path("custom_output/result.json")
         with (
             patch(
-                "insanely_fast_whisper_api.cli.commands.stabilize_timestamps",
+                "insanely_fast_whisper_rocm.cli.commands.stabilize_timestamps",
                 lambda res, **kwargs: res,
             ),
             patch(
-                "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+                "insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio"
             ) as mock_process,
         ):
             mock_process.return_value = {
@@ -276,11 +276,11 @@ class TestCliExports:
         """Verify that exported SRT content is correctly segmented."""
         with (
             patch(
-                "insanely_fast_whisper_api.cli.commands.stabilize_timestamps",
+                "insanely_fast_whisper_rocm.cli.commands.stabilize_timestamps",
                 lambda res, **kwargs: res,
             ),
             patch(
-                "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+                "insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio"
             ) as mock_process,
         ):
             mock_process.return_value = {

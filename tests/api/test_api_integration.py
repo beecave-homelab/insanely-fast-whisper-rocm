@@ -12,8 +12,8 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from insanely_fast_whisper_api import constants
-from insanely_fast_whisper_api.api.app import create_app
+from insanely_fast_whisper_rocm import constants
+from insanely_fast_whisper_rocm.api.app import create_app
 
 
 @pytest.fixture
@@ -24,19 +24,19 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
         TestClient: FastAPI test client configured with a temporary upload dir.
     """
     monkeypatch.setattr(
-        "insanely_fast_whisper_api.api.app.download_model_if_needed",
+        "insanely_fast_whisper_rocm.api.app.download_model_if_needed",
         lambda *args, **kwargs: None,
     )
     monkeypatch.setattr(
-        "insanely_fast_whisper_api.core.asr_backend.HuggingFaceBackend._validate_device",
+        "insanely_fast_whisper_rocm.core.asr_backend.HuggingFaceBackend._validate_device",
         lambda self: None,
     )
 
     app = create_app()
 
     # Override FileHandler to use a temp directory to avoid permission issues
-    from insanely_fast_whisper_api.api.dependencies import get_file_handler
-    from insanely_fast_whisper_api.utils import FileHandler
+    from insanely_fast_whisper_rocm.api.dependencies import get_file_handler
+    from insanely_fast_whisper_rocm.utils import FileHandler
 
     app.dependency_overrides[get_file_handler] = lambda: FileHandler(
         upload_dir=str(tmp_path)
@@ -93,7 +93,7 @@ class TestTranscriptionEndpoint:
         assert response.status_code == 400
         assert "Unsupported file format" in response.json()["detail"]
 
-    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
     def test_transcription_endpoint_success_json(
         self,
         mock_borrow: Mock,
@@ -137,7 +137,7 @@ class TestTranscriptionEndpoint:
         assert call_args["task"] == "transcribe"
         assert call_args["timestamp_type"] == "chunk"
 
-    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
     def test_transcription_endpoint_success_text(
         self,
         mock_borrow: Mock,
@@ -168,7 +168,7 @@ class TestTranscriptionEndpoint:
         assert response.headers["content-type"] == "text/plain; charset=utf-8"
         assert response.text == "Hello, this is a test transcription."
 
-    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
     def test_transcription_endpoint_dependency_injection(
         self,
         mock_borrow: Mock,
@@ -221,7 +221,7 @@ class TestTranslationEndpoint:
         assert response.status_code == 400
         assert "Unsupported file format" in response.json()["detail"]
 
-    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
     def test_translation_endpoint_success_json(
         self,
         mock_borrow: Mock,
@@ -258,7 +258,7 @@ class TestTranslationEndpoint:
         assert call_args["task"] == "translate"
         assert call_args["language"] == "es"
 
-    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
     def test_translation_endpoint_success_text(
         self,
         mock_borrow: Mock,
@@ -288,8 +288,8 @@ class TestTranslationEndpoint:
 class TestFileHandling:
     """Test file handling in the refactored routes."""
 
-    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
-    @patch("insanely_fast_whisper_api.utils.FileHandler.cleanup")
+    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.utils.FileHandler.cleanup")
     def test_file_cleanup_called(
         self,
         mock_cleanup: Mock,
@@ -314,8 +314,8 @@ class TestFileHandling:
         assert response.status_code == 200
         mock_cleanup.assert_called_once()
 
-    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
-    @patch("insanely_fast_whisper_api.utils.FileHandler.cleanup")
+    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.utils.FileHandler.cleanup")
     def test_file_cleanup_called_on_error(
         self,
         mock_cleanup: Mock,
@@ -362,7 +362,7 @@ class TestBackwardsCompatibility:
         response = client.get("/v1/audio/translations")
         assert response.status_code == 405  # Method not allowed (POST required)
 
-    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
     def test_parameter_names_unchanged(
         self,
         mock_borrow: Mock,

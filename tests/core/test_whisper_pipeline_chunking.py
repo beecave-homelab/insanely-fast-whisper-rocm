@@ -7,10 +7,10 @@ from typing import Any
 
 import pytest
 
-from insanely_fast_whisper_api.core.asr_backend import ASRBackend
-from insanely_fast_whisper_api.core.cancellation import CancellationToken
-from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
-from insanely_fast_whisper_api.core.progress import ProgressCallback
+from insanely_fast_whisper_rocm.core.asr_backend import ASRBackend
+from insanely_fast_whisper_rocm.core.cancellation import CancellationToken
+from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
+from insanely_fast_whisper_rocm.core.progress import ProgressCallback
 
 
 class _RecordingBackend(ASRBackend):
@@ -251,13 +251,13 @@ def test_whisper_pipeline_merges_chunks_and_reports_progress(
         cleanup_calls.extend(paths)
 
     monkeypatch.setattr(
-        "insanely_fast_whisper_api.audio.conversion.ensure_wav", fake_ensure_wav
+        "insanely_fast_whisper_rocm.audio.conversion.ensure_wav", fake_ensure_wav
     )
     monkeypatch.setattr(
-        "insanely_fast_whisper_api.audio.processing.split_audio", fake_split_audio
+        "insanely_fast_whisper_rocm.audio.processing.split_audio", fake_split_audio
     )
     monkeypatch.setattr(
-        "insanely_fast_whisper_api.utils.file_utils.cleanup_temp_files", fake_cleanup
+        "insanely_fast_whisper_rocm.utils.file_utils.cleanup_temp_files", fake_cleanup
     )
 
     pipeline = WhisperPipeline(
@@ -335,7 +335,7 @@ def test_whisper_pipeline_word_timestamps_passthrough(
     cleaned: list[str] = []
 
     monkeypatch.setattr(
-        "insanely_fast_whisper_api.audio.conversion.ensure_wav", lambda path: path
+        "insanely_fast_whisper_rocm.audio.conversion.ensure_wav", lambda path: path
     )
 
     def single_chunk(
@@ -351,7 +351,7 @@ def test_whisper_pipeline_word_timestamps_passthrough(
         return [(path, 0.0)]
 
     monkeypatch.setattr(
-        "insanely_fast_whisper_api.audio.processing.split_audio",
+        "insanely_fast_whisper_rocm.audio.processing.split_audio",
         single_chunk,
     )
 
@@ -359,7 +359,7 @@ def test_whisper_pipeline_word_timestamps_passthrough(
         cleaned.extend(paths)
 
     monkeypatch.setattr(
-        "insanely_fast_whisper_api.utils.file_utils.cleanup_temp_files",
+        "insanely_fast_whisper_rocm.utils.file_utils.cleanup_temp_files",
         record_cleanup,
     )
 

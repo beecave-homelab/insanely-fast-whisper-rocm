@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-import insanely_fast_whisper_api.core.integrations.stable_ts as _prod
+import insanely_fast_whisper_rocm.core.integrations.stable_ts as _prod
 
 # Re-export helpers for direct testing
 _to_dict: Callable[[object], dict[str, Any]] = _prod._to_dict  # type: ignore[attr-defined]

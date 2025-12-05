@@ -10,7 +10,7 @@ import pathlib
 import types
 from typing import Any
 
-from insanely_fast_whisper_api.core.asr_backend import (
+from insanely_fast_whisper_rocm.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )

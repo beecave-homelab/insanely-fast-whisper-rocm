@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi import FastAPI
 
-from insanely_fast_whisper_api.api.app import create_app, lifespan
+from insanely_fast_whisper_rocm.api.app import create_app, lifespan
 
 
 class TestAppLifecycle:
@@ -29,13 +29,13 @@ class TestAppLifecycle:
 
         # Mock the startup sequence
         with patch(
-            "insanely_fast_whisper_api.api.app.run_startup_sequence"
+            "insanely_fast_whisper_rocm.api.app.run_startup_sequence"
         ) as mock_startup:
             mock_startup.return_value = AsyncMock()
 
             # Mock the backend cache clear_cache function
             with patch(
-                "insanely_fast_whisper_api.api.app.clear_cache"
+                "insanely_fast_whisper_rocm.api.app.clear_cache"
             ) as mock_clear_cache:
                 # Execute the lifespan context manager
                 async def run_test() -> None:
@@ -59,12 +59,12 @@ class TestAppLifecycle:
         app = FastAPI()
 
         with patch(
-            "insanely_fast_whisper_api.api.app.run_startup_sequence"
+            "insanely_fast_whisper_rocm.api.app.run_startup_sequence"
         ) as mock_startup:
             mock_startup.return_value = AsyncMock()
 
-            with patch("insanely_fast_whisper_api.api.app.clear_cache"):
-                with patch("insanely_fast_whisper_api.api.app.logger") as mock_logger:
+            with patch("insanely_fast_whisper_rocm.api.app.clear_cache"):
+                with patch("insanely_fast_whisper_rocm.api.app.logger") as mock_logger:
                     # Execute the lifespan context manager
                     async def run_test() -> None:
                         async with lifespan(app):
@@ -94,12 +94,12 @@ class TestAppLifecycle:
         app = FastAPI()
 
         with patch(
-            "insanely_fast_whisper_api.api.app.run_startup_sequence"
+            "insanely_fast_whisper_rocm.api.app.run_startup_sequence"
         ) as mock_startup:
             mock_startup.return_value = AsyncMock()
 
             with patch(
-                "insanely_fast_whisper_api.api.app.clear_cache"
+                "insanely_fast_whisper_rocm.api.app.clear_cache"
             ) as mock_clear_cache:
                 # Simulate an exception during cache cleanup
                 mock_clear_cache.side_effect = RuntimeError("Cache cleanup failed")
@@ -121,9 +121,9 @@ class TestAppLifecycle:
         This is a higher-level test that verifies the entire application
         properly initializes and cleans up resources.
         """
-        with patch("insanely_fast_whisper_api.api.app.download_model_if_needed"):
+        with patch("insanely_fast_whisper_rocm.api.app.download_model_if_needed"):
             with patch(
-                "insanely_fast_whisper_api.api.app.clear_cache"
+                "insanely_fast_whisper_rocm.api.app.clear_cache"
             ) as mock_clear_cache:
                 # Create the app (which includes lifespan)
                 app = create_app()

@@ -1,4 +1,4 @@
-"""Tests for insanely_fast_whisper_api.webui.app module.
+"""Tests for insanely_fast_whisper_rocm.webui.app module.
 
 This module contains tests for the WebUI application launch functionality.
 """
@@ -9,14 +9,14 @@ from unittest.mock import MagicMock, Mock, patch
 
 from click.testing import CliRunner
 
-from insanely_fast_whisper_api.webui.app import launch_webui
+from insanely_fast_whisper_rocm.webui.app import launch_webui
 
 
 class TestLaunchWebUI:
     """Test suite for launch_webui CLI command."""
 
-    @patch("insanely_fast_whisper_api.webui.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.webui.app.create_ui_components")
+    @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.webui.app.create_ui_components")
     def test_launch_webui__basic_invocation(
         self, mock_create_ui: MagicMock, mock_download: MagicMock
     ) -> None:
@@ -39,8 +39,8 @@ class TestLaunchWebUI:
         mock_create_ui.assert_called_once()
         mock_iface.launch.assert_called_once()
 
-    @patch("insanely_fast_whisper_api.webui.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.webui.app.create_ui_components")
+    @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.webui.app.create_ui_components")
     def test_launch_webui__with_custom_host_and_port(
         self, mock_create_ui: MagicMock, mock_download: MagicMock
     ) -> None:
@@ -65,8 +65,8 @@ class TestLaunchWebUI:
             share=False,
         )
 
-    @patch("insanely_fast_whisper_api.webui.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.webui.app.create_ui_components")
+    @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.webui.app.create_ui_components")
     def test_launch_webui__with_share_flag(
         self, mock_create_ui: MagicMock, mock_download: MagicMock
     ) -> None:
@@ -84,8 +84,8 @@ class TestLaunchWebUI:
         call_args = mock_iface.launch.call_args
         assert call_args.kwargs["share"] is True
 
-    @patch("insanely_fast_whisper_api.webui.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.webui.app.create_ui_components")
+    @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.webui.app.create_ui_components")
     def test_launch_webui__with_custom_model(
         self, mock_create_ui: MagicMock, mock_download: MagicMock
     ) -> None:
@@ -111,8 +111,8 @@ class TestLaunchWebUI:
         create_ui_args = mock_create_ui.call_args
         assert create_ui_args.kwargs["default_model"] == custom_model
 
-    @patch("insanely_fast_whisper_api.webui.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.webui.app.create_ui_components")
+    @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.webui.app.create_ui_components")
     def test_launch_webui__with_stabilization_flags(
         self, mock_create_ui: MagicMock, mock_download: MagicMock
     ) -> None:
@@ -137,8 +137,8 @@ class TestLaunchWebUI:
         assert create_ui_args.kwargs["default_vad"] is True
         assert create_ui_args.kwargs["default_vad_threshold"] == 0.5
 
-    @patch("insanely_fast_whisper_api.webui.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.webui.app.create_ui_components")
+    @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.webui.app.create_ui_components")
     def test_launch_webui__with_no_stabilize_flags(
         self, mock_create_ui: MagicMock, mock_download: MagicMock
     ) -> None:
@@ -162,9 +162,9 @@ class TestLaunchWebUI:
         assert create_ui_args.kwargs["default_demucs"] is False
         assert create_ui_args.kwargs["default_vad"] is False
 
-    @patch("insanely_fast_whisper_api.webui.app.logging.basicConfig")
-    @patch("insanely_fast_whisper_api.webui.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.webui.app.create_ui_components")
+    @patch("insanely_fast_whisper_rocm.webui.app.logging.basicConfig")
+    @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.webui.app.create_ui_components")
     def test_launch_webui__with_debug_flag(
         self,
         mock_create_ui: MagicMock,
@@ -188,9 +188,9 @@ class TestLaunchWebUI:
         call_args = mock_logging_config.call_args
         assert call_args.kwargs["level"] == logging.DEBUG
 
-    @patch("insanely_fast_whisper_api.webui.app.logging.basicConfig")
-    @patch("insanely_fast_whisper_api.webui.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.webui.app.create_ui_components")
+    @patch("insanely_fast_whisper_rocm.webui.app.logging.basicConfig")
+    @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.webui.app.create_ui_components")
     def test_launch_webui__without_debug_flag(
         self,
         mock_create_ui: MagicMock,
@@ -214,9 +214,9 @@ class TestLaunchWebUI:
         call_args = mock_logging_config.call_args
         assert call_args.kwargs["level"] == logging.INFO
 
-    @patch("insanely_fast_whisper_api.webui.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.webui.app.create_ui_components")
-    @patch("insanely_fast_whisper_api.webui.app.DEFAULT_MODEL", "openai/whisper-tiny")
+    @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.webui.app.create_ui_components")
+    @patch("insanely_fast_whisper_rocm.webui.app.DEFAULT_MODEL", "openai/whisper-tiny")
     def test_launch_webui__uses_default_model_when_not_specified(
         self, mock_create_ui: MagicMock, mock_download: MagicMock
     ) -> None:
@@ -235,8 +235,8 @@ class TestLaunchWebUI:
         # When model is None, it should use DEFAULT_MODEL
         assert "default_model" in create_ui_args.kwargs
 
-    @patch("insanely_fast_whisper_api.webui.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.webui.app.create_ui_components")
+    @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.webui.app.create_ui_components")
     def test_launch_webui__calls_download_before_ui_creation(
         self, mock_create_ui: MagicMock, mock_download: MagicMock
     ) -> None:
@@ -259,8 +259,8 @@ class TestLaunchWebUI:
         assert result.exit_code == 0
         assert call_order == ["download", "create_ui"]
 
-    @patch("insanely_fast_whisper_api.webui.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.webui.app.create_ui_components")
+    @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.webui.app.create_ui_components")
     def test_launch_webui__all_parameters_combined(
         self, mock_create_ui: MagicMock, mock_download: MagicMock
     ) -> None:

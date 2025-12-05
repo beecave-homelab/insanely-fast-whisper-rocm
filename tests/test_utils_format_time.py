@@ -5,7 +5,7 @@ Covers ``format_srt_time``, ``format_vtt_time``, and legacy ``format_seconds``.
 
 from __future__ import annotations
 
-from insanely_fast_whisper_api.utils.format_time import (
+from insanely_fast_whisper_rocm.utils.format_time import (
     format_seconds,
     format_srt_time,
     format_vtt_time,

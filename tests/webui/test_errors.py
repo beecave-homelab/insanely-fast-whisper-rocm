@@ -1,4 +1,4 @@
-"""Tests for insanely_fast_whisper_api.webui.errors module.
+"""Tests for insanely_fast_whisper_rocm.webui.errors module.
 
 This module contains tests for custom exception classes used in the WebUI.
 """
@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from insanely_fast_whisper_api.webui.errors import (
+from insanely_fast_whisper_rocm.webui.errors import (
     DeviceNotFoundError,
     ExportError,
     FormatterError,

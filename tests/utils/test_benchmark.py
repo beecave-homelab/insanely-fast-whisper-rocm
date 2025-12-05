@@ -1,4 +1,4 @@
-"""Tests for insanely_fast_whisper_api.utils.benchmark module.
+"""Tests for insanely_fast_whisper_rocm.utils.benchmark module.
 
 This module contains tests for benchmark collection and metric gathering.
 """
@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from insanely_fast_whisper_api.utils.benchmark import (
+from insanely_fast_whisper_rocm.utils.benchmark import (
     BenchmarkCollector,
     BenchmarkResult,
 )
@@ -132,7 +132,7 @@ class TestBenchmarkCollector:
             collector.set_model_load_time(5.5)
             assert collector._model_load_time == 5.5
 
-    @patch("insanely_fast_whisper_api.utils.benchmark.psutil")
+    @patch("insanely_fast_whisper_rocm.utils.benchmark.psutil")
     def test_collect_system_metrics__with_psutil(self, mock_psutil: MagicMock) -> None:
         """Test collecting system metrics when psutil is available."""
         mock_vm = MagicMock()
@@ -147,7 +147,7 @@ class TestBenchmarkCollector:
         assert metrics["ram_total_mb"] == 16384.0
         assert metrics["ram_used_mb"] == 8192.0
 
-    @patch("insanely_fast_whisper_api.utils.benchmark.psutil", None)
+    @patch("insanely_fast_whisper_rocm.utils.benchmark.psutil", None)
     def test_collect_system_metrics__without_psutil(self) -> None:
         """Test collecting system metrics when psutil is unavailable."""
         metrics = BenchmarkCollector._collect_system_metrics()
@@ -157,7 +157,7 @@ class TestBenchmarkCollector:
         assert "ram_total_mb" not in metrics
         assert "ram_used_mb" not in metrics
 
-    @patch("insanely_fast_whisper_api.utils.benchmark.torch")
+    @patch("insanely_fast_whisper_rocm.utils.benchmark.torch")
     def test_collect_gpu_metrics__cuda_available(self, mock_torch: MagicMock) -> None:
         """Test collecting GPU metrics when CUDA is available."""
         mock_torch.cuda.is_available.return_value = True
@@ -176,8 +176,8 @@ class TestBenchmarkCollector:
         assert metrics["total_vram_mb"] == 24576.0
         assert metrics["vram_used_mb"] == 12288.0
 
-    @patch("insanely_fast_whisper_api.utils.benchmark.torch", None)
-    @patch("insanely_fast_whisper_api.utils.benchmark.pyamdgpuinfo", None)
+    @patch("insanely_fast_whisper_rocm.utils.benchmark.torch", None)
+    @patch("insanely_fast_whisper_rocm.utils.benchmark.pyamdgpuinfo", None)
     def test_collect_gpu_metrics__no_gpu_library(self) -> None:
         """Test collecting GPU metrics when no GPU library is available."""
         metrics = BenchmarkCollector._collect_gpu_metrics()
@@ -194,8 +194,8 @@ class TestBenchmarkCollector:
             assert collector._stop_event is not None
             assert collector._stop_event.is_set()
 
-    @patch("insanely_fast_whisper_api.utils.benchmark.psutil")
-    @patch("insanely_fast_whisper_api.utils.benchmark.torch", None)
+    @patch("insanely_fast_whisper_rocm.utils.benchmark.psutil")
+    @patch("insanely_fast_whisper_rocm.utils.benchmark.torch", None)
     def test_collect__writes_json_file(self, mock_psutil: MagicMock) -> None:
         """Test that collect() writes a JSON file."""
         mock_vm = MagicMock()
@@ -229,7 +229,7 @@ class TestBenchmarkCollector:
                 assert data["runtime_seconds"] == 10.0
                 assert "system" in data
 
-    @patch("insanely_fast_whisper_api.utils.benchmark.psutil")
+    @patch("insanely_fast_whisper_rocm.utils.benchmark.psutil")
     def test_collect__with_extra_data(self, mock_psutil: MagicMock) -> None:
         """Test that collect() includes extra data."""
         mock_vm = MagicMock()
@@ -266,7 +266,7 @@ class TestBenchmarkCollector:
             assert "os" in sys_avg
             assert "python_version" in sys_avg
 
-    @patch("insanely_fast_whisper_api.utils.benchmark.psutil")
+    @patch("insanely_fast_whisper_rocm.utils.benchmark.psutil")
     def test_average_metrics__with_samples(self, mock_psutil: MagicMock) -> None:
         """Test _average_metrics with collected samples."""
         mock_vm = MagicMock()
@@ -322,7 +322,7 @@ class TestBenchmarkCollector:
             assert max_val is None
             assert med_val is None
 
-    @patch("insanely_fast_whisper_api.utils.benchmark.psutil")
+    @patch("insanely_fast_whisper_rocm.utils.benchmark.psutil")
     def test_collect__handles_invalid_task(self, mock_psutil: MagicMock) -> None:
         """Test that collect() handles invalid task values gracefully."""
         mock_vm = MagicMock()

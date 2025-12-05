@@ -13,11 +13,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 import torch
 
-from insanely_fast_whisper_api.core.asr_backend import (
+from insanely_fast_whisper_rocm.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )
-from insanely_fast_whisper_api.core.errors import (
+from insanely_fast_whisper_rocm.core.errors import (
     DeviceNotFoundError,
     TranscriptionError,
 )
@@ -35,7 +35,7 @@ def test_cuda_device_not_available__raises_device_not_found_error() -> None:
     )
 
     with patch(
-        "insanely_fast_whisper_api.core.asr_backend.torch.cuda.is_available",
+        "insanely_fast_whisper_rocm.core.asr_backend.torch.cuda.is_available",
         return_value=False,
     ):
         with pytest.raises(
@@ -57,7 +57,7 @@ def test_mps_device_not_available__raises_device_not_found_error() -> None:
     )
 
     with patch(
-        "insanely_fast_whisper_api.core.asr_backend.torch.backends.mps.is_available",
+        "insanely_fast_whisper_rocm.core.asr_backend.torch.backends.mps.is_available",
         return_value=False,
     ):
         with pytest.raises(
@@ -97,19 +97,19 @@ def test_initialize_pipeline_loads_model_with_float16(
     mock_pipeline.model = mock_model
 
     with patch(
-        "insanely_fast_whisper_api.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
+        "insanely_fast_whisper_rocm.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
         return_value=mock_model,
     ) as mock_model_load:
         with patch(
-            "insanely_fast_whisper_api.core.asr_backend.AutoTokenizer.from_pretrained",
+            "insanely_fast_whisper_rocm.core.asr_backend.AutoTokenizer.from_pretrained",
             return_value=mock_tokenizer,
         ):
             with patch(
-                "insanely_fast_whisper_api.core.asr_backend.AutoFeatureExtractor.from_pretrained",
+                "insanely_fast_whisper_rocm.core.asr_backend.AutoFeatureExtractor.from_pretrained",
                 return_value=mock_feature_extractor,
             ):
                 with patch(
-                    "insanely_fast_whisper_api.core.asr_backend.pipeline",
+                    "insanely_fast_whisper_rocm.core.asr_backend.pipeline",
                     return_value=mock_pipeline,
                 ):
                     backend._initialize_pipeline()
@@ -142,19 +142,19 @@ def test_initialize_pipeline_loads_model_with_float32(
     mock_model.config = types.SimpleNamespace(lang_to_id=None, task_to_id=None)
 
     with patch(
-        "insanely_fast_whisper_api.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
+        "insanely_fast_whisper_rocm.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
         return_value=mock_model,
     ) as mock_model_load:
         with patch(
-            "insanely_fast_whisper_api.core.asr_backend.AutoTokenizer.from_pretrained",
+            "insanely_fast_whisper_rocm.core.asr_backend.AutoTokenizer.from_pretrained",
             return_value=MagicMock(),
         ):
             with patch(
-                "insanely_fast_whisper_api.core.asr_backend.AutoFeatureExtractor.from_pretrained",
+                "insanely_fast_whisper_rocm.core.asr_backend.AutoFeatureExtractor.from_pretrained",
                 return_value=MagicMock(),
             ):
                 with patch(
-                    "insanely_fast_whisper_api.core.asr_backend.pipeline",
+                    "insanely_fast_whisper_rocm.core.asr_backend.pipeline",
                     return_value=MagicMock(model=mock_model),
                 ):
                     backend._initialize_pipeline()
@@ -184,19 +184,19 @@ def test_initialize_pipeline_uses_sdpa_on_cuda(tmp_path: pathlib.Path) -> None:
     # Simulate non-ROCm (regular CUDA)
     with patch("torch.version.hip", None, create=True):
         with patch(
-            "insanely_fast_whisper_api.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
+            "insanely_fast_whisper_rocm.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
             return_value=mock_model,
         ) as mock_model_load:
             with patch(
-                "insanely_fast_whisper_api.core.asr_backend.AutoTokenizer.from_pretrained",
+                "insanely_fast_whisper_rocm.core.asr_backend.AutoTokenizer.from_pretrained",
                 return_value=MagicMock(),
             ):
                 with patch(
-                    "insanely_fast_whisper_api.core.asr_backend.AutoFeatureExtractor.from_pretrained",
+                    "insanely_fast_whisper_rocm.core.asr_backend.AutoFeatureExtractor.from_pretrained",
                     return_value=MagicMock(),
                 ):
                     with patch(
-                        "insanely_fast_whisper_api.core.asr_backend.pipeline",
+                        "insanely_fast_whisper_rocm.core.asr_backend.pipeline",
                         return_value=MagicMock(model=mock_model),
                     ):
                         backend._initialize_pipeline()
@@ -249,19 +249,19 @@ def test_initialize_pipeline_rocm_fallback_to_eager(tmp_path: pathlib.Path) -> N
     # Simulate ROCm
     with patch("torch.version.hip", "5.7", create=True):
         with patch(
-            "insanely_fast_whisper_api.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
+            "insanely_fast_whisper_rocm.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
             side_effect=from_pretrained_side_effect,
         ) as mock_model_load:
             with patch(
-                "insanely_fast_whisper_api.core.asr_backend.AutoTokenizer.from_pretrained",
+                "insanely_fast_whisper_rocm.core.asr_backend.AutoTokenizer.from_pretrained",
                 return_value=MagicMock(),
             ):
                 with patch(
-                    "insanely_fast_whisper_api.core.asr_backend.AutoFeatureExtractor.from_pretrained",
+                    "insanely_fast_whisper_rocm.core.asr_backend.AutoFeatureExtractor.from_pretrained",
                     return_value=MagicMock(),
                 ):
                     with patch(
-                        "insanely_fast_whisper_api.core.asr_backend.pipeline",
+                        "insanely_fast_whisper_rocm.core.asr_backend.pipeline",
                         return_value=MagicMock(model=mock_model),
                     ):
                         backend._initialize_pipeline()
@@ -289,7 +289,7 @@ def test_initialize_pipeline_raises_transcription_error_on_model_load_failure(
     backend = HuggingFaceBackend(config)
 
     with patch(
-        "insanely_fast_whisper_api.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
+        "insanely_fast_whisper_rocm.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
         side_effect=OSError("Model not found"),
     ):
         with pytest.raises(TranscriptionError, match="Failed to load ASR model"):
@@ -318,23 +318,23 @@ def test_initialize_pipeline_backfills_generation_config_for_whisper_large_v3(
     mock_gen_config = types.SimpleNamespace(no_timestamps_token_id=50363)
 
     with patch(
-        "insanely_fast_whisper_api.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
+        "insanely_fast_whisper_rocm.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
         return_value=mock_model,
     ):
         with patch(
-            "insanely_fast_whisper_api.core.asr_backend.AutoTokenizer.from_pretrained",
+            "insanely_fast_whisper_rocm.core.asr_backend.AutoTokenizer.from_pretrained",
             return_value=MagicMock(),
         ):
             with patch(
-                "insanely_fast_whisper_api.core.asr_backend.AutoFeatureExtractor.from_pretrained",
+                "insanely_fast_whisper_rocm.core.asr_backend.AutoFeatureExtractor.from_pretrained",
                 return_value=MagicMock(),
             ):
                 with patch(
-                    "insanely_fast_whisper_api.core.asr_backend.GenerationConfig.from_pretrained",
+                    "insanely_fast_whisper_rocm.core.asr_backend.GenerationConfig.from_pretrained",
                     return_value=mock_gen_config,
                 ) as mock_gen_load:
                     with patch(
-                        "insanely_fast_whisper_api.core.asr_backend.pipeline",
+                        "insanely_fast_whisper_rocm.core.asr_backend.pipeline",
                         return_value=MagicMock(model=mock_model),
                     ):
                         backend._initialize_pipeline()
@@ -365,23 +365,23 @@ def test_initialize_pipeline_backfills_generation_config_for_whisper_medium_en(
     mock_gen_config = types.SimpleNamespace(no_timestamps_token_id=50363)
 
     with patch(
-        "insanely_fast_whisper_api.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
+        "insanely_fast_whisper_rocm.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
         return_value=mock_model,
     ):
         with patch(
-            "insanely_fast_whisper_api.core.asr_backend.AutoTokenizer.from_pretrained",
+            "insanely_fast_whisper_rocm.core.asr_backend.AutoTokenizer.from_pretrained",
             return_value=MagicMock(),
         ):
             with patch(
-                "insanely_fast_whisper_api.core.asr_backend.AutoFeatureExtractor.from_pretrained",
+                "insanely_fast_whisper_rocm.core.asr_backend.AutoFeatureExtractor.from_pretrained",
                 return_value=MagicMock(),
             ):
                 with patch(
-                    "insanely_fast_whisper_api.core.asr_backend.GenerationConfig.from_pretrained",
+                    "insanely_fast_whisper_rocm.core.asr_backend.GenerationConfig.from_pretrained",
                     return_value=mock_gen_config,
                 ) as mock_gen_load:
                     with patch(
-                        "insanely_fast_whisper_api.core.asr_backend.pipeline",
+                        "insanely_fast_whisper_rocm.core.asr_backend.pipeline",
                         return_value=MagicMock(model=mock_model),
                     ):
                         backend._initialize_pipeline()
@@ -410,23 +410,23 @@ def test_initialize_pipeline_skips_backfill_when_generation_config_exists(
     mock_model.config = types.SimpleNamespace(lang_to_id=None, task_to_id=None)
 
     with patch(
-        "insanely_fast_whisper_api.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
+        "insanely_fast_whisper_rocm.core.asr_backend.AutoModelForSpeechSeq2Seq.from_pretrained",
         return_value=mock_model,
     ):
         with patch(
-            "insanely_fast_whisper_api.core.asr_backend.AutoTokenizer.from_pretrained",
+            "insanely_fast_whisper_rocm.core.asr_backend.AutoTokenizer.from_pretrained",
             return_value=MagicMock(),
         ):
             with patch(
-                "insanely_fast_whisper_api.core.asr_backend.AutoFeatureExtractor.from_pretrained",
+                "insanely_fast_whisper_rocm.core.asr_backend.AutoFeatureExtractor.from_pretrained",
                 return_value=MagicMock(),
             ):
                 with patch(
-                    "insanely_fast_whisper_api.core.asr_backend.GenerationConfig.from_pretrained",
+                    "insanely_fast_whisper_rocm.core.asr_backend.GenerationConfig.from_pretrained",
                     return_value=MagicMock(),
                 ) as mock_gen_load:
                     with patch(
-                        "insanely_fast_whisper_api.core.asr_backend.pipeline",
+                        "insanely_fast_whisper_rocm.core.asr_backend.pipeline",
                         return_value=MagicMock(model=mock_model),
                     ):
                         backend._initialize_pipeline()

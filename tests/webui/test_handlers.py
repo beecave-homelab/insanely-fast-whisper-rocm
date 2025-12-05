@@ -10,19 +10,19 @@ from pathlib import Path
 
 import pytest
 
-from insanely_fast_whisper_api.core.errors import (
+from insanely_fast_whisper_rocm.core.errors import (
     TranscriptionCancelledError,
     TranscriptionError,
 )
-from insanely_fast_whisper_api.utils.filename_generator import TaskType
-from insanely_fast_whisper_api.webui import handlers
-from insanely_fast_whisper_api.webui.handlers import (
+from insanely_fast_whisper_rocm.utils.filename_generator import TaskType
+from insanely_fast_whisper_rocm.webui import handlers
+from insanely_fast_whisper_rocm.webui.handlers import (
     FileHandlingConfig,
     TranscriptionConfig,
     _is_stabilization_corrupt,
     _prepare_temp_downloadable_file,
 )
-from insanely_fast_whisper_api.webui.zip_creator import (
+from insanely_fast_whisper_rocm.webui.zip_creator import (
     BatchZipBuilder,
     ZipConfiguration,
 )
@@ -126,11 +126,11 @@ def test_transcribe_handler_fallback_on_corrupted_stabilization() -> None:
 
     with (
         unittest.mock.patch(
-            "insanely_fast_whisper_api.webui.handlers.borrow_pipeline",
+            "insanely_fast_whisper_rocm.webui.handlers.borrow_pipeline",
             return_value=contextlib.nullcontext(mock_pipeline_instance),
         ) as mock_borrow,
         unittest.mock.patch(
-            "insanely_fast_whisper_api.webui.handlers.stabilize_timestamps"
+            "insanely_fast_whisper_rocm.webui.handlers.stabilize_timestamps"
         ) as mock_stabilize,
     ):
         mock_stabilize.return_value = corrupted_result
@@ -164,7 +164,7 @@ def test_transcribe_raises_on_progress_cancellation() -> None:
     file_config = FileHandlingConfig()
 
     with unittest.mock.patch(
-        "insanely_fast_whisper_api.webui.handlers.borrow_pipeline"
+        "insanely_fast_whisper_rocm.webui.handlers.borrow_pipeline"
     ) as mock_borrow:
         mock_borrow.side_effect = AssertionError("borrow_pipeline should not be called")
         with pytest.raises(TranscriptionCancelledError):
@@ -239,11 +239,11 @@ def test_transcribe_with_video_input() -> None:
 
         with (
             unittest.mock.patch(
-                "insanely_fast_whisper_api.webui.handlers.borrow_pipeline",
+                "insanely_fast_whisper_rocm.webui.handlers.borrow_pipeline",
                 return_value=contextlib.nullcontext(mock_pipeline_instance),
             ),
             unittest.mock.patch(
-                "insanely_fast_whisper_api.webui.handlers.extract_audio_from_video"
+                "insanely_fast_whisper_rocm.webui.handlers.extract_audio_from_video"
             ) as mock_extract,
         ):
             mock_extract.return_value = str(Path(temp_dir) / "extracted.wav")
@@ -264,7 +264,7 @@ def test_transcribe_with_video_extraction_error() -> None:
 
         with (
             unittest.mock.patch(
-                "insanely_fast_whisper_api.webui.handlers.extract_audio_from_video"
+                "insanely_fast_whisper_rocm.webui.handlers.extract_audio_from_video"
             ) as mock_extract,
         ):
             mock_extract.side_effect = RuntimeError("Extraction failed")
@@ -272,7 +272,7 @@ def test_transcribe_with_video_extraction_error() -> None:
             config = TranscriptionConfig()
             file_config = FileHandlingConfig()
 
-            from insanely_fast_whisper_api.core.errors import TranscriptionError
+            from insanely_fast_whisper_rocm.core.errors import TranscriptionError
 
             with pytest.raises(TranscriptionError, match="Extraction failed"):
                 handlers.transcribe(str(video_path), config, file_config)
@@ -288,7 +288,7 @@ def test_transcribe_with_progress_tracker() -> None:
     mock_progress.cancelled = False
 
     with unittest.mock.patch(
-        "insanely_fast_whisper_api.webui.handlers.borrow_pipeline",
+        "insanely_fast_whisper_rocm.webui.handlers.borrow_pipeline",
         return_value=contextlib.nullcontext(mock_pipeline_instance),
     ):
         config = TranscriptionConfig()
@@ -315,11 +315,11 @@ def test_transcribe_with_chunk_duration_warning() -> None:
 
     with (
         unittest.mock.patch(
-            "insanely_fast_whisper_api.webui.handlers.borrow_pipeline",
+            "insanely_fast_whisper_rocm.webui.handlers.borrow_pipeline",
             return_value=contextlib.nullcontext(mock_pipeline_instance),
         ),
         unittest.mock.patch(
-            "insanely_fast_whisper_api.webui.handlers.logger"
+            "insanely_fast_whisper_rocm.webui.handlers.logger"
         ) as mock_logger,
     ):
         config = TranscriptionConfig(chunk_duration=15.0, chunk_overlap=1.0)
@@ -377,7 +377,7 @@ def test_process_transcription_request_single_file() -> None:
         }
 
         with unittest.mock.patch(
-            "insanely_fast_whisper_api.webui.handlers.transcribe",
+            "insanely_fast_whisper_rocm.webui.handlers.transcribe",
             return_value=mock_result,
         ):
             config = TranscriptionConfig()
@@ -414,7 +414,7 @@ def test_process_transcription_request_multiple_files() -> None:
         }
 
         with unittest.mock.patch(
-            "insanely_fast_whisper_api.webui.handlers.transcribe",
+            "insanely_fast_whisper_rocm.webui.handlers.transcribe",
             side_effect=[mock_result1, mock_result2],
         ):
             config = TranscriptionConfig()
@@ -440,7 +440,7 @@ def test_process_transcription_request_with_error() -> None:
         audio_path.write_text("fake audio")
 
         with unittest.mock.patch(
-            "insanely_fast_whisper_api.webui.handlers.transcribe",
+            "insanely_fast_whisper_rocm.webui.handlers.transcribe",
             side_effect=TranscriptionError("Test error"),
         ):
             config = TranscriptionConfig()
@@ -463,7 +463,7 @@ def test_process_transcription_request_with_cancellation() -> None:
         audio_path.write_text("fake audio")
 
         with unittest.mock.patch(
-            "insanely_fast_whisper_api.webui.handlers.transcribe",
+            "insanely_fast_whisper_rocm.webui.handlers.transcribe",
             side_effect=TranscriptionCancelledError("Cancelled"),
         ):
             config = TranscriptionConfig()

@@ -1,4 +1,4 @@
-"""Tests for insanely_fast_whisper_api.webui.ui module.
+"""Tests for insanely_fast_whisper_rocm.webui.ui module.
 
 This module contains tests for Gradio UI component creation and layout.
 """
@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import gradio as gr
 
-from insanely_fast_whisper_api.webui.ui import (
+from insanely_fast_whisper_rocm.webui.ui import (
     _create_file_handling_ui,
     _create_model_config_ui,
     _create_processing_options_ui,
@@ -43,7 +43,7 @@ class TestCreateModelConfigUI:
 
     def test_create_model_config_ui__slider_has_correct_range(self) -> None:
         """Test that batch_size slider has correct min/max values."""
-        from insanely_fast_whisper_api.utils.constants import (
+        from insanely_fast_whisper_rocm.utils.constants import (
             MAX_BATCH_SIZE,
             MIN_BATCH_SIZE,
         )
@@ -171,7 +171,7 @@ class TestCreateFileHandlingUI:
 
     def test_create_file_handling_ui__default_values(self) -> None:
         """Test that _create_file_handling_ui has correct defaults."""
-        from insanely_fast_whisper_api.utils.constants import DEFAULT_TRANSCRIPTS_DIR
+        from insanely_fast_whisper_rocm.utils.constants import DEFAULT_TRANSCRIPTS_DIR
 
         with gr.Blocks():
             save_transcriptions, temp_uploads_dir = _create_file_handling_ui()
@@ -183,7 +183,7 @@ class TestCreateFileHandlingUI:
 class TestProcessTranscriptionRequestWrapper:
     """Test suite for _process_transcription_request_wrapper function."""
 
-    @patch("insanely_fast_whisper_api.webui.ui.process_transcription_request")
+    @patch("insanely_fast_whisper_rocm.webui.ui.process_transcription_request")
     def test_wrapper__calls_handler_with_correct_config(
         self, mock_process: MagicMock
     ) -> None:
@@ -233,8 +233,8 @@ class TestProcessTranscriptionRequestWrapper:
         assert file_handling_cfg.save_transcriptions is True
         assert file_handling_cfg.temp_uploads_dir == "/tmp/test"
 
-    @patch("insanely_fast_whisper_api.webui.ui.process_transcription_request")
-    @patch("insanely_fast_whisper_api.webui.ui.gr.Progress")
+    @patch("insanely_fast_whisper_rocm.webui.ui.process_transcription_request")
+    @patch("insanely_fast_whisper_rocm.webui.ui.gr.Progress")
     def test_wrapper__creates_progress_when_none(
         self, mock_progress_cls: MagicMock, mock_process: MagicMock
     ) -> None:
@@ -265,7 +265,7 @@ class TestProcessTranscriptionRequestWrapper:
         # Verify Progress was created
         mock_progress_cls.assert_called_once()
 
-    @patch("insanely_fast_whisper_api.webui.ui.process_transcription_request")
+    @patch("insanely_fast_whisper_rocm.webui.ui.process_transcription_request")
     def test_wrapper__uses_provided_progress(self, mock_process: MagicMock) -> None:
         """Test that wrapper uses provided progress tracker."""
         mock_process.return_value = ("text", {}, {}, Mock(), Mock(), Mock(), Mock())
@@ -324,11 +324,11 @@ class TestCreateUIComponents:
 
         assert demo.title == "Insanely Fast Whisper - Local WebUI"
 
-    @patch("insanely_fast_whisper_api.webui.ui._create_model_config_ui")
-    @patch("insanely_fast_whisper_api.webui.ui._create_processing_options_ui")
-    @patch("insanely_fast_whisper_api.webui.ui._create_stabilization_ui")
-    @patch("insanely_fast_whisper_api.webui.ui._create_task_config_ui")
-    @patch("insanely_fast_whisper_api.webui.ui._create_file_handling_ui")
+    @patch("insanely_fast_whisper_rocm.webui.ui._create_model_config_ui")
+    @patch("insanely_fast_whisper_rocm.webui.ui._create_processing_options_ui")
+    @patch("insanely_fast_whisper_rocm.webui.ui._create_stabilization_ui")
+    @patch("insanely_fast_whisper_rocm.webui.ui._create_task_config_ui")
+    @patch("insanely_fast_whisper_rocm.webui.ui._create_file_handling_ui")
     def test_create_ui_components__calls_all_ui_helpers(
         self,
         mock_file_handling: MagicMock,

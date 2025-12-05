@@ -1,11 +1,11 @@
-"""Tests for insanely_fast_whisper_api.utils.formatting module.
+"""Tests for insanely_fast_whisper_rocm.utils.formatting module.
 
 This module contains tests for formatting utility functions.
 """
 
 from __future__ import annotations
 
-from insanely_fast_whisper_api.utils.formatting import format_seconds
+from insanely_fast_whisper_rocm.utils.formatting import format_seconds
 
 
 class TestFormatSeconds:

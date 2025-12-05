@@ -8,7 +8,7 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-from insanely_fast_whisper_api.cli.cli import cli
+from insanely_fast_whisper_rocm.cli.cli import cli
 
 
 def test_cli_transcribe_fallback_on_corrupted_stabilization(
@@ -42,10 +42,10 @@ def test_cli_transcribe_fallback_on_corrupted_stabilization(
     # 2. Mock dependencies
     with (
         unittest.mock.patch(
-            "insanely_fast_whisper_api.cli.commands.cli_facade.process_audio"
+            "insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio"
         ) as mock_process_audio,
         unittest.mock.patch(
-            "insanely_fast_whisper_api.cli.commands.stabilize_timestamps"
+            "insanely_fast_whisper_rocm.cli.commands.stabilize_timestamps"
         ) as mock_stabilize,
     ):
         mock_process_audio.return_value = original_result

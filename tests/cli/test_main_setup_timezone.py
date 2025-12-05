@@ -1,10 +1,10 @@
-"""Tests for setup_timezone function in insanely_fast_whisper_api.__main__."""
+"""Tests for setup_timezone function in insanely_fast_whisper_rocm.__main__."""
 
 import os
 from unittest.mock import Mock, patch
 
-from insanely_fast_whisper_api.__main__ import setup_timezone
-from insanely_fast_whisper_api.utils import constants
+from insanely_fast_whisper_rocm.__main__ import setup_timezone
+from insanely_fast_whisper_rocm.utils import constants
 
 
 class TestSetupTimezone:

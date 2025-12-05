@@ -1,4 +1,4 @@
-"""Tests for main function in insanely_fast_whisper_api.__main__."""
+"""Tests for main function in insanely_fast_whisper_rocm.__main__."""
 
 import tempfile
 from pathlib import Path
@@ -6,14 +6,14 @@ from unittest.mock import Mock, patch
 
 from click.testing import CliRunner
 
-from insanely_fast_whisper_api.__main__ import main
-from insanely_fast_whisper_api.utils import constants
+from insanely_fast_whisper_rocm.__main__ import main
+from insanely_fast_whisper_rocm.utils import constants
 
 
 class TestMainFunction:
     """Test the main function (click command)."""
 
-    @patch("insanely_fast_whisper_api.__main__.uvicorn", None)
+    @patch("insanely_fast_whisper_rocm.__main__.uvicorn", None)
     def test_main_uvicorn_not_installed(self) -> None:
         """Test main function when uvicorn is not installed."""
         runner = CliRunner()
@@ -26,9 +26,9 @@ class TestMainFunction:
         assert "Uvicorn is not installed" in result.output
         assert "pip install uvicorn" in result.output
 
-    @patch("insanely_fast_whisper_api.__main__.uvicorn")
-    @patch("insanely_fast_whisper_api.__main__.load_logging_config")
-    @patch("insanely_fast_whisper_api.__main__.logging")
+    @patch("insanely_fast_whisper_rocm.__main__.uvicorn")
+    @patch("insanely_fast_whisper_rocm.__main__.load_logging_config")
+    @patch("insanely_fast_whisper_rocm.__main__.logging")
     @patch("click.echo")
     @patch("click.secho")
     def test_main_default_options(
@@ -55,7 +55,7 @@ class TestMainFunction:
         mock_load_config.assert_called_once_with(debug=False)
         mock_logging.config.dictConfig.assert_called_once_with(mock_config)
         mock_uvicorn.run.assert_called_once_with(
-            "insanely_fast_whisper_api.main:app",
+            "insanely_fast_whisper_rocm.main:app",
             host=constants.API_HOST,
             port=constants.API_PORT,
             workers=1,
@@ -72,9 +72,9 @@ class TestMainFunction:
             "🔗 Listening on:" in call[0][0] for call in mock_secho.call_args_list
         )
 
-    @patch("insanely_fast_whisper_api.__main__.uvicorn")
-    @patch("insanely_fast_whisper_api.__main__.load_logging_config")
-    @patch("insanely_fast_whisper_api.__main__.logging")
+    @patch("insanely_fast_whisper_rocm.__main__.uvicorn")
+    @patch("insanely_fast_whisper_rocm.__main__.load_logging_config")
+    @patch("insanely_fast_whisper_rocm.__main__.logging")
     @patch("click.echo")
     @patch("click.secho")
     def test_main_custom_options(
@@ -113,7 +113,7 @@ class TestMainFunction:
         assert result.exit_code == 0
         mock_load_config.assert_called_once_with(debug=False)
         mock_uvicorn.run.assert_called_once_with(
-            "insanely_fast_whisper_api.main:app",
+            "insanely_fast_whisper_rocm.main:app",
             host="127.0.0.1",
             port=8080,
             workers=4,
@@ -124,9 +124,9 @@ class TestMainFunction:
             log_config=mock_config,
         )
 
-    @patch("insanely_fast_whisper_api.__main__.uvicorn")
-    @patch("insanely_fast_whisper_api.__main__.load_logging_config")
-    @patch("insanely_fast_whisper_api.__main__.logging")
+    @patch("insanely_fast_whisper_rocm.__main__.uvicorn")
+    @patch("insanely_fast_whisper_rocm.__main__.load_logging_config")
+    @patch("insanely_fast_whisper_rocm.__main__.logging")
     @patch("click.echo")
     @patch("click.secho")
     def test_main_ssl_options(
@@ -162,7 +162,7 @@ class TestMainFunction:
             # Verify
             assert result.exit_code == 0
             mock_uvicorn.run.assert_called_once_with(
-                "insanely_fast_whisper_api.main:app",
+                "insanely_fast_whisper_rocm.main:app",
                 host=constants.API_HOST,
                 port=constants.API_PORT,
                 workers=1,
@@ -183,9 +183,9 @@ class TestMainFunction:
             Path(key_path).unlink(missing_ok=True)
             Path(cert_path).unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.__main__.uvicorn")
-    @patch("insanely_fast_whisper_api.__main__.load_logging_config")
-    @patch("insanely_fast_whisper_api.__main__.logging")
+    @patch("insanely_fast_whisper_rocm.__main__.uvicorn")
+    @patch("insanely_fast_whisper_rocm.__main__.load_logging_config")
+    @patch("insanely_fast_whisper_rocm.__main__.logging")
     @patch("click.echo")
     @patch("click.secho")
     def test_main_debug_flag(
@@ -211,7 +211,7 @@ class TestMainFunction:
         assert result.exit_code == 0
         mock_load_config.assert_called_once_with(debug=True)
         mock_uvicorn.run.assert_called_once_with(
-            "insanely_fast_whisper_api.main:app",
+            "insanely_fast_whisper_rocm.main:app",
             host=constants.API_HOST,
             port=constants.API_PORT,
             workers=1,
@@ -226,9 +226,9 @@ class TestMainFunction:
         secho_calls = [call[0][0] for call in mock_secho.call_args_list]
         assert any("🐛 Debug mode is ON" in call for call in secho_calls)
 
-    @patch("insanely_fast_whisper_api.__main__.uvicorn")
-    @patch("insanely_fast_whisper_api.__main__.load_logging_config")
-    @patch("insanely_fast_whisper_api.__main__.logging")
+    @patch("insanely_fast_whisper_rocm.__main__.uvicorn")
+    @patch("insanely_fast_whisper_rocm.__main__.load_logging_config")
+    @patch("insanely_fast_whisper_rocm.__main__.logging")
     @patch("click.echo")
     @patch("click.secho")
     def test_main_debug_with_custom_log_level(
@@ -253,7 +253,7 @@ class TestMainFunction:
         # Verify
         assert result.exit_code == 0
         mock_uvicorn.run.assert_called_once_with(
-            "insanely_fast_whisper_api.main:app",
+            "insanely_fast_whisper_rocm.main:app",
             host=constants.API_HOST,
             port=constants.API_PORT,
             workers=1,
@@ -264,9 +264,9 @@ class TestMainFunction:
             log_config=mock_config,
         )
 
-    @patch("insanely_fast_whisper_api.__main__.uvicorn")
-    @patch("insanely_fast_whisper_api.__main__.load_logging_config")
-    @patch("insanely_fast_whisper_api.__main__.logging")
+    @patch("insanely_fast_whisper_rocm.__main__.uvicorn")
+    @patch("insanely_fast_whisper_rocm.__main__.load_logging_config")
+    @patch("insanely_fast_whisper_rocm.__main__.logging")
     @patch("click.echo")
     @patch("click.secho")
     def test_main_workers_message(
@@ -295,9 +295,9 @@ class TestMainFunction:
             "⚙️  Running with 4 worker processes." in call for call in secho_calls
         )
 
-    @patch("insanely_fast_whisper_api.__main__.uvicorn")
-    @patch("insanely_fast_whisper_api.__main__.load_logging_config")
-    @patch("insanely_fast_whisper_api.__main__.logging")
+    @patch("insanely_fast_whisper_rocm.__main__.uvicorn")
+    @patch("insanely_fast_whisper_rocm.__main__.load_logging_config")
+    @patch("insanely_fast_whisper_rocm.__main__.logging")
     @patch("click.echo")
     @patch("click.secho")
     def test_main_reload_message(

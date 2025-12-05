@@ -20,7 +20,7 @@ class TestRouteProcessParameters:
         NOT accept stabilize, demucs, vad, or vad_threshold parameters. These
         are handled by stabilize_timestamps() after transcription.
         """
-        from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
+        from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
 
         sig = inspect.signature(WhisperPipeline.process)
         param_names = set(sig.parameters.keys())
@@ -39,7 +39,7 @@ class TestRouteProcessParameters:
         The route should call asr_pipeline.process() WITHOUT stabilize/demucs/vad
         parameters. Stabilization is handled separately via stabilize_timestamps().
         """
-        from insanely_fast_whisper_api.api import routes
+        from insanely_fast_whisper_rocm.api import routes
 
         # Get the source code of create_transcription
         source = inspect.getsource(routes.create_transcription)
@@ -68,7 +68,7 @@ class TestRouteProcessParameters:
         The route should call asr_pipeline.process() WITHOUT stabilize/demucs/vad
         parameters. Stabilization is handled separately via stabilize_timestamps().
         """
-        from insanely_fast_whisper_api.api import routes
+        from insanely_fast_whisper_rocm.api import routes
 
         # Get the source code of create_translation
         source = inspect.getsource(routes.create_translation)

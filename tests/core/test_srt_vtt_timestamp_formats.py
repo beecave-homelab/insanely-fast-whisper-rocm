@@ -6,7 +6,7 @@ These tests ensure that SRT uses a comma as the milliseconds separator
 
 from __future__ import annotations
 
-from insanely_fast_whisper_api.core.formatters import SrtFormatter, VttFormatter
+from insanely_fast_whisper_rocm.core.formatters import SrtFormatter, VttFormatter
 
 
 def _sample_result() -> dict:

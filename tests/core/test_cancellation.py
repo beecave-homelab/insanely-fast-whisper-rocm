@@ -1,4 +1,4 @@
-"""Tests for insanely_fast_whisper_api.core.cancellation module.
+"""Tests for insanely_fast_whisper_rocm.core.cancellation module.
 
 This module contains tests for cooperative cancellation utilities including
 CancellationToken, CancellationScope, and cancellation_scope context manager.
@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import pytest
 
-from insanely_fast_whisper_api.core.cancellation import (
+from insanely_fast_whisper_rocm.core.cancellation import (
     CancellationScope,
     CancellationToken,
     cancellation_scope,
 )
-from insanely_fast_whisper_api.core.errors import TranscriptionCancelledError
+from insanely_fast_whisper_rocm.core.errors import TranscriptionCancelledError
 
 
 class TestCancellationToken:

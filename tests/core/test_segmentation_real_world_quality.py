@@ -6,8 +6,8 @@ SRT output and ensure they are grouped more naturally.
 
 from __future__ import annotations
 
-from insanely_fast_whisper_api.core.segmentation import Word, segment_words
-from insanely_fast_whisper_api.utils import constants
+from insanely_fast_whisper_rocm.core.segmentation import Word, segment_words
+from insanely_fast_whisper_rocm.utils import constants
 
 
 def _mk_words(text: str, *, start: float = 0.0, per_word: float = 0.2) -> list[Word]:

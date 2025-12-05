@@ -12,11 +12,11 @@ from typing import Any
 
 import pytest
 
-from insanely_fast_whisper_api.core.asr_backend import (
+from insanely_fast_whisper_rocm.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )
-from insanely_fast_whisper_api.core.errors import TranscriptionError
+from insanely_fast_whisper_rocm.core.errors import TranscriptionError
 
 
 def test_runtime_error_tensor_mismatch_falls_back_to_chunk_timestamps(

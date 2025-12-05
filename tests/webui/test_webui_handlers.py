@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from insanely_fast_whisper_api.webui.handlers import TranscriptionConfig, transcribe
+from insanely_fast_whisper_rocm.webui.handlers import TranscriptionConfig, transcribe
 
 
 @pytest.fixture
@@ -21,10 +21,10 @@ def mock_pipeline_and_stabilizer() -> Generator[
     """
     with (
         patch(
-            "insanely_fast_whisper_api.webui.handlers.borrow_pipeline"
+            "insanely_fast_whisper_rocm.webui.handlers.borrow_pipeline"
         ) as mock_borrow,
         patch(
-            "insanely_fast_whisper_api.webui.handlers.stabilize_timestamps"
+            "insanely_fast_whisper_rocm.webui.handlers.stabilize_timestamps"
         ) as mock_stabilize,
     ):
         # Mock the pipeline's process method to return a dummy result

@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from insanely_fast_whisper_api.core import ASRPipeline, TranscriptionError
+from insanely_fast_whisper_rocm.core import ASRPipeline, TranscriptionError
 
 # A smaller model for faster testing if available, otherwise default.
 # You might need to adjust this if 'openai/whisper-tiny' is not suitable or always available.

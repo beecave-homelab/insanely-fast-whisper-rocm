@@ -6,16 +6,16 @@ import inspect
 
 import pytest
 
-from insanely_fast_whisper_api.api.dependencies import (
+from insanely_fast_whisper_rocm.api.dependencies import (
     get_asr_pipeline,
     get_file_handler,
 )
-from insanely_fast_whisper_api.api.routes import (
+from insanely_fast_whisper_rocm.api.routes import (
     create_transcription,
     create_translation,
     router,
 )
-from insanely_fast_whisper_api.utils import SUPPORTED_RESPONSE_FORMATS
+from insanely_fast_whisper_rocm.utils import SUPPORTED_RESPONSE_FORMATS
 
 
 def test_create_transcription_unsupported_response_format() -> None:

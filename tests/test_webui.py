@@ -44,7 +44,7 @@ def setup_module() -> None:
         [
             sys.executable,
             "-m",
-            "insanely_fast_whisper_api.webui",
+            "insanely_fast_whisper_rocm.webui",
             "--model",
             "openai/whisper-tiny",
         ],

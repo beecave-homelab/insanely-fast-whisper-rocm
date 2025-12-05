@@ -7,8 +7,8 @@ These tests reuse the segmentation pipeline but swap in text drawn from
 
 from __future__ import annotations
 
-from insanely_fast_whisper_api.core.segmentation import Word, segment_words
-from insanely_fast_whisper_api.utils import constants
+from insanely_fast_whisper_rocm.core.segmentation import Word, segment_words
+from insanely_fast_whisper_rocm.utils import constants
 
 
 class TestSrtFormattingRealWorld:

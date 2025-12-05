@@ -1,4 +1,4 @@
-"""Tests for load_logging_config function in insanely_fast_whisper_api.__main__."""
+"""Tests for load_logging_config function in insanely_fast_whisper_rocm.__main__."""
 
 import tempfile
 from pathlib import Path
@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from insanely_fast_whisper_api.__main__ import load_logging_config
+from insanely_fast_whisper_rocm.__main__ import load_logging_config
 
 
 class TestLoadLoggingConfig:
@@ -37,18 +37,18 @@ class TestLoadLoggingConfig:
 
         try:
             # Mock the path resolution
-            with patch("insanely_fast_whisper_api.__main__.Path") as mock_path_class:
+            with patch("insanely_fast_whisper_rocm.__main__.Path") as mock_path_class:
                 mock_path_instance = mock_path_class.return_value
                 mock_path_instance.parent = (
-                    Path(__file__).parent.parent / "insanely_fast_whisper_api"
+                    Path(__file__).parent.parent / "insanely_fast_whisper_rocm"
                 )
                 mock_path_instance.__truediv__ = lambda self, x: config_path
 
                 with patch(
-                    "insanely_fast_whisper_api.__main__.yaml.safe_load",
+                    "insanely_fast_whisper_rocm.__main__.yaml.safe_load",
                     return_value=mock_config,
                 ) as mock_yaml_load:
-                    with patch("insanely_fast_whisper_api.__main__.setup_timezone"):
+                    with patch("insanely_fast_whisper_rocm.__main__.setup_timezone"):
                         # Execute
                         result = load_logging_config(debug=False)
 
@@ -87,18 +87,18 @@ class TestLoadLoggingConfig:
 
         try:
             # Mock the path resolution
-            with patch("insanely_fast_whisper_api.__main__.Path") as mock_path_class:
+            with patch("insanely_fast_whisper_rocm.__main__.Path") as mock_path_class:
                 mock_path_instance = mock_path_class.return_value
                 mock_path_instance.parent = (
-                    Path(__file__).parent.parent / "insanely_fast_whisper_api"
+                    Path(__file__).parent.parent / "insanely_fast_whisper_rocm"
                 )
                 mock_path_instance.__truediv__ = lambda self, x: config_path
 
                 with patch(
-                    "insanely_fast_whisper_api.__main__.yaml.safe_load",
+                    "insanely_fast_whisper_rocm.__main__.yaml.safe_load",
                     return_value=mock_config,
                 ) as mock_yaml_load:
-                    with patch("insanely_fast_whisper_api.__main__.setup_timezone"):
+                    with patch("insanely_fast_whisper_rocm.__main__.setup_timezone"):
                         # Execute
                         result = load_logging_config(debug=True)
 
@@ -116,14 +116,14 @@ class TestLoadLoggingConfig:
 
     def test_load_logging_config_file_not_found(self) -> None:
         """Test load_logging_config when config file doesn't exist."""
-        with patch("insanely_fast_whisper_api.__main__.Path") as mock_path_class:
+        with patch("insanely_fast_whisper_rocm.__main__.Path") as mock_path_class:
             mock_path_instance = mock_path_class.return_value
             mock_path_instance.parent = (
-                Path(__file__).parent.parent / "insanely_fast_whisper_api"
+                Path(__file__).parent.parent / "insanely_fast_whisper_rocm"
             )
             mock_path_instance.__truediv__ = lambda self, x: Path("nonexistent.yaml")
 
-            with patch("insanely_fast_whisper_api.__main__.setup_timezone"):
+            with patch("insanely_fast_whisper_rocm.__main__.setup_timezone"):
                 # Execute & Verify
                 with pytest.raises(FileNotFoundError):
                     load_logging_config(debug=False)

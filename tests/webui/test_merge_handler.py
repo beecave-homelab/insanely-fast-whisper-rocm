@@ -1,4 +1,4 @@
-"""Tests for insanely_fast_whisper_api.webui.merge_handler module.
+"""Tests for insanely_fast_whisper_rocm.webui.merge_handler module.
 
 This module contains tests for merging multiple transcription results into
 single files with format-specific implementations.
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from insanely_fast_whisper_api.webui.merge_handler import (
+from insanely_fast_whisper_rocm.webui.merge_handler import (
     MERGE_HANDLERS,
     MergeConfiguration,
     MergeResult,

@@ -9,11 +9,11 @@ from unittest.mock import Mock, patch  # Used for @patch decorator
 import pytest
 
 # Import centralized constants instead of local ones
-from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL
+from insanely_fast_whisper_rocm.utils.constants import DEFAULT_MODEL
 
 # Adjust the import path based on your project structure
-# This assumes 'insanely_fast_whisper_api' is a package in the project root
-from insanely_fast_whisper_api.utils.download_hf_model import download_model_if_needed
+# This assumes 'insanely_fast_whisper_rocm' is a package in the project root
+from insanely_fast_whisper_rocm.utils.download_hf_model import download_model_if_needed
 
 # Constants for testing, mirroring values or concepts from the main script
 TEST_HF_CACHE_ENV_VAR = "HF_HOME"  # Standard Hugging Face cache env var
@@ -60,7 +60,7 @@ def custom_test_logger() -> logging.Logger:
 # --- Test Cases ---
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_download_default_model_when_none_provided_and_env_var_not_set(
     mock_snapshot_download: Mock,
     mock_hf_hub_cache: str,
@@ -97,7 +97,7 @@ def test_download_default_model_when_none_provided_and_env_var_not_set(
     custom_test_logger.info("Test completed. Model path: %s", model_path)
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_download_with_explicit_hf_token(
     mock_snapshot_download: Mock,
     mock_hf_hub_cache: str,
@@ -123,7 +123,7 @@ def test_download_with_explicit_hf_token(
     assert model_path == dummy_path
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_download_with_force_enabled(
     mock_snapshot_download: Mock,
     mock_hf_hub_cache: str,
@@ -148,7 +148,7 @@ def test_download_with_force_enabled(
     assert model_path == dummy_path
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_download_with_force_and_local_files_only(
     mock_snapshot_download: Mock,
     mock_hf_hub_cache: str,
@@ -181,7 +181,7 @@ def test_download_with_force_and_local_files_only(
     assert model_path == dummy_path
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_download_with_allow_and_ignore_patterns(
     mock_snapshot_download: Mock,
     mock_hf_hub_cache: str,
@@ -211,7 +211,7 @@ def test_download_with_allow_and_ignore_patterns(
     assert model_path == dummy_path
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_download_raises_hf_validation_error(
     mock_snapshot_download: Mock,
     mock_hf_hub_cache: str,
@@ -233,7 +233,7 @@ def test_download_raises_hf_validation_error(
         )
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_download_raises_http_error_401(
     mock_snapshot_download: Mock,
     mock_hf_hub_cache: str,
@@ -263,7 +263,7 @@ def test_download_raises_http_error_401(
     assert "Authentication failed" in caplog.text
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_download_raises_http_error_404(
     mock_snapshot_download: Mock,
     mock_hf_hub_cache: str,
@@ -292,7 +292,7 @@ def test_download_raises_http_error_404(
     assert "not found on Hugging Face Hub" in caplog.text
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_download_raises_file_not_found(
     mock_snapshot_download: Mock,
     mock_hf_hub_cache: str,
@@ -313,7 +313,7 @@ def test_download_raises_file_not_found(
         )
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_download_raises_os_error(
     mock_snapshot_download: Mock,
     mock_hf_hub_cache: str,
@@ -333,7 +333,7 @@ def test_download_raises_os_error(
         )
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_download_raises_runtime_error(
     mock_snapshot_download: Mock,
     mock_hf_hub_cache: str,
@@ -354,7 +354,7 @@ def test_download_raises_runtime_error(
 
 
 # CLI tests
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_cli_main_success(
     mock_snapshot_download: Mock,
     tmp_path: Path,
@@ -365,7 +365,7 @@ def test_cli_main_success(
     """
     from click.testing import CliRunner
 
-    from insanely_fast_whisper_api.utils.download_hf_model import main
+    from insanely_fast_whisper_rocm.utils.download_hf_model import main
 
     dummy_path = str(tmp_path / "model" / "snapshot")
     mock_snapshot_download.return_value = dummy_path
@@ -377,7 +377,7 @@ def test_cli_main_success(
     assert dummy_path in result.output
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_cli_main_with_force(
     mock_snapshot_download: Mock,
     tmp_path: Path,
@@ -388,7 +388,7 @@ def test_cli_main_with_force(
     """
     from click.testing import CliRunner
 
-    from insanely_fast_whisper_api.utils.download_hf_model import main
+    from insanely_fast_whisper_rocm.utils.download_hf_model import main
 
     dummy_path = str(tmp_path / "model" / "snapshot")
     mock_snapshot_download.return_value = dummy_path
@@ -401,7 +401,7 @@ def test_cli_main_with_force(
     assert called_kwargs.get("force_download") is True
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_cli_main_with_check_only(
     mock_snapshot_download: Mock,
     tmp_path: Path,
@@ -412,7 +412,7 @@ def test_cli_main_with_check_only(
     """
     from click.testing import CliRunner
 
-    from insanely_fast_whisper_api.utils.download_hf_model import main
+    from insanely_fast_whisper_rocm.utils.download_hf_model import main
 
     dummy_path = str(tmp_path / "model" / "snapshot")
     mock_snapshot_download.return_value = dummy_path
@@ -426,7 +426,7 @@ def test_cli_main_with_check_only(
     assert dummy_path in result.output
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_cli_main_with_verbose(
     mock_snapshot_download: Mock,
     tmp_path: Path,
@@ -437,7 +437,7 @@ def test_cli_main_with_verbose(
     """
     from click.testing import CliRunner
 
-    from insanely_fast_whisper_api.utils.download_hf_model import main
+    from insanely_fast_whisper_rocm.utils.download_hf_model import main
 
     dummy_path = str(tmp_path / "model" / "snapshot")
     mock_snapshot_download.return_value = dummy_path
@@ -451,7 +451,7 @@ def test_cli_main_with_verbose(
     assert dummy_path in result.output
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_cli_main_with_patterns(
     mock_snapshot_download: Mock,
     tmp_path: Path,
@@ -462,7 +462,7 @@ def test_cli_main_with_patterns(
     """
     from click.testing import CliRunner
 
-    from insanely_fast_whisper_api.utils.download_hf_model import main
+    from insanely_fast_whisper_rocm.utils.download_hf_model import main
 
     dummy_path = str(tmp_path / "model" / "snapshot")
     mock_snapshot_download.return_value = dummy_path
@@ -488,7 +488,7 @@ def test_cli_main_with_patterns(
     assert called_kwargs.get("ignore_patterns") == ["*.safetensors"]
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_cli_main_hf_hub_error(
     mock_snapshot_download: Mock,
 ) -> None:
@@ -499,7 +499,7 @@ def test_cli_main_hf_hub_error(
     from click.testing import CliRunner
     from huggingface_hub.utils import HfHubHTTPError
 
-    from insanely_fast_whisper_api.utils.download_hf_model import main
+    from insanely_fast_whisper_rocm.utils.download_hf_model import main
 
     mock_response = Mock()
     mock_response.status_code = 404
@@ -513,7 +513,7 @@ def test_cli_main_hf_hub_error(
     assert result.exit_code == 4
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_cli_main_validation_error(
     mock_snapshot_download: Mock,
 ) -> None:
@@ -524,7 +524,7 @@ def test_cli_main_validation_error(
     from click.testing import CliRunner
     from huggingface_hub.utils import HFValidationError
 
-    from insanely_fast_whisper_api.utils.download_hf_model import main
+    from insanely_fast_whisper_rocm.utils.download_hf_model import main
 
     mock_snapshot_download.side_effect = HFValidationError("Invalid repo ID")
 
@@ -534,7 +534,7 @@ def test_cli_main_validation_error(
     assert result.exit_code == 4
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_cli_main_critical_error(
     mock_snapshot_download: Mock,
 ) -> None:
@@ -544,7 +544,7 @@ def test_cli_main_critical_error(
     """
     from click.testing import CliRunner
 
-    from insanely_fast_whisper_api.utils.download_hf_model import main
+    from insanely_fast_whisper_rocm.utils.download_hf_model import main
 
     mock_snapshot_download.side_effect = OSError("Disk full")
 

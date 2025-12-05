@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from insanely_fast_whisper_api.audio.conversion import (
+from insanely_fast_whisper_rocm.audio.conversion import (
     DEFAULT_CHANNELS,
     DEFAULT_CODEC,
     DEFAULT_SAMPLE_RATE,
@@ -59,7 +59,7 @@ def test_ensure_wav_non_wav_file_conversion() -> None:
         tmp_path = tmp.name
 
     try:
-        with patch("insanely_fast_whisper_api.audio.conversion.ffmpeg") as mock_ffmpeg:
+        with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg") as mock_ffmpeg:
             mock_ffmpeg.input.return_value = mock_ffmpeg_input
 
             result = ensure_wav(tmp_path)
@@ -90,7 +90,7 @@ def test_ensure_wav_custom_sample_rate() -> None:
         tmp_path = tmp.name
 
     try:
-        with patch("insanely_fast_whisper_api.audio.conversion.ffmpeg") as mock_ffmpeg:
+        with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg") as mock_ffmpeg:
             mock_ffmpeg_input = Mock()
             mock_ffmpeg_output = Mock()
             mock_run = Mock()
@@ -120,7 +120,7 @@ def test_ensure_wav_custom_channels() -> None:
         tmp_path = tmp.name
 
     try:
-        with patch("insanely_fast_whisper_api.audio.conversion.ffmpeg") as mock_ffmpeg:
+        with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg") as mock_ffmpeg:
             mock_ffmpeg_input = Mock()
             mock_ffmpeg_output = Mock()
             mock_run = Mock()
@@ -150,7 +150,7 @@ def test_ensure_wav_pathlib_input() -> None:
     try:
         path_obj = Path(tmp_path)
 
-        with patch("insanely_fast_whisper_api.audio.conversion.ffmpeg") as mock_ffmpeg:
+        with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg") as mock_ffmpeg:
             mock_ffmpeg_input = Mock()
             mock_ffmpeg_output = Mock()
             mock_run = Mock()
@@ -193,7 +193,7 @@ def test_ensure_wav_ffmpeg_unavailable() -> None:
 
     try:
         # Mock ffmpeg as None
-        with patch("insanely_fast_whisper_api.audio.conversion.ffmpeg", None):
+        with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg", None):
             result = ensure_wav(tmp_path)
 
             # Should create a WAV file (placeholder copy)
@@ -230,7 +230,7 @@ def test_ensure_wav_ffmpeg_error() -> None:
         tmp_path = tmp.name
 
     try:
-        with patch("insanely_fast_whisper_api.audio.conversion.ffmpeg") as mock_ffmpeg:
+        with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg") as mock_ffmpeg:
             mock_error = FFmpegError("FFmpeg conversion failed")
 
             # Mock the chain to raise an error
@@ -256,7 +256,7 @@ def test_ensure_wav_output_not_created() -> None:
         tmp_path = tmp.name
 
     try:
-        with patch("insanely_fast_whisper_api.audio.conversion.ffmpeg") as mock_ffmpeg:
+        with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg") as mock_ffmpeg:
             mock_ffmpeg_input = Mock()
             mock_ffmpeg_output = Mock()
 

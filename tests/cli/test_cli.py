@@ -10,15 +10,15 @@ from unittest.mock import Mock, patch
 import pytest
 from click.testing import CliRunner
 
-from insanely_fast_whisper_api import constants
-from insanely_fast_whisper_api.cli.cli import cli, main
-from insanely_fast_whisper_api.cli.facade import CLIFacade, cli_facade
-from insanely_fast_whisper_api.core.asr_backend import HuggingFaceBackendConfig
-from insanely_fast_whisper_api.core.errors import (
+from insanely_fast_whisper_rocm import constants
+from insanely_fast_whisper_rocm.cli.cli import cli, main
+from insanely_fast_whisper_rocm.cli.facade import CLIFacade, cli_facade
+from insanely_fast_whisper_rocm.core.asr_backend import HuggingFaceBackendConfig
+from insanely_fast_whisper_rocm.core.errors import (
     DeviceNotFoundError,
     TranscriptionError,
 )
-from insanely_fast_whisper_api.core.progress import ProgressCallback
+from insanely_fast_whisper_rocm.core.progress import ProgressCallback
 
 
 class TestCLIFacade:
@@ -112,7 +112,7 @@ class TestCLIFacade:
         # Adjustments are applied during processing, not at config creation
         assert isinstance(config.batch_size, int)
 
-    @patch("insanely_fast_whisper_api.cli.facade.HuggingFaceBackend")
+    @patch("insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend")
     def test_transcribe_audio_success(self, mock_backend_class: Mock) -> None:
         """Test successful audio transcription."""
         # Mock the backend
@@ -136,7 +136,7 @@ class TestCLIFacade:
         assert "runtime_seconds" in result
         mock_backend.process_audio.assert_called_once()
 
-    @patch("insanely_fast_whisper_api.cli.facade.HuggingFaceBackend")
+    @patch("insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend")
     def test_transcribe_audio_backend_reuse(self, mock_backend_class: Mock) -> None:
         """Test that backend is reused when configuration doesn't change."""
         mock_backend = Mock()
@@ -197,10 +197,10 @@ def _stub_cli_facade(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
     stub = _StubFacade()
     monkeypatch.setattr(
-        "insanely_fast_whisper_api.cli.commands.cli_facade", stub, raising=False
+        "insanely_fast_whisper_rocm.cli.commands.cli_facade", stub, raising=False
     )
     monkeypatch.setattr(
-        "insanely_fast_whisper_api.cli.facade.cli_facade", stub, raising=False
+        "insanely_fast_whisper_rocm.cli.facade.cli_facade", stub, raising=False
     )
     yield
 
@@ -242,7 +242,7 @@ class TestCLICommands:
         assert result.exit_code != 0
         assert "does not exist" in result.output.lower()
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_transcribe_success(self, mock_process: Mock) -> None:
         """Test successful transcription command."""
         # Mock successful transcription
@@ -284,7 +284,7 @@ class TestCLICommands:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_transcribe_with_output_file(self, mock_process: Mock) -> None:
         """Test transcription with output file."""
         mock_process.return_value = {
@@ -331,7 +331,7 @@ class TestCLICommands:
             audio_path.unlink(missing_ok=True)
             output_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_transcribe_device_error(self, mock_process: Mock) -> None:
         """Test transcription with device error."""
         mock_process.side_effect = DeviceNotFoundError("CUDA device not available")
@@ -352,7 +352,7 @@ class TestCLICommands:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_transcribe_transcription_error(self, mock_process: Mock) -> None:
         """Test transcription with transcription error."""
         mock_process.side_effect = TranscriptionError("Model loading failed")
@@ -370,7 +370,7 @@ class TestCLICommands:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_transcribe_unexpected_error(self, mock_process: Mock) -> None:
         """Test transcription with unexpected error."""
         mock_process.side_effect = RuntimeError("Unexpected error")
@@ -387,7 +387,7 @@ class TestCLICommands:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_transcribe_all_options(self, mock_process: Mock) -> None:
         """Test transcribe command with all options."""
         mock_process.return_value = {
@@ -448,7 +448,7 @@ class TestCLICommands:
         assert "--device" in result.output
         assert "--output" in result.output
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_translate_success(self, mock_process: Mock) -> None:
         """Test successful translation command."""
         # Mock successful translation
@@ -489,7 +489,7 @@ class TestCLICommands:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_transcribe_legacy_export_json(self, mock_process: Mock) -> None:
         """Test legacy --export-json flag."""
         mock_process.return_value = {
@@ -514,7 +514,7 @@ class TestCLICommands:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_transcribe_legacy_export_txt(self, mock_process: Mock) -> None:
         """Test legacy --export-txt flag."""
         mock_process.return_value = {
@@ -536,7 +536,7 @@ class TestCLICommands:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_transcribe_legacy_export_srt(self, mock_process: Mock) -> None:
         """Test legacy --export-srt flag."""
         mock_process.return_value = {
@@ -558,7 +558,7 @@ class TestCLICommands:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_transcribe_legacy_export_all(self, mock_process: Mock) -> None:
         """Test legacy --export-all flag."""
         mock_process.return_value = {
@@ -586,7 +586,7 @@ class TestCLIIntegration:
 
     def test_main_function(self) -> None:
         """Test the main entry point function."""
-        with patch("insanely_fast_whisper_api.cli.cli.cli") as mock_cli:
+        with patch("insanely_fast_whisper_rocm.cli.cli.cli") as mock_cli:
             main()
             mock_cli.assert_called_once()
 
@@ -634,7 +634,7 @@ class TestErrorHandling:
         facade = CLIFacade()
 
         with patch(
-            "insanely_fast_whisper_api.cli.facade.HuggingFaceBackend",
+            "insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend",
             side_effect=DeviceNotFoundError("CUDA device not available"),
         ):
             with pytest.raises(DeviceNotFoundError):
@@ -643,7 +643,7 @@ class TestErrorHandling:
     def test_facade_transcription_error(self) -> None:
         """Test that backend transcription errors propagate."""
         with patch(
-            "insanely_fast_whisper_api.cli.facade.HuggingFaceBackend"
+            "insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend"
         ) as mock_backend_class:
             mock_backend = Mock()
             mock_backend.process_audio.side_effect = TranscriptionError("Model failed")
@@ -659,7 +659,7 @@ class TestErrorHandling:
         facade = CLIFacade()
 
         with patch(
-            "insanely_fast_whisper_api.cli.facade.HuggingFaceBackend"
+            "insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend"
         ) as mock_backend_class:
             mock_backend = Mock()
             mock_backend.process_audio.return_value = {"text": "CPU test", "chunks": []}
@@ -685,7 +685,7 @@ class TestErrorHandling:
         facade = CLIFacade()
 
         with patch(
-            "insanely_fast_whisper_api.cli.facade.HuggingFaceBackend"
+            "insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend"
         ) as mock_backend_class:
             mock_backend = Mock()
             mock_backend.process_audio.return_value = {"text": "CPU test", "chunks": []}
@@ -763,8 +763,8 @@ class TestVideoProcessing:
         """Set up test fixtures."""
         self.runner = CliRunner()
 
-    @patch("insanely_fast_whisper_api.cli.commands.extract_audio_from_video")
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.extract_audio_from_video")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_video_file_extraction(
         self, mock_process: Mock, mock_extract: Mock
     ) -> None:
@@ -809,7 +809,7 @@ class TestQuietMode:
         """Set up test fixtures."""
         self.runner = CliRunner()
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_quiet_mode_logging_reduction(self, mock_process: Mock) -> None:
         """Test that quiet mode reduces logging verbosity."""
         mock_process.return_value = {
@@ -829,8 +829,8 @@ class TestQuietMode:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.stabilize_timestamps")
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.stabilize_timestamps")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_stabilize_quiet_mode_suppress_output(
         self, mock_process: Mock, mock_stabilize: Mock
     ) -> None:
@@ -862,8 +862,8 @@ class TestStableTS:
         """Set up test fixtures."""
         self.runner = CliRunner()
 
-    @patch("insanely_fast_whisper_api.cli.commands.stabilize_timestamps")
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.stabilize_timestamps")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_stabilize_timestamps_basic(
         self, mock_process: Mock, mock_stabilize: Mock
     ) -> None:
@@ -891,8 +891,8 @@ class TestStableTS:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.stabilize_timestamps")
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.stabilize_timestamps")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_stabilize_timestamps_with_demucs(
         self, mock_process: Mock, mock_stabilize: Mock
     ) -> None:
@@ -918,8 +918,8 @@ class TestStableTS:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.stabilize_timestamps")
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.stabilize_timestamps")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_stabilize_timestamps_with_vad(
         self, mock_process: Mock, mock_stabilize: Mock
     ) -> None:
@@ -962,10 +962,10 @@ class TestDebugErrorHandling:
         """Set up test fixtures."""
         self.runner = CliRunner()
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_device_error_debug_logging(self, mock_process: Mock) -> None:
         """Test device error logging in debug mode."""
-        from insanely_fast_whisper_api.cli.errors import DeviceNotFoundError
+        from insanely_fast_whisper_rocm.cli.errors import DeviceNotFoundError
 
         mock_process.side_effect = DeviceNotFoundError("CUDA device not available")
 
@@ -980,10 +980,10 @@ class TestDebugErrorHandling:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_transcription_error_debug_logging(self, mock_process: Mock) -> None:
         """Test transcription error logging in debug mode."""
-        from insanely_fast_whisper_api.cli.errors import TranscriptionError
+        from insanely_fast_whisper_rocm.cli.errors import TranscriptionError
 
         mock_process.side_effect = TranscriptionError("Model failed")
 
@@ -997,7 +997,7 @@ class TestDebugErrorHandling:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
     def test_unexpected_error_debug_logging(self, mock_process: Mock) -> None:
         """Test unexpected error logging in debug mode."""
         mock_process.side_effect = Exception("Unexpected error")
@@ -1020,8 +1020,8 @@ class TestBenchmarkCollection:
         """Set up test fixtures."""
         self.runner = CliRunner()
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.process_audio")
-    @patch("insanely_fast_whisper_api.benchmarks.collector.BenchmarkCollector")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
+    @patch("insanely_fast_whisper_rocm.benchmarks.collector.BenchmarkCollector")
     def test_benchmark_collection_with_extra(
         self, mock_collector_class: Mock, mock_process: Mock
     ) -> None:

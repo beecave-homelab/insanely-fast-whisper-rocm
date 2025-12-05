@@ -23,7 +23,7 @@ def get_project_version() -> str:
         RuntimeError: If the version cannot be read from metadata or `pyproject.toml`.
     """
     try:
-        return metadata.version("insanely-fast-whisper-api")
+        return metadata.version("insanely-fast-whisper-rocm")
     except metadata.PackageNotFoundError:
         config = Path(__file__).resolve().parents[1] / "pyproject.toml"
         raw = config.read_text(encoding="utf-8")

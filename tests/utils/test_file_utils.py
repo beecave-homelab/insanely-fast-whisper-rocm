@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import HTTPException, UploadFile
 
-from insanely_fast_whisper_api.utils.file_utils import (
+from insanely_fast_whisper_rocm.utils.file_utils import (
     FileHandler,
     cleanup_temp_files,
     save_upload_file,
@@ -45,7 +45,7 @@ def test_save_upload_file__saves_file_successfully(tmp_path: Path) -> None:
     file.file = BytesIO(b"fake audio data")
 
     with patch(
-        "insanely_fast_whisper_api.utils.file_utils.UPLOAD_DIR", str(upload_dir)
+        "insanely_fast_whisper_rocm.utils.file_utils.UPLOAD_DIR", str(upload_dir)
     ):
         saved_path = save_upload_file(file)
 
@@ -67,7 +67,7 @@ def test_save_upload_file__os_error__raises_http_exception(tmp_path: Path) -> No
     file.file = BytesIO(b"fake audio data")
 
     with patch(
-        "insanely_fast_whisper_api.utils.file_utils.UPLOAD_DIR", str(upload_dir)
+        "insanely_fast_whisper_rocm.utils.file_utils.UPLOAD_DIR", str(upload_dir)
     ):
         with patch("builtins.open", side_effect=OSError("Disk full")):
             with pytest.raises(HTTPException, match="Error saving uploaded file"):
@@ -94,7 +94,7 @@ def test_cleanup_temp_files__removes_empty_upload_dir(tmp_path: Path) -> None:
     test_file = upload_dir / "test.txt"
     test_file.write_text("test")
 
-    with patch("insanely_fast_whisper_api.utils.file_utils.UPLOAD_DIR", str(tmp_path)):
+    with patch("insanely_fast_whisper_rocm.utils.file_utils.UPLOAD_DIR", str(tmp_path)):
         cleanup_temp_files([str(test_file)])
 
     assert not test_file.exists()
@@ -132,7 +132,7 @@ def test_cleanup_temp_files__handles_rmdir_error_gracefully(tmp_path: Path) -> N
     # Mock os.rmdir to raise OSError
     with patch("os.rmdir", side_effect=OSError("Permission denied")):
         with patch(
-            "insanely_fast_whisper_api.utils.file_utils.UPLOAD_DIR", str(tmp_path)
+            "insanely_fast_whisper_rocm.utils.file_utils.UPLOAD_DIR", str(tmp_path)
         ):
             # Should not raise
             cleanup_temp_files([str(test_file)])

@@ -7,11 +7,11 @@ from typing import NoReturn
 
 import pytest
 
-from insanely_fast_whisper_api.cli.facade import CLIFacade
-from insanely_fast_whisper_api.core.asr_backend import HuggingFaceBackendConfig
-from insanely_fast_whisper_api.core.cancellation import CancellationToken
-from insanely_fast_whisper_api.core.errors import TranscriptionError
-from insanely_fast_whisper_api.core.progress import ProgressCallback
+from insanely_fast_whisper_rocm.cli.facade import CLIFacade
+from insanely_fast_whisper_rocm.core.asr_backend import HuggingFaceBackendConfig
+from insanely_fast_whisper_rocm.core.cancellation import CancellationToken
+from insanely_fast_whisper_rocm.core.errors import TranscriptionError
+from insanely_fast_whisper_rocm.core.progress import ProgressCallback
 
 
 class RecordingBackend:

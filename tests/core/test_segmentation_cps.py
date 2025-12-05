@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from insanely_fast_whisper_api.core.segmentation import Word, segment_words
-from insanely_fast_whisper_api.utils import constants
+from insanely_fast_whisper_rocm.core.segmentation import Word, segment_words
+from insanely_fast_whisper_rocm.utils import constants
 
 
 def _build_words(

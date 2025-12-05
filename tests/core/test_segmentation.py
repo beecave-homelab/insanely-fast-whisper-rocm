@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from insanely_fast_whisper_api.core import segmentation
-from insanely_fast_whisper_api.core.segmentation import Word
+from insanely_fast_whisper_rocm.core import segmentation
+from insanely_fast_whisper_rocm.core.segmentation import Word
 
 
 def test_segment_words_does_not_drop_words() -> None:
@@ -45,7 +45,7 @@ def test_segment_words_enforces_max_duration_with_short_fragments() -> None:
     multiple short segments (each < MIN_SEGMENT_DURATION_SEC) into one segment
     that exceeds MAX_SEGMENT_DURATION_SEC.
     """
-    from insanely_fast_whisper_api.utils import constants
+    from insanely_fast_whisper_rocm.utils import constants
 
     # Create many SHORT segments (each < MIN_SEGMENT_DURATION_SEC = 0.9s)
     # WITHOUT sentence-ending punctuation to trigger merging
@@ -92,8 +92,8 @@ def test_segment_words_splits_on_large_gaps() -> None:
     This reproduces the benchmark bug where words separated by long silences
     (e.g., 2.5s gaps) are grouped into a single 27s+ segment.
     """
-    from insanely_fast_whisper_api.core.segmentation import Word, segment_words
-    from insanely_fast_whisper_api.utils import constants
+    from insanely_fast_whisper_rocm.core.segmentation import Word, segment_words
+    from insanely_fast_whisper_rocm.utils import constants
 
     # Words with large gaps (simulating sparse audio with long silences)
     words = [
@@ -138,11 +138,11 @@ def test_segment_words_splits_on_large_gaps() -> None:
 
 def test_merge_short_segments_respects_max_duration() -> None:
     """_merge_short_segments should not create segments exceeding MAX_SEGMENT_DURATION_SEC."""
-    from insanely_fast_whisper_api.core.segmentation import (
+    from insanely_fast_whisper_rocm.core.segmentation import (
         Segment,
         _merge_short_segments,
     )
-    from insanely_fast_whisper_api.utils import constants
+    from insanely_fast_whisper_rocm.utils import constants
 
     # Create many short segments (each < MIN_SEGMENT_DURATION_SEC) without punctuation
     # These WILL be merged by _merge_short_segments()

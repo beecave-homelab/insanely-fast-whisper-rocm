@@ -11,8 +11,8 @@ import pathlib
 from typing import Any
 from unittest.mock import MagicMock
 
-from insanely_fast_whisper_api.core.asr_backend import ASRBackend
-from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
+from insanely_fast_whisper_rocm.core.asr_backend import ASRBackend
+from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
 
 
 def test_postprocess_stores_absolute_audio_path(tmp_path: pathlib.Path) -> None:

@@ -11,8 +11,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 from click.testing import CliRunner
 
-from insanely_fast_whisper_api.cli.commands import transcribe
-from insanely_fast_whisper_api.core.errors import TranscriptionCancelledError
+from insanely_fast_whisper_rocm.cli.commands import transcribe
+from insanely_fast_whisper_rocm.core.errors import TranscriptionCancelledError
 
 
 class TestCliCancellationCleanup:
@@ -32,7 +32,7 @@ class TestCliCancellationCleanup:
         mock_backend.close = Mock()
 
         # Mock the facade to track cleanup calls
-        with patch("insanely_fast_whisper_api.cli.commands.cli_facade") as mock_facade:
+        with patch("insanely_fast_whisper_rocm.cli.commands.cli_facade") as mock_facade:
             # Setup the facade to have a backend attribute
             mock_facade.backend = mock_backend
 
@@ -68,7 +68,7 @@ class TestCliCancellationCleanup:
         """
         runner = CliRunner()
 
-        with patch("insanely_fast_whisper_api.cli.commands.cli_facade") as mock_facade:
+        with patch("insanely_fast_whisper_rocm.cli.commands.cli_facade") as mock_facade:
             # Backend is None (not initialized yet)
             mock_facade.backend = None
 
@@ -97,14 +97,14 @@ class TestCliCancellationCleanup:
         mock_backend = MagicMock()
         mock_backend.close = Mock(side_effect=RuntimeError("Close failed"))
 
-        with patch("insanely_fast_whisper_api.cli.commands.cli_facade") as mock_facade:
+        with patch("insanely_fast_whisper_rocm.cli.commands.cli_facade") as mock_facade:
             mock_facade.backend = mock_backend
 
             mock_facade.process_audio.side_effect = TranscriptionCancelledError(
                 "Transcription cancelled by user"
             )
 
-            with patch("insanely_fast_whisper_api.cli.commands.logger") as mock_logger:
+            with patch("insanely_fast_whisper_rocm.cli.commands.logger") as mock_logger:
                 with runner.isolated_filesystem():
                     test_audio = Path("test.wav")
                     test_audio.write_text("fake audio data")
@@ -131,7 +131,7 @@ class TestCliCancellationCleanup:
         """
         runner = CliRunner()
 
-        with patch("insanely_fast_whisper_api.cli.commands.cli_facade") as mock_facade:
+        with patch("insanely_fast_whisper_rocm.cli.commands.cli_facade") as mock_facade:
             # Remove backend attribute entirely using delattr simulation
             type(mock_facade).backend = property(
                 lambda self: (_ for _ in ()).throw(AttributeError("no backend"))

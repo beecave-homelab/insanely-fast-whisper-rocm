@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from insanely_fast_whisper_api.benchmarks.collector import (
+from insanely_fast_whisper_rocm.benchmarks.collector import (
     BenchmarkCollector,
     GpuUtilSampler,
 )
@@ -123,7 +123,7 @@ def test_benchmark_collector__collect__handles_zone_info_not_found(
     collector = BenchmarkCollector(output_dir=tmp_path)
 
     with patch(
-        "insanely_fast_whisper_api.benchmarks.collector.APP_TIMEZONE",
+        "insanely_fast_whisper_rocm.benchmarks.collector.APP_TIMEZONE",
         "Invalid/Timezone",
     ):
         result_path = collector.collect(
@@ -161,7 +161,7 @@ def test_gpu_util_sampler__start__returns_false_when_pyamdgpuinfo_unavailable() 
     """Return False when pyamdgpuinfo is not available."""
     sampler = GpuUtilSampler()
 
-    with patch("insanely_fast_whisper_api.benchmarks.collector.pyamdgpuinfo", None):
+    with patch("insanely_fast_whisper_rocm.benchmarks.collector.pyamdgpuinfo", None):
         assert sampler.start() is False
 
 
@@ -173,7 +173,7 @@ def test_gpu_util_sampler__start__returns_false_on_gpu_error() -> None:
     mock_pyamdgpuinfo.get_gpu.side_effect = RuntimeError("No GPU found")
 
     with patch(
-        "insanely_fast_whisper_api.benchmarks.collector.pyamdgpuinfo",
+        "insanely_fast_whisper_rocm.benchmarks.collector.pyamdgpuinfo",
         mock_pyamdgpuinfo,
     ):
         assert sampler.start() is False

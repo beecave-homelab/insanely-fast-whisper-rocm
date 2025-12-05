@@ -8,12 +8,12 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
-from insanely_fast_whisper_api.api.dependencies import (
+from insanely_fast_whisper_rocm.api.dependencies import (
     get_asr_pipeline,
     get_file_handler,
 )
-from insanely_fast_whisper_api.main import app
-from insanely_fast_whisper_api.utils import (
+from insanely_fast_whisper_rocm.main import app
+from insanely_fast_whisper_rocm.utils import (
     RESPONSE_FORMAT_JSON,
     RESPONSE_FORMAT_SRT,
     RESPONSE_FORMAT_TEXT,

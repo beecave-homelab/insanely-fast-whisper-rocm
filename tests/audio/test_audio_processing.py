@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from insanely_fast_whisper_api.audio.processing import (
+from insanely_fast_whisper_rocm.audio.processing import (
     extract_audio_from_video,
     get_audio_duration,
     split_audio,
@@ -27,7 +27,7 @@ def test_get_audio_duration_valid_file() -> None:
         mock_audio.__len__ = Mock(return_value=5000)  # 5 seconds in milliseconds
 
         with patch(
-            "insanely_fast_whisper_api.audio.processing.AudioSegment"
+            "insanely_fast_whisper_rocm.audio.processing.AudioSegment"
         ) as mock_audio_segment:
             mock_audio_segment.from_file.return_value = mock_audio
 
@@ -44,7 +44,7 @@ def test_get_audio_duration_file_not_found() -> None:
     non_existent_path = "/path/to/nonexistent/file.wav"
 
     with patch(
-        "insanely_fast_whisper_api.audio.processing.AudioSegment"
+        "insanely_fast_whisper_rocm.audio.processing.AudioSegment"
     ) as mock_audio_segment:
         mock_audio_segment.from_file.side_effect = OSError("File not found")
 
@@ -59,7 +59,7 @@ def test_get_audio_duration_processing_error() -> None:
 
     try:
         with patch(
-            "insanely_fast_whisper_api.audio.processing.AudioSegment"
+            "insanely_fast_whisper_rocm.audio.processing.AudioSegment"
         ) as mock_audio_segment:
             mock_audio_segment.from_file.side_effect = RuntimeError("Processing error")
 
@@ -75,7 +75,7 @@ def test_extract_audio_from_video_valid_file() -> None:
         tmp_path = tmp.name
 
     try:
-        with patch("insanely_fast_whisper_api.audio.processing.ffmpeg") as mock_ffmpeg:
+        with patch("insanely_fast_whisper_rocm.audio.processing.ffmpeg") as mock_ffmpeg:
             mock_ffmpeg_input = Mock()
             mock_ffmpeg_output = Mock()
             mock_run = Mock()
@@ -120,7 +120,7 @@ def test_extract_audio_from_video_ffmpeg_error() -> None:
         mock_error = Mock()
         mock_error.stderr = b"FFmpeg error message"
 
-        with patch("insanely_fast_whisper_api.audio.processing.ffmpeg") as mock_ffmpeg:
+        with patch("insanely_fast_whisper_rocm.audio.processing.ffmpeg") as mock_ffmpeg:
             # Mock ffmpeg.Error to be a proper exception class
             mock_ffmpeg.Error = type(
                 "FFmpegError", (Exception,), {"stderr": b"FFmpeg error"}
@@ -152,7 +152,7 @@ def test_extract_audio_from_video_custom_parameters() -> None:
         tmp_path = tmp.name
 
     try:
-        with patch("insanely_fast_whisper_api.audio.processing.ffmpeg") as mock_ffmpeg:
+        with patch("insanely_fast_whisper_rocm.audio.processing.ffmpeg") as mock_ffmpeg:
             mock_ffmpeg_input = Mock()
             mock_ffmpeg_output = Mock()
             mock_run = Mock()
@@ -192,13 +192,13 @@ def test_split_audio_valid_parameters() -> None:
         mock_chunk.export = Mock()
 
         with patch(
-            "insanely_fast_whisper_api.audio.processing.AudioSegment"
+            "insanely_fast_whisper_rocm.audio.processing.AudioSegment"
         ) as mock_audio_segment:
             with patch(
-                "insanely_fast_whisper_api.audio.processing.tempfile.mkdtemp"
+                "insanely_fast_whisper_rocm.audio.processing.tempfile.mkdtemp"
             ) as mock_mkdtemp:
                 with patch(
-                    "insanely_fast_whisper_api.audio.processing.os.path.join"
+                    "insanely_fast_whisper_rocm.audio.processing.os.path.join"
                 ) as mock_join:
                     mock_audio_segment.from_file.return_value = mock_audio
                     mock_mkdtemp.return_value = "/tmp/test_dir"
@@ -228,7 +228,7 @@ def test_split_audio_short_audio() -> None:
         mock_audio.__len__ = Mock(return_value=5000)  # 5 seconds
 
         with patch(
-            "insanely_fast_whisper_api.audio.processing.AudioSegment"
+            "insanely_fast_whisper_rocm.audio.processing.AudioSegment"
         ) as mock_audio_segment:
             mock_audio_segment.from_file.return_value = mock_audio
 
@@ -277,7 +277,7 @@ def test_split_audio_processing_error() -> None:
 
     try:
         with patch(
-            "insanely_fast_whisper_api.audio.processing.AudioSegment"
+            "insanely_fast_whisper_rocm.audio.processing.AudioSegment"
         ) as mock_audio_segment:
             mock_audio_segment.from_file.side_effect = RuntimeError("Processing error")
 
@@ -294,10 +294,10 @@ def test_split_audio_memory_error() -> None:
 
     try:
         with patch(
-            "insanely_fast_whisper_api.audio.processing.AudioSegment"
+            "insanely_fast_whisper_rocm.audio.processing.AudioSegment"
         ) as mock_audio_segment:
             with patch(
-                "insanely_fast_whisper_api.audio.processing.tempfile.mkdtemp"
+                "insanely_fast_whisper_rocm.audio.processing.tempfile.mkdtemp"
             ) as mock_mkdtemp:
                 mock_audio_segment.from_file.side_effect = MemoryError("Out of memory")
                 mock_mkdtemp.return_value = "/tmp/test_dir"
@@ -322,13 +322,13 @@ def test_split_audio_chunk_export() -> None:
         mock_chunk.export = Mock()
 
         with patch(
-            "insanely_fast_whisper_api.audio.processing.AudioSegment"
+            "insanely_fast_whisper_rocm.audio.processing.AudioSegment"
         ) as mock_audio_segment:
             with patch(
-                "insanely_fast_whisper_api.audio.processing.tempfile.mkdtemp"
+                "insanely_fast_whisper_rocm.audio.processing.tempfile.mkdtemp"
             ) as mock_mkdtemp:
                 with patch(
-                    "insanely_fast_whisper_api.audio.processing.os.path.join"
+                    "insanely_fast_whisper_rocm.audio.processing.os.path.join"
                 ) as mock_join:
                     mock_audio_segment.from_file.return_value = mock_audio
                     mock_mkdtemp.return_value = "/tmp/test_dir"

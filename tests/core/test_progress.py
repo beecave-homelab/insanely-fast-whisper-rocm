@@ -6,7 +6,7 @@ and that all methods execute without raising exceptions.
 
 from __future__ import annotations
 
-from insanely_fast_whisper_api.core.progress import NoOpProgress, ProgressCallback
+from insanely_fast_whisper_rocm.core.progress import NoOpProgress, ProgressCallback
 
 
 def test_noop_progress__implements_protocol() -> None:

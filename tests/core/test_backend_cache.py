@@ -10,9 +10,9 @@ import os
 import threading
 from unittest.mock import MagicMock, Mock, patch
 
-from insanely_fast_whisper_api.core import backend_cache
-from insanely_fast_whisper_api.core.asr_backend import HuggingFaceBackendConfig
-from insanely_fast_whisper_api.core.backend_cache import (
+from insanely_fast_whisper_rocm.core import backend_cache
+from insanely_fast_whisper_rocm.core.asr_backend import HuggingFaceBackendConfig
+from insanely_fast_whisper_rocm.core.backend_cache import (
     acquire_pipeline,
     borrow_pipeline,
     clear_cache,
@@ -45,10 +45,10 @@ class TestBackendCache:
 
         # Mock backend and pipeline creation
         with patch(
-            "insanely_fast_whisper_api.core.backend_cache.HuggingFaceBackend"
+            "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
         ) as mock_backend_class:
             with patch(
-                "insanely_fast_whisper_api.core.backend_cache.WhisperPipeline"
+                "insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"
             ) as mock_pipeline_class:
                 mock_backend = MagicMock()
                 mock_pipeline = MagicMock()
@@ -75,8 +75,8 @@ class TestBackendCache:
             progress_group_size=5,
         )
 
-        with patch("insanely_fast_whisper_api.core.backend_cache.HuggingFaceBackend"):
-            with patch("insanely_fast_whisper_api.core.backend_cache.WhisperPipeline"):
+        with patch("insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"):
+            with patch("insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"):
                 # Acquire twice
                 pipeline1, key1 = acquire_pipeline(cfg)
                 pipeline2, key2 = acquire_pipeline(cfg)
@@ -101,8 +101,8 @@ class TestBackendCache:
             progress_group_size=5,
         )
 
-        with patch("insanely_fast_whisper_api.core.backend_cache.HuggingFaceBackend"):
-            with patch("insanely_fast_whisper_api.core.backend_cache.WhisperPipeline"):
+        with patch("insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"):
+            with patch("insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"):
                 # Acquire twice
                 pipeline1, key1 = acquire_pipeline(cfg)
                 pipeline2, key2 = acquire_pipeline(cfg)
@@ -137,21 +137,21 @@ class TestBackendCache:
             # Re-import to pick up the environment variable
             import importlib
 
-            from insanely_fast_whisper_api import core
+            from insanely_fast_whisper_rocm import core
 
             importlib.reload(core.backend_cache)
-            from insanely_fast_whisper_api.core.backend_cache import (
+            from insanely_fast_whisper_rocm.core.backend_cache import (
                 acquire_pipeline as acquire_eager,
             )
-            from insanely_fast_whisper_api.core.backend_cache import (
+            from insanely_fast_whisper_rocm.core.backend_cache import (
                 release_pipeline as release_eager,
             )
 
             with patch(
-                "insanely_fast_whisper_api.core.backend_cache.HuggingFaceBackend"
+                "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
             ) as mock_backend_class:
                 with patch(
-                    "insanely_fast_whisper_api.core.backend_cache.WhisperPipeline"
+                    "insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"
                 ):
                     mock_backend = MagicMock()
                     mock_backend.close = Mock()
@@ -186,21 +186,21 @@ class TestBackendCache:
             # Re-import to pick up the environment variable
             import importlib
 
-            from insanely_fast_whisper_api import core
+            from insanely_fast_whisper_rocm import core
 
             importlib.reload(core.backend_cache)
-            from insanely_fast_whisper_api.core.backend_cache import (
+            from insanely_fast_whisper_rocm.core.backend_cache import (
                 acquire_pipeline as acquire_warm,
             )
-            from insanely_fast_whisper_api.core.backend_cache import (
+            from insanely_fast_whisper_rocm.core.backend_cache import (
                 release_pipeline as release_warm,
             )
 
             with patch(
-                "insanely_fast_whisper_api.core.backend_cache.HuggingFaceBackend"
+                "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
             ) as mock_backend_class:
                 with patch(
-                    "insanely_fast_whisper_api.core.backend_cache.WhisperPipeline"
+                    "insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"
                 ):
                     mock_backend = MagicMock()
                     mock_backend.close = Mock()
@@ -231,9 +231,9 @@ class TestBackendCache:
             progress_group_size=5,
         )
 
-        with patch("insanely_fast_whisper_api.core.backend_cache.HuggingFaceBackend"):
+        with patch("insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"):
             with patch(
-                "insanely_fast_whisper_api.core.backend_cache.WhisperPipeline"
+                "insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"
             ) as mock_pipeline_class:
                 mock_pipeline = MagicMock()
                 mock_pipeline_class.return_value = mock_pipeline
@@ -271,8 +271,8 @@ class TestBackendCache:
             progress_group_size=5,
         )
 
-        with patch("insanely_fast_whisper_api.core.backend_cache.HuggingFaceBackend"):
-            with patch("insanely_fast_whisper_api.core.backend_cache.WhisperPipeline"):
+        with patch("insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"):
+            with patch("insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"):
                 # Use the context manager with an exception
                 key = None
                 try:
@@ -305,9 +305,9 @@ class TestBackendCache:
         )
 
         with patch(
-            "insanely_fast_whisper_api.core.backend_cache.HuggingFaceBackend"
+            "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
         ) as mock_backend_class:
-            with patch("insanely_fast_whisper_api.core.backend_cache.WhisperPipeline"):
+            with patch("insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"):
                 mock_backend = MagicMock()
                 mock_backend.close = Mock()
                 mock_backend_class.return_value = mock_backend
@@ -336,9 +336,9 @@ class TestBackendCache:
         )
 
         with patch(
-            "insanely_fast_whisper_api.core.backend_cache.HuggingFaceBackend"
+            "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
         ) as mock_backend_class:
-            with patch("insanely_fast_whisper_api.core.backend_cache.WhisperPipeline"):
+            with patch("insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"):
                 mock_backend = MagicMock()
                 # Make close() raise an exception
                 mock_backend.close = Mock(side_effect=RuntimeError("Close failed"))
@@ -349,7 +349,7 @@ class TestBackendCache:
 
                 # Clear the cache with force_close (should not crash)
                 with patch(
-                    "insanely_fast_whisper_api.core.backend_cache.logger"
+                    "insanely_fast_whisper_rocm.core.backend_cache.logger"
                 ) as mock_logger:
                     clear_cache(force_close=True)
 
@@ -372,8 +372,8 @@ class TestBackendCache:
             progress_group_size=5,
         )
 
-        with patch("insanely_fast_whisper_api.core.backend_cache.HuggingFaceBackend"):
-            with patch("insanely_fast_whisper_api.core.backend_cache.WhisperPipeline"):
+        with patch("insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"):
+            with patch("insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"):
                 # Acquire and release from multiple threads
                 errors = []
 
@@ -421,8 +421,8 @@ class TestBackendCache:
             progress_group_size=5,
         )
 
-        with patch("insanely_fast_whisper_api.core.backend_cache.HuggingFaceBackend"):
-            with patch("insanely_fast_whisper_api.core.backend_cache.WhisperPipeline"):
+        with patch("insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"):
+            with patch("insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"):
                 # Acquire with both configs
                 pipeline1, key1 = acquire_pipeline(cfg1)
                 pipeline2, key2 = acquire_pipeline(cfg2)

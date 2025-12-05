@@ -1,4 +1,4 @@
-"""Tests for insanely_fast_whisper_api.core.storage module.
+"""Tests for insanely_fast_whisper_rocm.core.storage module.
 
 This module contains tests for storage backend abstractions and implementations.
 """
@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from insanely_fast_whisper_api.core.storage import (
+from insanely_fast_whisper_rocm.core.storage import (
     BaseStorage,
     JsonStorage,
     StorageFactory,
@@ -141,7 +141,7 @@ class TestJsonStorage:
         data = {"text": "Test"}
         dest_path = Path("/tmp/test.json")
 
-        with patch("insanely_fast_whisper_api.core.storage.logger") as mock_logger:
+        with patch("insanely_fast_whisper_rocm.core.storage.logger") as mock_logger:
             result = storage.save(data, dest_path, "transcribe")
 
             assert result is None

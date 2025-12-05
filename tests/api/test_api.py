@@ -10,12 +10,12 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from insanely_fast_whisper_api.api.dependencies import (
+from insanely_fast_whisper_rocm.api.dependencies import (
     get_asr_pipeline,
     get_file_handler,
 )
-from insanely_fast_whisper_api.main import app
-from insanely_fast_whisper_api.utils import FileHandler
+from insanely_fast_whisper_rocm.main import app
+from insanely_fast_whisper_rocm.utils import FileHandler
 
 
 @pytest.fixture
@@ -50,11 +50,11 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
         TestClient: Configured client instance.
     """
     monkeypatch.setattr(
-        "insanely_fast_whisper_api.api.app.download_model_if_needed",
+        "insanely_fast_whisper_rocm.api.app.download_model_if_needed",
         lambda *args, **kwargs: None,
     )
     monkeypatch.setattr(
-        "insanely_fast_whisper_api.core.asr_backend.HuggingFaceBackend._validate_device",
+        "insanely_fast_whisper_rocm.core.asr_backend.HuggingFaceBackend._validate_device",
         lambda self: None,
     )
     app.dependency_overrides[get_file_handler] = lambda: FileHandler(

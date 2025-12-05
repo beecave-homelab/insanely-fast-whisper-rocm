@@ -1,4 +1,4 @@
-"""Tests for insanely_fast_whisper_api.webui.utils module.
+"""Tests for insanely_fast_whisper_rocm.webui.utils module.
 
 This module contains tests for WebUI utility functions including file handling,
 device checks, and timestamp generation.
@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from insanely_fast_whisper_api.webui.utils import (
+from insanely_fast_whisper_rocm.webui.utils import (
     convert_device_string,
     generate_timestamped_filename,
     is_cuda_available,
@@ -172,7 +172,7 @@ class TestGenerateTimestampedFilename:
 class TestIsCudaAvailable:
     """Test suite for is_cuda_available function."""
 
-    @patch("insanely_fast_whisper_api.webui.utils.torch.cuda.is_available")
+    @patch("insanely_fast_whisper_rocm.webui.utils.torch.cuda.is_available")
     def test_is_cuda_available__returns_true_when_available(
         self, mock_cuda: MagicMock
     ) -> None:
@@ -182,7 +182,7 @@ class TestIsCudaAvailable:
         assert result is True
         mock_cuda.assert_called_once()
 
-    @patch("insanely_fast_whisper_api.webui.utils.torch.cuda.is_available")
+    @patch("insanely_fast_whisper_rocm.webui.utils.torch.cuda.is_available")
     def test_is_cuda_available__returns_false_when_unavailable(
         self, mock_cuda: MagicMock
     ) -> None:
@@ -196,7 +196,7 @@ class TestIsCudaAvailable:
 class TestIsMpsAvailable:
     """Test suite for is_mps_available function."""
 
-    @patch("insanely_fast_whisper_api.webui.utils.torch")
+    @patch("insanely_fast_whisper_rocm.webui.utils.torch")
     def test_is_mps_available__returns_true_when_available(
         self, mock_torch: MagicMock
     ) -> None:
@@ -205,7 +205,7 @@ class TestIsMpsAvailable:
         result = is_mps_available()
         assert result is True
 
-    @patch("insanely_fast_whisper_api.webui.utils.torch")
+    @patch("insanely_fast_whisper_rocm.webui.utils.torch")
     def test_is_mps_available__returns_false_when_unavailable(
         self, mock_torch: MagicMock
     ) -> None:
@@ -214,7 +214,7 @@ class TestIsMpsAvailable:
         result = is_mps_available()
         assert result is False
 
-    @patch("insanely_fast_whisper_api.webui.utils.torch", spec=[])
+    @patch("insanely_fast_whisper_rocm.webui.utils.torch", spec=[])
     def test_is_mps_available__returns_false_when_mps_not_in_torch(
         self, mock_torch: MagicMock
     ) -> None:

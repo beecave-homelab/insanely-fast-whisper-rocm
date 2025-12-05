@@ -14,14 +14,14 @@ from fastapi import FastAPI, UploadFile
 from fastapi.testclient import TestClient
 from tests.helpers import get_project_version
 
-from insanely_fast_whisper_api.api.app import create_app
-from insanely_fast_whisper_api.api.dependencies import (
+from insanely_fast_whisper_rocm.api.app import create_app
+from insanely_fast_whisper_rocm.api.dependencies import (
     get_asr_pipeline,
     get_file_handler,
 )
-from insanely_fast_whisper_api.api.responses import ResponseFormatter
-from insanely_fast_whisper_api.main import app  # Assuming your FastAPI app is here
-from insanely_fast_whisper_api.utils import (
+from insanely_fast_whisper_rocm.api.responses import ResponseFormatter
+from insanely_fast_whisper_rocm.main import app  # Assuming your FastAPI app is here
+from insanely_fast_whisper_rocm.utils import (
     RESPONSE_FORMAT_JSON,
     RESPONSE_FORMAT_TEXT,
     FileHandler,
@@ -69,7 +69,7 @@ class TestAppFactory:
 class TestDependencies:
     """Test dependency injection providers."""
 
-    @patch("insanely_fast_whisper_api.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
     def test_get_asr_pipeline_creates_pipeline(self, mock_borrow: Mock) -> None:
         """Test that get_asr_pipeline creates a properly configured pipeline."""
         # Setup mocks
@@ -259,7 +259,7 @@ class TestMiddleware:
         app = create_app()
         client = TestClient(app)
 
-        with patch("insanely_fast_whisper_api.api.middleware.logger") as mock_logger:
+        with patch("insanely_fast_whisper_rocm.api.middleware.logger") as mock_logger:
             # Make a request to trigger middleware
             _ = client.get("/docs")  # Use docs endpoint which should exist
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from insanely_fast_whisper_api.api.models import (
+from insanely_fast_whisper_rocm.api.models import (
     TranscriptionChunk,
     TranscriptionResponse,
 )

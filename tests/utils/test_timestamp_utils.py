@@ -2,7 +2,7 @@
 
 import pytest
 
-from insanely_fast_whisper_api.utils.timestamp_utils import (
+from insanely_fast_whisper_rocm.utils.timestamp_utils import (
     TimestampError,
     extract_timestamps,
     normalize_timestamp_format,

@@ -10,7 +10,7 @@ import pytest
 
 MODULE_PATH = (
     Path(__file__).parent.parent.parent
-    / "insanely_fast_whisper_api"
+    / "insanely_fast_whisper_rocm"
     / "core"
     / "integrations"
     / "stable_ts.py"
@@ -452,7 +452,7 @@ def test_stabilize_with_progress_callback_nonexistent_file(
     st.stable_whisper = mock_sw  # type: ignore
 
     # Ensure SKIP_FS_CHECKS is False so the file check is enforced
-    from insanely_fast_whisper_api.utils import constants
+    from insanely_fast_whisper_rocm.utils import constants
 
     monkeypatch.setattr(constants, "SKIP_FS_CHECKS", False)
 

@@ -11,11 +11,11 @@ from typing import Any
 
 import pytest
 
-from insanely_fast_whisper_api.core.formatters import (
+from insanely_fast_whisper_rocm.core.formatters import (
     SrtFormatter,
     build_quality_segments,
 )
-from insanely_fast_whisper_api.utils.srt_quality import compute_srt_quality
+from insanely_fast_whisper_rocm.utils.srt_quality import compute_srt_quality
 
 
 def _fake_segments_ok() -> list[dict[str, Any]]:

@@ -27,7 +27,7 @@ def mock_heavy_imports() -> Generator[None, None, None]:
 def test_get_asr_pipeline_unwrapped_real() -> None:
     """Test _get_asr_pipeline_unwrapped by accessing the __wrapped__ attribute."""
     # Import after mocking
-    from insanely_fast_whisper_api.api.dependencies import get_asr_pipeline
+    from insanely_fast_whisper_rocm.api.dependencies import get_asr_pipeline
 
     # The function should have a __wrapped__ attribute that raises RuntimeError
     wrapped_func = get_asr_pipeline.__wrapped__
@@ -41,7 +41,7 @@ def test_get_asr_pipeline_unwrapped_real() -> None:
 def test_get_file_handler_unwrapped_real() -> None:
     """Test _get_file_handler_unwrapped by accessing the __wrapped__ attribute."""
     # Import after mocking
-    from insanely_fast_whisper_api.api.dependencies import get_file_handler
+    from insanely_fast_whisper_rocm.api.dependencies import get_file_handler
 
     # The function should have a __wrapped__ attribute that raises RuntimeError
     wrapped_func = get_file_handler.__wrapped__
@@ -55,15 +55,15 @@ def test_get_file_handler_unwrapped_real() -> None:
 def test_normalize_with_fastapi_param_real() -> None:
     """Test _normalize function by calling get_asr_pipeline with FastAPI param."""
     # Import after mocking
-    from insanely_fast_whisper_api.api.dependencies import get_asr_pipeline
+    from insanely_fast_whisper_rocm.api.dependencies import get_asr_pipeline
 
     # Mock borrow_pipeline to avoid actual initialization
     with (
         patch(
-            "insanely_fast_whisper_api.api.dependencies.borrow_pipeline"
+            "insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline"
         ) as mock_borrow,
         patch(
-            "insanely_fast_whisper_api.api.dependencies.HuggingFaceBackendConfig"
+            "insanely_fast_whisper_rocm.api.dependencies.HuggingFaceBackendConfig"
         ) as mock_config_class,
     ):
         # Create mock instances
@@ -98,10 +98,10 @@ def test_normalize_with_fastapi_param_real() -> None:
 def test_get_file_handler_real() -> None:
     """Test get_file_handler function."""
     # Import after mocking
-    from insanely_fast_whisper_api.api.dependencies import get_file_handler
+    from insanely_fast_whisper_rocm.api.dependencies import get_file_handler
 
     with patch(
-        "insanely_fast_whisper_api.api.dependencies.FileHandler"
+        "insanely_fast_whisper_rocm.api.dependencies.FileHandler"
     ) as mock_file_handler_class:
         mock_handler = MagicMock()
         mock_file_handler_class.return_value = mock_handler

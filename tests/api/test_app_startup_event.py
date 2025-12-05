@@ -1,4 +1,4 @@
-"""Tests for the startup sequence in insanely_fast_whisper_api/api/app.py."""
+"""Tests for the startup sequence in insanely_fast_whisper_rocm/api/app.py."""
 
 import asyncio
 import logging
@@ -6,8 +6,8 @@ from unittest.mock import Mock, patch
 
 from fastapi import FastAPI
 
-from insanely_fast_whisper_api.api.app import create_app, run_startup_sequence
-from insanely_fast_whisper_api.utils.constants import API_TITLE, DEFAULT_MODEL, HF_TOKEN
+from insanely_fast_whisper_rocm.api.app import create_app, run_startup_sequence
+from insanely_fast_whisper_rocm.utils.constants import API_TITLE, DEFAULT_MODEL, HF_TOKEN
 
 
 class TestAppStartupEvent:
@@ -17,8 +17,8 @@ class TestAppStartupEvent:
     def _run_startup(app: FastAPI) -> None:
         asyncio.run(run_startup_sequence(app))
 
-    @patch("insanely_fast_whisper_api.api.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.api.app.logger")
+    @patch("insanely_fast_whisper_rocm.api.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.api.app.logger")
     def test_startup_event_calls_model_download(
         self, mock_logger: Mock, mock_download: Mock
     ) -> None:
@@ -33,8 +33,8 @@ class TestAppStartupEvent:
             custom_logger=mock_logger,
         )
 
-    @patch("insanely_fast_whisper_api.api.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.api.app.logger")
+    @patch("insanely_fast_whisper_rocm.api.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.api.app.logger")
     def test_startup_event_logs_startup_messages(
         self, mock_logger: Mock, mock_download: Mock
     ) -> None:
@@ -54,8 +54,8 @@ class TestAppStartupEvent:
         assert any("API Description:" in msg for msg in log_messages)
         assert any("Available endpoints:" in msg for msg in log_messages)
 
-    @patch("insanely_fast_whisper_api.api.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.api.app.logger")
+    @patch("insanely_fast_whisper_rocm.api.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.api.app.logger")
     def test_startup_event_logs_routes(
         self, mock_logger: Mock, mock_download: Mock
     ) -> None:
@@ -82,8 +82,8 @@ class TestAppStartupEvent:
         route_calls = [call for call in call_args_list if len(call[0]) >= 2]
         assert len(route_calls) > 0
 
-    @patch("insanely_fast_whisper_api.api.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.api.app.logger")
+    @patch("insanely_fast_whisper_rocm.api.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.api.app.logger")
     def test_startup_event_logs_route_descriptions_in_debug(
         self, mock_logger: Mock, mock_download: Mock
     ) -> None:
@@ -108,8 +108,8 @@ class TestAppStartupEvent:
         ]
         assert len(debug_calls) > 0
 
-    @patch("insanely_fast_whisper_api.api.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.api.app.logger")
+    @patch("insanely_fast_whisper_rocm.api.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.api.app.logger")
     def test_startup_event_skips_route_descriptions_when_not_debug(
         self, mock_logger: Mock, mock_download: Mock
     ) -> None:
@@ -128,8 +128,8 @@ class TestAppStartupEvent:
         ]
         assert len(debug_calls) == 0
 
-    @patch("insanely_fast_whisper_api.api.app.download_model_if_needed")
-    @patch("insanely_fast_whisper_api.api.app.logger")
+    @patch("insanely_fast_whisper_rocm.api.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.api.app.logger")
     def test_startup_event_handles_multiple_route_types(
         self, mock_logger: Mock, mock_download: Mock
     ) -> None:

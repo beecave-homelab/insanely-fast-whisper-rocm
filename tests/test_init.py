@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import insanely_fast_whisper_api
-from insanely_fast_whisper_api import (
+import insanely_fast_whisper_rocm
+from insanely_fast_whisper_rocm import (
     ASRPipeline,
     __version__,
     cleanup_temp_files,
@@ -27,8 +27,8 @@ def test_init__version__is_defined() -> None:
 
 def test_init__all_exports__are_accessible() -> None:
     """All items in __all__ should be accessible from the package."""
-    for item in insanely_fast_whisper_api.__all__:
-        assert hasattr(insanely_fast_whisper_api, item)
+    for item in insanely_fast_whisper_rocm.__all__:
+        assert hasattr(insanely_fast_whisper_rocm, item)
 
 
 def test_init__asr_pipeline__is_exported() -> None:
@@ -54,11 +54,11 @@ def test_resolve_package_version__fallback_when_metadata_not_found() -> None:
     from importlib import metadata
 
     # Mock metadata.version to raise PackageNotFoundError
-    with patch("insanely_fast_whisper_api.metadata.version") as mock_version:
+    with patch("insanely_fast_whisper_rocm.metadata.version") as mock_version:
         mock_version.side_effect = metadata.PackageNotFoundError
 
         # Re-import the module to trigger the version resolution
-        from insanely_fast_whisper_api import _resolve_package_version
+        from insanely_fast_whisper_rocm import _resolve_package_version
 
         result = _resolve_package_version()
 
@@ -74,12 +74,12 @@ def test_resolve_package_version__uses_api_version_from_constants() -> None:
     # Mock metadata.version to raise PackageNotFoundError
     # and ensure constants.API_VERSION exists
     with (
-        patch("insanely_fast_whisper_api.metadata.version") as mock_version,
-        patch("insanely_fast_whisper_api.utils.constants.API_VERSION", "1.2.3"),
+        patch("insanely_fast_whisper_rocm.metadata.version") as mock_version,
+        patch("insanely_fast_whisper_rocm.utils.constants.API_VERSION", "1.2.3"),
     ):
         mock_version.side_effect = metadata.PackageNotFoundError
 
-        from insanely_fast_whisper_api import _resolve_package_version
+        from insanely_fast_whisper_rocm import _resolve_package_version
 
         result = _resolve_package_version()
 
@@ -94,14 +94,14 @@ def test_resolve_package_version__fallback_to_dev_version() -> None:
 
     # Mock metadata.version to raise PackageNotFoundError
     # and mock constants module without API_VERSION
-    with patch("insanely_fast_whisper_api.metadata.version") as mock_version:
+    with patch("insanely_fast_whisper_rocm.metadata.version") as mock_version:
         mock_version.side_effect = metadata.PackageNotFoundError
 
         # Create a mock constants module without API_VERSION
         mock_constants = MagicMock(spec=[])  # Empty spec means no attributes
 
-        with patch("insanely_fast_whisper_api.constants", mock_constants):
-            from insanely_fast_whisper_api import _resolve_package_version
+        with patch("insanely_fast_whisper_rocm.constants", mock_constants):
+            from insanely_fast_whisper_rocm import _resolve_package_version
 
             result = _resolve_package_version()
 
@@ -112,4 +112,4 @@ def test_resolve_package_version__fallback_to_dev_version() -> None:
 def test_init__benchmarks__is_exported() -> None:
     """Benchmarks module should be accessible from the package root."""
     # benchmarks may be None if not available
-    assert hasattr(insanely_fast_whisper_api, "benchmarks")
+    assert hasattr(insanely_fast_whisper_rocm, "benchmarks")

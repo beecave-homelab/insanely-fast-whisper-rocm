@@ -7,14 +7,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from insanely_fast_whisper_api.core.asr_backend import ASRBackend
-from insanely_fast_whisper_api.core.errors import TranscriptionError
-from insanely_fast_whisper_api.core.pipeline import (
+from insanely_fast_whisper_rocm.core.asr_backend import ASRBackend
+from insanely_fast_whisper_rocm.core.errors import TranscriptionError
+from insanely_fast_whisper_rocm.core.pipeline import (
     ProgressEvent,
     WhisperPipeline,
 )
-from insanely_fast_whisper_api.core.progress import NoOpProgress
-from insanely_fast_whisper_api.core.storage import BaseStorage
+from insanely_fast_whisper_rocm.core.progress import NoOpProgress
+from insanely_fast_whisper_rocm.core.storage import BaseStorage
 
 
 def test_pipeline_add_listener() -> None:
@@ -280,7 +280,7 @@ def test_prepare_input_file_not_found() -> None:
     )
 
     # Temporarily disable SKIP_FS_CHECKS to test file not found error
-    from insanely_fast_whisper_api.utils import constants
+    from insanely_fast_whisper_rocm.utils import constants
 
     original_skip = constants.SKIP_FS_CHECKS
     try:
@@ -314,11 +314,11 @@ def test_execute_asr_timestamp_type_else_case(tmp_path: pathlib.Path) -> None:
 
     with (
         patch(
-            "insanely_fast_whisper_api.core.pipeline.audio_conversion.ensure_wav",
+            "insanely_fast_whisper_rocm.core.pipeline.audio_conversion.ensure_wav",
             return_value=str(audio_file),
         ),
         patch(
-            "insanely_fast_whisper_api.core.pipeline.audio_processing.split_audio",
+            "insanely_fast_whisper_rocm.core.pipeline.audio_processing.split_audio",
             return_value=[(str(audio_file), 0.0)],
         ),
     ):
@@ -356,11 +356,11 @@ def test_execute_asr_no_chunks_error(tmp_path: pathlib.Path) -> None:
 
     with (
         patch(
-            "insanely_fast_whisper_api.core.pipeline.audio_conversion.ensure_wav",
+            "insanely_fast_whisper_rocm.core.pipeline.audio_conversion.ensure_wav",
             return_value=str(audio_file),
         ),
         patch(
-            "insanely_fast_whisper_api.core.pipeline.audio_processing.split_audio",
+            "insanely_fast_whisper_rocm.core.pipeline.audio_processing.split_audio",
             return_value=[],  # No chunks
         ),
     ):
