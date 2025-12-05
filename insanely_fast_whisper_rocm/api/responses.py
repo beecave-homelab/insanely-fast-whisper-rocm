@@ -13,7 +13,10 @@ from insanely_fast_whisper_rocm.utils import (
     RESPONSE_FORMAT_VERBOSE_JSON,
     RESPONSE_FORMAT_VTT,
 )
-from insanely_fast_whisper_rocm.utils.format_time import format_srt_time, format_vtt_time
+from insanely_fast_whisper_rocm.utils.format_time import (
+    format_srt_time,
+    format_vtt_time,
+)
 
 FormatterCallable = Callable[[dict[str, Any]], str]
 FormatterLike = FormatterCallable | type[BaseFormatter] | BaseFormatter

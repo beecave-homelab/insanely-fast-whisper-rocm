@@ -7,7 +7,11 @@ from unittest.mock import Mock, patch
 from fastapi import FastAPI
 
 from insanely_fast_whisper_rocm.api.app import create_app, run_startup_sequence
-from insanely_fast_whisper_rocm.utils.constants import API_TITLE, DEFAULT_MODEL, HF_TOKEN
+from insanely_fast_whisper_rocm.utils.constants import (
+    API_TITLE,
+    DEFAULT_MODEL,
+    HF_TOKEN,
+)
 
 
 class TestAppStartupEvent:

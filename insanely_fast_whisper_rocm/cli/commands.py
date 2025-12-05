@@ -29,7 +29,10 @@ from insanely_fast_whisper_rocm.core.errors import (
     TranscriptionCancelledError,
     TranscriptionError,
 )
-from insanely_fast_whisper_rocm.core.formatters import FORMATTERS, build_quality_segments
+from insanely_fast_whisper_rocm.core.formatters import (
+    FORMATTERS,
+    build_quality_segments,
+)
 from insanely_fast_whisper_rocm.core.progress import ProgressCallback
 from insanely_fast_whisper_rocm.utils import constants
 from insanely_fast_whisper_rocm.utils.file_utils import cleanup_temp_files
