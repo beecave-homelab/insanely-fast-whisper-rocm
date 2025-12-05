@@ -1,6 +1,14 @@
-# Insanely Fast Whisper API (ROCm)
+# Insanely Fast Whisper (ROCm)
 
 A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm) support** for high-performance (video to) audio transcription and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces and ROCm compatibility.
+
+[![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
+[![Version](https://img.shields.io/badge/Version-v2.0.0-informational)](#insanely-fast-whisper-rocm)
+[![ROCm Version](https://img.shields.io/badge/ROCm-v6.4-informational)](https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/)
+[![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
+[![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
+[![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface)
+[![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE.txt)
 
 ## 🚀 What's Included
 
@@ -9,30 +17,9 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **⚡ CLI Tools**: Command-line interface for single-file processing
 - **📦 Model Management**: Automatic Hugging Face model downloading and caching
 - **🏗️ Docker Support**: Full containerization with development and production configurations (now using PDM for dependency management in Docker builds)
-- **🎯 ROCm Integration**: AMD GPU (ROCm v6.1) support for accelerated inference
+- **🎯 ROCm Integration**: AMD GPU [(ROCm v6.4)](https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/) support for accelerated inference
 
-## Key Features
-
-- **AMD GPU (ROCm) Support**: Primary focus on enabling Whisper models on AMD GPUs
-- **Multiple Interfaces**: Choose between API, WebUI, or CLI based on your workflow
-- **Batch Processing**: Handle multiple audio **and video** files simultaneously via WebUI
-- **High Performance**: Optimized processing with configurable batch sizes and model parameters
-- **Multiple Output Formats**: Support for JSON, TXT, and SRT subtitle formats
-- **Standardized Filenames**: Consistent, timestamped output naming across all interfaces
-- **Readable Subtitles (SRT/VTT)**: Advanced segmentation pipeline that creates well-formed, readable subtitles by default, respecting line length, duration, and characters-per-second (CPS) constraints. This can be toggled with the `USE_READABLE_SUBTITLES` environment variable.
-- **Word-level Timestamp Stabilization (CLI, API & WebUI)**: Optional `--stabilize` flag (powered by [stable-ts](https://github.com/jianfch/stable-ts)) greatly refines chunk timestamps, producing accurate word-aligned SRT/VTT output
-- **Noise Reduction & Voice Activity Detection (CLI, API & WebUI)**: Optional `--demucs` and `--vad` flags provide Demucs-based denoising and intelligent speech-region detection (adjustable `--vad-threshold`) for cleaner, more accurate transcripts
-
-[![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v2.0.0-informational)](#insanely-fast-whisper-rocm-rocm)
-[![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
-[![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
-[![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface)
-[![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE.txt)
-
----
-
-## 📚 Table of Contents
+## Table of Contents
 
 - [Key Features](#key-features)
 - [Installation](#installation)
@@ -49,7 +36,21 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - [License](#license)
 - [Contributing](#contributing)
 
-## 🌟 Additional Features
+## Key Features
+
+- **AMD GPU (ROCm) Support**: Primary focus on enabling Whisper models on AMD GPUs
+- **Multiple Interfaces**: Choose between API, WebUI, or CLI based on your workflow
+- **Batch Processing**: Handle multiple audio **and video** files simultaneously via WebUI
+- **High Performance**: Optimized processing with configurable batch sizes and model parameters
+- **Multiple Output Formats**: Support for JSON, TXT, and SRT subtitle formats
+- **Standardized Filenames**: Consistent, timestamped output naming across all interfaces
+- **Readable Subtitles (SRT/VTT)**: Advanced segmentation pipeline that creates well-formed, readable subtitles by default, respecting line length, duration, and characters-per-second (CPS) constraints. This can be toggled with the `USE_READABLE_SUBTITLES` environment variable.
+- **Word-level Timestamp Stabilization (CLI, API & WebUI)**: Optional `--stabilize` flag (powered by [stable-ts](https://github.com/jianfch/stable-ts)) greatly refines chunk timestamps, producing accurate word-aligned SRT/VTT output
+- **Noise Reduction & Voice Activity Detection (CLI, API & WebUI)**: Optional `--demucs` and `--vad` flags provide Demucs-based denoising and intelligent speech-region detection (adjustable `--vad-threshold`) for cleaner, more accurate transcripts
+
+---
+
+## Additional Features
 
 - **Modern Acceleration**: Uses native PyTorch 2.0 Scaled Dot Product Attention (`sdpa`) for optimized performance, which is the modern successor to `BetterTransformer`.
 - **Video & Audio Support**: Process standard audio formats (.wav, .flac, .mp3) **and** video files (.mp4, .mkv, .webm, .mov) thanks to automatic audio extraction via FFmpeg
@@ -60,7 +61,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **Robust Error Handling**: Comprehensive error management across all interfaces
 - **Docker-first Deployment**: Production-ready containerization
 
-## 🎯 Why This Package?
+## Why This Package?
 
 This package was created to address the lack of **AMD GPU (ROCm) support** in the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) package. While the original focuses on NVIDIA CUDA and CPU inference, this package provides:
 
