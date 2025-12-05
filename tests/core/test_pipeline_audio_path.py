@@ -1,8 +1,8 @@
 """Tests for audio path handling in the pipeline.
 
-This test suite verifies that the pipeline correctly stores absolute paths
-for audio files, which is critical for post-processing steps like stabilization
-that need to access the original audio file.
+This test suite verifies that the pipeline correctly stores:
+- original_file: user-facing display name
+- audio_file_path: absolute filesystem path for post-processing (e.g., stabilization)
 """
 
 from __future__ import annotations
@@ -16,11 +16,11 @@ from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
 
 
 def test_postprocess_stores_absolute_audio_path(tmp_path: pathlib.Path) -> None:
-    """Ensure _postprocess_output stores absolute path in original_file.
+    """Ensure _postprocess_output stores absolute path in audio_file_path.
 
-    This test verifies the fix for the stabilization bug where relative
-    paths were stored in original_file, causing Path.resolve() to fail
-    when the working directory changed.
+    This test verifies that audio_file_path contains the absolute filesystem
+    path needed for post-processing (e.g., stabilization), while original_file
+    contains the user-facing display name.
 
     Args:
         tmp_path: Pytest fixture for temporary directory.
@@ -59,19 +59,19 @@ def test_postprocess_stores_absolute_audio_path(tmp_path: pathlib.Path) -> None:
         original_filename=None,
     )
 
-    # CRITICAL ASSERTION: original_file should be an absolute path
-    original_file = result.get("original_file")
-    assert original_file is not None, "original_file must be set"
+    # CRITICAL ASSERTION: audio_file_path should be an absolute path
+    audio_path = result.get("audio_file_path")
+    assert audio_path is not None, "audio_file_path must be set"
 
     # Convert to Path to check if it's absolute
-    original_file_path = pathlib.Path(original_file)
-    assert original_file_path.is_absolute(), (
-        f"original_file must be absolute path, got: {original_file}"
+    audio_path_obj = pathlib.Path(audio_path)
+    assert audio_path_obj.is_absolute(), (
+        f"audio_file_path must be absolute path, got: {audio_path}"
     )
 
     # Verify it points to the correct file
-    assert original_file_path.name == "test_audio.wav"
-    assert "uploads" in str(original_file_path)
+    assert audio_path_obj.name == "test_audio.wav"
+    assert "uploads" in str(audio_path_obj)
 
 
 def test_postprocess_preserves_absolute_audio_path(tmp_path: pathlib.Path) -> None:

@@ -604,13 +604,11 @@ class WhisperPipeline(BasePipeline):
         )
         # Example: Add original file name, task, and a processing timestamp
         processed_result = asr_output.copy()
-        # CRITICAL FIX: Store absolute path for audio file to ensure
-        # post-processing steps (like stabilization) can locate the file
-        # regardless of working directory changes.
-        # Use original_filename if provided, otherwise use the absolute file path
-        processed_result["original_file"] = (
-            original_filename if original_filename else str(audio_file_path.resolve())
-        )
+        # Store both: user-facing name AND actual file path for post-processing
+        # - original_file: user-friendly display name
+        # - audio_file_path: actual filesystem path for stabilization/post-processing
+        processed_result["original_file"] = original_filename or str(audio_file_path)
+        processed_result["audio_file_path"] = str(audio_file_path.resolve())
         processed_result["task_type"] = task
         processed_result["processed_at"] = datetime.now(timezone.utc).isoformat()
         # Potentially refine chunk timestamps if needed, or add other metadata

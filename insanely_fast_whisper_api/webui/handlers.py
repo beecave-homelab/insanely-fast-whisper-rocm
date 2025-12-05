@@ -194,6 +194,7 @@ def transcribe(
 
     Raises:
         TranscriptionError: If the transcription process fails
+        TranscriptionCancelledError: If the transcription is cancelled by user
     """
     try:
         logger.info(
