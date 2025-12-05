@@ -5,7 +5,7 @@
 This pull-request **refactors the entire codebase into a fully-modular Python package** while preserving all existing Whisper functionality.  
 Key highlights:
 
-* Introduces `insanely_fast_whisper_api` package with clearly separated sub-modules (`core`, `api`, `cli`, `webui`, `audio`, `utils`).
+* Introduces `insanely_fast_whisper_rocm` package with clearly separated sub-modules (`core`, `api`, `cli`, `webui`, `audio`, `utils`).
 * Replaces the monolithic legacy scripts in `src/` with scalable architecture patterns (Factory, Strategy, Template-Method, Observer).
 * Adds PDM-based dependency management, dev Dockerfile, and comprehensive test-suite (≈ 20 files).
 * Standardises filename conventions across CLI / WebUI / API via new `utils.filename_generator` (Strategy pattern).
@@ -17,15 +17,15 @@ Key highlights:
 
 ### Added
 
-1. **`insanely_fast_whisper_api/api/*`**  
+1. **`insanely_fast_whisper_rocm/api/*`**  
    – FastAPI layer (app factory, routes, DI, middleware, responses).
-2. **`insanely_fast_whisper_api/core/*`**  
+2. **`insanely_fast_whisper_rocm/core/*`**  
    – ASR pipeline (`pipeline.py`), backend abstraction, storage, errors, utils.
-3. **`insanely_fast_whisper_api/cli/*`**  
+3. **`insanely_fast_whisper_rocm/cli/*`**  
    – Click CLI entry-point, commands, façade.
-4. **`insanely_fast_whisper_api/webui/*`**  
+4. **`insanely_fast_whisper_rocm/webui/*`**  
    – Gradio UI, handlers, formatters, ZIP builder.
-5. **`insanely_fast_whisper_api/utils/*`**  
+5. **`insanely_fast_whisper_rocm/utils/*`**  
    – Constants, env loader, HF-model downloader, filename generator, logging.
 6. **`Dockerfile.dev`** & **`docker-compose.dev.yaml`** – Development containers.
 7. **`.pdm-python`, `pyproject.toml`, `pdm.lock`** – PDM package management.
@@ -51,7 +51,7 @@ Key highlights:
 
 ## Code Changes
 
-### `insanely_fast_whisper_api/api/app.py`
+### `insanely_fast_whisper_rocm/api/app.py`
 ```python
 app = FastAPI(title=API_TITLE, description=API_DESCRIPTION, version=API_VERSION)
 add_middleware(app)
@@ -63,7 +63,7 @@ async def startup_event():
 ```
 *Implements Factory pattern for app creation, moves startup logic from old `main.py`.*
 
-### `insanely_fast_whisper_api/core/pipeline.py`
+### `insanely_fast_whisper_rocm/core/pipeline.py`
 ```python
 self._filename_generator = FilenameGenerator(strategy=StandardFilenameStrategy())
 ...
@@ -71,7 +71,7 @@ saved_file_path = self._filename_generator.generate(audio_file_path, TaskType(ta
 ```
 *Template-Method pipeline now delegates filename creation to a Strategy, ensuring consistent output naming across interfaces.*
 
-### `insanely_fast_whisper_api/cli/cli.py`
+### `insanely_fast_whisper_rocm/cli/cli.py`
 ```python
 @click.group()
 @click.version_option(version=constants.API_VERSION)
@@ -80,7 +80,7 @@ cli.add_command(transcribe)
 ```
 *New CLI harness built with Click; commands reside in separate module promoting scalability.*
 
-### `insanely_fast_whisper_api/utils/filename_generator.py`
+### `insanely_fast_whisper_rocm/utils/filename_generator.py`
 ```python
 class StandardFilenameStrategy(FilenameGenerationStrategy):
     def build(...):

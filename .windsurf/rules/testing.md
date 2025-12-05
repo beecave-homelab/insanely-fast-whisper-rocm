@@ -4,7 +4,7 @@ description: Keep tests fast, deterministic, and hermetic by default; mirror pac
 globs: tests/**/*.py
 ---
 
-# Testing Guidelines for `insanely_fast_whisper_api`
+# Testing Guidelines for `insanely_fast_whisper_rocm`
 
 Description: Keep tests fast, deterministic, and hermetic by default; mirror package layout; mock external tools at boundaries; mark heavy/integration/gpu tests opt-in. Designed for consistent, reviewable tests across the repo.
 
@@ -24,7 +24,7 @@ Description: Keep tests fast, deterministic, and hermetic by default; mirror pac
 
 ## Layout & scoping
 
-- Unit tests: `tests/insanely_fast_whisper_api/<subpkg>/test_*.py`  
+- Unit tests: `tests/insanely_fast_whisper_rocm/<subpkg>/test_*.py`  
 - Boundary / integration tests: `tests/integration/**` (API, CLI subprocesses, real ffmpeg, etc.)  
 - Optional E2E smoke tests: `tests/integration/**` or `tests/e2e/**`  
 - Keep integration/E2E tests minimal and opt-in via markers.
@@ -41,7 +41,7 @@ Use markers to opt-in heavy suites:
 - `@pytest.mark.gpu` — ROCm/GPU required
 
 Default `pytest` run excludes `integration`, `slow`, `e2e`, and `gpu`.  
-Measure coverage for `insanely_fast_whisper_api` and add a fail-under threshold after the suite stabilizes.
+Measure coverage for `insanely_fast_whisper_rocm` and add a fail-under threshold after the suite stabilizes.
 
 Example `pytest.ini` entry:
 
@@ -159,7 +159,7 @@ markers =
 
 ## Quality gates & PR guidance
 
-- Add coverage reporting for `insanely_fast_whisper_api` and enforce a threshold once stable.  
+- Add coverage reporting for `insanely_fast_whisper_rocm` and enforce a threshold once stable.  
 - Keep E2E tests few and focused; rely on unit + integration tests for breadth and depth.  
 - Assert stable fragments or structured attributes instead of entire error message strings.
 
@@ -191,5 +191,5 @@ markers =
 
 ## Scope
 
-- Applies to: `insanely_fast_whisper_api/**` and `tests/**` in this workspace.  
+- Applies to: `insanely_fast_whisper_rocm/**` and `tests/**` in this workspace.  
 - Purpose: produce tests that are fast by default, hermetic, and aligned with repository architecture and external dependencies.
