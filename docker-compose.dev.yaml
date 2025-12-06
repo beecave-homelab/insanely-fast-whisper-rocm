@@ -40,14 +40,13 @@ services:
     #################################################
     ## Default: Gradio WebUI without debug logging ##
     #################################################
-    # command: ["python", "-m", "insanely_fast_whisper_rocm.webui.cli"]
-    
+    # command: ["python", "-m", "insanely_fast_whisper_rocm.webui"]    
     ##############################################
     ## Alternative commands (uncomment to use): ##
     ##############################################
     #
     # Gradio WebUI with debug logging:
-    # command: ["python", "-m", "insanely_fast_whisper_rocm.webui.cli",  "--debug"]
+    command: ["python", "-m", "insanely_fast_whisper_rocm.webui",  "--debug"]
     #
     # API only:
     # command: ["python", "-m", "insanely_fast_whisper_rocm"]
@@ -56,7 +55,7 @@ services:
     # command: ["python", "-m", "insanely_fast_whisper_rocm", "-v"]
     #
     # Custom WebUI with extra args:
-    command: ["python", "-m", "insanely_fast_whisper_rocm.webui.cli", "--port", "7861", "--host", "0.0.0.0", "--debug"]
+    # command: ["python", "-m", "insanely_fast_whisper_rocm.webui", "--port", "7860", "--host", "0.0.0.0", "--debug"]
     #
-    # CLI transcription example:
-    # command: ["python", "-m", "insanely_fast_whisper_rocm.cli.cli", "transcribe", "tests/file.mp3", "--debug"]
+    # CLI tool transcription example:
+    # command: ["python", "-m", "insanely_fast_whisper_rocm.cli", "transcribe", "tests/file.mp3", "--debug"]
