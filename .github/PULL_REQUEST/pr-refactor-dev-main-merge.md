@@ -216,7 +216,7 @@ def test_main_help(runner: CliRunner) -> None:
 
 ### Potential Issues
 
-- **Breaking imports**: External code importing `insanely_fast_whisper_rocm` must migrate to `insanely_fast_whisper_rocm`.
+- **Breaking imports**: External code importing `insanely_fast_whisper_api` must migrate to `insanely_fast_whisper_rocm`.
 - **Config directory migration**: Existing configuration under `~/.config/insanely-fast-whisper-rocm/` needs to be moved or recreated under `~/.config/insanely-fast-whisper-rocm/`.
 - **Ecosystem updates**: Downstream scripts, Docker deployments, or automation referring to the old distribution/CLI name must be updated.
 
