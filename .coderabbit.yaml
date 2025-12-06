@@ -1,9 +1,5 @@
 # CodeRabbit configuration aligned with AGENTS.md and local CI pipeline
 
-general:
-  # Repository language
-  language: en-US
-
 reviews:
   # Overall review tone & automation behavior
   style: chill
