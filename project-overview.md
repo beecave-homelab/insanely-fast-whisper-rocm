@@ -1,3 +1,4 @@
+
 # Project Overview | Insanely Fast Whisper ROCm
 A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.4.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture.
 
@@ -878,7 +879,7 @@ All imports now follow **absolute import** conventions for improved IDE support 
 ```python
 # Good - Absolute imports
 from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
-from insanely_fast_whisper_rocm.utils.constants import WHISPER_MODEL
+from insanely_fast_whisper_rocm.utils.constants import DEFAULT_MODEL
 
 # Deprecated - Relative imports (removed in v0.2.1)
 # from .core.pipeline import WhisperPipeline
