@@ -1,5 +1,5 @@
-# Project Overview | Insanely Fast Whisper ROCm
 
+# Project Overview | Insanely Fast Whisper ROCm
 A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.4.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture.
 
 > [!NOTE]
