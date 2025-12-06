@@ -8,11 +8,11 @@ from unittest.mock import Mock, patch
 import pytest
 from click.testing import CliRunner
 
-from insanely_fast_whisper_api import constants
-from insanely_fast_whisper_api.cli.cli import cli, main
-from insanely_fast_whisper_api.cli.facade import CLIFacade, cli_facade
-from insanely_fast_whisper_api.core.asr_backend import HuggingFaceBackendConfig
-from insanely_fast_whisper_api.core.errors import (
+from insanely_fast_whisper_rocm import constants
+from insanely_fast_whisper_rocm.cli.cli import cli, main
+from insanely_fast_whisper_rocm.cli.facade import CLIFacade, cli_facade
+from insanely_fast_whisper_rocm.core.asr_backend import HuggingFaceBackendConfig
+from insanely_fast_whisper_rocm.core.errors import (
     DeviceNotFoundError,
     TranscriptionError,
 )
@@ -91,7 +91,7 @@ class TestCLIFacade:
         assert config.chunk_length <= 15  # Should be reduced for CPU
         assert config.batch_size <= 2  # Should be reduced for CPU
 
-    @patch("insanely_fast_whisper_api.cli.facade.HuggingFaceBackend")
+    @patch("insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend")
     def test_transcribe_audio_success(self, mock_backend_class):
         """Test successful audio transcription."""
         # Mock the backend
@@ -113,7 +113,7 @@ class TestCLIFacade:
         assert "runtime_seconds" in result
         mock_backend.transcribe.assert_called_once()
 
-    @patch("insanely_fast_whisper_api.cli.facade.HuggingFaceBackend")
+    @patch("insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend")
     def test_transcribe_audio_backend_reuse(self, mock_backend_class):
         """Test that backend is reused when configuration doesn't change."""
         mock_backend = Mock()
@@ -168,7 +168,7 @@ class TestCLICommands:
         assert result.exit_code != 0
         assert "does not exist" in result.output.lower()
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.transcribe_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.transcribe_audio")
     def test_transcribe_success(self, mock_transcribe):
         """Test successful transcription command."""
         # Mock successful transcription
@@ -211,9 +211,12 @@ class TestCLICommands:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.transcribe_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.transcribe_audio")
     def test_transcribe_with_output_file(self, mock_transcribe):
-        """Test transcription with output file."""
+        """Verify that invoking the CLI transcribe command with an --output path writes a JSON file containing the transcription and metadata timestamp.
+
+        Creates temporary audio and output files, runs the CLI with --output, asserts a successful exit and a "Results saved to" confirmation, and checks that the output JSON contains a "transcription" matching the backend result and a "metadata.timestamp" entry.
+        """
         mock_transcribe.return_value = {
             "text": "Test output",
             "chunks": [],
@@ -248,7 +251,7 @@ class TestCLICommands:
             audio_path.unlink(missing_ok=True)
             output_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.transcribe_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.transcribe_audio")
     def test_transcribe_device_error(self, mock_transcribe):
         """Test transcription with device error."""
         mock_transcribe.side_effect = DeviceNotFoundError("CUDA device not available")
@@ -269,7 +272,7 @@ class TestCLICommands:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.transcribe_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.transcribe_audio")
     def test_transcribe_transcription_error(self, mock_transcribe):
         """Test transcription with transcription error."""
         mock_transcribe.side_effect = TranscriptionError("Model loading failed")
@@ -287,7 +290,7 @@ class TestCLICommands:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.transcribe_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.transcribe_audio")
     def test_transcribe_unexpected_error(self, mock_transcribe):
         """Test transcription with unexpected error."""
         mock_transcribe.side_effect = RuntimeError("Unexpected error")
@@ -304,7 +307,7 @@ class TestCLICommands:
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    @patch("insanely_fast_whisper_api.cli.commands.cli_facade.transcribe_audio")
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.transcribe_audio")
     def test_transcribe_all_options(self, mock_transcribe):
         """Test transcribe command with all options."""
         mock_transcribe.return_value = {
@@ -357,7 +360,7 @@ class TestCLICommands:
     def test_transcribe_language_none(self):
         """Test transcribe command with language set to 'none'."""
         with patch(
-            "insanely_fast_whisper_api.cli.commands.cli_facade.transcribe_audio"
+            "insanely_fast_whisper_rocm.cli.commands.cli_facade.transcribe_audio"
         ) as mock_transcribe:
             mock_transcribe.return_value = {
                 "text": "Test",
@@ -388,7 +391,7 @@ class TestCLIIntegration:
 
     def test_main_function(self):
         """Test the main entry point function."""
-        with patch("insanely_fast_whisper_api.cli.cli.cli") as mock_cli:
+        with patch("insanely_fast_whisper_rocm.cli.cli.cli") as mock_cli:
             main()
             mock_cli.assert_called_once()
 
@@ -445,7 +448,7 @@ class TestErrorHandling:
     def test_facade_transcription_error(self):
         """Test transcription error handling in facade."""
         with patch(
-            "insanely_fast_whisper_api.cli.facade.HuggingFaceBackend"
+            "insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend"
         ) as mock_backend_class:
             mock_backend = Mock()
             mock_backend.transcribe.side_effect = TranscriptionError("Model failed")

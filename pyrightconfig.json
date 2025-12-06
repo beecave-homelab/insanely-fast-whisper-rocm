@@ -1,6 +1,6 @@
 {
     "include": [
-        "insanely_fast_whisper_api",
+        "insanely_fast_whisper_rocm",
         "tests"
     ],
     "exclude": [
@@ -13,7 +13,7 @@
         "**/transcripts_zips"
     ],
     "extraPaths": [
-        "./insanely_fast_whisper_api"
+        "./insanely_fast_whisper_rocm"
     ],
     "pythonVersion": "3.10",
     "pythonPlatform": "Linux",

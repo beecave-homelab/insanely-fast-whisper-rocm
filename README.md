@@ -1,4 +1,4 @@
-# Insanely Fast Whisper API (ROCm)
+# Insanely Fast Whisper ROCm
 
 A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm) support** for high-performance (video to) audio transcription and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces and ROCm compatibility.
 
@@ -23,7 +23,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **Noise Reduction & Voice Activity Detection (CLI, API & WebUI)**: Optional `--demucs` and `--vad` flags provide Demucs-based denoising and intelligent speech-region detection (adjustable `--vad-threshold`) for cleaner, more accurate transcripts
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v0.10.1-informational)](#insanely-fast-whisper-api-rocm)
+[![Version](https://img.shields.io/badge/Version-v0.10.1-informational)](#insanely-fast-whisper-rocm-rocm)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface)
@@ -88,7 +88,7 @@ The recommended way to run the application is using Docker Compose:
 
     ```bash
     # Create your user configuration file (interactive)
-    # This generates `~/.config/insanely-fast-whisper-api/.env` with sensible defaults
+    # This generates `~/.config/insanely-fast-whisper-rocm/.env` with sensible defaults
     pdm run setup-config  # or `python scripts/setup_config.py` if you do not use PDM
     ```
 
@@ -148,33 +148,33 @@ The application will automatically download the specified Whisper model on first
 
 ```bash
 # Download the default model (specified in .env or WHISPER_MODEL env var)
-python -m insanely_fast_whisper_api.utils.download_hf_model
+python -m insanely_fast_whisper_rocm.utils.download_hf_model
 
 # Download a specific model
-python -m insanely_fast_whisper_api.utils.download_hf_model --model openai/whisper-large-v3
+python -m insanely_fast_whisper_rocm.utils.download_hf_model --model openai/whisper-large-v3
 
 # Force re-download of the model
-python -m insanely_fast_whisper_api.utils.download_hf_model --force
+python -m insanely_fast_whisper_rocm.utils.download_hf_model --force
 
 # Use a custom cache directory
-python -m insanely_fast_whisper_api.utils.download_hf_model --cache_dir /path/to/cache
+python -m insanely_fast_whisper_rocm.utils.download_hf_model --cache_dir /path/to/cache
 ```
 
 For private or gated models, set the `HUGGINGFACE_TOKEN` environment variable with your API token.
 
 ## Configuration
 
-The API can be configured using environment variables in `~/.config/insanely-fast-whisper-api/.env`. A template with all available options is generated automatically by the configuration setup script mentioned above.
+The API can be configured using environment variables in `~/.config/insanely-fast-whisper-rocm/.env`. A template with all available options is generated automatically by the configuration setup script mentioned above.
 
 For a detailed explanation of the configuration system, including hierarchical loading and key files, please see the [`Configuration System` section in `project-overview.md`](./project-overview.md#configuration-system).
 
 ### Initial User Configuration Setup
 
-To create or update your user-specific configuration file (`~/.config/insanely-fast-whisper-api/.env`), you can use the provided setup script.
+To create or update your user-specific configuration file (`~/.config/insanely-fast-whisper-rocm/.env`), you can use the provided setup script.
 
 1. **Run the setup script:**
 
-    This script helps you create the `~/.config/insanely-fast-whisper-api/.env` file.
+    This script helps you create the `~/.config/insanely-fast-whisper-rocm/.env` file.
 
     If you are using PDM (recommended for managing dependencies and scripts):
 
@@ -190,7 +190,7 @@ To create or update your user-specific configuration file (`~/.config/insanely-f
 
 2. **Edit your configuration file:**
 
-    After running the script, open `~/.config/insanely-fast-whisper-api/.env` with your preferred text editor and customize the settings. Pay special attention to `HUGGINGFACE_TOKEN` if using gated models. Refer to [`.env.example`](./.env.example) in the project root for a full list of available options and their descriptions.
+    After running the script, open `~/.config/insanely-fast-whisper-rocm/.env` with your preferred text editor and customize the settings. Pay special attention to `HUGGINGFACE_TOKEN` if using gated models. Refer to [`.env.example`](./.env.example) in the project root for a full list of available options and their descriptions.
 
     If no configuration file exists, the API will use these default values. The configuration file will be automatically created with default values on first run.
 
@@ -203,7 +203,7 @@ The application provides three main interfaces: **API**, **WebUI**, and **CLI**.
 The FastAPI server can be started with:
 
 ```bash
-python -m insanely_fast_whisper_api.api
+python -m insanely_fast_whisper_rocm.api
 ```
 
 This launches the server (typically at `http://0.0.0.0:8000`). Interactive API documentation is available at `/docs`.
@@ -220,7 +220,7 @@ For detailed launch options and API parameters, see [`project-overview.md`](./pr
 The Gradio WebUI provides a user-friendly interface for batch processing. Start it with:
 
 ```bash
-python -m insanely_fast_whisper_api.webui
+python -m insanely_fast_whisper_rocm.webui
 ```
 
 Access it at `http://localhost:7860` (default). Features include:
@@ -239,19 +239,19 @@ Basic usage:
 
 ```bash
 # Transcribe with word-level timestamp stabilization
-python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --stabilize
+python -m insanely_fast_whisper_rocm.cli transcribe audio_file.mp3 --stabilize
 
 # Transcribe and get a JSON file (default)
-python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3
+python -m insanely_fast_whisper_rocm.cli transcribe audio_file.mp3
 
 # Transcribe and get a TXT file
-python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --export-format txt
+python -m insanely_fast_whisper_rocm.cli transcribe audio_file.mp3 --export-format txt
 
 # Transcribe and get all formats (JSON, SRT, TXT)
-python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --export-format all
+python -m insanely_fast_whisper_rocm.cli transcribe audio_file.mp3 --export-format all
 
 # Translate and get an SRT file
-python -m insanely_fast_whisper_api.cli translate audio_file.mp3 --export-format srt
+python -m insanely_fast_whisper_rocm.cli translate audio_file.mp3 --export-format srt
 ```
 
 For detailed commands and options, see [`project-overview.md`](./project-overview.md#cli-command-line-interface-details).

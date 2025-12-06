@@ -160,7 +160,7 @@ This release focuses on standardizing application entrypoints, enhancing the CLI
 #### 🔧 **Improvements in v0.8.0**
 
 - **Refactored**: Standardized entrypoints for the API, WebUI, and CLI to use `__main__.py` modules, simplifying execution.
-- **Refactored**: Moved `formatters.py` to `insanely_fast_whisper_api/core/` and updated all relevant imports.
+- **Refactored**: Moved `formatters.py` to `insanely_fast_whisper_rocm/core/` and updated all relevant imports.
 - **Refactored**: Unified audio processing logic to support both transcription and translation seamlessly.
 
 #### 📝 Key Commits in v0.8.0
@@ -363,7 +363,7 @@ This release marks a significant architectural overhaul:
 
   ```python
   # ✅ New absolute imports
-  from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
+  from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
   
   # ❌ Deprecated relative imports
   # from .core.pipeline import WhisperPipeline

@@ -31,15 +31,15 @@ COPY openapi.yaml /app/
 
 # Copy the application source code
 # This is needed for `pdm install` to build and install the local package.
-# It assumes your main package source is in the 'insanely_fast_whisper_api' directory.
+# It assumes your main package source is in the 'insanely_fast_whisper_rocm' directory.
 # Copy the application source code and project metadata
 COPY pyproject.toml /app/
-COPY ./insanely_fast_whisper_api /app/insanely_fast_whisper_api/
+COPY ./insanely_fast_whisper_rocm /app/insanely_fast_whisper_rocm/
 
 # Install the local package itself
 RUN pip install --no-cache-dir .
 
-# After `pip install .`, the package `insanely_fast_whisper_api` and its CLI/modules
+# After `pip install .`, the package `insanely_fast_whisper_rocm` and its CLI/modules
 # should be available in the Python environment.
 
 # Added in case Gradio is used and needs to be accessible; remove if not needed.
@@ -51,4 +51,4 @@ EXPOSE 7860
 
 # Define the command to run the application using uvicorn.
 # This points to the `app` instance in your `main.py` inside the installed package.
-CMD ["insanely-fast-whisper-api", "--host", "0.0.0.0", "--port", "8888"]
+CMD ["insanely-fast-whisper-rocm", "--host", "0.0.0.0", "--port", "8888"]

@@ -1,0 +1,45 @@
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  default:
+    class: logging.Formatter
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    datefmt: '%d-%m-%Y %H:%M:%S %z'
+  access:
+    class: logging.Formatter
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    datefmt: '%d-%m-%Y %H:%M:%S %z'
+
+handlers:
+  default:
+    class: logging.StreamHandler
+    formatter: default
+    stream: ext://sys.stdout
+  access:
+    class: logging.StreamHandler
+    formatter: access
+    stream: ext://sys.stdout
+
+loggers:
+  uvicorn:
+    handlers: [default]
+    level: INFO
+    propagate: no
+  uvicorn.error:
+    handlers: [default]
+    level: INFO
+    propagate: no
+  uvicorn.access:
+    handlers: [access]
+    level: INFO
+    propagate: no
+  insanely_fast_whisper_rocm:
+    handlers: [default]
+    level: INFO
+    propagate: no
+
+root:
+  level: INFO
+  handlers: [default]
+  propagate: no 

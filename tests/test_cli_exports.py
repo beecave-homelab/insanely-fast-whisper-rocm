@@ -6,7 +6,7 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-from insanely_fast_whisper_api.cli.cli import cli
+from insanely_fast_whisper_rocm.cli.cli import cli
 
 
 class TestCliExports:
