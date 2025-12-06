@@ -25,11 +25,10 @@ def temp_upload_dir(tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def webui_server(request):
-    """
-    Start the WebUI server for the test session and provide its base URL.
-    
+    """Start the WebUI server for the test session and provide its base URL.
+
     This pytest fixture launches the WebUI as a subprocess, waits until it responds on http://localhost:7861, yields the base URL for use in tests (for example with gradio_client.Client()), and terminates the subprocess when the session ends.
-    
+
     Returns:
         base_url (str): The server base URL (e.g., "http://localhost:7861").
     """

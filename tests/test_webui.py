@@ -32,9 +32,8 @@ webui_process = None
 
 
 def setup_module():
-    """
-    Prepare the test environment by ensuring required test audio is present and launching the WebUI.
-    
+    """Prepare the test environment by ensuring required test audio is present and launching the WebUI.
+
     If TEST_AUDIO_FILE is missing, the pytest module is skipped. Starts the WebUI in a separate process and polls WEBUI_URL for up to 10 attempts (one second apart) until an HTTP 200 response is observed; if the server does not become available within that period, the test suite is failed.
     """
     global webui_process

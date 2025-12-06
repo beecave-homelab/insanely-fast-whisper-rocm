@@ -140,9 +140,8 @@ def main(
     ssl_certfile: str | None,
     debug: bool,
 ):
-    """
-    Start the application HTTP server with Uvicorn using the provided runtime options.
-    
+    """Start the application HTTP server with Uvicorn using the provided runtime options.
+
     Parameters:
         host (str): Hostname or IP address to bind the server to.
         port (int): TCP port to listen on.
@@ -152,7 +151,7 @@ def main(
         ssl_keyfile (str | None): Path to the SSL key file to enable HTTPS, or None to disable SSL.
         ssl_certfile (str | None): Path to the SSL certificate file to enable HTTPS, or None to disable SSL.
         debug (bool): When True, increase logging verbosity in the YAML configuration and may set Uvicorn's level to "debug".
-    
+
     Raises:
         click.exceptions.Exit: If Uvicorn is not installed (exits with code 1).
     """

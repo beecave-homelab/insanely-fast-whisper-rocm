@@ -99,11 +99,10 @@ class FilenameGenerator:
         extension: str,
         timestamp: datetime.datetime | None = None,
     ) -> str:
-        """
-        Generate a standardized output filename for an audio input, ASR task, and extension.
-        
+        """Generate a standardized output filename for an audio input, ASR task, and extension.
+
         Uses APP_TIMEZONE to interpret and format timestamps; if APP_TIMEZONE is invalid the timestamp is interpreted in UTC. The produced filename follows the pattern: {audio_stem}_{task}_{YYYYMMDDTHHMMSSZ}.{extension}.
-        
+
         Parameters:
             audio_path (str): Full path to the source audio file; the file stem is used in the filename.
             task (TaskType): Task kind (e.g., TaskType.TRANSCRIBE or TaskType.TRANSLATE) included in the filename.
@@ -111,7 +110,7 @@ class FilenameGenerator:
             timestamp (datetime.datetime | None): If None, the current time in the configured timezone is used.
                 If naive (no tzinfo), it is assumed to be in the configured timezone.
                 If timezone-aware, it is converted to the configured timezone.
-        
+
         Returns:
             str: The generated filename string formatted as described above.
         """

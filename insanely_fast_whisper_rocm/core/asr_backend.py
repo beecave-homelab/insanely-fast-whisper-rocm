@@ -185,23 +185,22 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         task: str,
         return_timestamps_value: bool | str,
     ) -> dict[str, Any]:
-        """
-        Process an audio file and return its transcription and metadata.
-        
+        """Process an audio file and return its transcription and metadata.
+
         Parameters:
             audio_file_path (str): Path to the audio file to transcribe; will be converted to WAV if needed.
             language (str | None): Language code to force (e.g., "en"); use None to let the model auto-detect.
             task (str): Generation task to request from the model, typically "transcribe" or "translate".
             return_timestamps_value (bool | str): Whether to request timestamps. Can be a boolean or model-specific
                 string flag; may be adjusted or disabled based on model capability and configuration.
-        
+
         Returns:
             dict[str, Any]: A result map containing:
                 - "text": Transcribed text (str).
                 - "chunks": Optional timestamped chunks (list) when timestamps were returned.
                 - "runtime_seconds": Total processing time rounded to 2 decimals (float).
                 - "config_used": Configuration details used for this transcription (dict).
-        
+
         Raises:
             TranscriptionError: If transcription fails or both primary and fallback attempts fail.
         """

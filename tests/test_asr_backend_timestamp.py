@@ -8,9 +8,8 @@ from insanely_fast_whisper_rocm.core.asr_backend import (
 
 
 def test_disables_timestamps_when_generation_config_missing(monkeypatch, tmp_path):
-    """
-    Verify that when the model's generation_config.no_timestamps_token_id is None, the backend disables timestamps even if `return_timestamps_value=True`.
-    
+    """Verify that when the model's generation_config.no_timestamps_token_id is None, the backend disables timestamps even if `return_timestamps_value=True`.
+
     The test injects a dummy ASR pipeline that asserts `return_timestamps` is False, patches audio conversion to accept any path, calls `process_audio` with `return_timestamps_value=True`, and asserts the returned result has `chunks` set to `None`.
     """
     config = HuggingFaceBackendConfig(

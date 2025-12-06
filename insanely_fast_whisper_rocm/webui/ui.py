@@ -30,12 +30,11 @@ logger = logging.getLogger("insanely_fast_whisper_rocm.webui.ui")
 
 
 def _create_model_config_ui(default_model: str = DEFAULT_MODEL):
-    """
-    Create Gradio controls for selecting the model, device, and batch size.
-    
+    """Create Gradio controls for selecting the model, device, and batch size.
+
     Parameters:
         default_model (str): Default model name to populate the Model textbox.
-    
+
     Returns:
         tuple: A 3-tuple of Gradio components (model_textbox, device_textbox, batch_size_slider) where
             - model_textbox is a Textbox for the model name,
@@ -198,18 +197,17 @@ def create_ui_components(
     default_vad: bool = False,
     default_vad_threshold: float = 0.35,
 ):  # pylint: disable=too-many-locals
-    """
-    Builds and returns the Gradio Blocks app for the Insanely Fast Whisper web UI.
-    
+    """Builds and returns the Gradio Blocks app for the Insanely Fast Whisper web UI.
+
     Creates a complete Gradio interface including file upload, model and processing configuration controls, timestamp stabilization options, task and file-handling controls, outputs (transcription text and raw JSON), download buttons, and the submit action wired to the transcription handler.
-    
+
     Parameters:
         default_model (str): Default model name shown in the model configuration textbox.
         default_stabilize (bool): Default state for the word-level timestamp stabilization checkbox.
         default_demucs (bool): Default state for the Demucs noise reduction checkbox.
         default_vad (bool): Default state for the voice activity detection (VAD) checkbox.
         default_vad_threshold (float): Default threshold value for VAD (range 0.1–0.9).
-    
+
     Returns:
         demo (gr.Blocks): A configured Gradio Blocks instance representing the web UI.
     """

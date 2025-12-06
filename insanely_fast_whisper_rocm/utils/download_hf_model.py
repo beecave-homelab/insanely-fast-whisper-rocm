@@ -47,14 +47,13 @@ def download_model_if_needed(
     ignore_patterns: list[str] | None = None,
     custom_logger: logging.Logger | None = None,
 ):
-    """
-    Ensure a Hugging Face model is present locally, downloading it if necessary.
-    
+    """Ensure a Hugging Face model is present locally, downloading it if necessary.
+
     If `model_name` is None the module default model is used. Token precedence is
     left to the calling code and the Hugging Face client (an explicit `hf_token`
     argument takes precedence when provided). When `local_files_only` is True the
     function will not attempt network downloads.
-    
+
     Parameters:
         model_name (str | None): Hugging Face repo ID of the model (e.g. "openai/whisper-large-v3").
                                  If None, the module default model is used.
@@ -66,10 +65,10 @@ def download_model_if_needed(
         allow_patterns (list[str] | None): If provided, only files matching these patterns will be fetched.
         ignore_patterns (list[str] | None): If provided, files matching these patterns will be excluded.
         custom_logger (logging.Logger | None): Optional logger to use; module logger is used if omitted.
-    
+
     Returns:
         str: Filesystem path to the downloaded or cached model directory.
-    
+
     Raises:
         FileNotFoundError: If `local_files_only` is True and the model is not found locally.
         HfHubHTTPError: For HTTP errors returned by the Hugging Face Hub (e.g., 401, 404).

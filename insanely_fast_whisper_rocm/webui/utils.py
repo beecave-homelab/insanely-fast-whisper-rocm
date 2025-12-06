@@ -24,19 +24,18 @@ logger = logging.getLogger("insanely_fast_whisper_rocm.webui.utils")
 def save_temp_file(
     content: str, extension: str = "txt", desired_filename: str | None = None
 ) -> str:
-    """
-    Save content to a temporary file using the given extension and optional filename.
-    
+    """Save content to a temporary file using the given extension and optional filename.
+
     If `desired_filename` is provided it will be placed in the system temporary directory and its extension will be replaced with `extension` if different; otherwise a randomly named temp file is created with the given extension.
-    
+
     Parameters:
         content (str): Text content to write to the file.
         extension (str): File extension without leading dot (e.g., "txt", "srt", "json").
         desired_filename (str | None): Optional filename to use inside the temp directory.
-    
+
     Returns:
         str: Full path to the created temporary file.
-    
+
     Raises:
         OSError: If writing the file fails due to an OS-level error.
     """

@@ -69,11 +69,10 @@ def translate(audio_file: Path, **kwargs) -> None:
 
 
 def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
-    """
-    Run a transcription or translation task on an audio file and export the results.
-    
+    """Run a transcription or translation task on an audio file and export the results.
+
     Given `task` ("transcribe" or "translate") and an audio file path, perform speech recognition or translation, handle video-to-audio extraction when needed, optionally stabilize timestamps, export formatted outputs and optional benchmark data, and clean up any temporary files. On fatal runtime errors the function exits the process with a non-zero status.
-    
+
     Parameters:
         task (str): The task to perform; must be either "transcribe" or "translate".
         audio_file (Path): Path to the input audio or video file. If a supported video format is provided, its audio will be extracted and processed.
@@ -242,11 +241,10 @@ def _handle_output_and_benchmarks(
     benchmark_extra: tuple[str, ...],
     temp_files: list[Path],
 ) -> None:
-    """
-    Export transcription/translation results in the requested formats, optionally record benchmark data, and remove any temporary files.
-    
+    """Export transcription/translation results in the requested formats, optionally record benchmark data, and remove any temporary files.
+
     The function builds a formatter-friendly result payload from `result`, writes one or more formatted outputs (json, txt, srt) according to `export_format` and `export_format_explicit` rules, optionally records a benchmark entry when `benchmark_enabled` is true (parsing `benchmark_extra` as key=value pairs), and cleans up `temp_files`.
-    
+
     Parameters:
         task: The task name used to label outputs (e.g., "transcribe" or "translate").
         audio_file: Path to the original audio file; used for metadata and filename generation.

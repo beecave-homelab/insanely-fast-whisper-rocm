@@ -12,11 +12,10 @@ from insanely_fast_whisper_rocm.webui.handlers import (
 
 @pytest.fixture
 def mock_pipeline_and_stabilizer():
-    """
-    Provide a pytest fixture that mocks WhisperPipeline and stabilize_timestamps for handler tests.
-    
+    """Provide a pytest fixture that mocks WhisperPipeline and stabilize_timestamps for handler tests.
+
     The mocked WhisperPipeline instance has its `process` method stubbed to return {"text": "test transcription"}. The mocked `stabilize_timestamps` function is configured to return its input unchanged.
-    
+
     Returns:
         tuple: (mock_pipeline_instance, mock_stabilize) where `mock_pipeline_instance` is the mocked WhisperPipeline instance and `mock_stabilize` is the mocked stabilize_timestamps function.
     """

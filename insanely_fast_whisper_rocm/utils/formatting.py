@@ -5,12 +5,11 @@ This module contains utility functions for formatting data, such as timestamps.
 
 
 def format_seconds(seconds: float | None) -> str:
-    """
-    Format a duration in seconds into an HH:MM:SS.mmm formatted string.
-    
+    """Format a duration in seconds into an HH:MM:SS.mmm formatted string.
+
     Parameters:
         seconds (float | None): Duration in seconds; if `None`, returns the zero-time string "00:00:00.000".
-    
+
     Returns:
         str: Time formatted as "HH:MM:SS.mmm" with hours, minutes, and seconds zero-padded and milliseconds shown with three digits.
     """
