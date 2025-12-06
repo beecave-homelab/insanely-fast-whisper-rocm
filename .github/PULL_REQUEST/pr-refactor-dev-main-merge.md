@@ -6,7 +6,7 @@ This PR refactors the original `insanely_fast_whisper_rocm` layout into a modula
 
 The changes include:
 
-- Migrating implementation code from the legacy `insanely_fast_whisper_rocm` package into the new `insanely_fast_whisper_rocm` package.
+- Migrating implementation code from the legacy `insanely_fast_whisper_api` package into the new `insanely_fast_whisper_rocm` package.
 - Updating Dockerfiles, compose files, scripts, and requirements to use the new package and distribution names.
 - Expanding and reorganizing tests to mirror the new modular structure and improve coverage.
 - Updating documentation (README, VERSIONS, AGENTS, project-overview) and CI helper scripts.
