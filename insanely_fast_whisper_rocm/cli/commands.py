@@ -319,7 +319,7 @@ def _handle_output_and_benchmarks(
     # Benchmark (optional)                                               #
     # ------------------------------------------------------------------ #
     if benchmark_enabled:
-        from insanely_fast_whisper_rocm.benchmarks.collector import BenchmarkCollector
+        from insanely_fast_whisper_rocm.utils.benchmark import BenchmarkCollector
 
         collector = BenchmarkCollector()
         extra_dict: dict[str, str] | None = None
