@@ -1,0 +1,36 @@
+# Constraints file to forbid heavy ML/RL packages during lightweight installs.
+# Any attempt by a dependency to install one of these will cause resolution to fail.
+# Usage:
+#   pip install -r requirements-reviewer.txt -c constraints-no-heavy.txt
+# or with PDM:
+#   pdm sync -G reviewer --no-editable --no-self -v -c constraints-no-heavy.txt
+# (Adjust command to your workflow; key is passing this constraints file.)
+
+# Torch ecosystem
+torch==0
+torchvision==0
+torchaudio==0
+
+# ONNX runtimes
+onnx==0
+onnxruntime==0
+onnxruntime-gpu==0
+
+# CTranslate2 (can be heavy or GPU)
+ctranslate2==0
+
+# TensorFlow / JAX stacks
+tensorflow==0
+tensorflow-cpu==0
+tensorflow-gpu==0
+jax==0
+jaxlib==0
+flax==0
+
+# Other potential heavy backends/accelerators
+xgboost==0
+lightgbm==0
+
+# Optional: include cuda/toolkit meta-packages just in case
+nvidia-cuda-runtime-cu12==0
+nvidia-cudnn-cu12==0

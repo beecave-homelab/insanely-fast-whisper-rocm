@@ -22,11 +22,14 @@ from insanely_fast_whisper_rocm.utils import constants
 
 
 def audio_options(func: Callable[..., None]) -> Callable[..., None]:  # noqa: D401
-    """Attach common audio-processing CLI options to *func*.
+    """Attach common audio-processing CLI options to ``func``.
 
     The decorator adds the same set of arguments/options that were previously
-    duplicated for both *transcribe* and *translate* commands.  It returns the
-    wrapped function so it can be stacked beneath ``@click.command``.
+    duplicated for both ``transcribe`` and ``translate`` commands.
+
+    Returns:
+        Callable[..., None]: The wrapped function, so the decorator can be
+        stacked beneath ``@click.command``.
     """
     options: list[Callable[[Callable[..., None]], Callable[..., None]]] = [
         # Positional argument
@@ -65,6 +68,16 @@ def audio_options(func: Callable[..., None]) -> Callable[..., None]:  # noqa: D4
             help=(
                 "Batch size for processing "
                 f"({constants.MIN_BATCH_SIZE}-{constants.MAX_BATCH_SIZE})"
+            ),
+            show_default=True,
+        ),
+        click.option(
+            "--progress-group-size",
+            type=click.IntRange(1, 256),
+            default=constants.DEFAULT_PROGRESS_GROUP_SIZE,
+            help=(
+                "Chunks per progress update (higher = fewer UI updates). "
+                "Independent of model batch size."
             ),
             show_default=True,
         ),
@@ -131,6 +144,15 @@ def audio_options(func: Callable[..., None]) -> Callable[..., None]:  # noqa: D4
             help="Enable debug logging for troubleshooting",
         ),
         click.option(
+            "--progress/--no-progress",
+            default=True,
+            help=(
+                "Show Rich progress UI (auto-disabled on non-TTY). "
+                "Use --no-progress to disable."
+            ),
+            show_default=True,
+        ),
+        click.option(
             "--no-timestamps",
             is_flag=True,
             help="Disable timestamp extraction (may fix tensor size errors)",
@@ -177,6 +199,14 @@ def audio_options(func: Callable[..., None]) -> Callable[..., None]:  # noqa: D4
             is_flag=True,
             help="[DEPRECATED] Use --export-format all instead.",
             hidden=True,
+        ),
+        click.option(
+            "--quiet",
+            is_flag=True,
+            help=(
+                "Minimize console output: show only the progress bar and the final "
+                "saved output path(s)."
+            ),
         ),
     ]
 

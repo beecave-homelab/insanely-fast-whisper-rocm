@@ -8,6 +8,7 @@ import sys
 
 import click
 
+from insanely_fast_whisper_rocm.utils import constants
 from insanely_fast_whisper_rocm.utils.constants import (
     DEFAULT_DEMUCS,
     DEFAULT_MODEL,
@@ -25,12 +26,12 @@ logger = logging.getLogger("insanely_fast_whisper_rocm.webui.app")
 @click.command()
 @click.option(
     "--host",
-    default="0.0.0.0",
+    default=constants.WEBUI_HOST,
     help="Host to bind the server to. Default is 0.0.0.0 (all interfaces).",
 )
 @click.option(
     "--port",
-    default=7860,
+    default=constants.WEBUI_PORT,
     type=int,
     help="Port to bind the server to. Default is 7860.",
 )
@@ -85,7 +86,7 @@ def launch_webui(
     vad: bool,
     vad_threshold: float,
     debug: bool,
-):
+) -> None:
     """Launch the Insanely Fast Whisper WebUI."""
     # Configure logging
     log_level = logging.DEBUG if debug else logging.INFO

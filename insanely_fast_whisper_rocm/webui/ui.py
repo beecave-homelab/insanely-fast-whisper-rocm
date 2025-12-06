@@ -29,17 +29,14 @@ from insanely_fast_whisper_rocm.webui.handlers import (
 logger = logging.getLogger("insanely_fast_whisper_rocm.webui.ui")
 
 
-def _create_model_config_ui(default_model: str = DEFAULT_MODEL):
-    """Create Gradio controls for selecting the model, device, and batch size.
-
-    Parameters:
-        default_model (str): Default model name to populate the Model textbox.
+def _create_model_config_ui(
+    default_model: str = DEFAULT_MODEL,
+) -> tuple[gr.Textbox, gr.Textbox, gr.Slider]:
+    """Helper to create model configuration UI components with a default model.
 
     Returns:
-        tuple: A 3-tuple of Gradio components (model_textbox, device_textbox, batch_size_slider) where
-            - model_textbox is a Textbox for the model name,
-            - device_textbox is a Textbox for device selection (e.g., "0", "cpu", "mps"),
-            - batch_size_slider is a Slider for the batching size.
+        tuple[gr.Textbox, gr.Textbox, gr.Slider]: The model, device, and
+        batch size controls.
     """
     with gr.Accordion("Model Configuration", open=True):
         model = gr.Textbox(value=default_model, label="Model")
@@ -54,8 +51,12 @@ def _create_model_config_ui(default_model: str = DEFAULT_MODEL):
     return model, device, batch_size
 
 
-def _create_processing_options_ui():
-    """Helper function to create processing options UI components."""
+def _create_processing_options_ui() -> tuple[gr.Dropdown, gr.Slider]:
+    """Helper function to create processing options UI components.
+
+    Returns:
+        tuple[gr.Dropdown, gr.Slider]: The dtype dropdown and chunk length slider.
+    """
     with gr.Accordion("Processing Options", open=False):
         dtype = gr.Dropdown(
             choices=["float16", "float32"],
@@ -83,8 +84,13 @@ def _create_stabilization_ui(
     default_demucs: bool = False,
     default_vad: bool = False,
     default_vad_threshold: float = 0.35,
-):
-    """Helper function to create timestamp stabilization UI components."""
+) -> tuple[gr.Checkbox, gr.Checkbox, gr.Checkbox, gr.Slider]:
+    """Helper function to create timestamp stabilization UI components.
+
+    Returns:
+        tuple[gr.Checkbox, gr.Checkbox, gr.Checkbox, gr.Slider]: Stabilize,
+        Demucs, VAD toggles and the VAD threshold slider.
+    """
     with gr.Accordion("Timestamp Stabilization", open=False):
         stabilize = gr.Checkbox(
             value=default_stabilize,
@@ -104,8 +110,13 @@ def _create_stabilization_ui(
     return stabilize, demucs, vad, vad_threshold
 
 
-def _create_task_config_ui():
-    """Helper function to create task configuration UI components."""
+def _create_task_config_ui() -> tuple[gr.Radio, gr.Textbox, gr.Radio]:
+    """Helper function to create task configuration UI components.
+
+    Returns:
+        tuple[gr.Radio, gr.Textbox, gr.Radio]: Timestamp type, language, and
+        task controls.
+    """
     with gr.Accordion("Task Configuration", open=True):
         timestamp_type = gr.Radio(
             choices=["chunk", "word"],
@@ -125,8 +136,13 @@ def _create_task_config_ui():
     return timestamp_type, language, task
 
 
-def _create_file_handling_ui():
-    """Helper function to create file handling UI components."""
+def _create_file_handling_ui() -> tuple[gr.Checkbox, gr.Textbox]:
+    """Helper function to create file handling UI components.
+
+    Returns:
+        tuple[gr.Checkbox, gr.Textbox]: Save transcriptions toggle and save
+        directory input.
+    """
     with gr.Accordion("File Handling", open=False):
         save_transcriptions = gr.Checkbox(
             value=True, label="Save transcriptions to disk"
@@ -157,8 +173,13 @@ def _process_transcription_request_wrapper(  # pylint: disable=too-many-argument
     save_transcriptions: bool,
     temp_uploads_dir: str,
     progress: gr.Progress | None = None,
-):
-    """Wrapper to adapt Gradio inputs to process_transcription_request."""
+) -> tuple[object, ...]:
+    """Wrapper to adapt Gradio inputs to process_transcription_request.
+
+    Returns:
+        tuple: The outputs expected by the Gradio click handler (text,
+        JSON, state, and download button updates).
+    """
     if progress is None:
         progress = gr.Progress()
     transcription_cfg = TranscriptionConfig(
@@ -196,20 +217,11 @@ def create_ui_components(
     default_demucs: bool = False,
     default_vad: bool = False,
     default_vad_threshold: float = 0.35,
-):  # pylint: disable=too-many-locals
-    """Builds and returns the Gradio Blocks app for the Insanely Fast Whisper web UI.
-
-    Creates a complete Gradio interface including file upload, model and processing configuration controls, timestamp stabilization options, task and file-handling controls, outputs (transcription text and raw JSON), download buttons, and the submit action wired to the transcription handler.
-
-    Parameters:
-        default_model (str): Default model name shown in the model configuration textbox.
-        default_stabilize (bool): Default state for the word-level timestamp stabilization checkbox.
-        default_demucs (bool): Default state for the Demucs noise reduction checkbox.
-        default_vad (bool): Default state for the voice activity detection (VAD) checkbox.
-        default_vad_threshold (float): Default threshold value for VAD (range 0.1–0.9).
+) -> gr.Blocks:  # pylint: disable=too-many-locals
+    """Create and return Gradio UI components with all parameters.
 
     Returns:
-        demo (gr.Blocks): A configured Gradio Blocks instance representing the web UI.
+        gr.Blocks: The configured Gradio Blocks interface instance.
     """
     with gr.Blocks(title="Insanely Fast Whisper - Local WebUI") as demo:
         gr.Markdown("# 🎙️ Insanely Fast Whisper - Local WebUI")

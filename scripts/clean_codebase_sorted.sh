@@ -5,7 +5,7 @@ set -euo pipefail
 # Script Description: Run Ruff in grouped passes (optionally keep going on errors),
 #   and apply safe auto-fixes where requested.
 # Author: elvee
-# Version: 1.2.0
+# Version: 1.3.0
 # License: MIT
 # Creation Date: 17/08/2025
 # Last Modified: 17/08/2025
@@ -17,6 +17,7 @@ set -euo pipefail
 # ==============================================================================
 SCRIPT_NAME="$(basename "$0")"
 KEEP_GOING=false  # If true, do not stop on Ruff failures; run all passes.
+USE_PREVIEW=false # If true, enable Ruff preview rules (needed for DOC/FA).
 
 # Colors (disabled if NO_COLOR is set or not a TTY)
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
@@ -49,23 +50,29 @@ Clean Codebase with Ruff${NC}
 # ==============================================================================
 show_help() {
   cat << EOF
-Usage: $SCRIPT_NAME [OPTIONS]
+Usage: $SCRIPT_NAME [OPTIONS] [PATHS...]
 
 Options:
   -k, --keep-going    Continue running all passes even if a pass fails.
+  -p, --preview       Enable Ruff preview rules (recommended for DOC, FA).
   -h, --help          Show this help message and exit.
 
 Description:
-  Runs Ruff checks in grouped passes:
+  Runs Ruff checks in grouped passes for the configured select codes:
    - Pyflakes (F)
-   - Pycodestyle (E,W)
-   - Import sorting with fixes (I)
-   - Bugbear (B)
-   - Pyupgrade with fixes (UP)
-   - Docstrings (D)
+   - Pycodestyle (E, W)
    - Naming (N)
-   - Specific rule F401
-   - Custom bundle: F401,F841,I,B,UP
+   - Import sorting with fixes (I)
+   - Docstrings (D)
+   - Pydoclint (DOC) [often requires --preview]
+   - Annotations (ANN)
+   - Tidy imports (TID)
+   - Pyupgrade with fixes (UP)
+   - Future annotations (FA) [often requires --preview]
+
+Targets:
+  Provide one or more files/directories (e.g., src/ tests/cli). If omitted,
+  defaults to the current directory (.). Shell globs are supported by Bash.
 
 Notes:
   By default, the script stops on the first failing Ruff pass (set -e).
@@ -98,11 +105,13 @@ require_cmd() {
 # - Prints the command in cyan, runs it, then prints a success tick.
 # - Honors KEEP_GOING to avoid aborting the script on non-zero exit codes.
 # ==============================================================================
+RUFF_COMMON=( )
+
 run_ruff() {
-  # Show exactly what we are about to run (quoted rendering for clarity)
+  # Build a rendered command including common args for visibility
   local rendered=""
   local arg
-  for arg in "$@"; do
+  for arg in "${RUFF_COMMON[@]}" "$@"; do
     # shellcheck disable=SC2089
     rendered+=" $(printf "%q" "${arg}")"
   done
@@ -111,13 +120,13 @@ run_ruff() {
 
   if [[ "${KEEP_GOING}" == true ]]; then
     # Continue even if this pass fails; still show the end marker.
-    if ruff check "$@"; then
+    if ruff check "${RUFF_COMMON[@]}" "$@"; then
       echo -e "${CHECK} Completed: ruff check${DIM}${rendered}${NC}"
     else
       echo -e "${YELLOW}⚠ Completed with issues:${NC} ruff check${DIM}${rendered}${NC}"
     fi
   else
-    ruff check "$@"
+    ruff check "${RUFF_COMMON[@]}" "$@"
     echo -e "${CHECK} Completed: ruff check${DIM}${rendered}${NC}"
   fi
 }
@@ -129,31 +138,34 @@ main_logic() {
   echo -e "${YELLOW}${BOLD}Ruff passes${NC}"
 
   # Pyflakes
-  run_ruff . --select F
+  run_ruff "${TARGETS[@]}" --select F
 
   # Pycodestyle
-  run_ruff . --select E,W
-
-  # Import sorting (auto-fix)
-  run_ruff . --select I --fix
-
-  # Bugbear
-  run_ruff . --select B
-
-  # Pyupgrade (auto-fix)
-  run_ruff . --select UP --fix
-
-  # Docstrings
-  run_ruff . --select D
+  run_ruff "${TARGETS[@]}" --select E,W
 
   # Naming
-  run_ruff . --select N
+  run_ruff "${TARGETS[@]}" --select N
 
-  # A single rule
-  run_ruff . --select F401
+  # Import sorting (auto-fix)
+  run_ruff "${TARGETS[@]}" --select I --fix
 
-  # Custom bundle
-  run_ruff . --select F401,F841,I,B,UP
+  # Docstrings
+  run_ruff "${TARGETS[@]}" --select D
+
+  # Pydoclint (DOC)
+  run_ruff "${TARGETS[@]}" --select DOC
+
+  # Annotations
+  run_ruff "${TARGETS[@]}" --select ANN
+
+  # Tidy imports
+  run_ruff "${TARGETS[@]}" --select TID
+
+  # Pyupgrade (auto-fix)
+  run_ruff "${TARGETS[@]}" --select UP --fix
+
+  # Future annotations (FA)
+  run_ruff "${TARGETS[@]}" --select FA
 
   echo -e "\n${CHECK} ${BOLD}All passes completed.${NC}"
 }
@@ -164,10 +176,15 @@ main_logic() {
 main() {
   require_cmd "ruff"
 
+  TARGETS=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -k|--keep-going)
         KEEP_GOING=true
+        shift
+        ;;
+      -p|--preview)
+        USE_PREVIEW=true
         shift
         ;;
       -h|--help)
@@ -175,10 +192,22 @@ main() {
         exit 0
         ;;
       *)
-        error_exit "Invalid option: $1. Use -h for help."
+        # Treat as a path/target (supports multiple)
+        TARGETS+=("$1")
+        shift
         ;;
     esac
   done
+
+  # Configure common Ruff args
+  if [[ "${USE_PREVIEW}" == true ]]; then
+    RUFF_COMMON+=(--preview)
+  fi
+
+  # Default to current directory if no targets provided
+  if [[ ${#TARGETS[@]} -eq 0 ]]; then
+    TARGETS=(.)
+  fi
 
   main_logic
 }

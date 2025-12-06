@@ -7,11 +7,13 @@ application created by the `create_app` factory.
 
 import uvicorn
 
+from insanely_fast_whisper_rocm.utils import constants
+
 if __name__ == "__main__":
     uvicorn.run(
         "insanely_fast_whisper_rocm.api.app:create_app",
         factory=True,
-        host="0.0.0.0",
-        port=8888,
+        host=constants.API_HOST,
+        port=constants.API_PORT,
         reload=True,
     )

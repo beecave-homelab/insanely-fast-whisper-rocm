@@ -1,5 +1,7 @@
 """CLI facade for simplified access to core ASR functionality."""
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 from typing import Any
@@ -8,6 +10,10 @@ from insanely_fast_whisper_rocm.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )
+from insanely_fast_whisper_rocm.core.cancellation import CancellationToken
+from insanely_fast_whisper_rocm.core.errors import TranscriptionError
+from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
+from insanely_fast_whisper_rocm.core.progress import ProgressCallback
 from insanely_fast_whisper_rocm.core.utils import convert_device_string
 from insanely_fast_whisper_rocm.utils import constants
 
@@ -17,14 +23,36 @@ logger = logging.getLogger(__name__)
 class CLIFacade:
     """Facade for CLI access to ASR functionality."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        backend_factory: type[HuggingFaceBackend] | None = None,
+        pipeline_factory: type[WhisperPipeline] | None = None,
+        check_file_exists: bool = False,
+    ) -> None:
         """Initialize the CLI facade.
 
         Initializes internal backend cache and the last-used configuration so
         repeated calls with the same configuration can reuse the backend.
+
+        Args:
+            backend_factory: Optional factory used to create the ASR backend.
+                Defaults to :class:`HuggingFaceBackend` (used in production).
+            pipeline_factory: Optional factory for the pipeline class. Defaults
+                to :class:`WhisperPipeline`. Tests can inject a stub to avoid
+                touching the filesystem.
+            check_file_exists: Whether to verify input audio paths exist. Disabled
+                by default so tests and programmatic callers can provide synthetic
+                paths. Production entry points should pass ``True`` to retain
+                strict validation.
         """
-        self.backend = None
-        self._current_config = None
+        self.backend_factory = backend_factory
+        self.pipeline_factory = pipeline_factory
+        self.check_file_exists = check_file_exists
+
+        self.backend: HuggingFaceBackend | None = None
+        self.pipeline: WhisperPipeline | None = None
+        self._current_config: HuggingFaceBackendConfig | None = None
 
     def get_env_config(self) -> dict[str, Any]:
         """Get configuration from environment variables with safe defaults.
@@ -57,6 +85,7 @@ class CLIFacade:
         dtype: str,
         batch_size: int,
         chunk_length: int,
+        progress_group_size: int,
     ) -> HuggingFaceBackendConfig:
         """Create a backend configuration from CLI-supplied arguments.
 
@@ -66,6 +95,7 @@ class CLIFacade:
             dtype (str): Data type for inference (e.g., "float16").
             batch_size (int): Number of samples to batch per inference step.
             chunk_length (int): Audio chunk size in seconds.
+            progress_group_size (int): Chunks per progress update group.
 
         Returns:
             HuggingFaceBackendConfig: The constructed backend configuration.
@@ -76,6 +106,7 @@ class CLIFacade:
             dtype=dtype,
             batch_size=batch_size,
             chunk_length=chunk_length,
+            progress_group_size=progress_group_size,
         )
 
     def process_audio(  # pylint: disable=too-many-arguments
@@ -86,30 +117,40 @@ class CLIFacade:
         dtype: str = "float16",
         batch_size: int | None = None,
         chunk_length: int = 30,
+        progress_group_size: int | None = None,
         language: str | None = None,
         task: str = "transcribe",
         return_timestamps_value: bool | str = True,
+        progress_cb: ProgressCallback | None = None,
+        cancellation_token: CancellationToken | None = None,
     ) -> dict[str, Any]:
         """Process an audio file via the ASR backend.
 
-        Supports transcription and translation depending on the ``task``.
+        Supports transcription and translation depending on ``task``.
 
         Args:
-            audio_file_path (Path): Path to the audio file.
-            model (str | None): Optional model name to use.
-            device (str | None): Optional device for inference.
-            dtype (str): Data type for inference.
-            batch_size (int | None): Optional batch size for processing.
-            chunk_length (int): Audio chunk length in seconds.
-            language (str | None): Optional language code for processing.
-            task (str): Task to perform ("transcribe" or "translate").
-            return_timestamps_value (bool | str): Whether/how to return
-                timestamps. Pass True/False or a string mode supported by the
-                backend.
+            audio_file_path: Path to the audio file on disk.
+            model: Optional model name to use.
+            device: Optional device for inference.
+            dtype: Data type for inference.
+            batch_size: Optional batch size for processing.
+            chunk_length: Audio chunk length in seconds.
+            progress_group_size: Chunks per progress update group. Defaults to
+                :data:`~insanely_fast_whisper_rocm.utils.constants.DEFAULT_PROGRESS_GROUP_SIZE`
+                when ``None``.
+            language: Optional language code for processing.
+            task: Task to perform ("transcribe" or "translate").
+            return_timestamps_value: Whether/how to return timestamps.
+            progress_cb: Optional progress callback for granular updates.
+            cancellation_token: Cooperative cancellation token.
 
         Returns:
-            dict[str, Any]: Results payload with transcription/translation
-            outputs as provided by the backend.
+            dict[str, Any]: Transcription or translation payload.
+
+        Raises:
+            RuntimeError: If the ASR backend cannot be initialized.
+            TranscriptionError: When the pipeline fails and fallback processing
+                is unavailable or also fails.
         """
         # Get config from environment with defaults
         config = self.get_env_config()
@@ -130,12 +171,18 @@ class CLIFacade:
             batch_size = min(batch_size, 2)  # Reduce batch size for CPU
 
         # Create backend configuration
+        eff_progress_group_size = (
+            progress_group_size
+            if progress_group_size and progress_group_size > 0
+            else constants.DEFAULT_PROGRESS_GROUP_SIZE
+        )
         backend_config = self._create_backend_config(
             model=model_name,
             device=device,
             dtype=dtype,
             batch_size=batch_size,
             chunk_length=chunk_length,
+            progress_group_size=eff_progress_group_size,
         )
 
         # Log final configuration
@@ -150,24 +197,88 @@ class CLIFacade:
             language,
         )
 
-        # Create or reuse backend if configuration hasn't changed
-        if self.backend is None or self._current_config != backend_config:
-            self.backend = HuggingFaceBackend(backend_config)
+        backend_cls = self.backend_factory or HuggingFaceBackend
+        pipeline_cls = self.pipeline_factory or WhisperPipeline
+
+        backend_changed = self.backend is None or self._current_config != backend_config
+        if backend_changed:
+            self.backend = backend_cls(backend_config)
+            if self.check_file_exists:
+                self.pipeline = pipeline_cls(
+                    asr_backend=self.backend,
+                    storage_backend=None,
+                    save_transcriptions=False,
+                )
+            else:
+                self.pipeline = None
             self._current_config = backend_config
+        elif self.pipeline is None and self.backend is not None:
+            if self.check_file_exists:
+                self.pipeline = pipeline_cls(
+                    asr_backend=self.backend,
+                    storage_backend=None,
+                    save_transcriptions=False,
+                )
 
         # Get language from config if not provided
         if language is None:
             language = config["language"]
 
-        # Perform transcription
-        return self.backend.process_audio(
-            audio_file_path=str(audio_file_path),
-            language=language,
-            task=task,
-            return_timestamps_value=return_timestamps_value,
-        )
+        if self.backend is None:
+            raise RuntimeError("ASR backend failed to initialize for CLI pipeline.")
+
+        if self.pipeline is None or not self.check_file_exists:
+            return self.backend.process_audio(
+                audio_file_path=str(audio_file_path),
+                language=language,
+                task=task,
+                return_timestamps_value=return_timestamps_value,
+                progress_cb=progress_cb,
+                cancellation_token=cancellation_token,
+            )
+
+        if return_timestamps_value == "word":
+            timestamp_type = "word"
+        elif return_timestamps_value:
+            timestamp_type = "chunk"
+        else:
+            timestamp_type = "none"
+
+        try:
+            # CRITICAL FIX: Do NOT pass original_filename for CLI usage.
+            # The pipeline will use the absolute path from audio_file_path,
+            # which is required for stabilization to locate the audio file.
+            # original_filename should only be used for uploaded files (API)
+            # where we want to preserve the upload's original name.
+            return self.pipeline.process(
+                audio_file_path=str(audio_file_path),
+                language=language,
+                task=task,
+                timestamp_type=timestamp_type,  # type: ignore[arg-type]
+                original_filename=None,  # Let pipeline use absolute path
+                progress_callback=progress_cb,
+                cancellation_token=cancellation_token,
+            )
+        except TranscriptionError as exc:
+            missing_file = "audio file not found" in str(exc).lower()
+            if self.check_file_exists or not missing_file:
+                raise
+            logger.debug(
+                "Falling back to backend-only processing for %s due to missing"
+                " file: %s",
+                audio_file_path,
+                exc,
+            )
+            return self.backend.process_audio(
+                audio_file_path=str(audio_file_path),
+                language=language,
+                task=task,
+                return_timestamps_value=return_timestamps_value,
+                progress_cb=progress_cb,
+                cancellation_token=cancellation_token,
+            )
 
 
 # Global facade instance for CLI use (exposes process_audio for
 # both transcription and translation)
-cli_facade = CLIFacade()
+cli_facade = CLIFacade(check_file_exists=True)

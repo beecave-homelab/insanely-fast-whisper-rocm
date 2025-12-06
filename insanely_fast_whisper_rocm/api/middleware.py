@@ -6,13 +6,17 @@ such as request timing and logging.
 
 import logging
 import time
+from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request
+from starlette.responses import Response
 
 logger = logging.getLogger(__name__)
 
 
-async def log_request_timing(request: Request, call_next):
+async def log_request_timing(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
     """Log timing information for each request.
 
     Args:
@@ -20,7 +24,7 @@ async def log_request_timing(request: Request, call_next):
         call_next: The next middleware or route handler
 
     Returns:
-        The HTTP response
+        Response: The HTTP response
     """
     start_time = time.perf_counter()
     response = await call_next(request)

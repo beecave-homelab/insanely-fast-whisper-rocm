@@ -60,8 +60,20 @@ FORMATTER_MAP = {
     help="Output format(s): txt, srt. Can be specified multiple times.",
 )
 @click.option("--debug", is_flag=True, help="Enable debug logging.")
-def cli(input_path, output_dir, formats, debug):
-    """Convert a Whisper JSON result to TXT and/or SRT."""
+def cli(
+    input_path: str,
+    output_dir: str | None,
+    formats: tuple[str, ...],
+    debug: bool,
+) -> None:
+    """Convert a Whisper JSON result to TXT and/or SRT.
+
+    Args:
+        input_path: Absolute or relative path to the Whisper JSON file.
+        output_dir: Destination directory for formatted transcripts.
+        formats: Sequence of requested output format identifiers.
+        debug: Whether to enable verbose debug logging.
+    """
     logging.basicConfig(
         level=logging.DEBUG if debug else logging.INFO,
         format="[%(levelname)s] %(message)s",

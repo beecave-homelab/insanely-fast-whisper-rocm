@@ -45,10 +45,9 @@ RUN pip install --no-cache-dir .
 # Added in case Gradio is used and needs to be accessible; remove if not needed.
 ENV GRADIO_SERVER_NAME="0.0.0.0"
 
-# Make port 8888 available to the world outside this container (standard for uvicorn)
+# Expose default internal ports (API/WebUI). Actual bindings are controlled by Compose.
 EXPOSE 8888
 EXPOSE 7860
 
-# Define the command to run the application using uvicorn.
-# This points to the `app` instance in your `main.py` inside the installed package.
-CMD ["insanely-fast-whisper-rocm", "--host", "0.0.0.0", "--port", "8888"]
+# Use the package entrypoint so host/port are controlled by env vars (API_HOST/API_PORT).
+CMD ["insanely-fast-whisper-rocm"]

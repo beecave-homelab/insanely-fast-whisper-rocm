@@ -4,6 +4,9 @@ This module provides backend implementations for different ASR engines,
 focusing on the Hugging Face Transformers integration.
 """
 
+from __future__ import annotations
+
+import gc
 import logging
 import time
 import warnings
@@ -21,10 +24,12 @@ from transformers import (
 )
 from transformers.utils import logging as hf_logging
 
+from insanely_fast_whisper_rocm.core.cancellation import CancellationToken
 from insanely_fast_whisper_rocm.core.errors import (
     DeviceNotFoundError,
     TranscriptionError,
 )
+from insanely_fast_whisper_rocm.core.progress import NoOpProgress, ProgressCallback
 from insanely_fast_whisper_rocm.core.utils import convert_device_string
 
 # Placeholder for logger, will be configured properly later
@@ -40,6 +45,7 @@ class HuggingFaceBackendConfig:
     dtype: str
     batch_size: int
     chunk_length: int
+    progress_group_size: int
 
 
 class ASRBackend(ABC):  # pylint: disable=too-few-public-methods
@@ -53,6 +59,8 @@ class ASRBackend(ABC):  # pylint: disable=too-few-public-methods
         task: str,
         return_timestamps_value: bool | str,
         # Potentially other common config options can go here
+        progress_cb: ProgressCallback | None = None,
+        cancellation_token: CancellationToken | None = None,
     ) -> dict[str, Any]:
         """Processes the audio file and returns the result."""
 
@@ -60,14 +68,26 @@ class ASRBackend(ABC):  # pylint: disable=too-few-public-methods
 class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
     """ASR Backend using Hugging Face Transformers pipeline."""
 
-    def __init__(self, config: HuggingFaceBackendConfig):
+    def __init__(self, config: HuggingFaceBackendConfig) -> None:
+        """Initialize the backend with the given configuration.
+
+        Args:
+            config: Backend configuration including model, device, dtype,
+                batch size, and chunk length.
+        """
         self.config = config
         self.effective_device = convert_device_string(self.config.device)
         self.asr_pipe = None  # Lazy initialization
 
         self._validate_device()
 
-    def _validate_device(self):
+    def _validate_device(self) -> None:
+        """Validate that the requested device is available, else raise.
+
+        Raises:
+            DeviceNotFoundError: If the requested CUDA or MPS device is not
+                available on the system.
+        """
         if "cuda" in self.effective_device and not torch.cuda.is_available():
             raise DeviceNotFoundError(
                 f"CUDA device {self.effective_device} requested but CUDA is not "
@@ -79,8 +99,29 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 "Try using 'cpu' instead."
             )
 
-    def _initialize_pipeline(self):
+    def _initialize_pipeline(self, progress_cb: ProgressCallback | None = None) -> None:
+        """Lazily construct the Transformers pipeline if not already created.
+
+        Emits model load progress callbacks if provided.
+
+        Args:
+            progress_cb: Optional progress callback.
+
+        Raises:
+            TranscriptionError: If the ASR model or associated components fail
+                to load.
+            ImportError: Propagated if a required backend or package is missing
+                and cannot be recovered.
+            OSError: Propagated if underlying IO or model loading fails in a way
+                that cannot be wrapped.
+            RuntimeError: Propagated for low-level framework errors that may
+                occur prior to wrapping.
+            ValueError: Propagated for invalid configuration detected during
+                model initialization when not recoverable.
+        """
         if self.asr_pipe is None:
+            cb = progress_cb or NoOpProgress()
+            cb.on_model_load_started()
             logger.info(
                 "ASR using device: %s, model: %s, dtype: %s",
                 self.effective_device,
@@ -95,10 +136,18 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 "use_safetensors": True,
             }
 
-            # For newer transformers versions, SDPA is the native way to get
-            # BetterTransformer-like optimizations.
+            # For newer transformers, SDPA is fast. On ROCm it sometimes fails at
+            # runtime on certain stacks; per user preference, try SDPA first and
+            # fallback to 'eager' only if needed. Keep SDPA on CUDA.
             if self.effective_device != "cpu":
-                model_load_kwargs["attn_implementation"] = "sdpa"
+                is_rocm = getattr(torch.version, "hip", None) is not None
+                if is_rocm:
+                    model_load_kwargs["attn_implementation"] = "sdpa"
+                    logger.info(
+                        "ROCm detected; trying attn_implementation='sdpa' first"
+                    )
+                else:
+                    model_load_kwargs["attn_implementation"] = "sdpa"
 
             try:
                 logger.info(
@@ -106,9 +155,32 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                     self.config.model_name,
                     model_load_kwargs,
                 )
-                model = AutoModelForSpeechSeq2Seq.from_pretrained(
-                    self.config.model_name, **model_load_kwargs
-                )
+                try:
+                    model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                        self.config.model_name, **model_load_kwargs
+                    )
+                except (OSError, ValueError, RuntimeError, ImportError) as e_first:
+                    # On ROCm, fallback to 'eager' if SDPA attempt fails at load.
+                    if (
+                        getattr(torch.version, "hip", None) is not None
+                        and model_load_kwargs.get("attn_implementation") == "sdpa"
+                    ):
+                        logger.warning(
+                            "Model load with SDPA failed on ROCm, retrying with "
+                            "attn_implementation='eager': %s",
+                            str(e_first),
+                        )
+                        model_load_kwargs["attn_implementation"] = "eager"
+                        logger.info(
+                            "Reloading ASR model '%s' with kwargs: %s",
+                            self.config.model_name,
+                            model_load_kwargs,
+                        )
+                        model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                            self.config.model_name, **model_load_kwargs
+                        )
+                    else:
+                        raise
                 tokenizer = AutoTokenizer.from_pretrained(self.config.model_name)
                 feature_extractor = AutoFeatureExtractor.from_pretrained(
                     self.config.model_name
@@ -169,6 +241,8 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                     device=self.effective_device,
                 )
 
+                cb.on_model_load_finished()
+
             except (OSError, ValueError, RuntimeError, ImportError) as e:
                 logger.error(
                     "Failed to load ASR model '%s': %s",
@@ -184,28 +258,33 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         language: str | None,
         task: str,
         return_timestamps_value: bool | str,
+        progress_cb: ProgressCallback | None = None,
+        cancellation_token: CancellationToken | None = None,
     ) -> dict[str, Any]:
-        """Process an audio file and return its transcription and metadata.
+        """Process an audio file and return the transcription result.
 
-        Parameters:
-            audio_file_path (str): Path to the audio file to transcribe; will be converted to WAV if needed.
-            language (str | None): Language code to force (e.g., "en"); use None to let the model auto-detect.
-            task (str): Generation task to request from the model, typically "transcribe" or "translate".
-            return_timestamps_value (bool | str): Whether to request timestamps. Can be a boolean or model-specific
-                string flag; may be adjusted or disabled based on model capability and configuration.
+        Args:
+            audio_file_path: Input audio path.
+            language: Optional language code.
+            task: "transcribe" or "translate".
+            return_timestamps_value: Whether/how to return timestamps.
+            progress_cb: Optional progress reporter.
+            cancellation_token: Optional cooperative cancellation token.
 
         Returns:
-            dict[str, Any]: A result map containing:
-                - "text": Transcribed text (str).
-                - "chunks": Optional timestamped chunks (list) when timestamps were returned.
-                - "runtime_seconds": Total processing time rounded to 2 decimals (float).
-                - "config_used": Configuration details used for this transcription (dict).
+            dict[str, Any]: Result with text, optional chunks, runtime, and
+            config used.
 
         Raises:
-            TranscriptionError: If transcription fails or both primary and fallback attempts fail.
+            TranscriptionError: If model loading or inference fails.
         """
+        cb = progress_cb or NoOpProgress()
+        if cancellation_token is not None:
+            cancellation_token.raise_if_cancelled()
         if self.asr_pipe is None:
-            self._initialize_pipeline()
+            self._initialize_pipeline(progress_cb=cb)
+            if cancellation_token is not None:
+                cancellation_token.raise_if_cancelled()
 
         start_time = time.perf_counter()
 
@@ -263,8 +342,20 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
         hf_logging.set_verbosity_error()
 
+        # CRITICAL FIX: Disable chunk_length_s when using word-level timestamps
+        # to avoid Transformers bug where all words get the same timestamp.
+        # The manual chunking in pipeline.py handles audio splitting, so
+        # Transformers should process each chunk without further internal chunking.
+        chunk_length_value = self.config.chunk_length
+        if _return_timestamps_value == "word":
+            chunk_length_value = None
+            logger.debug(
+                "Disabling chunk_length_s for word-level timestamps to avoid "
+                "Transformers internal chunking conflict"
+            )
+
         pipeline_kwargs = {
-            "chunk_length_s": self.config.chunk_length,
+            "chunk_length_s": chunk_length_value,
             "batch_size": self.config.batch_size,
             "return_timestamps": _return_timestamps_value,
             "ignore_warning": True,
@@ -324,15 +415,18 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 self.config.model_name,
             )
 
-        # Convert to WAV if extension not among standard Whisper-friendly set
-        from insanely_fast_whisper_rocm.audio.conversion import (
-            ensure_wav,  # local import to avoid heavy deps at import time
-        )
-
-        converted_path = ensure_wav(audio_file_path)
-
         try:
-            outputs = self.asr_pipe(str(converted_path), **pipeline_kwargs)
+            logger.debug(
+                "Calling ASR pipeline: audio=%s, chunk_length_s=%s, batch_size=%d, "
+                "return_timestamps=%s",
+                audio_file_path,
+                chunk_length_value,
+                self.config.batch_size,
+                _return_timestamps_value,
+            )
+            if cancellation_token is not None:
+                cancellation_token.raise_if_cancelled()
+            outputs = self.asr_pipe(str(audio_file_path), **pipeline_kwargs)
         except RuntimeError as e:
             # Check if this is the specific tensor size mismatch error in
             # timestamp extraction
@@ -354,6 +448,8 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 fallback_kwargs["return_timestamps"] = True  # chunk-level timestamps
 
                 try:
+                    if cancellation_token is not None:
+                        cancellation_token.raise_if_cancelled()
                     outputs = self.asr_pipe(str(audio_file_path), **fallback_kwargs)
                     logger.info(
                         "Successfully completed transcription with chunk-level "
@@ -392,13 +488,28 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
 
+        if cancellation_token is not None:
+            cancellation_token.raise_if_cancelled()
+
+        # The pipeline may return 'chunks' or 'segments'. For consistency,
+        # we normalize to a 'segments' key and also keep 'chunks' for
+        # backward compatibility if it was the original key.
+        chunks = outputs.get("chunks")
+        segments = outputs.get("segments", chunks)
+        logger.debug(
+            "Raw ASR pipeline output: text_len=%d, chunks=%d, segments=%d, "
+            "elapsed=%.2fs",
+            len(outputs.get("text", "")),
+            len(chunks) if chunks else 0,
+            len(segments) if segments else 0,
+            elapsed_time,
+        )
+
         result = {
             "text": outputs["text"].strip(),
-            "chunks": outputs.get(
-                "chunks"
-            ),  # .get() because it might not be present if return_timestamps=False
+            "chunks": chunks,  # Keep for backward compatibility
+            "segments": segments,  # Normalize to 'segments'
             "runtime_seconds": round(elapsed_time, 2),
-            # Add config used for this specific transcription for clarity
             "config_used": {
                 "model": self.config.model_name,
                 "device": self.effective_device,
@@ -413,4 +524,43 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         logger.info(
             "Transcription completed in %.2fs for %s", elapsed_time, audio_file_path
         )
+        logger.debug(
+            "Returning normalized result: text_len=%d, segments=%d, chunks=%d",
+            len(result["text"]),
+            len(result["segments"]) if result["segments"] else 0,
+            len(result["chunks"]) if result["chunks"] else 0,
+        )
         return result
+
+    def close(self) -> None:
+        """Release model resources and free accelerator caches.
+
+        This method deletes the internal Transformers pipeline instance and
+        attempts to free device memory on supported backends (CUDA/MPS). It is
+        safe to call multiple times.
+
+        Notes:
+            - After calling this, the next invocation will lazily recreate the
+              pipeline on demand.
+        """
+        try:
+            if getattr(self, "asr_pipe", None) is not None:
+                # Explicitly drop references to model/tokenizer/feature_extractor
+                self.asr_pipe = None
+        finally:
+            # Best-effort device cache cleanup
+            try:
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:  # pragma: no cover - defensive cleanup
+                pass
+            try:
+                if hasattr(torch, "mps") and torch.backends.mps.is_available():
+                    torch.mps.empty_cache()  # type: ignore[attr-defined]
+            except Exception:  # pragma: no cover - defensive cleanup
+                pass
+            # Force immediate garbage collection to reclaim memory
+            gc.collect()
+
+    # Backwards-friendly alias
+    release = close

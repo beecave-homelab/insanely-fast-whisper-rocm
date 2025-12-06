@@ -27,26 +27,25 @@ services:
       - .env
 
     ports:
-      - "8888:8888"  # API port
-      - "7861:7860"  # WebUI port
+      - "${API_PORT:-8888}:${API_PORT:-8888}"  # API port
+      - "${WEBUI_PORT:-7860}:${WEBUI_PORT:-7860}"  # WebUI port
     
     volumes:
       - "./transcripts:/app/transcripts"
-      - "./temp_uploads:/app/temp_uploads"
-      - "./insanely_fast_whisper_rocm:/app/insanely_fast_whisper_rocm"
-      - "./tests:/app/tests"
+      - "./transcripts-txt:/app/transcripts-txt"
+      - "./transcripts-srt:/app/transcripts-srt"
       - "$HOME/.cache/huggingface/hub:/root/.cache/huggingface/hub"
 
     #################################################
     ## Default: Gradio WebUI without debug logging ##
     #################################################
-    # command: ["python", "-m", "insanely_fast_whisper_rocm.webui"]    
+    command: ["python", "-m", "insanely_fast_whisper_rocm.webui"]    
     ##############################################
     ## Alternative commands (uncomment to use): ##
     ##############################################
     #
     # Gradio WebUI with debug logging:
-    command: ["python", "-m", "insanely_fast_whisper_rocm.webui",  "--debug"]
+    # command: ["python", "-m", "insanely_fast_whisper_rocm.webui", "--debug"]
     #
     # API only:
     # command: ["python", "-m", "insanely_fast_whisper_rocm"]
@@ -58,4 +57,4 @@ services:
     # command: ["python", "-m", "insanely_fast_whisper_rocm.webui", "--port", "7860", "--host", "0.0.0.0", "--debug"]
     #
     # CLI tool transcription example:
-    # command: ["python", "-m", "insanely_fast_whisper_rocm.cli", "transcribe", "tests/file.mp3", "--debug"]
+    # command: ["python", "-m", "insanely_fast_whisper_rocm.cli", "transcribe", "tests/data/conversion-test-file.mp3", "--debug"]

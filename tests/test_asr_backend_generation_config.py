@@ -1,7 +1,7 @@
 import pathlib
 import types
 
-from insanely_fast_whisper_rocm.core.asr_backend import (
+from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )
@@ -34,7 +34,7 @@ def test_omits_task_when_generation_config_outdated(monkeypatch, tmp_path):
     backend.asr_pipe = DummyPipe()
 
     monkeypatch.setattr(
-        "insanely_fast_whisper_rocm.audio.conversion.ensure_wav",
+        "insanely_fast_whisper_api.audio.conversion.ensure_wav",
         lambda p: pathlib.Path(p),
     )
 

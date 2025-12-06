@@ -1,17 +1,13 @@
 import pathlib
 import types
 
-from insanely_fast_whisper_rocm.core.asr_backend import (
+from insanely_fast_whisper_api.core.asr_backend import (
     HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )
 
 
 def test_disables_timestamps_when_generation_config_missing(monkeypatch, tmp_path):
-    """Verify that when the model's generation_config.no_timestamps_token_id is None, the backend disables timestamps even if `return_timestamps_value=True`.
-
-    The test injects a dummy ASR pipeline that asserts `return_timestamps` is False, patches audio conversion to accept any path, calls `process_audio` with `return_timestamps_value=True`, and asserts the returned result has `chunks` set to `None`.
-    """
     config = HuggingFaceBackendConfig(
         model_name="dummy-model",
         device="cpu",
@@ -36,7 +32,7 @@ def test_disables_timestamps_when_generation_config_missing(monkeypatch, tmp_pat
     backend.asr_pipe = DummyPipe()
 
     monkeypatch.setattr(
-        "insanely_fast_whisper_rocm.audio.conversion.ensure_wav",
+        "insanely_fast_whisper_api.audio.conversion.ensure_wav",
         lambda p: pathlib.Path(p),
     )
 
