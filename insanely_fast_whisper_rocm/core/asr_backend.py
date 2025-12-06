@@ -350,10 +350,8 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                         exc_info=True,
                     )
                     raise TranscriptionError(
-
-                            "Failed to transcribe audio even with fallback: "
-                            f"{str(fallback_e)}"
-
+                        "Failed to transcribe audio even with fallback: "
+                        f"{str(fallback_e)}"
                     ) from fallback_e
             else:
                 # Re-raise other RuntimeErrors

@@ -22,10 +22,8 @@ try:
     from insanely_fast_whisper_rocm.core.formatters import SrtFormatter, TxtFormatter
 except ImportError:
     print(
-
-            "Error: Could not import formatters. Make sure "
-            "insanely_fast_whisper_rocm is installed or PYTHONPATH is set."
-
+        "Error: Could not import formatters. Make sure "
+        "insanely_fast_whisper_rocm is installed or PYTHONPATH is set."
     )
     sys.exit(1)
 

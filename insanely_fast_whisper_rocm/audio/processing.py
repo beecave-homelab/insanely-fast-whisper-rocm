@@ -75,10 +75,8 @@ def extract_audio_from_video(
         if "output_path" in locals() and os.path.exists(output_path):
             cleanup_temp_files([output_path])
         raise RuntimeError(
-
-                f"Failed to extract audio from video {video_path}: "
-                f"{e.stderr.decode() if hasattr(e, 'stderr') else str(e)}"
-
+            f"Failed to extract audio from video {video_path}: "
+            f"{e.stderr.decode() if hasattr(e, 'stderr') else str(e)}"
         ) from e
 
 

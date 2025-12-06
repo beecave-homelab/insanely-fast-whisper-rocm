@@ -212,8 +212,7 @@ class BasePipeline(ABC):
         task: str,
         original_filename: str | None = None,
     ) -> dict[str, Any]:
-        """
-        Post-process ASR output (for example, format and add metadata).
+        """Post-process ASR output (for example, format and add metadata).
 
         Returns the final result dictionary.
         """
