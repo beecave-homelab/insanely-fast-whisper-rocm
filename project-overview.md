@@ -1,5 +1,5 @@
-# Project Overview | Insanely Fast Whisper API (ROCm)
 
+# Project Overview | Insanely Fast Whisper ROCm
 A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.4.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture.
 
 > [!NOTE]
@@ -158,61 +158,61 @@ pdm run cli transcribe audio.mp3  # CLI
 ## Project Structure
 
 ```md
-├── [insanely_fast_whisper_api/](./insanely_fast_whisper_api/)          # Main package
-│   ├── [__init__.py](./insanely_fast_whisper_api/__init__.py)                     # Package initialization
-│   ├── [__main__.py](./insanely_fast_whisper_api/__main__.py)                     # Module entry point
-│   ├── [main.py](./insanely_fast_whisper_api/main.py)                         # FastAPI application entry
-│   ├── [logging_config.yaml](./insanely_fast_whisper_api/logging_config.yaml)             # Logging configuration
-│   ├── [api/](./insanely_fast_whisper_api/api/)                            # FastAPI application layer
-│   │   ├── [__init__.py](./insanely_fast_whisper_api/api/__init__.py)
-│   │   ├── [__main__.py](./insanely_fast_whisper_api/api/__main__.py)                  # API module entry
-│   │   ├── [app.py](./insanely_fast_whisper_api/api/app.py)                      # FastAPI app setup
-│   │   ├── [routes.py](./insanely_fast_whisper_api/api/routes.py)                   # API endpoints
-│   │   ├── [models.py](./insanely_fast_whisper_api/api/models.py)                   # Pydantic data models
-│   │   ├── [dependencies.py](./insanely_fast_whisper_api/api/dependencies.py)             # Dependency injection
-│   │   ├── [middleware.py](./insanely_fast_whisper_api/api/middleware.py)               # Request/response middleware
-│   │   └── [responses.py](./insanely_fast_whisper_api/api/responses.py)                # Response formatters
-│   ├── [core/](./insanely_fast_whisper_api/core/)                           # Core ASR logic
-│   │   ├── [__init__.py](./insanely_fast_whisper_api/core/__init__.py)
-│   │   ├── [integrations/](./insanely_fast_whisper_api/core/integrations/)           # Integrations with other libs
-│   │   │   ├── [__init__.py](./insanely_fast_whisper_api/core/integrations/__init__.py)
-│   │   │   └── [stable_ts.py](./insanely_fast_whisper_api/core/integrations/stable_ts.py)      # stable-ts logic
-│   │   ├── [pipeline.py](./insanely_fast_whisper_api/core/pipeline.py)                 # ASR orchestration
-│   │   ├── [asr_backend.py](./insanely_fast_whisper_api/core/asr_backend.py)              # Whisper model backend
-│   │   ├── [storage.py](./insanely_fast_whisper_api/core/storage.py)                  # File lifecycle management
-│   │   ├── [utils.py](./insanely_fast_whisper_api/core/utils.py)                    # Core utilities
-│   │   ├── [formatters.py](./insanely_fast_whisper_api/core/formatters.py)              # Output formatting logic
-│   │   └── [errors.py](./insanely_fast_whisper_api/core/errors.py)                   # Exception classes
-│   ├── [audio/](./insanely_fast_whisper_api/audio/)                          # Audio processing
-│   │   ├── [__init__.py](./insanely_fast_whisper_api/audio/__init__.py)
-│   │   ├── [conversion.py](./insanely_fast_whisper_api/audio/conversion.py)               # Audio conversion logic
-│   │   ├── [processing.py](./insanely_fast_whisper_api/audio/processing.py)               # Validation and preprocessing
-│   │   └── [results.py](./insanely_fast_whisper_api/audio/results.py)                  # Output formatting
-│   ├── [cli/](./insanely_fast_whisper_api/cli/)                            # CLI tools
-│   │   ├── [__init__.py](./insanely_fast_whisper_api/cli/__init__.py)
-│   │   ├── [__main__.py](./insanely_fast_whisper_api/cli/__main__.py)                  # CLI module entry
-│   │   ├── [cli.py](./insanely_fast_whisper_api/cli/cli.py)                      # CLI entry point
-│   │   ├── [commands.py](./insanely_fast_whisper_api/cli/commands.py)                 # Subcommand logic
-│   │   ├── [common_options.py](./insanely_fast_whisper_api/cli/common_options.py)         # Shared CLI options
-│   │   └── [facade.py](./insanely_fast_whisper_api/cli/facade.py)                   # High-level CLI wrapper
-│   ├── [webui/](./insanely_fast_whisper_api/webui/)                          # Web UI (Gradio)
-│   │   ├── [__init__.py](./insanely_fast_whisper_api/webui/__init__.py)
-│   │   ├── [__main__.py](./insanely_fast_whisper_api/webui/__main__.py)                  # WebUI module entry
-│   │   ├── [app.py](./insanely_fast_whisper_api/webui/app.py)                      # Gradio App launcher
-│   │   ├── [ui.py](./insanely_fast_whisper_api/webui/ui.py)                       # Gradio interface
-│   │   ├── [handlers.py](./insanely_fast_whisper_api/webui/handlers.py)                 # Upload + result management
-│   │   ├── [merge_handler.py](./insanely_fast_whisper_api/webui/merge_handler.py)            # Transcription file merge handlers
-│   │   ├── [utils.py](./insanely_fast_whisper_api/webui/utils.py)                    # WebUI utilities
-│   │   └── [errors.py](./insanely_fast_whisper_api/webui/errors.py)                   # UI-specific exceptions
-│   └── [utils/](./insanely_fast_whisper_api/utils/)                          # General utilities
-│       ├── [__init__.py](./insanely_fast_whisper_api/utils/__init__.py)
-│       ├── [benchmark.py](./insanely_fast_whisper_api/utils/benchmark.py)                # Benchmarking utilities
-│       ├── [constants.py](./insanely_fast_whisper_api/utils/constants.py)                # Core environment variable definitions
-│       ├── [env_loader.py](./insanely_fast_whisper_api/utils/env_loader.py)               # Hierarchical .env loading & debug print logic
-│       ├── [download_hf_model.py](./insanely_fast_whisper_api/utils/download_hf_model.py)        # Model downloading & caching
-│       ├── [file_utils.py](./insanely_fast_whisper_api/utils/file_utils.py)               # File operations
-│       ├── [filename_generator.py](./insanely_fast_whisper_api/utils/filename_generator.py)       # Unified filename logic
-│       └── [format_time.py](./insanely_fast_whisper_api/utils/format_time.py)              # Time formatting utilities
+├── [insanely_fast_whisper_rocm/](./insanely_fast_whisper_rocm/)          # Main package
+│   ├── [__init__.py](./insanely_fast_whisper_rocm/__init__.py)                     # Package initialization
+│   ├── [__main__.py](./insanely_fast_whisper_rocm/__main__.py)                     # Module entry point
+│   ├── [main.py](./insanely_fast_whisper_rocm/main.py)                         # FastAPI application entry
+│   ├── [logging_config.yaml](./insanely_fast_whisper_rocm/logging_config.yaml)             # Logging configuration
+│   ├── [api/](./insanely_fast_whisper_rocm/api/)                            # FastAPI application layer
+│   │   ├── [__init__.py](./insanely_fast_whisper_rocm/api/__init__.py)
+│   │   ├── [__main__.py](./insanely_fast_whisper_rocm/api/__main__.py)                  # API module entry
+│   │   ├── [app.py](./insanely_fast_whisper_rocm/api/app.py)                      # FastAPI app setup
+│   │   ├── [routes.py](./insanely_fast_whisper_rocm/api/routes.py)                   # API endpoints
+│   │   ├── [models.py](./insanely_fast_whisper_rocm/api/models.py)                   # Pydantic data models
+│   │   ├── [dependencies.py](./insanely_fast_whisper_rocm/api/dependencies.py)             # Dependency injection
+│   │   ├── [middleware.py](./insanely_fast_whisper_rocm/api/middleware.py)               # Request/response middleware
+│   │   └── [responses.py](./insanely_fast_whisper_rocm/api/responses.py)                # Response formatters
+│   ├── [core/](./insanely_fast_whisper_rocm/core/)                           # Core ASR logic
+│   │   ├── [__init__.py](./insanely_fast_whisper_rocm/core/__init__.py)
+│   │   ├── [integrations/](./insanely_fast_whisper_rocm/core/integrations/)           # Integrations with other libs
+│   │   │   ├── [__init__.py](./insanely_fast_whisper_rocm/core/integrations/__init__.py)
+│   │   │   └── [stable_ts.py](./insanely_fast_whisper_rocm/core/integrations/stable_ts.py)      # stable-ts logic
+│   │   ├── [pipeline.py](./insanely_fast_whisper_rocm/core/pipeline.py)                 # ASR orchestration
+│   │   ├── [asr_backend.py](./insanely_fast_whisper_rocm/core/asr_backend.py)              # Whisper model backend
+│   │   ├── [storage.py](./insanely_fast_whisper_rocm/core/storage.py)                  # File lifecycle management
+│   │   ├── [utils.py](./insanely_fast_whisper_rocm/core/utils.py)                    # Core utilities
+│   │   ├── [formatters.py](./insanely_fast_whisper_rocm/core/formatters.py)              # Output formatting logic
+│   │   └── [errors.py](./insanely_fast_whisper_rocm/core/errors.py)                   # Exception classes
+│   ├── [audio/](./insanely_fast_whisper_rocm/audio/)                          # Audio processing
+│   │   ├── [__init__.py](./insanely_fast_whisper_rocm/audio/__init__.py)
+│   │   ├── [conversion.py](./insanely_fast_whisper_rocm/audio/conversion.py)               # Audio conversion logic
+│   │   ├── [processing.py](./insanely_fast_whisper_rocm/audio/processing.py)               # Validation and preprocessing
+│   │   └── [results.py](./insanely_fast_whisper_rocm/audio/results.py)                  # Output formatting
+│   ├── [cli/](./insanely_fast_whisper_rocm/cli/)                            # CLI tools
+│   │   ├── [__init__.py](./insanely_fast_whisper_rocm/cli/__init__.py)
+│   │   ├── [__main__.py](./insanely_fast_whisper_rocm/cli/__main__.py)                  # CLI module entry
+│   │   ├── [cli.py](./insanely_fast_whisper_rocm/cli/cli.py)                      # CLI entry point
+│   │   ├── [commands.py](./insanely_fast_whisper_rocm/cli/commands.py)                 # Subcommand logic
+│   │   ├── [common_options.py](./insanely_fast_whisper_rocm/cli/common_options.py)         # Shared CLI options
+│   │   └── [facade.py](./insanely_fast_whisper_rocm/cli/facade.py)                   # High-level CLI wrapper
+│   ├── [webui/](./insanely_fast_whisper_rocm/webui/)                          # Web UI (Gradio)
+│   │   ├── [__init__.py](./insanely_fast_whisper_rocm/webui/__init__.py)
+│   │   ├── [__main__.py](./insanely_fast_whisper_rocm/webui/__main__.py)                  # WebUI module entry
+│   │   ├── [app.py](./insanely_fast_whisper_rocm/webui/app.py)                      # Gradio App launcher
+│   │   ├── [ui.py](./insanely_fast_whisper_rocm/webui/ui.py)                       # Gradio interface
+│   │   ├── [handlers.py](./insanely_fast_whisper_rocm/webui/handlers.py)                 # Upload + result management
+│   │   ├── [merge_handler.py](./insanely_fast_whisper_rocm/webui/merge_handler.py)            # Transcription file merge handlers
+│   │   ├── [utils.py](./insanely_fast_whisper_rocm/webui/utils.py)                    # WebUI utilities
+│   │   └── [errors.py](./insanely_fast_whisper_rocm/webui/errors.py)                   # UI-specific exceptions
+│   └── [utils/](./insanely_fast_whisper_rocm/utils/)                          # General utilities
+│       ├── [__init__.py](./insanely_fast_whisper_rocm/utils/__init__.py)
+│       ├── [benchmark.py](./insanely_fast_whisper_rocm/utils/benchmark.py)                # Benchmarking utilities
+│       ├── [constants.py](./insanely_fast_whisper_rocm/utils/constants.py)                # Core environment variable definitions
+│       ├── [env_loader.py](./insanely_fast_whisper_rocm/utils/env_loader.py)               # Hierarchical .env loading & debug print logic
+│       ├── [download_hf_model.py](./insanely_fast_whisper_rocm/utils/download_hf_model.py)        # Model downloading & caching
+│       ├── [file_utils.py](./insanely_fast_whisper_rocm/utils/file_utils.py)               # File operations
+│       ├── [filename_generator.py](./insanely_fast_whisper_rocm/utils/filename_generator.py)       # Unified filename logic
+│       └── [format_time.py](./insanely_fast_whisper_rocm/utils/format_time.py)              # Time formatting utilities
 ├── [scripts/](./scripts/)                            # Utility and maintenance scripts
 │   └── [setup_config.py](./scripts/setup_config.py)               # Script to set up user-specific .env file
 ```
@@ -237,7 +237,7 @@ The codebase automatically enables `sdpa` for any GPU-based device (`cuda`, `mps
 
 - Direct integration with Hugging Face `pipeline`
 - No subprocess dependency on `insanely-fast-whisper`
-- Modular architecture: [`pipeline.py`](./insanely_fast_whisper_api/core/pipeline.py), [`asr_backend.py`](./insanely_fast_whisper_api/core/asr_backend.py), etc.
+- Modular architecture: [`pipeline.py`](./insanely_fast_whisper_rocm/core/pipeline.py), [`asr_backend.py`](./insanely_fast_whisper_rocm/core/asr_backend.py), etc.
 - *See [v0.2.0 changelog](VERSIONS.md#v020---may-2025) for complete architectural changes*
 
 ### WebUI Refactor (v0.3.0+)
@@ -307,34 +307,34 @@ TZ=Europe/Amsterdam
 
 ### Configuration Files & Loading
 
-The application uses a hierarchical approach for loading `.env` files, managed by [insanely_fast_whisper_api/utils/env_loader.py](./insanely_fast_whisper_api/utils/env_loader.py) and accessed via [insanely_fast_whisper_api/utils/constants.py](./insanely_fast_whisper_api/utils/constants.py).
+The application uses a hierarchical approach for loading `.env` files, managed by [insanely_fast_whisper_rocm/utils/env_loader.py](./insanely_fast_whisper_rocm/utils/env_loader.py) and accessed via [insanely_fast_whisper_rocm/utils/constants.py](./insanely_fast_whisper_rocm/utils/constants.py).
 
 1. **Project `.env`**: Located at the project root (e.g., `/path/to/project/.env`). This file can define project-specific defaults.
-2. **User-specific `.env`**: Located at `~/.config/insanely-fast-whisper-api/.env`. This file is for user-specific overrides and sensitive information (like API keys).
+2. **User-specific `.env`**: Located at `~/.config/insanely-fast-whisper-rocm/.env`. This file is for user-specific overrides and sensitive information (like API keys).
 
 **Loading Order & Override:**
 
 - The project root `.env` is loaded first.
-- The user-specific `~/.config/insanely-fast-whisper-api/.env` is loaded second and **will override** any variables previously set by the project `.env` or system environment variables.
+- The user-specific `~/.config/insanely-fast-whisper-rocm/.env` is loaded second and **will override** any variables previously set by the project `.env` or system environment variables.
 
 **Key Configuration Files:**
 
 - **[setup script](./scripts/setup_config.py)**: A template file in the project root. Users should copy this to create their configuration files.
-- **`~/.config/insanely-fast-whisper-api/.env`**: The primary user-specific configuration file. This is the recommended place for all user customizations.
+- **`~/.config/insanely-fast-whisper-rocm/.env`**: The primary user-specific configuration file. This is the recommended place for all user customizations.
 - **Project `.env`** (Optional): Can be used for development-specific settings or non-sensitive project defaults.
-- **[insanely_fast_whisper_api/utils/constants.py](./insanely_fast_whisper_api/utils/constants.py)**: Defines and provides centralized access to all configuration variables after they are loaded from the environment and `.env` files.
-- **[insanely_fast_whisper_api/utils/env_loader.py](./insanely_fast_whisper_api/utils/env_loader.py)**: Contains the logic for loading `.env` files hierarchically and managing debug print statements based on `LOG_LEVEL` or CLI flags.
-- **[logging_config.yaml](./insanely_fast_whisper_api/logging_config.yaml)**: Configures the application's logging behavior.
+- **[insanely_fast_whisper_rocm/utils/constants.py](./insanely_fast_whisper_rocm/utils/constants.py)**: Defines and provides centralized access to all configuration variables after they are loaded from the environment and `.env` files.
+- **[insanely_fast_whisper_rocm/utils/env_loader.py](./insanely_fast_whisper_rocm/utils/env_loader.py)**: Contains the logic for loading `.env` files hierarchically and managing debug print statements based on `LOG_LEVEL` or CLI flags.
+- **[logging_config.yaml](./insanely_fast_whisper_rocm/logging_config.yaml)**: Configures the application's logging behavior.
 
 **User Configuration Setup Script:**
 
-A utility script [`scripts/setup_config.py`](./scripts/setup_config.py) is provided to help users create their user-specific configuration file. It copies the project's `.env.example` file to `~/.config/insanely-fast-whisper-api/.env`.
+A utility script [`scripts/setup_config.py`](./scripts/setup_config.py) is provided to help users create their user-specific configuration file. It copies the project's `.env.example` file to `~/.config/insanely-fast-whisper-rocm/.env`.
 
 The script performs the following actions:
 
 - Checks if `.env.example` exists in the project root.
-- Creates the `~/.config/insanely-fast-whisper-api/` directory if it doesn't already exist.
-- Copies `.env.example` to `~/.config/insanely-fast-whisper-api/.env`.
+- Creates the `~/.config/insanely-fast-whisper-rocm/` directory if it doesn't already exist.
+- Copies `.env.example` to `~/.config/insanely-fast-whisper-rocm/.env`.
 - Prompts the user for confirmation if a configuration file already exists at the destination, to prevent accidental overwrites.
 - Informs the user to edit the newly created file to input their specific settings, such as `HUGGINGFACE_TOKEN` for gated models.
 
@@ -352,7 +352,7 @@ Or directly:
 python scripts/setup_config.py
 ```
 
-**Important**: No direct `os.getenv()` calls should be made outside of [insanely_fast_whisper_api/utils/env_loader.py](./insanely_fast_whisper_api/utils/env_loader.py) or [insanely_fast_whisper_api/utils/constants.py](./insanely_fast_whisper_api/utils/constants.py) to ensure consistent configuration loading.
+**Important**: No direct `os.getenv()` calls should be made outside of [insanely_fast_whisper_rocm/utils/env_loader.py](./insanely_fast_whisper_rocm/utils/env_loader.py) or [insanely_fast_whisper_rocm/utils/constants.py](./insanely_fast_whisper_rocm/utils/constants.py) to ensure consistent configuration loading.
 
 ---
 
@@ -370,31 +370,31 @@ You can start the API server with various options to customize its behavior:
 
 ```bash
 # Launch with default settings (http://0.0.0.0:8000, port: 8000, workers: 1, log-level: info)
-python -m insanely_fast_whisper_api.api
+python -m insanely_fast_whisper_rocm.api
 
 # See all available options and help
-python -m insanely_fast_whisper_api.api --help
+python -m insanely_fast_whisper_rocm.api --help
 
 # Launch with a custom port
-python -m insanely_fast_whisper_api.api --port 8001
+python -m insanely_fast_whisper_rocm.api --port 8001
 
 # Launch with a custom host and port
-python -m insanely_fast_whisper_api.api --host 127.0.0.1 --port 9000
+python -m insanely_fast_whisper_rocm.api --host 127.0.0.1 --port 9000
 
 # Launch with multiple workers (disables reload)
-python -m insanely_fast_whisper_api.api --workers 4 --no-reload
+python -m insanely_fast_whisper_rocm.api --workers 4 --no-reload
 
 # Launch with auto-reload enabled (for development)
-python -m insanely_fast_whisper_api.api --reload
+python -m insanely_fast_whisper_rocm.api --reload
 
 # Launch with a specific log level (e.g., debug)
-python -m insanely_fast_whisper_api.api --log-level debug
+python -m insanely_fast_whisper_rocm.api --log-level debug
 
 # Launch in debug mode (enables debug logging for app and Uvicorn)
-python -m insanely_fast_whisper_api.api --debug
+python -m insanely_fast_whisper_rocm.api --debug
 
 # Launch with SSL (ensure dummy.key and dummy.crt exist or provide paths)
-# python -m insanely_fast_whisper_api.api --ssl-keyfile dummy.key --ssl-certfile dummy.crt
+# python -m insanely_fast_whisper_rocm.api --ssl-keyfile dummy.key --ssl-certfile dummy.crt
 ```
 
 **API Parameters:**
@@ -431,13 +431,13 @@ The Gradio WebUI offers an interactive, browser-based experience—ideal for bat
 
 ```bash
 # Basic WebUI launch
-python -m insanely_fast_whisper_api.webui
+python -m insanely_fast_whisper_rocm.webui
 
 # With debug logging (recommended for development or troubleshooting)
-python -m insanely_fast_whisper_api.webui --debug
+python -m insanely_fast_whisper_rocm.webui --debug
 
 # Custom host and port
-python -m insanely_fast_whisper_api.webui --port 7860 --host 0.0.0.0 --debug
+python -m insanely_fast_whisper_rocm.webui --port 7860 --host 0.0.0.0 --debug
 ```
 
 ### CLI (Command Line Interface) Details
@@ -474,13 +474,13 @@ Use the `--benchmark` flag to measure processing speed and collect hardware stat
 
 ```bash
 # Quick benchmark (JSON only; timestamps auto-disabled)
-python -m insanely_fast_whisper_api.cli transcribe audio.mp3 --benchmark
+python -m insanely_fast_whisper_rocm.cli transcribe audio.mp3 --benchmark
 
 # Benchmark and also export transcript as TXT
-python -m insanely_fast_whisper_api.cli transcribe audio.mp3 --benchmark --export-format txt
+python -m insanely_fast_whisper_rocm.cli transcribe audio.mp3 --benchmark --export-format txt
 
 # Pass arbitrary metadata
-python -m insanely_fast_whisper_api.cli transcribe audio.mp3 --benchmark --benchmark-extra precision=fp16 tokenizer=fast
+python -m insanely_fast_whisper_rocm.cli transcribe audio.mp3 --benchmark --benchmark-extra precision=fp16 tokenizer=fast
 ```
 
 **Key behaviors**:
@@ -518,22 +518,22 @@ The `--export-format` option controls the output file type. The following format
 
 ```bash
 # Transcribe and get a JSON file (default)
-python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3
+python -m insanely_fast_whisper_rocm.cli transcribe audio_file.mp3
 
 # Transcribe and get a TXT file
-python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --export-format txt
+python -m insanely_fast_whisper_rocm.cli transcribe audio_file.mp3 --export-format txt
 
 # Transcribe and get all formats (JSON, SRT, TXT)
-python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --export-format all
+python -m insanely_fast_whisper_rocm.cli transcribe audio_file.mp3 --export-format all
 
 # Translate and get an SRT file
-python -m insanely_fast_whisper_api.cli translate audio_file.mp3 --export-format srt
+python -m insanely_fast_whisper_rocm.cli translate audio_file.mp3 --export-format srt
 
 # Transcribe with debug logging enabled
-python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --debug
+python -m insanely_fast_whisper_rocm.cli transcribe audio_file.mp3 --debug
 ```
 
-Consult `python -m insanely_fast_whisper_api.cli --help` for a full list of commands and options.
+Consult `python -m insanely_fast_whisper_rocm.cli --help` for a full list of commands and options.
 
 ---
 
@@ -577,7 +577,7 @@ pdm install -G bench-torch-2_3_0
 
 ```bash
 pdm install -G bench-torch-2_4_1
-python -m insanely_fast_whisper_api.cli transcribe audio.mp3 --benchmark
+python -m insanely_fast_whisper_rocm.cli transcribe audio.mp3 --benchmark
 ```
 
 This allows reproducible benchmarking and easy switching between supported ROCm torch versions for performance comparison.
@@ -751,10 +751,10 @@ black --check .
 isort --check-only .
 
 # Run mypy type checking
-mypy insanely_fast_whisper_api/
+mypy insanely_fast_whisper_rocm/
 
 # Run all checks together
-black --check . && isort --check-only . && mypy insanely_fast_whisper_api/
+black --check . && isort --check-only . && mypy insanely_fast_whisper_rocm/
 ```
 
 **Auto-Fix Commands:**
@@ -783,31 +783,31 @@ black . && isort .
 
 ```bash
 # Launch with default settings (http://0.0.0.0:8000, port: 8000, workers: 1, log-level: info)
-python -m insanely_fast_whisper_api.api
+python -m insanely_fast_whisper_rocm.api
 
 # See all available options and help
-python -m insanely_fast_whisper_api.api --help
+python -m insanely_fast_whisper_rocm.api --help
 
 # Launch with a custom port
-python -m insanely_fast_whisper_api.api --port 8001
+python -m insanely_fast_whisper_rocm.api --port 8001
 
 # Launch with a custom host and port
-python -m insanely_fast_whisper_api.api --host 127.0.0.1 --port 9000
+python -m insanely_fast_whisper_rocm.api --host 127.0.0.1 --port 9000
 
 # Launch with multiple workers (disables reload)
-python -m insanely_fast_whisper_api.api --workers 4 --no-reload
+python -m insanely_fast_whisper_rocm.api --workers 4 --no-reload
 
 # Launch with auto-reload enabled (for development)
-python -m insanely_fast_whisper_api.api --reload
+python -m insanely_fast_whisper_rocm.api --reload
 
 # Launch with a specific log level (e.g., debug)
-python -m insanely_fast_whisper_api.api --log-level debug
+python -m insanely_fast_whisper_rocm.api --log-level debug
 
 # Launch in debug mode (enables debug logging for app and Uvicorn)
-python -m insanely_fast_whisper_api.api --debug
+python -m insanely_fast_whisper_rocm.api --debug
 
 # Launch with SSL (ensure dummy.key and dummy.crt exist or provide paths)
-# python -m insanely_fast_whisper_api.api --ssl-keyfile dummy.key --ssl-certfile dummy.crt
+# python -m insanely_fast_whisper_rocm.api --ssl-keyfile dummy.key --ssl-certfile dummy.crt
 ```
 
 **WebUI (Gradio Interface):**
@@ -816,26 +816,26 @@ The WebUI file uploader now accepts both audio **and** video files (`.wav`, `.fl
 
 ```bash
 # Launch WebUI with debug logging
-python -m insanely_fast_whisper_api.webui --debug
+python -m insanely_fast_whisper_rocm.webui --debug
 
 # With custom host and port
-python -m insanely_fast_whisper_api.webui --port 7860 --host 0.0.0.0 --debug
+python -m insanely_fast_whisper_rocm.webui --port 7860 --host 0.0.0.0 --debug
 ```
 
 **CLI (Command Line Interface):**
 
 ```bash
 # Transcribe audio file
-python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3
+python -m insanely_fast_whisper_rocm.cli transcribe audio_file.mp3
 
 # Transcribe with word-level stabilization
-python -m insanely_fast_whisper_api.cli transcribe tests/conversion-test-file.mp3 --stabilize
+python -m insanely_fast_whisper_rocm.cli transcribe tests/conversion-test-file.mp3 --stabilize
 
 # Transcribe with options
-python -m insanely_fast_whisper_api.cli transcribe tests/conversion-test-file.mp3 --no-timestamps --debug
+python -m insanely_fast_whisper_rocm.cli transcribe tests/conversion-test-file.mp3 --no-timestamps --debug
 
 # Translate audio to English
-python -m insanely_fast_whisper_api.cli translate audio_file.mp3
+python -m insanely_fast_whisper_rocm.cli translate audio_file.mp3
 ```
 
 ### Docker Deployment
@@ -878,8 +878,8 @@ All imports now follow **absolute import** conventions for improved IDE support 
 
 ```python
 # Good - Absolute imports
-from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
-from insanely_fast_whisper_api.utils.constants import WHISPER_MODEL
+from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
+from insanely_fast_whisper_rocm.utils.constants import DEFAULT_MODEL
 
 # Deprecated - Relative imports (removed in v0.2.1)
 # from .core.pipeline import WhisperPipeline

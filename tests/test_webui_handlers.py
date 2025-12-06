@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from insanely_fast_whisper_api.webui.handlers import (
+from insanely_fast_whisper_rocm.webui.handlers import (
     TranscriptionConfig,
     transcribe,
 )
@@ -12,13 +12,19 @@ from insanely_fast_whisper_api.webui.handlers import (
 
 @pytest.fixture
 def mock_pipeline_and_stabilizer():
-    """Fixture to mock WhisperPipeline and stabilize_timestamps."""
+    """Provide a pytest fixture that mocks WhisperPipeline and stabilize_timestamps for handler tests.
+
+    The mocked WhisperPipeline instance has its `process` method stubbed to return {"text": "test transcription"}. The mocked `stabilize_timestamps` function is configured to return its input unchanged.
+
+    Returns:
+        tuple: (mock_pipeline_instance, mock_stabilize) where `mock_pipeline_instance` is the mocked WhisperPipeline instance and `mock_stabilize` is the mocked stabilize_timestamps function.
+    """
     with (
         patch(
-            "insanely_fast_whisper_api.webui.handlers.WhisperPipeline"
+            "insanely_fast_whisper_rocm.webui.handlers.WhisperPipeline"
         ) as mock_pipeline_class,
         patch(
-            "insanely_fast_whisper_api.webui.handlers.stabilize_timestamps"
+            "insanely_fast_whisper_rocm.webui.handlers.stabilize_timestamps"
         ) as mock_stabilize,
     ):
         # Mock the pipeline's process method to return a dummy result

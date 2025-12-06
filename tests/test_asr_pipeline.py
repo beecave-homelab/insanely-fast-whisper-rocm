@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from insanely_fast_whisper_api.core import (
+from insanely_fast_whisper_rocm.core import (
     ASRPipeline,
     TranscriptionError,
 )

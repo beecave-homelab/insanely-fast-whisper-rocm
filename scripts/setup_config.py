@@ -18,7 +18,7 @@ try:
     _project_root = Path(__file__).resolve().parent.parent
     sys.path.insert(0, str(_project_root))
 
-    from insanely_fast_whisper_api.utils.constants import (
+    from insanely_fast_whisper_rocm.utils.constants import (
         PROJECT_ROOT,
         USER_CONFIG_DIR,
         USER_ENV_FILE,
@@ -26,7 +26,7 @@ try:
 except ImportError as e:
     print(f"❌ Error: Failed to import project constants. {e}")
     print("Please ensure you are running this script from the project root,")
-    print("or that the 'insanely_fast_whisper_api' package is in your PYTHONPATH.")
+    print("or that the 'insanely_fast_whisper_rocm' package is in your PYTHONPATH.")
     sys.exit(1)
 
 

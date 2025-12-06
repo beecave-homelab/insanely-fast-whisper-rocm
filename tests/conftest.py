@@ -25,10 +25,12 @@ def temp_upload_dir(tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def webui_server(request):
-    """Spin up the WebUI once per test session and tear it down afterwards.
+    """Start the WebUI server for the test session and provide its base URL.
 
-    Yields the base URL (str) that can be passed to gradio_client.Client().
-    Uses the lightweight `openai/whisper-tiny` model for faster startup.
+    This pytest fixture launches the WebUI as a subprocess, waits until it responds on http://localhost:7861, yields the base URL for use in tests (for example with gradio_client.Client()), and terminates the subprocess when the session ends.
+
+    Returns:
+        base_url (str): The server base URL (e.g., "http://localhost:7861").
     """
     base_url = "http://localhost:7861"
 
@@ -37,7 +39,7 @@ def webui_server(request):
         [
             sys.executable,
             "-m",
-            "insanely_fast_whisper_api.webui",
+            "insanely_fast_whisper_rocm.webui",
             "--model",
             "openai/whisper-tiny",
             "--port",

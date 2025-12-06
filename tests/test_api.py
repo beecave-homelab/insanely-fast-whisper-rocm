@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from insanely_fast_whisper_api.api.dependencies import get_asr_pipeline
-from insanely_fast_whisper_api.main import app
+from insanely_fast_whisper_rocm.api.dependencies import get_asr_pipeline
+from insanely_fast_whisper_rocm.main import app
 
 
 @pytest.fixture

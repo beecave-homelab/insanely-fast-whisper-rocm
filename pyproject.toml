@@ -1,7 +1,7 @@
 [project]
-name = "insanely-fast-whisper-api"
+name = "insanely-fast-whisper-rocm"
 version = "0.10.1"
-description = "A FastAPI wrapper around a custom Whisper-based ASR pipeline (ROCM version)"
+description = "An API, CLI and Webui around a custom Whisper-based ASR pipeline for ROCM based GPUs)"
 authors = [
     {name = "elvee", email = "lowie@beecave.nl"},
 ]
@@ -27,9 +27,9 @@ dependencies = [
 requires-python = "~=3.10"
 
 [project.scripts]
-insanely-fast-whisper-cli = "insanely_fast_whisper_api.cli.cli:main"
-insanely-fast-whisper-webui = "insanely_fast_whisper_api.webui.app:launch_webui"
-insanely-fast-whisper-api = "insanely_fast_whisper_api.__main__:main"
+insanely-fast-whisper-cli = "insanely_fast_whisper_rocm.cli.cli:main"
+insanely-fast-whisper-webui = "insanely_fast_whisper_rocm.webui.app:launch_webui"
+insanely-fast-whisper-rocm = "insanely_fast_whisper_rocm.__main__:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -44,8 +44,8 @@ distribution = true
 [tool.pdm.scripts]
 start-webui = "insanely-fast-whisper-webui"
 start-webui-debug = "insanely-fast-whisper-webui --debug"
-start-api = "insanely-fast-whisper-api"
-start-api-verbose = "insanely-fast-whisper-api -v"
+start-api = "insanely-fast-whisper-rocm"
+start-api-verbose = "insanely-fast-whisper-rocm -v"
 cli = "insanely-fast-whisper-cli"
 setup-config = {call = "scripts.setup_config:main"}
 
@@ -131,7 +131,7 @@ exclude = '''
 line-length = 88
 target-version = "py310"                # adjust if you target 3.9/3.12
 preview = true                          # needed for DOC + FA rules
-src = ["insanely_fast_whisper_api"]     # first-party package path
+src = ["insanely_fast_whisper_rocm"]     # first-party package path
 
 [tool.ruff.lint]
 select = [
@@ -161,7 +161,7 @@ section-order = [
   "first-party",
   "local-folder",
 ]
-known-first-party = ["insanely_fast_whisper_api"]
+known-first-party = ["insanely_fast_whisper_rocm"]
 
 [tool.ruff.lint.per-file-ignores]
 # Temporarily ignore long-line checks in tests
@@ -171,7 +171,7 @@ known-first-party = ["insanely_fast_whisper_api"]
 # Pytest & Coverage
 # ------------------------------
 [tool.pytest.ini_options]
-addopts = "-q --cov=insanely_fast_whisper_api --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=html --cov-fail-under=85"
+addopts = "-q --cov=insanely_fast_whisper_rocm --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=html --cov-fail-under=85"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
