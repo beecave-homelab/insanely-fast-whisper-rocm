@@ -33,30 +33,30 @@ services:
     volumes:
       - "./transcripts:/app/transcripts"
       - "./temp_uploads:/app/temp_uploads"
-      - "./insanely_fast_whisper_api:/app/insanely_fast_whisper_api"
+      - "./insanely_fast_whisper_rocm:/app/insanely_fast_whisper_rocm"
       - "./tests:/app/tests"
       - "$HOME/.cache/huggingface/hub:/root/.cache/huggingface/hub"
 
     #################################################
     ## Default: Gradio WebUI without debug logging ##
     #################################################
-    # command: ["python", "-m", "insanely_fast_whisper_api.webui.cli"]
+    # command: ["python", "-m", "insanely_fast_whisper_rocm.webui.cli"]
     
     ##############################################
     ## Alternative commands (uncomment to use): ##
     ##############################################
     #
     # Gradio WebUI with debug logging:
-    # command: ["python", "-m", "insanely_fast_whisper_api.webui.cli",  "--debug"]
+    # command: ["python", "-m", "insanely_fast_whisper_rocm.webui.cli",  "--debug"]
     #
     # API only:
-    # command: ["python", "-m", "insanely_fast_whisper_api"]
+    # command: ["python", "-m", "insanely_fast_whisper_rocm"]
     #
     # API with verbose output:
-    # command: ["python", "-m", "insanely_fast_whisper_api", "-v"]
+    # command: ["python", "-m", "insanely_fast_whisper_rocm", "-v"]
     #
     # Custom WebUI with extra args:
-    command: ["python", "-m", "insanely_fast_whisper_api.webui.cli", "--port", "7861", "--host", "0.0.0.0", "--debug"]
+    command: ["python", "-m", "insanely_fast_whisper_rocm.webui.cli", "--port", "7861", "--host", "0.0.0.0", "--debug"]
     #
     # CLI transcription example:
-    # command: ["python", "-m", "insanely_fast_whisper_api.cli.cli", "transcribe", "tests/file.mp3", "--debug"]
+    # command: ["python", "-m", "insanely_fast_whisper_rocm.cli.cli", "transcribe", "tests/file.mp3", "--debug"]

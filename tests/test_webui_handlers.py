@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from insanely_fast_whisper_api.webui.handlers import (
+from insanely_fast_whisper_rocm.webui.handlers import (
     TranscriptionConfig,
     transcribe,
 )
@@ -15,10 +15,10 @@ def mock_pipeline_and_stabilizer():
     """Fixture to mock WhisperPipeline and stabilize_timestamps."""
     with (
         patch(
-            "insanely_fast_whisper_api.webui.handlers.WhisperPipeline"
+            "insanely_fast_whisper_rocm.webui.handlers.WhisperPipeline"
         ) as mock_pipeline_class,
         patch(
-            "insanely_fast_whisper_api.webui.handlers.stabilize_timestamps"
+            "insanely_fast_whisper_rocm.webui.handlers.stabilize_timestamps"
         ) as mock_stabilize,
     ):
         # Mock the pipeline's process method to return a dummy result

@@ -6,11 +6,11 @@ from unittest.mock import patch  # Used for @patch decorator
 import pytest
 
 # Import centralized constants instead of local ones
-from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL
+from insanely_fast_whisper_rocm.utils.constants import DEFAULT_MODEL
 
 # Adjust the import path based on your project structure
-# This assumes 'insanely_fast_whisper_api' is a package in the project root
-from insanely_fast_whisper_api.utils.download_hf_model import (
+# This assumes 'insanely_fast_whisper_rocm' is a package in the project root
+from insanely_fast_whisper_rocm.utils.download_hf_model import (
     download_model_if_needed,
 )
 
@@ -49,7 +49,7 @@ def custom_test_logger():
 # --- Test Cases ---
 
 
-@patch("insanely_fast_whisper_api.utils.download_hf_model.snapshot_download")
+@patch("insanely_fast_whisper_rocm.utils.download_hf_model.snapshot_download")
 def test_download_default_model_when_none_provided_and_env_var_not_set(
     mock_snapshot_download, mock_hf_hub_cache, custom_test_logger
 ):

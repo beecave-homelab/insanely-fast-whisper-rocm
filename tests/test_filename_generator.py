@@ -6,8 +6,8 @@ from zoneinfo import ZoneInfo
 import pytest
 
 # Import from centralized configuration instead of local constants
-from insanely_fast_whisper_api.utils.constants import FILENAME_TIMEZONE
-from insanely_fast_whisper_api.utils.filename_generator import (
+from insanely_fast_whisper_rocm.utils.constants import FILENAME_TIMEZONE
+from insanely_fast_whisper_rocm.utils.filename_generator import (
     FilenameComponents,
     FilenameGenerator,
     StandardFilenameStrategy,
@@ -102,7 +102,7 @@ class TestFilenameGenerator:
     )
     @patch.dict(os.environ, {}, clear=True)  # Ensure no FILENAME_TIMEZONE
     @patch(
-        "insanely_fast_whisper_api.utils.filename_generator.datetime"
+        "insanely_fast_whisper_rocm.utils.filename_generator.datetime"
     )  # Patch module
     def test_create_filename_stem_extraction(
         self,
@@ -124,7 +124,7 @@ class TestFilenameGenerator:
 
     @patch.dict(os.environ, {}, clear=True)  # Ensure no FILENAME_TIMEZONE
     @patch(
-        "insanely_fast_whisper_api.utils.filename_generator.datetime"
+        "insanely_fast_whisper_rocm.utils.filename_generator.datetime"
     )  # Patch module
     def test_create_filename_default_utc_timestamp(
         self, mock_datetime_module, filename_generator
@@ -145,7 +145,7 @@ class TestFilenameGenerator:
 
     @patch.dict(os.environ, {"FILENAME_TIMEZONE": "Europe/Amsterdam"}, clear=True)
     @patch(
-        "insanely_fast_whisper_api.utils.filename_generator.datetime"
+        "insanely_fast_whisper_rocm.utils.filename_generator.datetime"
     )  # Patch module
     def test_create_filename_custom_timezone_from_env(
         self, mock_datetime_module, filename_generator
@@ -186,7 +186,7 @@ class TestFilenameGenerator:
         assert filename == expected
 
     @patch(
-        "insanely_fast_whisper_api.utils.constants.os.getenv"
+        "insanely_fast_whisper_rocm.utils.constants.os.getenv"
     )  # Patch constants loading
     def test_create_filename_with_provided_aware_timestamp_conversion(
         self, mock_getenv, filename_generator
@@ -212,10 +212,10 @@ class TestFilenameGenerator:
         assert filename == expected
 
     @patch(
-        "insanely_fast_whisper_api.utils.constants.os.getenv"
+        "insanely_fast_whisper_rocm.utils.constants.os.getenv"
     )  # Patch constants loading
     @patch(
-        "insanely_fast_whisper_api.utils.filename_generator.datetime"
+        "insanely_fast_whisper_rocm.utils.filename_generator.datetime"
     )  # Patch module
     @patch("builtins.print")  # Mock print to check warning
     def test_create_filename_invalid_timezone_fallback_to_utc(
@@ -244,7 +244,7 @@ class TestFilenameGenerator:
 
     @patch.dict(os.environ, {}, clear=True)
     @patch(
-        "insanely_fast_whisper_api.utils.filename_generator.datetime"
+        "insanely_fast_whisper_rocm.utils.filename_generator.datetime"
     )  # Patch module
     def test_create_filename_task_type_and_extension(
         self, mock_datetime_module, filename_generator

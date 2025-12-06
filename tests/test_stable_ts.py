@@ -8,7 +8,7 @@ import pytest
 
 MODULE_PATH = (
     Path(__file__).parent.parent
-    / "insanely_fast_whisper_api/core/integrations/stable_ts.py"
+    / "insanely_fast_whisper_rocm/core/integrations/stable_ts.py"
 )
 
 spec = importlib.util.spec_from_file_location("stable_ts", str(MODULE_PATH))

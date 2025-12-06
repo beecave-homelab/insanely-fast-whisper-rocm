@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import insanely_fast_whisper_api.utils.constants as constants_module
+import insanely_fast_whisper_rocm.utils.constants as constants_module
 
 
 class TestCentralizedConfiguration:
@@ -22,7 +22,7 @@ class TestCentralizedConfiguration:
     def test_default_values_without_env_vars(self):
         """Test that default values are used when no environment variables are set."""
         with patch(
-            "insanely_fast_whisper_api.utils.constants.os.getenv"
+            "insanely_fast_whisper_rocm.utils.constants.os.getenv"
         ) as mock_getenv:
             # Mock getenv to return None for all calls (no env vars set)
             mock_getenv.side_effect = lambda key, default=None: default
@@ -45,7 +45,7 @@ class TestCentralizedConfiguration:
         }
 
         with patch(
-            "insanely_fast_whisper_api.utils.constants.os.getenv"
+            "insanely_fast_whisper_rocm.utils.constants.os.getenv"
         ) as mock_getenv:
             # Mock getenv to return test values for specific keys
             def getenv_side_effect(key, default=None):
@@ -65,7 +65,7 @@ class TestCentralizedConfiguration:
     def test_boolean_environment_variables(self):
         """Test that boolean environment variables are properly parsed."""
         with patch(
-            "insanely_fast_whisper_api.utils.constants.os.getenv"
+            "insanely_fast_whisper_rocm.utils.constants.os.getenv"
         ) as mock_getenv:
             # Test true values
             mock_getenv.side_effect = lambda key, default=None: {
@@ -96,7 +96,7 @@ class TestCentralizedConfiguration:
     def test_integer_environment_variables(self):
         """Test that integer environment variables are properly parsed."""
         with patch(
-            "insanely_fast_whisper_api.utils.constants.os.getenv"
+            "insanely_fast_whisper_rocm.utils.constants.os.getenv"
         ) as mock_getenv:
             mock_getenv.side_effect = lambda key, default=None: {
                 "WHISPER_BATCH_SIZE": "16",
@@ -113,7 +113,7 @@ class TestCentralizedConfiguration:
     def test_float_environment_variables(self):
         """Test that float environment variables are properly parsed."""
         with patch(
-            "insanely_fast_whisper_api.utils.constants.os.getenv"
+            "insanely_fast_whisper_rocm.utils.constants.os.getenv"
         ) as mock_getenv:
             mock_getenv.side_effect = lambda key, default=None: {
                 "AUDIO_CHUNK_DURATION": "900.5",
@@ -131,7 +131,7 @@ class TestCentralizedConfiguration:
         """Test that HF_TOKEN correctly falls back to HUGGINGFACE_TOKEN."""
         # Test HF_TOKEN takes precedence
         with patch(
-            "insanely_fast_whisper_api.utils.constants.os.getenv"
+            "insanely_fast_whisper_rocm.utils.constants.os.getenv"
         ) as mock_getenv:
             mock_getenv.side_effect = lambda key, default=None: {
                 "HF_TOKEN": "primary_token",
@@ -144,7 +144,7 @@ class TestCentralizedConfiguration:
 
         # Test fallback to HUGGINGFACE_TOKEN when HF_TOKEN is not set
         with patch(
-            "insanely_fast_whisper_api.utils.constants.os.getenv"
+            "insanely_fast_whisper_rocm.utils.constants.os.getenv"
         ) as mock_getenv:
             mock_getenv.side_effect = lambda key, default=None: {
                 "HUGGINGFACE_TOKEN": "fallback_token",
@@ -165,14 +165,14 @@ class TestModuleCentralizedConfigurationUsage:
         # Check that app module imports are using centralized config
         # We can't directly test the imports without more complex mocking,
         # but we can verify the constants are available
-        from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL
+        from insanely_fast_whisper_rocm.utils.constants import DEFAULT_MODEL
 
         assert DEFAULT_MODEL is not None
         assert isinstance(DEFAULT_MODEL, str)
 
     def test_filename_generator_uses_centralized_config(self):
         """Test that filename_generator.py uses constants from constants.py."""
-        from insanely_fast_whisper_api.utils.constants import FILENAME_TIMEZONE
+        from insanely_fast_whisper_rocm.utils.constants import FILENAME_TIMEZONE
 
         # Verify the constant is available and properly typed
         assert FILENAME_TIMEZONE is not None
@@ -180,7 +180,7 @@ class TestModuleCentralizedConfigurationUsage:
 
     def test_download_hf_model_uses_centralized_config(self):
         """Test that download_hf_model.py uses constants from constants.py."""
-        from insanely_fast_whisper_api.utils.constants import DEFAULT_MODEL
+        from insanely_fast_whisper_rocm.utils.constants import DEFAULT_MODEL
 
         # Verify the constants are available
         assert DEFAULT_MODEL is not None
@@ -204,11 +204,11 @@ class TestDotEnvFileSupport:
         try:
             # Mock the ENV_FILE path to point to our test file
             with patch(
-                "insanely_fast_whisper_api.utils.constants.ENV_FILE",
+                "insanely_fast_whisper_rocm.utils.constants.ENV_FILE",
                 Path(env_file_path),
             ):
                 with patch(
-                    "insanely_fast_whisper_api.utils.constants.Path.exists",
+                    "insanely_fast_whisper_rocm.utils.constants.Path.exists",
                     return_value=True,
                 ):
                     # Reload constants to load from the test .env file
@@ -224,7 +224,7 @@ class TestDotEnvFileSupport:
     def test_config_dir_creation(self):
         """Test that configuration directory is created if it doesn't exist."""
         with patch(
-            "insanely_fast_whisper_api.utils.constants.CONFIG_DIR"
+            "insanely_fast_whisper_rocm.utils.constants.CONFIG_DIR"
         ) as mock_config_dir:
             mock_path = MagicMock()
             mock_config_dir.return_value = mock_path
