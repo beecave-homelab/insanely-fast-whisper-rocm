@@ -213,7 +213,11 @@ class TestCLICommands:
 
     @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.transcribe_audio")
     def test_transcribe_with_output_file(self, mock_transcribe):
-        """Test transcription with output file."""
+        """
+        Verify that invoking the CLI transcribe command with an --output path writes a JSON file containing the transcription and metadata timestamp.
+        
+        Creates temporary audio and output files, runs the CLI with --output, asserts a successful exit and a "Results saved to" confirmation, and checks that the output JSON contains a "transcription" matching the backend result and a "metadata.timestamp" entry.
+        """
         mock_transcribe.return_value = {
             "text": "Test output",
             "chunks": [],

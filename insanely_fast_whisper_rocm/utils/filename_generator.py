@@ -99,23 +99,21 @@ class FilenameGenerator:
         extension: str,
         timestamp: datetime.datetime | None = None,
     ) -> str:
-        """Creates a filename for a given audio path, task, and extension.
-        Uses centralized timezone configuration from constants.py
-        (TZ environment variable via APP_TIMEZONE, defaults to Europe/Amsterdam).
-
-        Args:
-            audio_path: The full path to the original audio file.
-            task: The type of ASR task (e.g., transcribe, translate).
-            extension: The desired file extension for the output (e.g., "json", ".txt").
-            timestamp: Optional. The specific timestamp to use.
-                - If None, the current time in the configured timezone will be
-                  used.
-                - If naive (no tzinfo), it's assumed to be in the configured
-                  timezone.
-                - If aware, it will be converted to the configured timezone.
-
+        """
+        Generate a standardized output filename for an audio input, ASR task, and extension.
+        
+        Uses APP_TIMEZONE to interpret and format timestamps; if APP_TIMEZONE is invalid the timestamp is interpreted in UTC. The produced filename follows the pattern: {audio_stem}_{task}_{YYYYMMDDTHHMMSSZ}.{extension}.
+        
+        Parameters:
+            audio_path (str): Full path to the source audio file; the file stem is used in the filename.
+            task (TaskType): Task kind (e.g., TaskType.TRANSCRIBE or TaskType.TRANSLATE) included in the filename.
+            extension (str): Desired output file extension; leading dots are removed and the extension is lowercased.
+            timestamp (datetime.datetime | None): If None, the current time in the configured timezone is used.
+                If naive (no tzinfo), it is assumed to be in the configured timezone.
+                If timezone-aware, it is converted to the configured timezone.
+        
         Returns:
-            The generated filename string.
+            str: The generated filename string formatted as described above.
         """
         target_tz_str = APP_TIMEZONE
         try:

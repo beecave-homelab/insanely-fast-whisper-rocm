@@ -10,13 +10,17 @@ from insanely_fast_whisper_rocm.utils.file_utils import cleanup_temp_files
 
 
 def get_audio_duration(audio_path: str) -> float:
-    """Get the duration of an audio file in seconds.
-
-    Args:
-        audio_path: Path to the audio file.
-
+    """
+    Get the duration of an audio file in seconds.
+    
+    Parameters:
+        audio_path (str): Path to the audio file.
+    
     Returns:
         float: Duration of the audio in seconds.
+    
+    Raises:
+        RuntimeError: If the audio file cannot be read or its duration cannot be determined.
     """
     try:
         audio = AudioSegment.from_file(audio_path)
@@ -33,19 +37,21 @@ def extract_audio_from_video(
     sample_rate: int = 16000,
     channels: int = 1,
 ) -> str:
-    """Extract audio from a video file using FFmpeg.
-
-    Args:
-        video_path: Path to the input video file.
-        output_format: Desired audio format (e.g., "wav").
-        sample_rate: Target sample rate in Hz.
-        channels: Number of audio channels (1 = mono, 2 = stereo).
-
+    """
+    Extract the audio track from a video file and save it to a temporary audio file.
+    
+    Parameters:
+        video_path (str): Path to the input video file to extract audio from.
+        output_format (str): Desired audio file format extension (e.g., "wav").
+        sample_rate (int): Target sample rate in Hz for the output file.
+        channels (int): Number of audio channels for the output (1 = mono, 2 = stereo).
+    
     Returns:
-        str: Path to the extracted audio file.
-
+        str: Filesystem path to the created audio file in a temporary directory.
+    
     Raises:
-        RuntimeError: If extraction fails.
+        FileNotFoundError: If the input video file does not exist.
+        RuntimeError: If FFmpeg fails to extract the audio.
     """
     try:
         if not os.path.isfile(video_path):

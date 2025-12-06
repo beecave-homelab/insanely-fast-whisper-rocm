@@ -49,6 +49,16 @@ class TestCentralizedConfiguration:
         ) as mock_getenv:
             # Mock getenv to return test values for specific keys
             def getenv_side_effect(key, default=None):
+                """
+                Return the value for an environment variable key from the test_env_vars mapping, falling back to `default` if the key is not present.
+                
+                Parameters:
+                	key (str): Environment variable name to look up.
+                	default (Any): Value to return if `key` is not found in `test_env_vars`.
+                
+                Returns:
+                	The value associated with `key` in `test_env_vars`, or `default` if absent.
+                """
                 return test_env_vars.get(key, default)
 
             mock_getenv.side_effect = getenv_side_effect
@@ -94,7 +104,11 @@ class TestCentralizedConfiguration:
             assert constants_module.HIP_LAUNCH_BLOCKING is False
 
     def test_integer_environment_variables(self):
-        """Test that integer environment variables are properly parsed."""
+        """
+        Verify integer-valued environment variables are parsed and assigned to module constants.
+        
+        Asserts that `DEFAULT_BATCH_SIZE`, `DEFAULT_CHUNK_LENGTH`, and `API_PORT` are set from their string environment values and converted to integers.
+        """
         with patch(
             "insanely_fast_whisper_rocm.utils.constants.os.getenv"
         ) as mock_getenv:
@@ -191,7 +205,11 @@ class TestDotEnvFileSupport:
     """Test .env file loading and support."""
 
     def test_dotenv_file_loading(self):
-        """Test that .env files are properly loaded by constants.py."""
+        """
+        Verify that constants.py attempts to load configuration from a .env file when ENV_FILE points to one.
+        
+        Creates a temporary .env file with sample entries, patches the module's ENV_FILE and Path.exists to point to that file, then reloads the constants module so it will read the .env during import.
+        """
         # Create a temporary .env file
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".env", delete=False
