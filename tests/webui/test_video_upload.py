@@ -13,7 +13,7 @@ VIDEO_FILE = DATA_DIR / "sample.mp4"
 
 
 @pytest.mark.skipif(not VIDEO_FILE.exists(), reason="Sample mp4 missing")
-def test_video_upload_transcription(webui_server):
+def test_video_upload_transcription(webui_server: str) -> None:
     """Upload a small MP4 and assert transcription not empty."""
     client = Client(webui_server)
     result = client.predict(

@@ -1,9 +1,10 @@
 [project]
-name = "insanely-fast-whisper-api"
-version = "0.10.1"
+name = "insanely-fast-whisper-rocm"
+version = "2.0.0"
 description = "A FastAPI wrapper around a custom Whisper-based ASR pipeline (ROCM version)"
+requires-python = "~=3.10"
 authors = [
-    {name = "elvee", email = "lowie@beecave.nl"},
+    {name = "elvee"},
 ]
 dependencies = [
     "fastapi==0.116.1",
@@ -23,31 +24,45 @@ dependencies = [
     "stable-ts==2.19.0",
     "demucs==4.0.1",
     "huggingface-hub>=0.34.4",
+    "soundfile>=0.12",
 ]
-requires-python = "~=3.10"
+
 
 [project.scripts]
-insanely-fast-whisper-cli = "insanely_fast_whisper_api.cli.cli:main"
-insanely-fast-whisper-webui = "insanely_fast_whisper_api.webui.app:launch_webui"
-insanely-fast-whisper-api = "insanely_fast_whisper_api.__main__:main"
+insanely-fast-whisper-cli = "insanely_fast_whisper_rocm.cli.cli:main"
+insanely-fast-whisper-webui = "insanely_fast_whisper_rocm.webui.app:launch_webui"
+insanely-fast-whisper-rocm = "insanely_fast_whisper_rocm.__main__:main"
+
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+
 [tool.hatch.metadata]
 allow-direct-references = true
+
 
 [tool.pdm]
 distribution = true
 
+
 [tool.pdm.scripts]
 start-webui = "insanely-fast-whisper-webui"
 start-webui-debug = "insanely-fast-whisper-webui --debug"
-start-api = "insanely-fast-whisper-api"
-start-api-verbose = "insanely-fast-whisper-api -v"
+start-api = "insanely-fast-whisper-rocm"
+start-api-verbose = "insanely-fast-whisper-rocm -v"
 cli = "insanely-fast-whisper-cli"
+
 setup-config = {call = "scripts.setup_config:main"}
+hf-models = {call = "scripts.hf_models:_main"}
+
+lint = "ruff check ."
+format = "ruff format ."
+fix = "ruff check --fix ."
+test = "pytest -q"
+test-cov = "pytest --cov=insanely_fast_whisper_rocm --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=term-missing:skip-covered --cov-report=xml"
+
 
 [[tool.pdm.source]]
 name = "pypi"
@@ -57,12 +72,14 @@ type = "index"
 exclude_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm"]
 include_packages = ["*"]
 
+
 [[tool.pdm.source]]
 name = "rocm-wheels"
 url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/"
 verify_ssl = true
 type = "find_links"
 include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm"]
+
 
 [project.optional-dependencies]
 dev = [
@@ -71,11 +88,6 @@ dev = [
     "pytest-cov",
     # Code Quality
     "ruff",
-    "black",
-    "isort",
-    "mypy",
-    "pydocstyle",
-    "pylint",
     # Type stubs for better static analysis
     "types-PyYAML",
     "typing-extensions",
@@ -94,44 +106,34 @@ bench = [
 
 # bench-torch-2-0-1 = [
 #     "torch==2.0.1",
+#     "torchaudio==2.0.1",
 # ]
 # bench-torch-2-3-0 = [
-#     "torch==2.3.0"
+#     "torch==2.3.0",
+#     "torchaudio==2.3.0",
 # ]
 # bench-torch-2-4-1 = [
-#     "torch==2.4.1"
+#     "torch==2.4.1",
+#     "torchaudio==2.4.1",
 # ]
 # bench-torch-2-6-0 = [
-#     "torch==2.6.0"
+#     "torch==2.6.0",
+#     "torchaudio==2.6.0",
 # ]
+
 
 [tool.pdm.resolution]
 excludes = ["torch==2.0.1", "torch==2.3.0", "torch==2.4.1", "torch==2.6.0"]
 
-[tool.black]
-line-length = 88
-target-version = ['py310']
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.venv
-  | venv
-  | __pycache__
-  | temp_uploads
-  | transcripts
-  | transcripts_zips
-)/
-'''
-
 # ------------------------------
-# Ruff (linter + formatter + import sorting)
+#   Ruff (linter + formatter)
 # ------------------------------
 [tool.ruff]
 line-length = 88
 target-version = "py310"                # adjust if you target 3.9/3.12
 preview = true                          # needed for DOC + FA rules
-src = ["insanely_fast_whisper_api"]     # first-party package path
+src = ["insanely_fast_whisper_rocm"]     # first-party package path
+
 
 [tool.ruff.lint]
 select = [
@@ -150,8 +152,10 @@ select = [
 # Optional: stricter typing rules (discourage bare Any)
 extend-select = ["ANN401"]
 
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
 
 [tool.ruff.lint.isort]
 section-order = [
@@ -161,18 +165,28 @@ section-order = [
   "first-party",
   "local-folder",
 ]
-known-first-party = ["insanely_fast_whisper_api"]
+known-first-party = ["insanely_fast_whisper_rocm"]
+
 
 [tool.ruff.lint.per-file-ignores]
 # Temporarily ignore long-line checks in tests
 "tests/**/*.py" = ["E501"]
 
 # ------------------------------
-# Pytest & Coverage
+#       Pytest & Coverage
 # ------------------------------
 [tool.pytest.ini_options]
-addopts = "-q --cov=insanely_fast_whisper_api --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=html --cov-fail-under=85"
+# addopts = "-q --cov=insanely_fast_whisper_rocm --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=html --cov-fail-under=85"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+markers = [
+    "integration: mark tests that hit real external integrations or slower paths",
+]
+
+
+[tool.coverage.run]
+omit = [
+    "*/__main__.py",
+]

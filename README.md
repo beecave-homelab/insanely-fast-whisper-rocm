@@ -1,6 +1,14 @@
-# Insanely Fast Whisper API (ROCm)
+# Insanely Fast Whisper (ROCm)
 
 A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm) support** for high-performance (video to) audio transcription and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces and ROCm compatibility.
+
+[![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
+[![Version](https://img.shields.io/badge/Version-v2.0.0-informational)](#insanely-fast-whisper-rocm)
+[![ROCm Version](https://img.shields.io/badge/ROCm-v6.4-informational)](https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/)
+[![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
+[![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
+[![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface)
+[![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE.txt)
 
 ## 🚀 What's Included
 
@@ -9,29 +17,9 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **⚡ CLI Tools**: Command-line interface for single-file processing
 - **📦 Model Management**: Automatic Hugging Face model downloading and caching
 - **🏗️ Docker Support**: Full containerization with development and production configurations (now using PDM for dependency management in Docker builds)
-- **🎯 ROCm Integration**: AMD GPU (ROCm v6.1) support for accelerated inference
+- **🎯 ROCm Integration**: AMD GPU [(ROCm v6.4)](https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/) support for accelerated inference
 
-## Key Features
-
-- **AMD GPU (ROCm) Support**: Primary focus on enabling Whisper models on AMD GPUs
-- **Multiple Interfaces**: Choose between API, WebUI, or CLI based on your workflow
-- **Batch Processing**: Handle multiple audio **and video** files simultaneously via WebUI
-- **High Performance**: Optimized processing with configurable batch sizes and model parameters
-- **Multiple Output Formats**: Support for JSON, TXT, and SRT subtitle formats
-- **Standardized Filenames**: Consistent, timestamped output naming across all interfaces
-- **Word-level Timestamp Stabilization (CLI, API & WebUI)**: Optional `--stabilize` flag (powered by [stable-ts](https://github.com/jianfch/stable-ts)) greatly refines chunk timestamps, producing accurate word-aligned SRT/VTT output
-- **Noise Reduction & Voice Activity Detection (CLI, API & WebUI)**: Optional `--demucs` and `--vad` flags provide Demucs-based denoising and intelligent speech-region detection (adjustable `--vad-threshold`) for cleaner, more accurate transcripts
-
-[![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v0.10.1-informational)](#insanely-fast-whisper-api-rocm)
-[![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
-[![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
-[![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface)
-[![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE.txt)
-
----
-
-## 📚 Table of Contents
+## Table of Contents
 
 - [Key Features](#key-features)
 - [Installation](#installation)
@@ -48,7 +36,21 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - [License](#license)
 - [Contributing](#contributing)
 
-## 🌟 Additional Features
+## Key Features
+
+- **AMD GPU (ROCm) Support**: Primary focus on enabling Whisper models on AMD GPUs
+- **Multiple Interfaces**: Choose between API, WebUI, or CLI based on your workflow
+- **Batch Processing**: Handle multiple audio **and video** files simultaneously via WebUI
+- **High Performance**: Optimized processing with configurable batch sizes and model parameters
+- **Multiple Output Formats**: Support for JSON, TXT, and SRT subtitle formats
+- **Standardized Filenames**: Consistent, timestamped output naming across all interfaces
+- **Readable Subtitles (SRT/VTT)**: Advanced segmentation pipeline that creates well-formed, readable subtitles by default, respecting line length, duration, and characters-per-second (CPS) constraints. This can be toggled with the `USE_READABLE_SUBTITLES` environment variable.
+- **Word-level Timestamp Stabilization (CLI, API & WebUI)**: Optional `--stabilize` flag (powered by [stable-ts](https://github.com/jianfch/stable-ts)) greatly refines chunk timestamps, producing accurate word-aligned SRT/VTT output
+- **Noise Reduction & Voice Activity Detection (CLI, API & WebUI)**: Optional `--demucs` and `--vad` flags provide Demucs-based denoising and intelligent speech-region detection (adjustable `--vad-threshold`) for cleaner, more accurate transcripts
+
+---
+
+## Additional Features
 
 - **Modern Acceleration**: Uses native PyTorch 2.0 Scaled Dot Product Attention (`sdpa`) for optimized performance, which is the modern successor to `BetterTransformer`.
 - **Video & Audio Support**: Process standard audio formats (.wav, .flac, .mp3) **and** video files (.mp4, .mkv, .webm, .mov) thanks to automatic audio extraction via FFmpeg
@@ -59,7 +61,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **Robust Error Handling**: Comprehensive error management across all interfaces
 - **Docker-first Deployment**: Production-ready containerization
 
-## 🎯 Why This Package?
+## Why This Package?
 
 This package was created to address the lack of **AMD GPU (ROCm) support** in the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) package. While the original focuses on NVIDIA CUDA and CPU inference, this package provides:
 
@@ -88,7 +90,7 @@ The recommended way to run the application is using Docker Compose:
 
     ```bash
     # Create your user configuration file (interactive)
-    # This generates `~/.config/insanely-fast-whisper-api/.env` with sensible defaults
+    # This generates `~/.config/insanely-fast-whisper-rocm/.env` with sensible defaults
     pdm run setup-config  # or `python scripts/setup_config.py` if you do not use PDM
     ```
 
@@ -148,33 +150,39 @@ The application will automatically download the specified Whisper model on first
 
 ```bash
 # Download the default model (specified in .env or WHISPER_MODEL env var)
-python -m insanely_fast_whisper_api.utils.download_hf_model
+python -m insanely_fast_whisper_rocm.utils.download_hf_model
 
 # Download a specific model
-python -m insanely_fast_whisper_api.utils.download_hf_model --model openai/whisper-large-v3
+python -m insanely_fast_whisper_rocm.utils.download_hf_model --model openai/whisper-large-v3
 
 # Force re-download of the model
-python -m insanely_fast_whisper_api.utils.download_hf_model --force
+python -m insanely_fast_whisper_rocm.utils.download_hf_model --force
 
 # Use a custom cache directory
-python -m insanely_fast_whisper_api.utils.download_hf_model --cache_dir /path/to/cache
+python -m insanely_fast_whisper_rocm.utils.download_hf_model --cache_dir /path/to/cache
 ```
 
-For private or gated models, set the `HUGGINGFACE_TOKEN` environment variable with your API token.
+For private or gated models, set the `HF_TOKEN` environment variable with your API token.
 
 ## Configuration
 
-The API can be configured using environment variables in `~/.config/insanely-fast-whisper-api/.env`. A template with all available options is generated automatically by the configuration setup script mentioned above.
+The API can be configured using environment variables in `~/.config/insanely-fast-whisper-rocm/.env`. A template with all available options is generated automatically by the configuration setup script mentioned above.
+
+Key configuration options include:
+
+- `WHISPER_MODEL`: The Whisper model to use (e.g., `openai/whisper-large-v3`).
+- `WHISPER_DEVICE`: The device to run on (`0` for CUDA, `mps` for Apple Silicon, `cpu`).
+- `USE_READABLE_SUBTITLES`: `true` or `false`. Enables the new readable subtitle segmentation pipeline. Defaults to `true`.
 
 For a detailed explanation of the configuration system, including hierarchical loading and key files, please see the [`Configuration System` section in `project-overview.md`](./project-overview.md#configuration-system).
 
 ### Initial User Configuration Setup
 
-To create or update your user-specific configuration file (`~/.config/insanely-fast-whisper-api/.env`), you can use the provided setup script.
+To create or update your user-specific configuration file (`~/.config/insanely-fast-whisper-rocm/.env`), you can use the provided setup script.
 
 1. **Run the setup script:**
 
-    This script helps you create the `~/.config/insanely-fast-whisper-api/.env` file.
+    This script helps you create the `~/.config/insanely-fast-whisper-rocm/.env` file.
 
     If you are using PDM (recommended for managing dependencies and scripts):
 
@@ -190,7 +198,7 @@ To create or update your user-specific configuration file (`~/.config/insanely-f
 
 2. **Edit your configuration file:**
 
-    After running the script, open `~/.config/insanely-fast-whisper-api/.env` with your preferred text editor and customize the settings. Pay special attention to `HUGGINGFACE_TOKEN` if using gated models. Refer to [`.env.example`](./.env.example) in the project root for a full list of available options and their descriptions.
+    After running the script, open `~/.config/insanely-fast-whisper-rocm/.env` with your preferred text editor and customize the settings. Pay special attention to `HF_TOKEN` if using gated models. Refer to [`.env.example`](./.env.example) in the project root for a full list of available options and their descriptions.
 
     If no configuration file exists, the API will use these default values. The configuration file will be automatically created with default values on first run.
 
@@ -203,7 +211,7 @@ The application provides three main interfaces: **API**, **WebUI**, and **CLI**.
 The FastAPI server can be started with:
 
 ```bash
-python -m insanely_fast_whisper_api.api
+python -m insanely_fast_whisper_rocm.api
 ```
 
 This launches the server (typically at `http://0.0.0.0:8000`). Interactive API documentation is available at `/docs`.
@@ -220,7 +228,7 @@ For detailed launch options and API parameters, see [`project-overview.md`](./pr
 The Gradio WebUI provides a user-friendly interface for batch processing. Start it with:
 
 ```bash
-python -m insanely_fast_whisper_api.webui
+python -m insanely_fast_whisper_rocm.webui
 ```
 
 Access it at `http://localhost:7860` (default). Features include:
@@ -239,22 +247,26 @@ Basic usage:
 
 ```bash
 # Transcribe with word-level timestamp stabilization
-python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --stabilize
+python -m insanely_fast_whisper_rocm.cli transcribe audio_file.mp3 --stabilize
 
 # Transcribe and get a JSON file (default)
-python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3
+python -m insanely_fast_whisper_rocm.cli transcribe audio_file.mp3
 
 # Transcribe and get a TXT file
-python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --export-format txt
+python -m insanely_fast_whisper_rocm.cli transcribe audio_file.mp3 --export-format txt
 
 # Transcribe and get all formats (JSON, SRT, TXT)
-python -m insanely_fast_whisper_api.cli transcribe audio_file.mp3 --export-format all
+python -m insanely_fast_whisper_rocm.cli transcribe audio_file.mp3 --export-format all
 
 # Translate and get an SRT file
-python -m insanely_fast_whisper_api.cli translate audio_file.mp3 --export-format srt
+python -m insanely_fast_whisper_rocm.cli translate audio_file.mp3 --export-format srt
 ```
 
 For detailed commands and options, see [`project-overview.md`](./project-overview.md#cli-command-line-interface-details).
+
+#### Quiet mode (`--quiet`)
+
+Use `--quiet` to minimize console output. In quiet mode, only the Rich progress bar (when attached to a TTY) and the final saved-path line(s) are shown. Intermediate logs/messages are suppressed. This also hides third-party Demucs/VAD progress and HIP/MIOpen warnings when stabilization is enabled. See the CLI section in [`project-overview.md`](./project-overview.md#quiet-mode---quiet) for details.
 
 ### Output Files and Filename Conventions
 
@@ -310,6 +322,26 @@ The API endpoints have distinct parameters. Core model settings (`model`, `devic
 - `demucs`: `bool` - Enable Demucs noise reduction before transcription. Defaults to `False`.
 - `vad`: `bool` - Enable Silero VAD to filter out silent parts of the audio. Defaults to `False`.
 - `vad_threshold`: `float` - The threshold for VAD. Defaults to `0.35`.
+
+## Reviewer Quick Start (Lightweight Testing)
+
+For code reviewers or contributors who need to run tests without a GPU or heavy ML libraries, a lightweight, CPU-only requirements file is provided.
+
+1. **Install lightweight dependencies:**
+
+    ```bash
+    pip install -r requirements-reviewer.txt
+    ```
+
+2. **Run the CPU-safe test suite:**
+
+    The following command runs tests that do not require `torch` or a GPU. It excludes tests for CUDA, the full ASR backend, and server integration tests.
+
+    ```bash
+    pytest -q -k "not (cuda or webui or api_integration or asr_backend_generation_config or asr_backend_timestamp or api)"
+    ```
+
+    This ensures that core logic, utilities, and the dummy pipeline can be validated quickly in any environment.
 
 ## Development
 

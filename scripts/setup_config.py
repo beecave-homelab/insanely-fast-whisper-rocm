@@ -18,7 +18,7 @@ try:
     _project_root = Path(__file__).resolve().parent.parent
     sys.path.insert(0, str(_project_root))
 
-    from insanely_fast_whisper_api.utils.constants import (
+    from insanely_fast_whisper_rocm.utils.constants import (
         PROJECT_ROOT,
         USER_CONFIG_DIR,
         USER_ENV_FILE,
@@ -26,7 +26,7 @@ try:
 except ImportError as e:
     print(f"❌ Error: Failed to import project constants. {e}")
     print("Please ensure you are running this script from the project root,")
-    print("or that the 'insanely_fast_whisper_api' package is in your PYTHONPATH.")
+    print("or that the 'insanely_fast_whisper_rocm' package is in your PYTHONPATH.")
     sys.exit(1)
 
 
@@ -34,7 +34,7 @@ except ImportError as e:
 SOURCE_ENV_FILE = PROJECT_ROOT / ".env.example"
 
 
-def main():
+def main() -> None:
     """Manages the creation/update of the user-specific .env file."""
     print(f"🔧 Attempting to set up user configuration at: {USER_ENV_FILE}")
 
@@ -63,7 +63,7 @@ def main():
         shutil.copy2(SOURCE_ENV_FILE, USER_ENV_FILE)
         print(f"\n✅ Successfully copied '{SOURCE_ENV_FILE}' to '{USER_ENV_FILE}'.")
         print("\nPlease edit this file to add your specific configurations, such as:")
-        print("  - HUGGINGFACE_TOKEN (if using gated models like speaker diarization)")
+        print("  - HF_TOKEN (if using gated models like speaker diarization)")
         print("  - Other API keys or custom settings as needed.")
     except Exception as e:
         print(f"\n❌ An error occurred during setup: {e}")

@@ -31,7 +31,7 @@ API_URL = "http://localhost:8888"
 webui_process = None
 
 
-def setup_module():
+def setup_module() -> None:
     """Set up test environment."""
     global webui_process
 
@@ -44,7 +44,7 @@ def setup_module():
         [
             sys.executable,
             "-m",
-            "insanely_fast_whisper_api.webui",
+            "insanely_fast_whisper_rocm.webui",
             "--model",
             "openai/whisper-tiny",
         ],
@@ -65,7 +65,7 @@ def setup_module():
         pytest.fail("Failed to start WebUI")
 
 
-def teardown_module():
+def teardown_module() -> None:
     """Clean up test environment."""
     global webui_process
 
@@ -78,7 +78,7 @@ def teardown_module():
             webui_process.kill()
 
 
-def test_webui_ui_elements():
+def test_webui_ui_elements() -> None:
     """Sanity-check that the WebUI root URL responds with valid HTML and the Gradio app container."""
     response = requests.get(WEBUI_URL, timeout=10)
     assert response.status_code == 200, "WebUI did not load successfully"
@@ -89,7 +89,7 @@ def test_webui_ui_elements():
 
 
 @pytest.mark.skip(reason="Direct REST endpoint not yet exposed by Gradio 4 API")
-def test_webui_transcription():
+def test_webui_transcription() -> None:
     """Test the transcription functionality through the WebUI with a short audio file."""
     # Upload the test audio file
     with open(TEST_AUDIO_FILE, "rb") as f:
@@ -139,7 +139,7 @@ def test_webui_transcription():
     assert "model" in config_used, "Config missing 'model' field"
 
 
-def test_long_audio_transcription():
+def test_long_audio_transcription() -> None:
     """Test the transcription functionality with a longer audio file."""
     # Upload the longer test audio file
     if not os.path.exists(LONG_TEST_AUDIO_FILE):
@@ -192,7 +192,7 @@ def test_long_audio_transcription():
 @pytest.mark.skip(
     reason="Export endpoints not available in current WebUI implementation"
 )
-def test_export_formats():
+def test_export_formats() -> None:
     """Test the export functionality for different formats."""
     # First, perform a transcription to get a result
     with open(TEST_AUDIO_FILE, "rb") as f:

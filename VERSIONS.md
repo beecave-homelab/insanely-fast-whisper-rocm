@@ -4,13 +4,17 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v0.10.1-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v2.0.0-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v0.10.1` (Current) - *16-09-2025*](#v0101-current---16-09-2025)
+- [`v2.0.0` (Current) - *05-12-2025*](#v200-current---05-12-2025)
+- [`v1.0.2` - *05-12-2025*](#v102---05-12-2025)
+- [`v1.0.1` - *04-12-2025*](#v101---04-12-2025)
+- [`v1.0.0` - *18-09-2025*](#v100---18-09-2025)
+- [`v0.10.1` - *16-09-2025*](#v0101---16-09-2025)
 - [`v0.10.0` - *23-07-2025*](#v0100---23-07-2025)
 - [`v0.9.1` - *19-07-2025*](#v091---19-07-2025)
 - [`v0.9.0` - *06-07-2025*](#v090---06-07-2025)
@@ -42,7 +46,137 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v0.10.1` (Current) - *16-09-2025*
+### `v2.0.0` (Current) - *05-12-2025*
+
+#### 🔄 Major Release: Modular Refactor & ROCm Package Rename
+
+This release introduces a modular package layout, renames the distribution and Python package to `insanely-fast-whisper-rocm` / `insanely_fast_whisper_rocm`, and adds model caching and readable subtitles backed by an expanded test suite.
+
+#### 💥 Breaking Changes in v2.0.0
+
+- **Package rename**: Python import path changed from `insanely_fast_whisper_api` to `insanely_fast_whisper_rocm`.
+  - **Migration**: Update all imports, e.g. `from insanely_fast_whisper_api.core import ASRPipeline` → `from insanely_fast_whisper_rocm.core import ASRPipeline`.
+- **Distribution & CLI rename**: Project name and CLI entry point changed from `insanely-fast-whisper-api` to `insanely-fast-whisper-rocm`.
+  - **Migration**: Replace usages of `insanely-fast-whisper-api` with `insanely-fast-whisper-rocm` in scripts, Dockerfiles, and shell commands.
+- **Config directory rename**: User configuration directory moved from `~/.config/insanely-fast-whisper-api/` to `~/.config/insanely-fast-whisper-rocm/`.
+  - **Migration**: Move or recreate your `.env` under the new directory.
+
+#### ✨ New Features in v2.0.0
+
+- **Model caching**: Improved backend configuration and caching behavior for Whisper models, reducing redundant downloads.
+- **Readable subtitles by default**: Enhanced SRT segmentation and formatting pipeline focused on readability (line lengths, CPS, duration bounds).
+- **Comprehensive test suite**: Expanded tests across CLI, API, WebUI and core utilities to protect the new modular layout.
+
+#### 🔧 Improvements in v2.0.0
+
+- **Modular package layout**: Core, audio, API, CLI, WebUI, benchmarks, and utilities are reorganized into a clearer first-party package `insanely_fast_whisper_rocm`.
+- **Import hygiene**: Imports standardized to the new package path, improving IDE support and maintainability.
+- **Documentation updates**: README and project-overview updated to reference the ROCm-focused package name consistently.
+
+#### 📝 Key Commits in v2.0.0
+
+`30210f9`, `3c50c27`, `3bb65c5`, `5c11b97`, `a9b7cde`
+
+---
+
+### `v1.0.2` - *05-12-2025*
+
+#### 🐛 Patch Release: API Routes Fix & Code Cleanup
+
+This release focuses on code correctness and maintainability through TDD-driven fixes.
+
+#### 🐛 Bug Fixes in v1.0.2
+
+- **Fixed**: API routes passed invalid parameters (`stabilize`, `demucs`, `vad`, `vad_threshold`) to `WhisperPipeline.process()`.
+  - **Issue**: These parameters are not part of the `process()` method signature.
+  - **Root Cause**: Parameters were incorrectly forwarded; stabilization is handled separately by `stabilize_timestamps()` post-processing.
+  - **Solution**: Removed invalid parameters from `asr_pipeline.process()` calls in both `create_transcription` and `create_translation` routes.
+
+- **Fixed**: Dead code in `SrtFormatter.format()` (lines 427-550) was unreachable.
+  - **Issue**: ~124 lines of fallback formatting code appeared after a `return` statement.
+  - **Solution**: Removed the unreachable code block, reducing complexity and improving maintainability.
+
+#### 🧪 Tests in v1.0.2
+
+- **Added**: New `tests/api/test_routes_process_params.py` with 3 TDD tests verifying that stabilization parameters are NOT passed to `process()`.
+- **Updated**: Existing `tests/api/test_api.py` tests to assert correct behavior (params NOT in `process()` call).
+
+#### 📝 Key Commits in v1.0.2
+
+`9563a34`, `2eafe64`, `8ca2c8f`, `e13005e`
+
+---
+
+### `v1.0.1` - *04-12-2025*
+
+#### 🐛 Patch Release: WebUI ZIP Fixes, Benchmarking & Tooling
+
+This release delivers a set of safe, backward-compatible improvements focused on WebUI stability, subtitle quality diagnostics, and local contributor tooling.
+
+#### 🐛 Bug Fixes in v1.0.1
+
+- **Fixed**: Duplicate `batch_summary.json` entries in WebUI batch ZIP archives.
+  - **Issue**: Multi-file downloads sometimes produced ZIPs with duplicate `batch_summary.json`, triggering warnings and wasting space.
+  - **Root Cause**: `BatchZipBuilder.add_summary()` was called manually before `build()`, which also adds a summary when `include_summary=True`.
+  - **Solution**: Removed explicit `add_summary()` calls in WebUI handlers and now rely on `build()` to add the summary exactly once.
+
+#### 🔧 Improvements in v1.0.1
+
+- **Improved**: Benchmark result model now uses Pydantic v2 `ConfigDict` configuration, removing deprecation warnings while keeping models frozen.
+- **Improved**: Segmentation and SRT quality utilities refined and covered by updated tests for better subtitle readability and diagnostics.
+- **Improved**: Local tooling with `scripts/local-ci.sh` and CI-friendly `pdm` scripts for linting, formatting, tests, and coverage.
+
+#### 📝 Key Commits in v1.0.1
+
+`4220ebd`, `80fc087`, `4e02cd1`, `9565c66`, `c837998`, `2ded632`, `cb1f571`, `28b4405`
+
+---
+
+### `v1.0.0` - *18-09-2025*
+
+#### 💥 Breaking Changes in v1.0.0
+
+- `split_audio()` return type changed from `list[str]` to `list[tuple[str, float]]`.
+  - Each tuple contains `(chunk_path, chunk_start_time_seconds)`.
+- `merge_chunk_results()` parameter changed from `list[dict]` to `list[tuple[dict, float]]`.
+  - Each tuple contains `(chunk_result_dict, chunk_start_time_seconds)`.
+
+These functions are part of the public API (re-exported from `insanely_fast_whisper_rocm/__init__.py`). Any external code calling them must be updated.
+
+#### 🐛 Bug Fixes in v1.0.0
+
+- Fixed incorrect, overlapping timestamps in merged transcripts when audio is processed in chunks.
+  - Root cause: chunk-level timestamps from Whisper are relative to each chunk (starting at 0.0), and previous merge logic simply concatenated segments.
+  - Solution: offset segment and word timestamps by the chunk's start time before merging, producing a continuous, monotonic timeline.
+
+#### 🛠 Migration Notes
+
+- If you previously used `split_audio(path, ...) -> list[str]`, update your code to handle start times:
+
+  ```python
+  from insanely_fast_whisper_rocm.audio.processing import split_audio
+
+  for chunk_path, start_time in split_audio(path, chunk_duration=30.0):
+      ...
+  ```
+
+- If you previously used `merge_chunk_results(results: list[dict])`, now pass start times along with each result:
+
+  ```python
+  from insanely_fast_whisper_rocm.audio.results import merge_chunk_results
+
+  merged = merge_chunk_results([(result_dict, start_time_seconds) for ...])
+  ```
+
+- Overlap handling: the pipeline currently uses `chunk_overlap=0.0`. If you enable overlaps externally, the merger offsets timestamps but does not de-duplicate overlapped text; consider adding your own de-duplication if needed.
+
+#### 📝 Key Commits in v1.0.0
+
+`<populate-on-release>`
+
+---
+
+### `v0.10.1` - *16-09-2025*
 
 #### 🐛 **Bug Fix & Refactor Release: Docker Tags & Codebase Cleanup**
 
@@ -160,7 +294,7 @@ This release focuses on standardizing application entrypoints, enhancing the CLI
 #### 🔧 **Improvements in v0.8.0**
 
 - **Refactored**: Standardized entrypoints for the API, WebUI, and CLI to use `__main__.py` modules, simplifying execution.
-- **Refactored**: Moved `formatters.py` to `insanely_fast_whisper_api/core/` and updated all relevant imports.
+- **Refactored**: Moved `formatters.py` to `insanely_fast_whisper_rocm/core/` and updated all relevant imports.
 - **Refactored**: Unified audio processing logic to support both transcription and translation seamlessly.
 
 #### 📝 Key Commits in v0.8.0
@@ -363,7 +497,7 @@ This release marks a significant architectural overhaul:
 
   ```python
   # ✅ New absolute imports
-  from insanely_fast_whisper_api.core.pipeline import WhisperPipeline
+  from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
   
   # ❌ Deprecated relative imports
   # from .core.pipeline import WhisperPipeline
