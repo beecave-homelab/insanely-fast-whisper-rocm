@@ -69,9 +69,14 @@ def translate(audio_file: Path, **kwargs) -> None:
 
 
 def _run_task(*, task: str, audio_file: Path, **kwargs) -> None:  # noqa: C901
-    """Execute *task* (“transcribe” or “translate”) on *audio_file*.
-
-    All CLI flags arrive in **kwargs.
+    """
+    Run a transcription or translation task on an audio file and export the results.
+    
+    Given `task` ("transcribe" or "translate") and an audio file path, perform speech recognition or translation, handle video-to-audio extraction when needed, optionally stabilize timestamps, export formatted outputs and optional benchmark data, and clean up any temporary files. On fatal runtime errors the function exits the process with a non-zero status.
+    
+    Parameters:
+        task (str): The task to perform; must be either "transcribe" or "translate".
+        audio_file (Path): Path to the input audio or video file. If a supported video format is provided, its audio will be extracted and processed.
     """
     start_time = time.time()
 
@@ -237,7 +242,26 @@ def _handle_output_and_benchmarks(
     benchmark_extra: tuple[str, ...],
     temp_files: list[Path],
 ) -> None:
-    """Handle file export and benchmark writing."""
+    """
+    Export transcription/translation results in the requested formats, optionally record benchmark data, and remove any temporary files.
+    
+    The function builds a formatter-friendly result payload from `result`, writes one or more formatted outputs (json, txt, srt) according to `export_format` and `export_format_explicit` rules, optionally records a benchmark entry when `benchmark_enabled` is true (parsing `benchmark_extra` as key=value pairs), and cleans up `temp_files`.
+    
+    Parameters:
+        task: The task name used to label outputs (e.g., "transcribe" or "translate").
+        audio_file: Path to the original audio file; used for metadata and filename generation.
+        result: Processing result expected to contain at least:
+            - "text": full transcript text,
+            - "segments" or "chunks": list of segment dictionaries,
+            - optional "runtime_seconds" and "config_used".
+        total_time: Total elapsed time for the CLI operation in seconds.
+        output: Explicit output path provided by the user, or None to use default transcript directories.
+        export_format: Target export format name ("json", "txt", "srt", or "all").
+        export_format_explicit: True if the user explicitly supplied an export format on the CLI; controls how `output` is interpreted.
+        benchmark_enabled: If true, a benchmark record will be collected and saved.
+        benchmark_extra: Iterable of "key=value" strings to include as extra benchmark metadata.
+        temp_files: List of temporary file Paths to remove after exporting and benchmarking.
+    """
     # Decide which formats to export
     if export_format == "all":
         formats_to_export = ("json", "txt", "srt")

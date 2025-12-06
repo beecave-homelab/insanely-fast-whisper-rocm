@@ -212,9 +212,19 @@ class BasePipeline(ABC):
         task: str,
         original_filename: str | None = None,
     ) -> dict[str, Any]:
-        """Post-process ASR output (for example, format and add metadata).
-
-        Returns the final result dictionary.
+        """
+        Attach metadata to ASR output and return the enriched result.
+        
+        Adds `original_file` (the provided original_filename or the audio file's absolute path), `task_type` (the provided task), and `processed_at` (current UTC timestamp in ISO 8601 format) to a copy of the given ASR output and returns the resulting dictionary.
+        
+        Parameters:
+            asr_output (dict[str, Any]): Raw ASR output to enrich.
+            audio_file_path (Path): Path to the source audio file; used when `original_filename` is not provided.
+            task (str): Task name to record in the result (e.g., "transcribe" or "translate").
+            original_filename (str | None): Optional original filename to record instead of the audio path.
+        
+        Returns:
+            dict[str, Any]: The ASR output augmented with `original_file`, `task_type`, and `processed_at`.
         """
 
     def _save_result(

@@ -140,7 +140,22 @@ def main(
     ssl_certfile: str | None,
     debug: bool,
 ):
-    """Run the Insanely Fast Whisper API server using Uvicorn."""
+    """
+    Start the application HTTP server with Uvicorn using the provided runtime options.
+    
+    Parameters:
+        host (str): Hostname or IP address to bind the server to.
+        port (int): TCP port to listen on.
+        workers (int): Number of worker processes to run.
+        log_level (str): Base logging level; may be overridden to "debug" when `debug` is True and matches the default level.
+        reload (bool): Enable Uvicorn auto-reload for development.
+        ssl_keyfile (str | None): Path to the SSL key file to enable HTTPS, or None to disable SSL.
+        ssl_certfile (str | None): Path to the SSL certificate file to enable HTTPS, or None to disable SSL.
+        debug (bool): When True, increase logging verbosity in the YAML configuration and may set Uvicorn's level to "debug".
+    
+    Raises:
+        click.exceptions.Exit: If Uvicorn is not installed (exits with code 1).
+    """
     if uvicorn is None:
         click.secho(
             (
