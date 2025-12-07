@@ -193,7 +193,6 @@ def segment_words(words: list[Word]) -> list[Segment]:
     segments = _merge_short_segments(segments)
     logger.debug("After second merge_short_segments: %d segments", len(segments))
     segments = _enforce_duration_limits(segments)
-    logger.debug("After enforce_duration_limits: %d segments", len(segments))
     segments = _merge_short_segments(segments)
     logger.debug("After third merge_short_segments: %d segments", len(segments))
 
@@ -883,7 +882,13 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
         # If the original duration is too short to ever meet MAX_CPS for this
         # amount of text, synthesize timing by chunking on word boundaries and
         # assigning durations that satisfy CPS constraints.
-        if seg_duration * constants.MAX_CPS < len(seg_text):
+
+        # Only use synthetic timing if the original duration is also below max duration
+        # and we can actually fix the CPS issue without exceeding duration limits
+        if (
+            seg_duration * constants.MAX_CPS < len(seg_text)
+            and seg_duration <= constants.MAX_SEGMENT_DURATION_SEC
+        ):
             max_chars_per_chunk = int(
                 constants.MAX_CPS * constants.MAX_SEGMENT_DURATION_SEC
             )
@@ -898,6 +903,8 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                         len(chunk_text) / constants.MAX_CPS,
                         constants.MIN_SEGMENT_DURATION_SEC,
                     )
+                    # Cap duration to not exceed maximum segment duration
+                    dur = min(dur, constants.MAX_SEGMENT_DURATION_SEC)
                     end_time = current_time + dur
 
                     # Build synthetic words with evenly split timing.
@@ -928,6 +935,8 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                     len(chunk_text) / constants.MAX_CPS,
                     constants.MIN_SEGMENT_DURATION_SEC,
                 )
+                # Cap duration to not exceed maximum segment duration
+                dur = min(dur, constants.MAX_SEGMENT_DURATION_SEC)
                 end_time = current_time + dur
                 chunk_tokens = chunk_text.split()
                 per = (end_time - current_time) / max(len(chunk_tokens), 1)
