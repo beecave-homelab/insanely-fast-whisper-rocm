@@ -105,7 +105,7 @@ def _suppress_output_fds() -> Generator[None, None, None]:
 
 @click.command(short_help="Transcribe an audio file")
 @audio_options
-def transcribe(audio_file: Path, **kwargs: dict) -> None:
+def transcribe(audio_file: Path, **kwargs: object) -> None:
     """Transcribe *audio_file* using Whisper models."""
     # Was --export-format explicitly supplied?
     ctx = click.get_current_context()
@@ -118,7 +118,7 @@ def transcribe(audio_file: Path, **kwargs: dict) -> None:
 
 @click.command(short_help="Translate an audio file to English")
 @audio_options
-def translate(audio_file: Path, **kwargs: dict) -> None:
+def translate(audio_file: Path, **kwargs: object) -> None:
     """Translate *audio_file* to English using Whisper models."""
     ctx = click.get_current_context()
     kwargs["export_format_explicit"] = (
