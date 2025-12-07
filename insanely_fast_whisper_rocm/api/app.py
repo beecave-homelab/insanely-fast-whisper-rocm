@@ -4,6 +4,9 @@ This module provides the main app factory function that creates and configures
 the FastAPI application with all necessary routes and middleware.
 """
 
+from __future__ import annotations
+
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -37,11 +40,16 @@ async def run_startup_sequence(app: FastAPI) -> None:
         "Attempting to download/verify Whisper model specified by WHISPER_MODEL "
         "or default..."
     )
-    download_model_if_needed(
-        model_name=DEFAULT_MODEL,
-        hf_token=HF_TOKEN,
-        custom_logger=logger,
-    )
+    try:
+        await asyncio.to_thread(
+            download_model_if_needed,
+            model_name=DEFAULT_MODEL,
+            hf_token=HF_TOKEN,
+            custom_logger=logger,
+        )
+    except Exception as exc:
+        logger.error("Model download/verification failed: %s", exc)
+        raise
     logger.info("Model download/verification process for API startup complete.")
 
     logger.info("=" * 50)
