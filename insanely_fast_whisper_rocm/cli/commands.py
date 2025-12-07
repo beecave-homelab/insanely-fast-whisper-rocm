@@ -151,7 +151,7 @@ def _is_stabilization_corrupt(segments: list[dict]) -> bool:
     return (identical_count / len(segments)) > 0.5
 
 
-def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:
+def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: ANN401
     """Execute *task* ("transcribe" or "translate") on *audio_file*.
 
     All CLI flags arrive in **kwargs.
