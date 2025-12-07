@@ -136,6 +136,7 @@ class ResponseFormatter:
         try:
             return format_callable(payload)
         except TypeError:
+            # Fallback for formatters that don't accept a payload argument
             return format_callable()
 
     @staticmethod

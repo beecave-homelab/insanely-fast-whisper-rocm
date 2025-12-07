@@ -35,7 +35,7 @@ def mock_asr_pipeline() -> Iterator[MagicMock]:
     try:
         yield mock_pipeline
     finally:
-        app.dependency_overrides = {}  # Clear overrides after test
+        app.dependency_overrides.pop(get_asr_pipeline, None)
 
 
 @pytest.fixture
