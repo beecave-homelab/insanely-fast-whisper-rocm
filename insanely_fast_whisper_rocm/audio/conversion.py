@@ -57,12 +57,40 @@ def ensure_wav(
     output_path = tmp_dir / f"{original_path.stem or 'audio'}.wav"
 
     if ffmpeg is None:
-        logger.warning(
-            "FFmpeg is unavailable; creating placeholder WAV for %s without "
-            "re-encoding.",
-            original_path,
-        )
-        output_path.write_bytes(original_path.read_bytes())
+        # Fallback to a pure-Python conversion path when FFmpeg is unavailable.
+        try:  # pragma: no cover - optional dependency
+            from pydub import AudioSegment  # type: ignore[import]
+        except ModuleNotFoundError as exc:  # pragma: no cover - handled gracefully
+            logger.error(
+                "FFmpeg is not installed and optional dependency 'pydub' is "
+                "missing; cannot convert %s to WAV.",
+                original_path,
+            )
+            raise RuntimeError(
+                "Audio conversion requires either FFmpeg (via 'ffmpeg-python') "
+                "or the optional 'pydub' package. Install one of them to "
+                "enable non-WAV input support."
+            ) from exc
+
+        try:
+            audio = AudioSegment.from_file(str(original_path))
+            audio = audio.set_frame_rate(sample_rate).set_channels(channels)
+            audio.export(str(output_path), format="wav")
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception(
+                "Failed to convert %s to WAV using pydub fallback.", original_path
+            )
+            raise RuntimeError(
+                f"Failed to convert {original_path} to WAV using pydub fallback: "
+                f"{exc}"
+            ) from exc
+
+        if not output_path.exists():
+            raise RuntimeError(
+                f"WAV conversion for {original_path} did not produce an output file "
+                f"at {output_path}."
+            )
+
         return str(output_path)
 
     try:
