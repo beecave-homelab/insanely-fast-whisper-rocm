@@ -167,9 +167,9 @@ for ts_type in "${!files_by_ts_type[@]}"; do
         within=$(safe_numeric "$(safe_jq '.format_quality.srt.details.boundary_counts.within_range' "$f" "0")" "0")
         too_long=$(safe_numeric "$(safe_jq '.format_quality.srt.details.boundary_counts.too_long' "$f" "0")" "0")
         
-        # Count segments from SRT
+        # Count segments from SRT (use extended regex for portable '+')
         srt_file="transcripts-srt/$(basename "$f" .json).srt"
-        seg_count=$(grep -c "^[0-9]\+$" "$srt_file" 2>/dev/null || echo "N/A")
+        seg_count=$(grep -E -c "^[0-9]+$" "$srt_file" 2>/dev/null || echo "N/A")
         
         printf "| %-20s | %5s | %7ss | %7ss | %7ss | %8s | %9s | %6s | %8s |\n" \
             "$variant" "$score" "$max_dur" "$avg_dur" "$min_dur" "$seg_count" "$too_short" "$within" "$too_long"
