@@ -111,7 +111,7 @@ class ASRPipeline(BasePipeline):  # type: ignore[misc]
         language: str | None = None,
         task: str = "transcribe",
         timestamp_type: str = "chunk",
-        progress_callback: Callable[[float], None] | None = None,
+        progress_callback: Callable[[str, int, int, str | None], None] | None = None,
         **kwargs: object,
     ) -> dict[str, Any]:
         """Process a single audio file and return a transcription-like dict.

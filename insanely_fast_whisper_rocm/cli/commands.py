@@ -13,6 +13,7 @@ import os
 import signal
 import sys
 import time
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -70,7 +71,7 @@ logger = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
-def _suppress_output_fds() -> None:
+def _suppress_output_fds() -> Generator[None, None, None]:
     """Temporarily silence stdout/stderr at the file-descriptor level.
 
     This suppresses outputs from C/C++ libraries and progress bars (e.g.,

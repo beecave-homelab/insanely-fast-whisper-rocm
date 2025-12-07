@@ -6,6 +6,7 @@ and other shared resources used by the API endpoints.
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from typing import NoReturn
 
 from insanely_fast_whisper_rocm.core.asr_backend import HuggingFaceBackendConfig
@@ -27,7 +28,7 @@ def get_asr_pipeline(
     batch_size: int = DEFAULT_BATCH_SIZE,
     dtype: str = "float16",
     model_chunk_length: int = DEFAULT_CHUNK_LENGTH,
-) -> WhisperPipeline:  # type: ignore[override]
+) -> Generator[WhisperPipeline, None, None]:
     """Dependency to provide configured ASR pipeline.
 
     This generator function implements dependency injection for ASR pipeline
