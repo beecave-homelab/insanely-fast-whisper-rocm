@@ -259,15 +259,16 @@ class BenchmarkCollector:
         ram_total = self._collect_system_metrics().get("ram_total_mb")
         ram_avg = avg_sys.get("ram_used_mb") if avg_sys else None
 
+        gpu_metrics = self._collect_gpu_metrics()
         gpu_dict = None
-        if self._collect_gpu_metrics() is not None:
+        if gpu_metrics is not None:
             gpu_dict = {
-                "name": self._collect_gpu_metrics().get("name"),
-                "total_vram_mb": self._collect_gpu_metrics().get("total_vram_mb"),
+                "name": gpu_metrics.get("name"),
+                "total_vram_mb": gpu_metrics.get("total_vram_mb"),
                 "gpu_vram_min_mb": vram_min,
                 "gpu_vram_max_mb": vram_max,
                 "gpu_vram_median_mb": vram_median,
-                "gpu_vram_avarage_mb": vram_avg,
+                "gpu_vram_average_mb": vram_avg,
                 "sample_count": sample_count,
             }
 
@@ -275,7 +276,7 @@ class BenchmarkCollector:
         if ram_total is not None:
             memory_dict = {
                 "ram_total_mb": ram_total,
-                "ram_avarage_mb": ram_avg,
+                "ram_average_mb": ram_avg,
                 "sample_count": sample_count,
             }
 

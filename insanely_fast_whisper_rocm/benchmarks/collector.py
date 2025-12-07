@@ -114,9 +114,8 @@ class BenchmarkCollector:
         )
 
         slug = self._slugify(Path(audio_path).stem or "benchmark")
-        # Filenames use the configured timezone while keeping the historical 'Z' suffix
-        # by convention across the codebase.
-        timestamp = datetime.now(target_tz).strftime("%Y%m%dT%H%M%SZ")
+        # Use UTC for filenames to ensure consistent, timezone-agnostic ordering
+        timestamp = datetime.now(ZoneInfo("UTC")).strftime("%Y%m%dT%H%M%SZ")
         filename = f"{slug}_{task}_{timestamp}.json"
         output_path = self.output_dir / filename
         output_path.write_text(json.dumps(record, indent=2), encoding="utf-8")

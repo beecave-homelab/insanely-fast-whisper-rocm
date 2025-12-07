@@ -61,7 +61,7 @@ class TestBenchmarkResult:
             runtime_seconds=10.0,
             total_wall_time_seconds=12.0,
             system={},
-            memory={"ram_total_mb": 16000, "ram_avarage_mb": 8000},
+            memory={"ram_total_mb": 16000, "ram_average_mb": 8000},
         )
         assert result.memory is not None
         assert result.memory["ram_total_mb"] == 16000
