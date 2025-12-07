@@ -151,7 +151,7 @@ def _is_stabilization_corrupt(segments: list[dict]) -> bool:
     return (identical_count / len(segments)) > 0.5
 
 
-def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: C901
+def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:
     """Execute *task* ("transcribe" or "translate") on *audio_file*.
 
     All CLI flags arrive in **kwargs.
@@ -461,7 +461,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: dict) -> None:  # noqa: 
             logger.exception("%s error details", task)
         sys.exit(1)
 
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         reporter.on_error(str(exc))
         click.secho(f"\n❌ Unexpected error: {exc}", fg="red", err=True)
         if debug:
@@ -490,7 +490,7 @@ def _handle_output_and_benchmarks(
     *,
     task: str,
     audio_file: Path,
-    result: dict,
+    result: dict[str, Any],
     total_time: float,
     output: Path | None,
     export_format: str,
@@ -635,7 +635,8 @@ def _handle_output_and_benchmarks(
                 output_path,
                 content_size,
             )
-            click.secho(f"💾 Saved {fmt.upper()} to: {output_path}", fg="green")
+            if not quiet:
+                click.secho(f"💾 Saved {fmt.upper()} to: {output_path}", fg="green")
         except OSError as exc:
             click.secho(f"❌ Failed to save {fmt.upper()}: {exc}", fg="red", err=True)
         else:
@@ -647,7 +648,7 @@ def _handle_output_and_benchmarks(
                     # a concise checkmark instead of showing a bar.
                     export_label = f"{fmt.upper()}::{output_path}"
                     progress_cb.on_export_item_done(idx, export_label)
-            except Exception:  # pragma: no cover
+            except Exception:
                 pass
 
     if benchmark_enabled:
@@ -681,8 +682,8 @@ def _handle_output_and_benchmarks(
             gpu_stats=benchmark_gpu_stats,
             format_quality=format_quality_by_format or None,
         )
-        # Print benchmark path even when --quiet is set
-        click.secho(f"📈 Benchmark saved to: {benchmark_path}", fg="green")
+        if not quiet:
+            click.secho(f"📈 Benchmark saved to: {benchmark_path}", fg="green")
 
     # ------------------------------------------------------------------ #
     # Cleanup                                                            #
