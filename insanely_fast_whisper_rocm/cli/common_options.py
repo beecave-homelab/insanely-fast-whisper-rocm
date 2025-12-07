@@ -21,7 +21,7 @@ from insanely_fast_whisper_rocm.utils import constants
 # ---------------------------------------------------------------------------
 
 
-def audio_options(func: Callable[..., None]) -> Callable[..., None]:  # noqa: D401
+def audio_options(func: Callable[..., None]) -> Callable[..., None]:
     """Attach common audio-processing CLI options to ``func``.
 
     The decorator adds the same set of arguments/options that were previously

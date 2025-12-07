@@ -80,6 +80,11 @@ main() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -o|--output_file)
+        if [[ $# -lt 2 ]]; then
+          echo "Error: Option '$1' requires a file path argument" >&2
+          show_help
+          exit 1
+        fi
         output_file="$2"
         shift 2
         ;;
