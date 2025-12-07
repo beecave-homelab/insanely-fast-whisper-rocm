@@ -9,8 +9,9 @@ The public contract:
 
 Notes:
     The metric is intentionally lightweight and dependency-free so it can be
-    It focuses on a few intuitive checks (overlaps, hyphen spacing,
-    line lengths, CPS bounds) that correlate well with readable subtitles.
+    easily used without external dependencies. It focuses on a few intuitive
+    checks (overlaps, hyphen spacing, line lengths, CPS bounds) that correlate
+    well with readable subtitles.
 """
 
 from __future__ import annotations

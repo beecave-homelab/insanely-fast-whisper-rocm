@@ -21,10 +21,10 @@ Guide to regenerate benchmarks, collect SRT quality metrics, and compare word vs
 
 2. **Run word-level benchmark variants**
 
-   Choice one of the files below that best matches what kind of benchmark we want to test:
+   Choose one of the files below that best matches what kind of benchmark we want to test:
 
    - `uploads/Weighted_Scorecard_vs_5_minute_test.mp3` (short)
-   - `uploads/Weighted_Scorecard_vs_5_minute_test.mp3` (medium)
+   - `uploads/Weighted_Scorecard_vs_medium_test.mp3` (medium)
    - `uploads/Weighted_Scorecard_vs.mp3` (large +- 17 minutes)
 
    ```bash

@@ -265,10 +265,10 @@ The codebase automatically enables `sdpa` for any GPU-based device (`cuda`, `mps
 
 | Date     | ID                                     | Type | Description                                                                                             |
 |----------|----------------------------------------|------|---------------------------------------------------------------------------------------------------------|
-| Jun 2025 | [#5](https://github.com/issue/5)       | ✨    | **Native SDPA Acceleration**: Integrated `attn_implementation="sdpa"` for faster attention, replacing the need for BetterTransformer. |
-| Jun 2025 | [#4](https://github.com/issue/4)       | ✨    | **Modular CLI**: Refactored the CLI into a modular structure with `click` commands and a `facade` for cleaner logic. |
-| Jun 2025 | [#3](https://github.com/issue/3)       | 🔧    | **`pdm` Migration**: Replaced `requirements.txt` with `pdm` for robust dependency management. See [Dependency Management](#dependency-management-with-pdm). |
-| Jun 2025 | [#2](https://github.com/issue/2)       | 🔧    | **Import Refactor**: Standardized all imports to be absolute, improving clarity and maintainability. See [Import Standardization](#import-standardization). |
+| Jun 2025 | Internal enhancement | ✨    | **Native SDPA Acceleration**: Integrated `attn_implementation="sdpa"` for faster attention, replacing the need for BetterTransformer. |
+| Jun 2025 | Internal enhancement | ✨    | **Modular CLI**: Refactored the CLI into a modular structure with `click` commands and a `facade` for cleaner logic. |
+| Jun 2025 | Internal enhancement | 🔧    | **`pdm` Migration**: Replaced `requirements.txt` with `pdm` for robust dependency management. See [Dependency Management](#dependency-management-with-pdm). |
+| Jun 2025 | Internal enhancement | 🔧    | **Import Refactor**: Standardized all imports to be absolute, improving clarity and maintainability. See [Import Standardization](#import-standardization). |
 | Jun 2025 | [#1](https://github.com/issue/1)       | 🐛    | **WebUI Stability**: Fixed issues with multi-file downloads and improved error handling in the Gradio interface. |
 
 ---
