@@ -151,7 +151,11 @@ class TestSrtQuality:
 
         sample_offenders = details["sample_offenders"]
         assert sample_offenders["line_length"] == []
-        assert sample_offenders["cps"] == []
+        # Both segments exceed MAX_CPS=17.0
+        assert len(sample_offenders["cps"]) == 2
+        for offender in sample_offenders["cps"]:
+            assert offender["category"] == "above_max"
+            assert offender["cps"] > 17.0
 
     def test_quality_sample_offenders_capture_long_lines_and_cps(self) -> None:
         """Sample offenders list lines exceeding limits and CPS outliers."""
@@ -170,7 +174,8 @@ class TestSrtQuality:
 
         boundary_counts = details["boundary_counts"]
         assert boundary_counts["too_short"] == 1
-        assert boundary_counts["too_long"] == 1
+        # 5.0s segment is not too_long since MAX_SEGMENT_DURATION_SEC=5.5
+        assert boundary_counts["too_long"] == 0
 
         sample_offenders = details["sample_offenders"]
         assert any(

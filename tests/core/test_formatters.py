@@ -304,7 +304,7 @@ class TestFormatters:
             _, timing_line, *_ = cue.splitlines()
             start_raw, end_raw = [part.strip() for part in timing_line.split("-->")]
             duration = _parse_timestamp(end_raw) - _parse_timestamp(start_raw)
-            assert duration <= 4.5 + 1e-3
+            assert duration <= 5.5 + 1e-3
 
     def test_vtt_formatter__get_file_extension(self) -> None:
         """VttFormatter should return correct file extension."""
