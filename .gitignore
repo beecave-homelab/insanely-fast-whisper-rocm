@@ -72,6 +72,7 @@ target/
 
 # Uploads directory
 uploads/
+data/
 
 # Test directory
 tests/*.mp3
@@ -87,7 +88,7 @@ temp_uploads/*
 benchmarks/*.json
 
 .env
-# to-do/*.md
+to-do/*.md
 .DS_Store
 commit_subdirectories.sh
 .vscode/settings.json
@@ -99,3 +100,4 @@ to-do/**
 .github/PULL_REQUEST/**
 
 pdm.lock.bak
+pr-27-comments.md
