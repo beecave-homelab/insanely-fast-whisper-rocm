@@ -10,6 +10,8 @@ Usage:
 Requires: insanely_fast_whisper_rocm in PYTHONPATH or installed.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import os

@@ -3,6 +3,8 @@
 This module contains Pydantic models for request and response handling.
 """
 
+from __future__ import annotations
+
 from pydantic import BaseModel, Field
 
 

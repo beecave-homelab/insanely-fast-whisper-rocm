@@ -4,8 +4,6 @@ This module contains custom exception classes used throughout the WebUI
 to provide specific error information and handling.
 """
 
-# import click # Removing click dependency from webui errors
-
 
 class TranscriptionError(Exception):  # pylint: disable=too-few-public-methods
     """Custom exception raised when transcription fails in the WebUI context.
