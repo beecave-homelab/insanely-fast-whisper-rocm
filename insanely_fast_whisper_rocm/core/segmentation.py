@@ -605,8 +605,6 @@ def _find_natural_split_points(words: list[Word]) -> list[int]:
         "further",
         "also",
         "plus",
-        "moreover",
-        "furthermore",
     }
 
     split_points = []
