@@ -21,6 +21,39 @@ colorize() {
     echo -e "${color}$@${RESET}"
 }
 
+# Safe jq wrapper that returns default on missing/malformed fields
+safe_jq() {
+    local query="$1"
+    local file="$2"
+    local default="$3"
+    
+    local result
+    result=$(jq -r "$query" "$file" 2>/dev/null)
+    if [ $? -ne 0 ] || [ "$result" = "null" ] || [ -z "$result" ]; then
+        echo "$default"
+    else
+        echo "$result"
+    fi
+}
+
+# Check if value matches numeric regex
+is_numeric() {
+    local value="$1"
+    echo "$value" | grep -qE '^-?[0-9]+(\.[0-9]+)?$'
+}
+
+# Get safe numeric value or default
+safe_numeric() {
+    local value="$1"
+    local default="$2"
+    
+    if is_numeric "$value"; then
+        echo "$value"
+    else
+        echo "$default"
+    fi
+}
+
 PATTERN="${1:-*}"
 FILES=($(ls -1tr benchmarks/${PATTERN}*.json 2>/dev/null))
 
@@ -35,15 +68,19 @@ echo ""
 # Get timestamp type from config
 get_timestamp_type() {
     local file="$1"
-    jq -r '.config.timestamp_type // .config.return_timestamps // "unknown"' "$file" 2>/dev/null
+    safe_jq '.config.timestamp_type // .config.return_timestamps // "unknown"' "$file" "unknown"
 }
 
 # Auto-detect variants based on preprocessing config
 get_variant_name() {
     local file="$1"
-    local stab=$(jq -r '.config.stabilize // false' "$file" 2>/dev/null)
-    local dem=$(jq -r '.config.demucs // false' "$file" 2>/dev/null)
-    local vad=$(jq -r '.config.vad // false' "$file" 2>/dev/null)
+    local stab
+    local dem
+    local vad
+    
+    stab=$(safe_jq '.config.stabilize // false' "$file" "false")
+    dem=$(safe_jq '.config.demucs // false' "$file" "false")
+    vad=$(safe_jq '.config.vad // false' "$file" "false")
     
     local parts=()
     [ "$stab" = "true" ] && parts+=("stabilize")
@@ -73,13 +110,14 @@ for f in "${FILES[@]}"; do
     fi
     
     # Track best score for this timestamp type
-    score=$(jq -r '.format_quality.srt.score' "$f" 2>/dev/null)
-    if [ -n "$score" ] && [ "$score" != "null" ]; then
+    score=$(safe_jq '.format_quality.srt.score' "$f" "N/A")
+    if [ "$score" != "N/A" ]; then
+        safe_score=$(safe_numeric "$score" "0")
         current_best="${best_score_by_type[$ts_type]:-0}"
-        # Use awk for floating point comparison
-        is_better=$(awk -v score="$score" -v best="$current_best" 'BEGIN { print (score > best) ? 1 : 0 }')
+        # Use awk for floating point comparison only with validated numeric values
+        is_better=$(awk -v score="$safe_score" -v best="$current_best" 'BEGIN { print (score > best) ? 1 : 0 }')
         if [ "$is_better" -eq 1 ]; then
-            best_score_by_type[$ts_type]="$score"
+            best_score_by_type[$ts_type]="$safe_score"
             best_file_by_type[$ts_type]="$f"
             best_variant_by_type[$ts_type]=$(get_variant_name "$f")
         fi
@@ -88,7 +126,7 @@ done
 
 # Extract model name from first file
 first_file="${FILES[0]}"
-model_name=$(jq -r '.config.model' "$first_file" 2>/dev/null)
+model_name=$(safe_jq '.config.model' "$first_file" "Unknown")
 
 colorize "$BOLD$BLUE" "📊 Benchmark Overview"
 echo ""
@@ -121,13 +159,13 @@ for ts_type in "${!files_by_ts_type[@]}"; do
     for f in "${group_files[@]}"; do
         variant=$(get_variant_name "$f")
         
-        score=$(jq -r '.format_quality.srt.score' "$f" 2>/dev/null | cut -c1-5)
-        max_dur=$(jq -r '.format_quality.srt.details.duration_stats.max_seconds' "$f" 2>/dev/null | cut -c1-4)
-        avg_dur=$(jq -r '.format_quality.srt.details.duration_stats.average_seconds' "$f" 2>/dev/null | cut -c1-4)
-        min_dur=$(jq -r '.format_quality.srt.details.duration_stats.min_seconds' "$f" 2>/dev/null | cut -c1-4)
-        too_short=$(jq -r '.format_quality.srt.details.boundary_counts.too_short' "$f" 2>/dev/null)
-        within=$(jq -r '.format_quality.srt.details.boundary_counts.within_range' "$f" 2>/dev/null)
-        too_long=$(jq -r '.format_quality.srt.details.boundary_counts.too_long' "$f" 2>/dev/null)
+        score=$(safe_jq '.format_quality.srt.score' "$f" "N/A")
+        max_dur=$(safe_jq '.format_quality.srt.details.duration_stats.max_seconds' "$f" "N/A")
+        avg_dur=$(safe_jq '.format_quality.srt.details.duration_stats.average_seconds' "$f" "N/A")
+        min_dur=$(safe_jq '.format_quality.srt.details.duration_stats.min_seconds' "$f" "N/A")
+        too_short=$(safe_numeric "$(safe_jq '.format_quality.srt.details.boundary_counts.too_short' "$f" "0")" "0")
+        within=$(safe_numeric "$(safe_jq '.format_quality.srt.details.boundary_counts.within_range' "$f" "0")" "0")
+        too_long=$(safe_numeric "$(safe_jq '.format_quality.srt.details.boundary_counts.too_long' "$f" "0")" "0")
         
         # Count segments from SRT
         srt_file="transcripts-srt/$(basename "$f" .json).srt"
@@ -215,11 +253,11 @@ for ts_type in "${!best_score_by_type[@]}"; do
     best_score="${best_score_by_type[$ts_type]}"
     
     # Extract additional metrics from best file
-    max_dur=$(jq -r '.format_quality.srt.details.duration_stats.max_seconds' "$best_file" 2>/dev/null | cut -c1-4)
-    avg_dur=$(jq -r '.format_quality.srt.details.duration_stats.average_seconds' "$best_file" 2>/dev/null | cut -c1-4)
-    too_short=$(jq -r '.format_quality.srt.details.boundary_counts.too_short' "$best_file" 2>/dev/null)
-    within=$(jq -r '.format_quality.srt.details.boundary_counts.within_range' "$best_file" 2>/dev/null)
-    too_long=$(jq -r '.format_quality.srt.details.boundary_counts.too_long' "$best_file" 2>/dev/null)
+    max_dur=$(safe_jq '.format_quality.srt.details.duration_stats.max_seconds' "$best_file" "N/A")
+    avg_dur=$(safe_jq '.format_quality.srt.details.duration_stats.average_seconds' "$best_file" "N/A")
+    too_short=$(safe_numeric "$(safe_jq '.format_quality.srt.details.boundary_counts.too_short' "$best_file" "0")" "0")
+    within=$(safe_numeric "$(safe_jq '.format_quality.srt.details.boundary_counts.within_range' "$best_file" "0")" "0")
+    too_long=$(safe_numeric "$(safe_jq '.format_quality.srt.details.boundary_counts.too_long' "$best_file" "0")" "0")
     segments=$((too_short + within + too_long))
     srt_file="transcripts-srt/$(basename "$best_file" .json).srt"
     
