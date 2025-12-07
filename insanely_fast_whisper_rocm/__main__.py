@@ -59,7 +59,7 @@ def load_logging_config(debug: bool = False) -> dict:
     module_path = Path(__file__)
     candidate_paths = [
         module_path.parent / "logging_config.yaml",
-        module_path / "logging_config.yaml",
+        module_path.parent / "logging_config.yaml",
     ]
 
     config: dict
