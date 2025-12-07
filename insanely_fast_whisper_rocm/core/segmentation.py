@@ -643,7 +643,6 @@ def _reapply_character_limits(segments: list[Segment]) -> list[Segment]:
             max(len(line) for line in wrapped_lines) if wrapped_lines else 0
         )
 
-        block_within_limit = len(seg_text) <= constants.MAX_BLOCK_CHARS
         lines_within_limit = (
             len(wrapped_lines) <= 2 and max_line_length <= constants.MAX_LINE_CHARS
         )
@@ -651,7 +650,7 @@ def _reapply_character_limits(segments: list[Segment]) -> list[Segment]:
         # Prefer per-line wrapping over block length: if wrapped into two lines
         # within per-line cap, keep the segment intact even if block length
         # exceeds MAX_BLOCK_CHARS.
-        if lines_within_limit or (block_within_limit and lines_within_limit):
+        if lines_within_limit:
             result.append(seg)
             continue
 
