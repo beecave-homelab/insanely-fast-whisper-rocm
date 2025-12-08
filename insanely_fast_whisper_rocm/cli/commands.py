@@ -682,8 +682,8 @@ def _handle_output_and_benchmarks(
             gpu_stats=benchmark_gpu_stats,
             format_quality=format_quality_by_format or None,
         )
-        if not quiet:
-            click.secho(f"📈 Benchmark saved to: {benchmark_path}", fg="green")
+        # Always print benchmark path, even in quiet mode
+        click.secho(f"📈 Benchmark saved to: {benchmark_path}", fg="green")
 
     # ------------------------------------------------------------------ #
     # Cleanup                                                            #

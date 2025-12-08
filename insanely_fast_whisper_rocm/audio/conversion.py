@@ -61,7 +61,7 @@ def ensure_wav(
         try:  # pragma: no cover - optional dependency
             from pydub import AudioSegment  # type: ignore[import]
         except ModuleNotFoundError as exc:  # pragma: no cover - handled gracefully
-            logger.error(
+            logger.exception(
                 "FFmpeg is not installed and optional dependency 'pydub' is "
                 "missing; cannot convert %s to WAV.",
                 original_path,
@@ -81,8 +81,7 @@ def ensure_wav(
                 "Failed to convert %s to WAV using pydub fallback.", original_path
             )
             raise RuntimeError(
-                f"Failed to convert {original_path} to WAV using pydub fallback: "
-                f"{exc}"
+                f"Failed to convert {original_path} to WAV using pydub fallback: {exc}"
             ) from exc
 
         if not output_path.exists():
