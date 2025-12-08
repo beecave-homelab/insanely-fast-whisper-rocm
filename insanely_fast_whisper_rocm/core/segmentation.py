@@ -803,8 +803,18 @@ def _merge_short_segments(segments: list[Segment]) -> list[Segment]:
     if not segments:
         return []
 
-    merged_segments = []
-    current_segment = segments[0]
+    merged_segments: list[Segment] = []
+
+    # Work on copies of the original segments so callers' data is never mutated.
+    def _clone_segment(seg: Segment) -> Segment:
+        return Segment(
+            text=seg.text,
+            start=seg.start,
+            end=seg.end,
+            words=list(seg.words),
+        )
+
+    current_segment = _clone_segment(segments[0])
 
     for next_segment in segments[1:]:
         duration = current_segment.end - current_segment.start
@@ -823,17 +833,21 @@ def _merge_short_segments(segments: list[Segment]) -> list[Segment]:
             # Check if merging would exceed MAX_SEGMENT_DURATION_SEC
             merged_duration = next_segment.end - current_segment.start
             if merged_duration <= constants.MAX_SEGMENT_DURATION_SEC:
-                # Safe to merge
-                current_segment.text += " " + next_segment.text
-                current_segment.end = next_segment.end
-                current_segment.words.extend(next_segment.words)
+                # Safe to merge: construct a new Segment instance combining both.
+                combined_words = list(current_segment.words) + list(next_segment.words)
+                current_segment = Segment(
+                    text=f"{current_segment.text} {next_segment.text}",
+                    start=current_segment.start,
+                    end=next_segment.end,
+                    words=combined_words,
+                )
             else:
                 # Merging would exceed duration limit, finalize current and move on
                 merged_segments.append(current_segment)
-                current_segment = next_segment
+                current_segment = _clone_segment(next_segment)
         else:
             merged_segments.append(current_segment)
-            current_segment = next_segment
+            current_segment = _clone_segment(next_segment)
 
     merged_segments.append(current_segment)
     return merged_segments
