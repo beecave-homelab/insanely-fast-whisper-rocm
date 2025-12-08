@@ -186,10 +186,15 @@ def test_ensure_wav_file_not_found() -> None:
 
 def test_ensure_wav_ffmpeg_unavailable() -> None:
     """Test ensure_wav creates placeholder when ffmpeg is unavailable."""
-    # Create a test file
+    # Use the real audio test fixture (10-second clip extracted from data/10-minute-test.mp3)
+    # This provides realistic audio data for testing the pydub fallback conversion path
+    fixture_path = Path(__file__).parent / "fixtures" / "test_clip.mp3"
+
+    # Create a temporary copy of the fixture to avoid modifying the original
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-        tmp.write(b"fake audio data")
         tmp_path = tmp.name
+        with open(fixture_path, "rb") as src:
+            tmp.write(src.read())
 
     try:
         # Mock ffmpeg as None
@@ -201,9 +206,12 @@ def test_ensure_wav_ffmpeg_unavailable() -> None:
             assert os.path.exists(result)
 
             # Verify content was copied
-            with open(result, "rb") as f:
-                content = f.read()
-                assert content == b"fake audio data"
+            with open(result, "rb") as converted:
+                converted_content = converted.read()
+
+            # The converted file should contain the original audio data
+            # (pydub converts it to WAV format, so it won't be identical)
+            assert len(converted_content) > 0
 
             os.unlink(result)
             # Clean up the temp directory

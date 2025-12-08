@@ -36,14 +36,10 @@ class TestLoadLoggingConfig:
             config_path = Path(f.name)
 
         try:
-            # Mock the path resolution
-            with patch("insanely_fast_whisper_rocm.__main__.Path") as mock_path_class:
-                mock_path_instance = mock_path_class.return_value
-                mock_path_instance.parent = (
-                    Path(__file__).parent.parent / "insanely_fast_whisper_rocm"
-                )
-                mock_path_instance.__truediv__ = lambda self, x: config_path
-
+            # Mock the open function to return our config file
+            with patch(
+                "builtins.open", return_value=open(config_path, encoding="utf-8")
+            ):
                 with patch(
                     "insanely_fast_whisper_rocm.__main__.yaml.safe_load",
                     return_value=mock_config,
@@ -86,14 +82,10 @@ class TestLoadLoggingConfig:
             config_path = Path(f.name)
 
         try:
-            # Mock the path resolution
-            with patch("insanely_fast_whisper_rocm.__main__.Path") as mock_path_class:
-                mock_path_instance = mock_path_class.return_value
-                mock_path_instance.parent = (
-                    Path(__file__).parent.parent / "insanely_fast_whisper_rocm"
-                )
-                mock_path_instance.__truediv__ = lambda self, x: config_path
-
+            # Mock the open function to return our config file
+            with patch(
+                "builtins.open", return_value=open(config_path, encoding="utf-8")
+            ):
                 with patch(
                     "insanely_fast_whisper_rocm.__main__.yaml.safe_load",
                     return_value=mock_config,
