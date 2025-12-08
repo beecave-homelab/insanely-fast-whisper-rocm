@@ -1,5 +1,7 @@
 """Tests for load_logging_config function in insanely_fast_whisper_rocm.__main__."""
 
+from __future__ import annotations
+
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -108,14 +110,10 @@ class TestLoadLoggingConfig:
 
     def test_load_logging_config_file_not_found(self) -> None:
         """Test load_logging_config when config file doesn't exist."""
-        with patch("insanely_fast_whisper_rocm.__main__.Path") as mock_path_class:
-            mock_path_instance = mock_path_class.return_value
-            mock_path_instance.parent = (
-                Path(__file__).parent.parent / "insanely_fast_whisper_rocm"
-            )
-            mock_path_instance.__truediv__ = lambda self, x: Path("nonexistent.yaml")
-
+        with patch(
+            "insanely_fast_whisper_rocm.__main__.open",
+            side_effect=FileNotFoundError("Config file not found"),
+        ):
             with patch("insanely_fast_whisper_rocm.__main__.setup_timezone"):
-                # Execute & Verify
                 with pytest.raises(FileNotFoundError):
                     load_logging_config(debug=False)
