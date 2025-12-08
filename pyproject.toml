@@ -62,7 +62,7 @@ lint = "ruff check ."
 format = "ruff format ."
 fix = "ruff check --fix ."
 test = "pytest -q"
-test-cov = "pytest --cov=insanely_fast_whisper_rocm --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=term-missing:skip-covered --cov-report=xml"
+test-cov = "pytest --cov=insanely_fast_whisper_rocm --cov-report=term-missing:skip-covered --cov-report=xml"
 
 local-ci = "scripts/local-ci.sh"
 
