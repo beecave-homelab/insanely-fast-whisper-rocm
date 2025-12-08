@@ -1,3 +1,10 @@
+---
+repo: https://github.com/beecave-homelab/insanely-fast-whisper-rocm
+commit: e29f56677ee4ebf5857b415c70ff8ebdb298fbc9
+updated: 2025-12-08T22:20:00+01:00
+---
+<!-- SECTIONS:API,CLI,WEBUI,CI,DOCKER,TESTS -->
+
 # Project Overview | Insanely Fast Whisper API (ROCm)
 
 A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.4.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture.
@@ -6,7 +13,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 > This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v2.0.0-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v2.0.1-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -79,14 +86,15 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v2.0.0** *(05-12-2025)*
+### 🏷️ **Current Version: v2.0.1** *(08-12-2025)*
 
-**Latest improvements**: Introduced modular package layout, renamed the distribution and Python package to `insanely-fast-whisper-rocm` / `insanely_fast_whisper_rocm`, and added model caching, readable subtitles, and a comprehensive test suite.
+**Latest improvements**: Bug fixes from PR #27 review—audio conversion fallback, segment mutation fix, SRT regex counting, task parameter handling, and improved error handling across CLI/API.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
 |---------|------|------|--------------|
+| **v2.0.1** | 08-12-2025 | 🐛 Patch | PR #27 fixes: audio conversion fallback, segment mutation, SRT counting, task params |
 | **v2.0.0** | 05-12-2025 | 🔄 Major | Modular package refactor, package/CLI rename, model caching & readable subtitles |
 | **v1.0.2** | 05-12-2025 | 🐛 Patch | API routes param fix, dead code removal, TDD tests |
 | **v1.0.1** | 04-12-2025 | 🐛 Patch | WebUI ZIP summary fix, benchmarking refinements, local CI + workflow tooling |
@@ -818,10 +826,10 @@ Centralized configuration for all segmentation parameters.
 | `MAX_LINES_PER_BLOCK` | `2` | Maximum lines per subtitle block |
 | `MAX_BLOCK_CHARS` | `84` | Hard limit for total block characters |
 | `MAX_BLOCK_CHARS_SOFT` | `90` | Soft limit allowing flexibility |
-| `MIN_CPS` | `12.0` | Minimum characters per second (reading speed) |
-| `MAX_CPS` | `17.0` | Maximum characters per second (reading speed) |
-| `MIN_SEGMENT_DURATION_SEC` | `1.2` | Minimum segment display time |
-| `MAX_SEGMENT_DURATION_SEC` | `5.5` | Maximum segment display time |
+| `MIN_CPS` | `8.0` | Minimum characters per second (reading speed) |
+| `MAX_CPS` | `22.0` | Maximum characters per second (reading speed) |
+| `MIN_SEGMENT_DURATION_SEC` | `0.9` | Minimum segment display time |
+| `MAX_SEGMENT_DURATION_SEC` | `4.0` | Maximum segment display time |
 | `MIN_WORD_DURATION_SEC` | `0.04` | Minimum word duration for sanitization |
 | `SOFT_BOUNDARY_WORDS` | `and,but,or,so,for,nor,yet` | Preferred line break locations |
 
@@ -831,11 +839,11 @@ All constants can be overridden via `.env` files or environment variables:
 
 ```bash
 # Example: Adjust CPS limits for faster-paced content
-MAX_CPS=20.0
-MIN_CPS=15.0
+MAX_CPS=25.0
+MIN_CPS=12.0
 
 # Example: Longer segments for documentary-style content
-MAX_SEGMENT_DURATION_SEC=7.0
+MAX_SEGMENT_DURATION_SEC=6.0
 
 # Example: Disable readable subtitles pipeline
 USE_READABLE_SUBTITLES=false
@@ -977,16 +985,16 @@ with patch("insanely_fast_whisper_rocm.utils.constants.MAX_LINE_CHARS", 50):
 
 #### Modifying CPS (Reading Speed)
 
-Industry standards: 12-17 CPS for adults, 8-12 CPS for children.
+Industry standards: 12-17 CPS for adults, 8-12 CPS for children. Default: 8.0-22.0 CPS.
 
 ```bash
 # For faster-paced technical content
-MIN_CPS=15.0
-MAX_CPS=20.0
+MIN_CPS=12.0
+MAX_CPS=25.0
 
 # For accessibility/slower reading
-MIN_CPS=8.0
-MAX_CPS=12.0
+MIN_CPS=6.0
+MAX_CPS=14.0
 ```
 
 #### Extending Split Logic
@@ -1553,6 +1561,30 @@ from insanely_fast_whisper_rocm.utils.constants import WHISPER_MODEL
 ### ✅ Native SDPA Acceleration (v0.7.0)
 
 - Integrated `attn_implementation="sdpa"` for faster attention, replacing the need for BetterTransformer.
+
+### ✅ Audio Conversion Fallback (v2.0.1)
+
+- **Issue**: `ensure_wav()` failed on systems without FFmpeg installed
+- **Fix**: Added fallback to pure-Python conversion via `pydub` when `ffmpeg-python` is unavailable
+- **Result**: More robust audio conversion across different environments
+
+### ✅ Segment Mutation Fix (v2.0.1)
+
+- **Issue**: `merge_short_segments()` mutated input segment list, causing side effects
+- **Fix**: Now works on a copy of the segments list
+- **Result**: Predictable behavior without unintended side effects
+
+### ✅ SRT Regex Counting (v2.0.1)
+
+- **Issue**: Segment count was incorrect for certain SRT formats
+- **Fix**: Updated regex pattern to handle all valid SRT index formats
+- **Result**: Accurate segment counting in benchmark quality metrics
+
+### ✅ Task Parameter Handling (v2.0.1)
+
+- **Issue**: Incorrect parameter passing in transcribe/translate task functions
+- **Fix**: Updated functions to use object for kwargs consistently
+- **Result**: Reliable task execution across CLI and API
 
 ---
 

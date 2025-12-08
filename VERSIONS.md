@@ -4,13 +4,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v2.0.0-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v2.0.1-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v2.0.0` (Current) - *05-12-2025*](#v200-current---05-12-2025)
+- [`v2.0.1` (Current) - *08-12-2025*](#v201-current---08-12-2025)
+- [`v2.0.0` - *05-12-2025*](#v200---05-12-2025)
 - [`v1.0.2` - *05-12-2025*](#v102---05-12-2025)
 - [`v1.0.1` - *04-12-2025*](#v101---04-12-2025)
 - [`v1.0.0` - *18-09-2025*](#v100---18-09-2025)
@@ -46,7 +47,72 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v2.0.0` (Current) - *05-12-2025*
+### `v2.0.1` (Current) - *08-12-2025*
+
+#### 🐛 Patch Release: PR #27 Bug Fixes
+
+This release addresses multiple bug fixes identified during PR #27 code review, improving audio conversion reliability, segment handling, and error handling across CLI and API.
+
+#### 🐛 **Bug Fixes in v2.0.1**
+
+- **Fixed**: Audio conversion now uses fallback to pure-Python (pydub) when FFmpeg is unavailable.
+  - **Issue**: `ensure_wav()` failed on systems without FFmpeg installed.
+  - **Root Cause**: No fallback path when `ffmpeg-python` subprocess failed.
+  - **Solution**: Added try/except with pydub-based conversion as fallback.
+
+- **Fixed**: `merge_short_segments()` no longer mutates the input segment list.
+  - **Issue**: Original segments were modified in place, causing side effects.
+  - **Root Cause**: Direct mutation of input list during merge operations.
+  - **Solution**: Work on a copy of the segments list.
+
+- **Fixed**: SRT segment counting now uses extended regex for accurate numbering.
+  - **Issue**: Segment count was incorrect for certain SRT formats.
+  - **Root Cause**: Regex pattern did not account for all valid SRT index formats.
+  - **Solution**: Updated regex pattern in `db10b44`.
+
+- **Fixed**: Task function parameters and error handling improvements.
+  - **Issue**: Incorrect parameter passing in transcribe/translate task functions.
+  - **Root Cause**: Kwargs object handling was inconsistent.
+  - **Solution**: Updated functions to use object for kwargs (`7796883`, `e730f45`).
+
+- **Fixed**: Natural split points refactored in segmentation module.
+  - **Issue**: Segmentation logic had edge cases causing poor splits.
+  - **Solution**: Refactored split point detection in `9134d1b`.
+
+- **Fixed**: Character limit check simplified in segmentation.
+  - **Issue**: Overly complex character limit validation.
+  - **Solution**: Simplified logic in `3ad4e8e`.
+
+- **Fixed**: Pipeline failure no longer signals completion incorrectly.
+  - **Issue**: Completion was signaled even when pipeline failed.
+  - **Solution**: Fixed in `79a021e`.
+
+- **Fixed**: API startup model download and error handling hardened.
+  - **Issue**: Model download failures could leave API in bad state.
+  - **Solution**: Improved error handling in `9c4b380`.
+
+- **Fixed**: Logging config search path corrected.
+  - **Issue**: Logging configuration file was not found in expected location.
+  - **Solution**: Fixed path resolution in `e87b8b5`.
+
+- **Fixed**: Benchmark comparison hardened against bad JSON data.
+  - **Issue**: Malformed JSON in benchmark files caused crashes.
+  - **Solution**: Added validation in `9b0cf21`.
+
+#### 📦 **Maintenance in v2.0.1**
+
+- **Updated**: `urllib3` to 2.6.1 and `pydub` to >=0.25.1.
+- **Updated**: CodeRabbit configuration to v2 schema.
+- **Added**: Test clip and updated audio conversion tests.
+- **Style**: Tidied audio exports and enabled future annotations.
+
+#### 📝 **Key Commits in v2.0.1**
+
+`e29f566`, `f3170a2`, `f645736`, `961cfd0`, `2253f47`
+
+---
+
+### `v2.0.0` - *05-12-2025*
 
 #### 🔄 Major Release: Modular Refactor & ROCm Package Rename
 
