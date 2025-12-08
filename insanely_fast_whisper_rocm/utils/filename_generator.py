@@ -57,13 +57,18 @@ class FilenameGenerationStrategy(ABC):
 
 class StandardFilenameStrategy(FilenameGenerationStrategy):
     """Standard strategy for generating filenames.
+
     Pattern: {audio_stem}_{task}_{timestamp}.{extension}
     Timestamp format: YYYYMMDDTHHMMSSZ (ISO 8601 like)
     """
 
     def generate_filename(self, components: FilenameComponents) -> str:
-        """Generates a filename using the standard unified pattern.
-        Example: my_audio_transcribe_20241201T143022Z.json
+        """Generate a filename using the standard unified pattern.
+
+        Example: my_audio_transcribe_20241201T143022Z.json.
+
+        Returns:
+            str: The generated filename.
         """
         # Ensure UTC timestamp if not already, matching 'Z' suffix.
         # The calling code in FilenameGenerator ensures UTC for .now()
@@ -80,12 +85,22 @@ class StandardFilenameStrategy(FilenameGenerationStrategy):
 
 class FilenameGenerator:
     """Context class that uses a FilenameGenerationStrategy to create filenames.
+
     Uses centralized timezone configuration from constants.py (APP_TIMEZONE
     environment variable, defaults to UTC) for generating timestamps
     or interpreting naive provided timestamps.
     """
 
-    def __init__(self, strategy: FilenameGenerationStrategy):
+    def __init__(self, strategy: FilenameGenerationStrategy) -> None:
+        """Initialize a filename generator with a concrete strategy.
+
+        Args:
+            strategy: Strategy instance used to format the filename.
+
+        Raises:
+            TypeError: If ``strategy`` is not an instance of
+                ``FilenameGenerationStrategy``.
+        """
         if not isinstance(strategy, FilenameGenerationStrategy):
             raise TypeError(
                 "strategy must be an instance of FilenameGenerationStrategy"
@@ -99,20 +114,24 @@ class FilenameGenerator:
         extension: str,
         timestamp: datetime.datetime | None = None,
     ) -> str:
-        """Generate a standardized output filename for an audio input, ASR task, and extension.
+        """Create a filename for a given audio path, task, and extension.
 
-        Uses APP_TIMEZONE to interpret and format timestamps; if APP_TIMEZONE is invalid the timestamp is interpreted in UTC. The produced filename follows the pattern: {audio_stem}_{task}_{YYYYMMDDTHHMMSSZ}.{extension}.
+        Uses centralized timezone configuration from constants.py
+        (TZ environment variable via APP_TIMEZONE, defaults to Europe/Amsterdam).
 
-        Parameters:
-            audio_path (str): Full path to the source audio file; the file stem is used in the filename.
-            task (TaskType): Task kind (e.g., TaskType.TRANSCRIBE or TaskType.TRANSLATE) included in the filename.
-            extension (str): Desired output file extension; leading dots are removed and the extension is lowercased.
-            timestamp (datetime.datetime | None): If None, the current time in the configured timezone is used.
-                If naive (no tzinfo), it is assumed to be in the configured timezone.
-                If timezone-aware, it is converted to the configured timezone.
+        Args:
+            audio_path: The full path to the original audio file.
+            task: The type of ASR task (e.g., transcribe, translate).
+            extension: The desired file extension for the output (e.g., "json", ".txt").
+            timestamp: Optional. The specific timestamp to use.
+                - If None, the current time in the configured timezone will be
+                  used.
+                - If naive (no tzinfo), it's assumed to be in the configured
+                  timezone.
+                - If aware, it will be converted to the configured timezone.
 
         Returns:
-            str: The generated filename string formatted as described above.
+            The generated filename string.
         """
         target_tz_str = APP_TIMEZONE
         try:

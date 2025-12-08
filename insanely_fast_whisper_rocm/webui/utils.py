@@ -24,20 +24,19 @@ logger = logging.getLogger("insanely_fast_whisper_rocm.webui.utils")
 def save_temp_file(
     content: str, extension: str = "txt", desired_filename: str | None = None
 ) -> str:
-    """Save content to a temporary file using the given extension and optional filename.
+    """Save content to a temporary file and return the file path.
 
-    If `desired_filename` is provided it will be placed in the system temporary directory and its extension will be replaced with `extension` if different; otherwise a randomly named temp file is created with the given extension.
-
-    Parameters:
-        content (str): Text content to write to the file.
-        extension (str): File extension without leading dot (e.g., "txt", "srt", "json").
-        desired_filename (str | None): Optional filename to use inside the temp directory.
+    Args:
+        content: The content to save.
+        extension: The file extension (e.g., 'txt', 'srt', 'json').
+        desired_filename: Optional. If provided, use this as the filename within
+            a temp directory.
 
     Returns:
-        str: Full path to the created temporary file.
+        The full path to the temporary file.
 
     Raises:
-        OSError: If writing the file fails due to an OS-level error.
+        OSError: If the file cannot be created or written.
     """
     try:
         if desired_filename:
@@ -66,7 +65,11 @@ def save_temp_file(
 
 
 def convert_device_string(device_id: str) -> str:
-    """Wrapper for core.utils.convert_device_string for webui internal use."""
+    """Wrapper for core.utils.convert_device_string for webui internal use.
+
+    Returns:
+        str: The normalized device string.
+    """
     return core_convert_device_string(device_id)
 
 

@@ -1,21 +1,28 @@
 """ASR pipeline definition, including base classes and concrete implementations."""
 
+from __future__ import annotations
+
+import gc
 import logging
 import time
 import uuid
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar, cast
 
-from insanely_fast_whisper_rocm.audio.processing import split_audio
-from insanely_fast_whisper_rocm.audio.results import merge_chunk_results
+import torch
+
+from insanely_fast_whisper_rocm.audio import conversion as audio_conversion
+from insanely_fast_whisper_rocm.audio import processing as audio_processing
+from insanely_fast_whisper_rocm.audio import results as audio_results
 from insanely_fast_whisper_rocm.core.asr_backend import ASRBackend
+from insanely_fast_whisper_rocm.core.cancellation import CancellationToken
 from insanely_fast_whisper_rocm.core.errors import TranscriptionError
+from insanely_fast_whisper_rocm.core.progress import NoOpProgress, ProgressCallback
 from insanely_fast_whisper_rocm.core.storage import BaseStorage, StorageFactory
-from insanely_fast_whisper_rocm.utils.file_utils import cleanup_temp_files
+from insanely_fast_whisper_rocm.utils import constants, file_utils
 from insanely_fast_whisper_rocm.utils.filename_generator import (
     FilenameGenerator,
     StandardFilenameStrategy,
@@ -24,6 +31,7 @@ from insanely_fast_whisper_rocm.utils.filename_generator import (
 
 logger = logging.getLogger(__name__)
 
+InputType = TypeVar("InputType")
 
 # ---------------------------------------------------------------------------
 # Lightweight configuration/result dataclasses for test compatibility
@@ -63,9 +71,6 @@ class ProgressEvent:
     result: dict[str, Any] | None = None  # For chunk_complete or pipeline_complete
 
 
-ProgressCallback = Callable[[ProgressEvent], None]
-
-
 class BasePipeline(ABC):
     """Base class for ASR pipelines using the Template Method pattern."""
 
@@ -75,7 +80,15 @@ class BasePipeline(ABC):
         storage_backend: BaseStorage | None = None,
         save_transcriptions: bool = True,
         output_dir: str = "transcripts",
-    ):
+    ) -> None:
+        """Initializes the BasePipeline.
+
+        Args:
+            asr_backend: The ASR backend to use for transcription.
+            storage_backend: The storage backend for saving results.
+            save_transcriptions: Whether to save transcriptions to disk.
+            output_dir: The directory to save transcriptions in.
+        """
         self.asr_backend = asr_backend
         self.storage_backend = (
             storage_backend if storage_backend else StorageFactory.create()
@@ -93,6 +106,13 @@ class BasePipeline(ABC):
         """Registers an observer for progress events."""
         self._listeners.append(callback)
 
+    def remove_listener(self, callback: ProgressCallback) -> None:
+        """Remove a previously registered progress listener if present."""
+        try:
+            self._listeners.remove(callback)
+        except ValueError:
+            pass
+
     def _notify_listeners(self, event: ProgressEvent) -> None:
         """Notifies all registered listeners about an event."""
         for listener in self._listeners:
@@ -108,12 +128,22 @@ class BasePipeline(ABC):
         task: Literal["transcribe", "translate"],
         timestamp_type: Literal["chunk", "word"],
         original_filename: str | None = None,
+        progress_callback: ProgressCallback | None = None,
+        cancellation_token: CancellationToken | None = None,
         # Other common parameters for all pipelines
     ) -> dict[str, Any]:
-        """Template method defining the overall ASR algorithm skeleton."""
+        """Template method defining the overall ASR algorithm skeleton.
+
+        Returns:
+            A dictionary containing the final transcription result.
+
+        Raises:
+            TranscriptionError: If the pipeline fails at any stage.
+        """
         start_time = time.perf_counter()
         self.pipeline_id = str(uuid.uuid4())  # New ID for each run
-        absolute_audio_path = Path(audio_file_path).resolve()
+        input_path = Path(audio_file_path)
+        absolute_audio_path = input_path.resolve()
 
         self._notify_listeners(
             ProgressEvent(
@@ -124,17 +154,33 @@ class BasePipeline(ABC):
             )
         )
 
+        progress_cb = progress_callback or NoOpProgress()
+        token = cancellation_token
+
         try:
-            prepared_data = self._prepare_input(absolute_audio_path)
+            if token is not None:
+                token.raise_if_cancelled()
+            prepared_data = self._prepare_input(input_path)
+            if token is not None:
+                token.raise_if_cancelled()
             processed_result = self._execute_asr(
-                prepared_data, language, task, timestamp_type
+                prepared_data,
+                language,
+                task,
+                timestamp_type,
+                progress_cb,
+                token,
             )
+            if token is not None:
+                token.raise_if_cancelled()
             final_result = self._postprocess_output(
                 processed_result, absolute_audio_path, task, original_filename
             )
 
             saved_file_path = None
             if self.save_transcriptions:
+                if token is not None:
+                    token.raise_if_cancelled()
                 saved_file_path = self._save_result(
                     final_result, absolute_audio_path, task, original_filename
                 )
@@ -157,6 +203,7 @@ class BasePipeline(ABC):
                     result=final_result,
                 )
             )
+            progress_cb.on_completed()
             return final_result
         except Exception as e:
             logger.error(
@@ -165,6 +212,11 @@ class BasePipeline(ABC):
                 e,
                 exc_info=True,
             )
+            try:
+                progress_cb.on_error(str(e))
+            except Exception:  # pragma: no cover - defensive
+                pass
+
             self._notify_listeners(
                 ProgressEvent(
                     event_type="pipeline_error",
@@ -191,16 +243,28 @@ class BasePipeline(ABC):
             raise
 
     @abstractmethod
-    def _prepare_input(self, audio_file_path: Path) -> Any:
-        """Prepare audio input (e.g., load, chunk). Returns data for _execute_asr."""
+    def _prepare_input(self, audio_file_path: Path) -> InputType:
+        """Prepare audio input (e.g., load, chunk).
+
+        Args:
+            audio_file_path: Path to the input audio file.
+
+        Returns:
+            Prepared input used by `_execute_asr`.
+
+        Raises:
+            FileNotFoundError: If the audio file does not exist.
+        """
 
     @abstractmethod
     def _execute_asr(
         self,
-        prepared_data: Any,
+        prepared_data: InputType,
         language: str | None,
         task: str,
         timestamp_type: str,
+        progress_callback: ProgressCallback,
+        cancellation_token: CancellationToken | None,
     ) -> dict[str, Any]:
         """Execute the core ASR task using the backend. Returns raw ASR output."""
 
@@ -212,18 +276,10 @@ class BasePipeline(ABC):
         task: str,
         original_filename: str | None = None,
     ) -> dict[str, Any]:
-        """Attach metadata to ASR output and return the enriched result.
-
-        Adds `original_file` (the provided original_filename or the audio file's absolute path), `task_type` (the provided task), and `processed_at` (current UTC timestamp in ISO 8601 format) to a copy of the given ASR output and returns the resulting dictionary.
-
-        Parameters:
-            asr_output (dict[str, Any]): Raw ASR output to enrich.
-            audio_file_path (Path): Path to the source audio file; used when `original_filename` is not provided.
-            task (str): Task name to record in the result (e.g., "transcribe" or "translate").
-            original_filename (str | None): Optional original filename to record instead of the audio path.
+        """Post-process ASR output (for example, format and add metadata).
 
         Returns:
-            dict[str, Any]: The ASR output augmented with `original_file`, `task_type`, and `processed_at`.
+            The final result dictionary.
         """
 
     def _save_result(
@@ -233,7 +289,11 @@ class BasePipeline(ABC):
         task: str,
         original_filename: str | None = None,
     ) -> str | None:
-        """Saves the transcription result using the storage backend."""
+        """Saves the transcription result using the storage backend.
+
+        Returns:
+            The path to the saved file, or None if saving failed.
+        """
         if not self.storage_backend:
             logger.warning("No storage backend configured, skipping save.")
             return None
@@ -301,17 +361,24 @@ class BasePipeline(ABC):
 class WhisperPipeline(BasePipeline):
     """Whisper-specific pipeline implementation."""
 
-    def _prepare_input(self, audio_file_path: Path) -> Any:
-        """For basic Whisper, input is just the file path.
-        Chunking would happen here or in _execute_asr.
+    def _prepare_input(self, audio_file_path: Path) -> str:
+        """Prepare input for the Whisper pipeline.
+
+        For basic Whisper, the input is just the file path. In production we
+        validate the path exists. During tests (or when explicitly enabled via
+        IFW_SKIP_FS_CHECKS) we bypass the filesystem check to allow monkeypatched
+        I/O helpers to operate without touching disk.
+
+        Returns:
+            The audio file path as a string.
+
+        Raises:
+            FileNotFoundError: When the file does not exist and FS checks are not
+            skipped.
         """
-        # This could be extended for chunking logic if not handled by the
-        # backend strategy
         logger.info("Preparing input: %s", audio_file_path)
-        if not audio_file_path.exists():
+        if not audio_file_path.exists() and not constants.SKIP_FS_CHECKS:
             raise FileNotFoundError(f"Audio file not found: {audio_file_path}")
-        # For now, prepared_data is just the path. If pipeline-level chunking
-        # is implemented, this would return a list of chunk file paths or similar.
         return str(audio_file_path)
 
     def _execute_asr(
@@ -320,16 +387,33 @@ class WhisperPipeline(BasePipeline):
         language: str | None,
         task: str,
         timestamp_type: str,
+        progress_callback: ProgressCallback,
+        cancellation_token: CancellationToken | None,
     ) -> dict[str, Any]:
-        """Executes ASR for a single audio file (or a single chunk
-        if chunking is done by this method).
+        """Execute ASR for a single audio file, handling chunking internally.
+
+        Returns:
+            The raw ASR output dictionary.
+
+        Raises:
+            TranscriptionError: If the backend fails to process the audio.
         """
+        token = cancellation_token
+
+        if token is not None:
+            token.raise_if_cancelled()
+
         logger.info(
             "Executing ASR for: %s, task: %s, lang: %s, timestamps: %s",
             prepared_data,
             task,
             language,
             timestamp_type,
+        )
+        logger.debug(
+            "_execute_asr params: backend=%s, chunk_length=%d",
+            type(self.asr_backend).__name__,
+            self.asr_backend.config.chunk_length,
         )
         # Determine return_timestamps_value for the backend based on timestamp_type
         if timestamp_type == "word":
@@ -341,19 +425,56 @@ class WhisperPipeline(BasePipeline):
         else:  # Default or unknown
             return_timestamps_value = False
 
+        progress_callback.on_audio_loading_started(prepared_data)
+        if token is not None:
+            token.raise_if_cancelled()
+        converted_path = audio_conversion.ensure_wav(prepared_data)
+        progress_callback.on_audio_loading_finished(duration_sec=None)
+
+        if token is not None:
+            token.raise_if_cancelled()
+
         # Split the audio into chunks so we can provide deterministic progress
-        # updates to observers (e.g. Gradio's progress bar).  ``split_audio``
+        # updates to observers (e.g. Gradio's progress bar). ``split_audio``
         # returns a list with the original path if chunking is unnecessary.
-        chunk_paths = split_audio(
-            prepared_data,
+        chunk_data = audio_processing.split_audio(
+            converted_path,
             chunk_duration=float(self.asr_backend.config.chunk_length),
             chunk_overlap=0.0,
         )
-        total_chunks = len(chunk_paths)
-        chunk_results: list[dict[str, Any]] = []
+        total_chunks = len(chunk_data)
+        logger.debug(
+            "Audio split into %d chunks (chunk_duration=%.1fs)",
+            total_chunks,
+            self.asr_backend.config.chunk_length,
+        )
+        # Store tuples of (result, start_time) for the merge step
+        chunk_results: list[tuple[dict[str, Any], float]] = []
+
+        if total_chunks == 0:
+            raise TranscriptionError("No audio chunks produced for transcription.")
+
+        progress_callback.on_chunking_started(total_chunks)
+        progress_callback.on_inference_started(total_chunks)
+
+        # Suppress premature completion events from the backend while we
+        # orchestrate chunk-level progress here.
+        class _ProgressProxy:
+            def __init__(self, delegate: ProgressCallback) -> None:
+                self._delegate = delegate
+
+            def __getattr__(self, item: str) -> object:
+                return cast(object, getattr(self._delegate, item))
+
+            def on_completed(self) -> None:
+                return
+
+        progress_proxy = _ProgressProxy(progress_callback)
 
         try:
-            for idx, chunk_path in enumerate(chunk_paths, start=1):
+            for idx, (chunk_path, chunk_start_time) in enumerate(chunk_data, start=1):
+                if token is not None:
+                    token.raise_if_cancelled()
                 self._notify_listeners(
                     ProgressEvent(
                         event_type="chunk_start",
@@ -372,6 +493,21 @@ class WhisperPipeline(BasePipeline):
                     language=language,
                     task=task,
                     return_timestamps_value=return_timestamps_value,
+                    progress_cb=progress_proxy,
+                    cancellation_token=token,
+                )
+                if token is not None:
+                    token.raise_if_cancelled()
+                logger.debug(
+                    "Chunk %d/%d processed: text_len=%d, segments=%d",
+                    idx,
+                    total_chunks,
+                    len(asr_raw_result.get("text", "")),
+                    len(
+                        asr_raw_result.get("segments")
+                        or asr_raw_result.get("chunks")
+                        or []
+                    ),
                 )
 
                 self._notify_listeners(
@@ -387,16 +523,64 @@ class WhisperPipeline(BasePipeline):
                         ),
                     )
                 )
-                chunk_results.append(asr_raw_result)
+                chunk_results.append((asr_raw_result, chunk_start_time))
+
+                # CRITICAL FIX: Free GPU memory after each chunk to prevent accumulation
+                # that causes memory access faults on long audio files (>20 minutes).
+                # See: to-do/fix-backend-cache-resource-cleanup.md
+                try:
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    if hasattr(torch, "mps") and torch.backends.mps.is_available():
+                        torch.mps.empty_cache()  # type: ignore[attr-defined]
+                except Exception:  # pragma: no cover - defensive cleanup
+                    pass
+
+                # Force garbage collection to reclaim CPU memory from processed chunks
+                gc.collect()
+
+                completed_index = idx - 1
+                try:
+                    progress_callback.on_chunk_done(completed_index)
+                    progress_callback.on_inference_batch_done(completed_index)
+                except Exception:  # pragma: no cover - defensive
+                    pass
         finally:
-            # Only clean up generated chunk files; ``split_audio`` returns the
-            # original path untouched when no chunking was required.
+            cleanup_paths: list[str] = []
             if total_chunks > 1:
-                cleanup_temp_files(chunk_paths)
+                cleanup_paths.extend([cd[0] for cd in chunk_data])
+            if converted_path != prepared_data and converted_path not in cleanup_paths:
+                cleanup_paths.append(converted_path)
+            if cleanup_paths:
+                file_utils.cleanup_temp_files(cleanup_paths)
+
+        if token is not None:
+            token.raise_if_cancelled()
+
+        if not chunk_results:
+            # This case should ideally not be hit if split_audio always returns
+            # at least one item, but as a safeguard:
+            return {"text": "", "chunks": []}
 
         if total_chunks > 1:
-            return merge_chunk_results(chunk_results)
-        return chunk_results[0]
+            combined = audio_results.merge_chunk_results(chunk_results)
+            if token is not None:
+                token.raise_if_cancelled()
+            logger.debug(
+                "Merged %d chunks: combined_text_len=%d, combined_segments=%d",
+                total_chunks,
+                len(combined.get("text", "")),
+                len(combined.get("segments") or combined.get("chunks") or []),
+            )
+        else:
+            combined = chunk_results[0][0]
+            logger.debug("Single chunk result: no merging needed")
+
+        if token is not None:
+            token.raise_if_cancelled()
+
+        # Do not signal completion here; the outer process() handles it once.
+        return combined
 
     def _postprocess_output(
         self,
@@ -405,14 +589,25 @@ class WhisperPipeline(BasePipeline):
         task: str,
         original_filename: str | None = None,
     ) -> dict[str, Any]:
-        """Post-processes the raw ASR output for Whisper."""
+        """Post-processes the raw ASR output for Whisper.
+
+        Returns:
+            The post-processed result dictionary with added metadata.
+        """
         logger.info("Postprocessing ASR output for: %s", audio_file_path)
+        logger.debug(
+            "_postprocess_output input: text_len=%d, segments=%d, task=%s",
+            len(asr_output.get("text", "")),
+            len(asr_output.get("segments") or asr_output.get("chunks") or []),
+            task,
+        )
         # Example: Add original file name, task, and a processing timestamp
         processed_result = asr_output.copy()
-        # Use original_filename if provided, otherwise use the actual file path
-        processed_result["original_file"] = (
-            original_filename if original_filename else str(audio_file_path)
-        )
+        # Store both: user-facing name AND actual file path for post-processing
+        # - original_file: user-friendly display name
+        # - audio_file_path: actual filesystem path for stabilization/post-processing
+        processed_result["original_file"] = original_filename or str(audio_file_path)
+        processed_result["audio_file_path"] = str(audio_file_path.resolve())
         processed_result["task_type"] = task
         processed_result["processed_at"] = datetime.now(timezone.utc).isoformat()
         # Potentially refine chunk timestamps if needed, or add other metadata

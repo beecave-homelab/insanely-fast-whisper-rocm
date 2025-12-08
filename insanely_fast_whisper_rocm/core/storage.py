@@ -27,7 +27,17 @@ class JsonStorage(BaseStorage):  # pylint: disable=too-few-public-methods
     def save(
         self, data: dict[str, Any], destination_path: Path, task: str
     ) -> str | None:
-        """Saves the transcription data to a JSON file."""
+        """Saves the transcription data to a JSON file.
+
+        Args:
+            data: The transcription data to save.
+            destination_path: The path to save the data to.
+            task: The task being performed (e.g., "transcribe" or "translate").
+
+        Returns:
+            str | None: The path to the saved file, or None if an error occurred.
+
+        """
         # Ensure the directory exists
         destination_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -58,7 +68,18 @@ class StorageFactory:  # pylint: disable=too-few-public-methods
 
     @staticmethod
     def create(kind: str = "json") -> BaseStorage:
-        """Creates a storage backend based on the kind specified."""
+        """Creates a storage backend based on the kind specified.
+
+        Args:
+            kind: The kind of storage to create. Defaults to "json".
+
+        Returns:
+            BaseStorage: The created storage instance.
+
+        Raises:
+            ValueError: If the specified kind is not supported.
+
+        """
         if kind == "json":
             return JsonStorage()
         # Add other storage types here in the future

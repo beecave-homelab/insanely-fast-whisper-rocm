@@ -7,6 +7,7 @@ Mark them with ``pytest.mark.webui`` so they can be skipped in CI when desired.
 """
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 from gradio_client import Client, handle_file
@@ -33,8 +34,14 @@ pytestmark = [pytest.mark.webui]
 # ---------------------------------------------------------------------------
 
 
-def _predict(client: Client, audio_path: Path):
-    """Helper that calls predict on the /transcribe_audio_v2 endpoint."""
+def _predict(client: Client, audio_path: Path) -> list[Any]:
+    """Helper that calls predict on the /transcribe_audio_v2 endpoint.
+
+    Returns:
+        list[Any]: Response list where index 0 is the transcription string,
+        index 1 is a human-readable processing time, index 2 is the config
+        dictionary, followed by optional download URLs.
+    """
     return client.predict(
         handle_file(audio_path),  # audio_input (List[str]) via wrapper
         "openai/whisper-tiny",  # model
@@ -51,7 +58,7 @@ def _predict(client: Client, audio_path: Path):
     )
 
 
-def test_ui_root_accessible(webui_server):
+def test_ui_root_accessible(webui_server: str) -> None:
     """Ensure the root URL responds and Gradio app is present."""
     import requests
 
@@ -60,7 +67,7 @@ def test_ui_root_accessible(webui_server):
 
 
 @pytest.mark.skipif(not AUDIO_FILE.exists(), reason="Sample mp3 missing")
-def test_short_audio_transcription(webui_server):
+def test_short_audio_transcription(webui_server: str) -> None:
     """Transcribe a short audio file and verify core response fields."""
     client = Client(webui_server)
     result = _predict(client, AUDIO_FILE)
@@ -78,7 +85,7 @@ def test_short_audio_transcription(webui_server):
 
 
 @pytest.mark.skipif(not LONG_AUDIO_FILE.exists(), reason="Long test audio missing")
-def test_long_audio_transcription(webui_server):
+def test_long_audio_transcription(webui_server: str) -> None:
     """Transcribe a longer file; mainly a runtime smoke-test."""
     client = Client(webui_server)
     result = _predict(client, LONG_AUDIO_FILE)

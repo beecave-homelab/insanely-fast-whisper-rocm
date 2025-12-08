@@ -20,6 +20,7 @@ from insanely_fast_whisper_rocm.utils.constants import (
     DEFAULT_DTYPE,
     DEFAULT_LANGUAGE,
     DEFAULT_MODEL,
+    DEFAULT_PROGRESS_GROUP_SIZE,
     DEFAULT_RESPONSE_FORMAT,
     DEFAULT_STABILIZE,
     DEFAULT_TIMESTAMP_TYPE,
@@ -47,9 +48,7 @@ from insanely_fast_whisper_rocm.utils.constants import (
     USER_CONFIG_DIR,
     USER_ENV_FILE,
 )
-from insanely_fast_whisper_rocm.utils.download_hf_model import (
-    download_model_if_needed,
-)
+from insanely_fast_whisper_rocm.utils.download_hf_model import download_model_if_needed
 from insanely_fast_whisper_rocm.utils.file_utils import (
     FileHandler,
     cleanup_temp_files,
@@ -83,6 +82,7 @@ __all__ = [
     "DEFAULT_DTYPE",
     "DEFAULT_LANGUAGE",
     "DEFAULT_MODEL",
+    "DEFAULT_PROGRESS_GROUP_SIZE",
     "DEFAULT_RESPONSE_FORMAT",
     "DEFAULT_STABILIZE",
     "DEFAULT_TIMESTAMP_TYPE",

@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)  # Use __name__ for module-specific logger
 
 # Environment variable names
 ENV_VAR_MODEL_NAME = "WHISPER_MODEL"
-ENV_VAR_HF_TOKEN = "HUGGINGFACE_TOKEN"
+ENV_VAR_HF_TOKEN = "HF_TOKEN"
 
 # Note: DEFAULT_MODEL and HF_TOKEN are imported from constants.py for
 # centralized configuration
@@ -46,35 +46,47 @@ def download_model_if_needed(
     allow_patterns: list[str] | None = None,
     ignore_patterns: list[str] | None = None,
     custom_logger: logging.Logger | None = None,
-):
-    """Ensure a Hugging Face model is present locally, downloading it if necessary.
+) -> str:
+    """Downloads a Hugging Face model if it's not already cached or if forced.
 
-    If `model_name` is None the module default model is used. Token precedence is
-    left to the calling code and the Hugging Face client (an explicit `hf_token`
-    argument takes precedence when provided). When `local_files_only` is True the
-    function will not attempt network downloads.
+    Respects Hugging Face's default cache locations and environment variables
+    (HF_HOME, TRANSFORMERS_CACHE, HUGGINGFACE_HUB_CACHE) if cache_dir is None.
 
-    Parameters:
-        model_name (str | None): Hugging Face repo ID of the model (e.g. "openai/whisper-large-v3").
-                                 If None, the module default model is used.
-        force (bool): If True, re-download the model even if it exists in the cache.
-        hf_token (str | None): Hugging Face API token to use for authentication; if None,
-                               the huggingface_hub library may read environment variables.
-        cache_dir (str | Path | None): Directory to use for the HF cache; if None, HF defaults apply.
-        local_files_only (bool): If True, restricts resolution to local cache and avoids network access.
-        allow_patterns (list[str] | None): If provided, only files matching these patterns will be fetched.
-        ignore_patterns (list[str] | None): If provided, files matching these patterns will be excluded.
-        custom_logger (logging.Logger | None): Optional logger to use; module logger is used if omitted.
+    Args:
+        model_name (str | None): The name of the model on Hugging Face Hub
+                                 (e.g., "openai/whisper-large-v3").
+                                 If None, attempts to use WHISPER_MODEL env var,
+                                 then DEFAULT_MODEL.
+        force (bool): If True, re-downloads the model even if it exists in the
+                      cache.
+        hf_token (str | None): Hugging Face API token. If None, the
+                               huggingface_hub library may use the HF_TOKEN
+                               environment variable if set.
+                               The huggingface_hub library handles token
+                               precedence (explicit > env var).
+        cache_dir (str | Path | None): Path to the Hugging Face cache directory.
+                                       If None, uses default Hugging Face cache
+                                       locations.
+        local_files_only (bool): If True, avoid downloading and look for files
+                                 locally.
+                                 Raises FileNotFoundError if not found locally.
+        allow_patterns (list[str] | None): If provided, only files matching these
+                                           patterns will be downloaded.
+        ignore_patterns (list[str] | None): If provided, files matching these
+                                            patterns will be ignored.
+        custom_logger (logging.Logger | None): Optional custom logger instance.
+                                               If None, uses module logger.
 
     Returns:
-        str: Filesystem path to the downloaded or cached model directory.
+        str: The path to the downloaded model directory.
 
     Raises:
-        FileNotFoundError: If `local_files_only` is True and the model is not found locally.
-        HfHubHTTPError: For HTTP errors returned by the Hugging Face Hub (e.g., 401, 404).
-        HFValidationError: If the repository identifier or configuration is invalid.
+        FileNotFoundError: If local_files_only is True and the model is not
+                           found in cache.
+        HfHubHTTPError: For HTTP errors during download (e.g., 401, 404).
+        HFValidationError: For validation errors (e.g., invalid repo ID).
         OSError: For network or filesystem-related errors during download.
-        RuntimeError: For other unexpected runtime errors surfaced during retrieval.
+        RuntimeError: For other unexpected errors during download.
     """
     log = custom_logger if custom_logger else logger
 
@@ -131,8 +143,7 @@ def download_model_if_needed(
             if e.response.status_code == 401:
                 log.error(
                     "Authentication failed. This could be a private/gated model. "
-                    "Ensure HUGGINGFACE_TOKEN is set correctly or you have "
-                    "access rights."
+                    "Ensure HF_TOKEN is set correctly or you have access rights."
                 )
             elif e.response.status_code == 404:
                 log.error(
@@ -216,8 +227,21 @@ def main(
     allow_patterns: tuple[str, ...],
     ignore_patterns: tuple[str, ...],
     verbose: bool,
-):
-    """Main function to handle CLI arguments and trigger model download using Click."""
+) -> None:
+    """Main function to handle CLI arguments and trigger model download using Click.
+
+    This function is the entry point for the command line interface.
+
+    Args:
+        model_name_option (str): The name of the model on Hugging Face Hub.
+        force (bool): If True, re-downloads the model even if it exists in the cache.
+        hf_token (str | None): Hugging Face API token.
+        cache_dir (Path | None): Path to the Hugging Face cache directory.
+        check_only (bool): If True, only checks if the model is cached locally.
+        allow_patterns (tuple[str, ...]): Patterns for files to include.
+        ignore_patterns (tuple[str, ...]): Patterns for files to exclude.
+        verbose (bool): If True, enables verbose logging.
+    """
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)  # Set root logger level
         logger.setLevel(logging.DEBUG)  # Set our specific logger level

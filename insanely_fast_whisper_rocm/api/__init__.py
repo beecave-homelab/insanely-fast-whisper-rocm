@@ -4,6 +4,10 @@ This module contains the FastAPI application factory and route definitions,
 implementing a clean separation of concerns for the API layer.
 """
 
+from __future__ import annotations
+
+import builtins as _builtins
+
 from insanely_fast_whisper_rocm.api.app import create_app
 from insanely_fast_whisper_rocm.api.dependencies import (
     get_asr_pipeline,
@@ -27,7 +31,6 @@ __all__ = [
 # To avoid NameError in such scenarios we inject them into the built-ins
 # namespace at import-time.  This is a no-op for normal application code but it
 # greatly simplifies dependency overriding in pytest fixtures.
-import builtins as _builtins
 
 for _sym in ("get_asr_pipeline", "get_file_handler"):
     if not hasattr(_builtins, _sym):

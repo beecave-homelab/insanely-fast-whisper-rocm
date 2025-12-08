@@ -1,0 +1,52 @@
+# CodeRabbit configuration aligned with AGENTS.md and local CI pipeline
+
+reviews:
+  profile: chill
+  auto_review:
+    enabled: true
+    drafts: true
+    auto_incremental_review: true
+
+  # Focus review scope on source, tests, and scripts; skip generated/auxiliary dirs
+  path_filters:
+      - "insanely_fast_whisper_rocm/**"
+      - "tests/**"
+      - "scripts/**"
+    exclude:
+      - ".venv/**"
+      - ".ruff_cache/**"
+      - ".pytest_cache/**"
+      - "benchmarks/**"
+      - "uploads/**"
+      - "temp_uploads/**"
+      - "transcripts/**"
+      - "transcripts-srt/**"
+      - "transcripts-txt/**"
+
+  # Tool integrations – keep Ruff primary, others supportive
+  tools:
+    ruff:
+      enabled: true
+    markdownlint:
+      enabled: true
+    hadolint:
+      enabled: true
+    yamllint:
+      enabled: true
+    shellcheck:
+      enabled: true
+    pylint:
+      enabled: false
+    flake8:
+      enabled: false
+
+  # Single source of truth for code quality: scripts/local-ci.sh
+  pre_merge_checks:
+    custom_checks:
+      - mode: error
+        name: "Local CI Pipeline"
+        instructions: "Run ./scripts/local-ci.sh to verify Ruff rules (F, E, W, N, D, DOC, TID, UP, FA), Google-style docstrings, naming/import rules, test coverage (min 85%), SOLID principles, and no direct env access outside utils.constants."
+
+chat:
+  art: true
+  auto_reply: true
