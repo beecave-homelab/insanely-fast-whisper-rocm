@@ -5,23 +5,13 @@ reviews:
   auto_review:
     enabled: true
     drafts: true
-    auto_incremental_review: true
+    auto_incremental_review: false
 
   # Focus review scope on source, tests, and scripts; skip generated/auxiliary dirs
   path_filters:
       - "insanely_fast_whisper_rocm/**"
       - "tests/**"
       - "scripts/**"
-    exclude:
-      - ".venv/**"
-      - ".ruff_cache/**"
-      - ".pytest_cache/**"
-      - "benchmarks/**"
-      - "uploads/**"
-      - "temp_uploads/**"
-      - "transcripts/**"
-      - "transcripts-srt/**"
-      - "transcripts-txt/**"
 
   # Tool integrations – keep Ruff primary, others supportive
   tools:
@@ -48,5 +38,5 @@ reviews:
         instructions: "Run ./scripts/local-ci.sh to verify Ruff rules (F, E, W, N, D, DOC, TID, UP, FA), Google-style docstrings, naming/import rules, test coverage (min 85%), SOLID principles, and no direct env access outside utils.constants."
 
 chat:
-  art: true
+  art: false
   auto_reply: true
