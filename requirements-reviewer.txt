@@ -8,23 +8,23 @@
 # an impossible version to ensure they are not installed transitively.
 
 # Core application dependencies
-fastapi==0.116.1
-uvicorn==0.35.0
-python-multipart==0.0.20
-python-dotenv==1.1.1
-PyYAML==6.0.2
-click==8.2.1
-gradio==5.38.0
-pydub==0.25.1
+fastapi>=0.116.1
+uvicorn>=0.35.0
+python-multipart>=0.0.20
+python-dotenv>=1.1.1
+PyYAML>=6.0.2
+click>=8.2.1
+gradio>=5.38.0
+pydub>=0.25.1
 ffmpeg-python>=0.2.0
 
 # ML/Transformer libraries (CPU-compatible subset)
-transformers==4.53.2
-huggingface-hub==0.33.4
-numpy==1.26.4
-datasets==4.0.0
-accelerate==1.9.0
-optimum==1.26.1
+transformers>=4.53.2
+huggingface-hub>=0.33.4
+numpy>=1.26.4
+datasets>=4.0.0
+accelerate>=1.9.0
+optimum>=1.26.1
 
 # Testing dependencies
 pytest

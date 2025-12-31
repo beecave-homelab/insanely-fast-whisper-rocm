@@ -202,6 +202,9 @@ known-first-party = ["insanely_fast_whisper_rocm"]
 # addopts = "-q --cov=insanely_fast_whisper_rocm --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=html --cov-fail-under=85"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+filterwarnings = [
+    "ignore:websockets\\.legacy is deprecated;.*:DeprecationWarning",
+]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 markers = [
