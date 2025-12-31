@@ -4,11 +4,21 @@ import os
 import subprocess
 import sys
 import time
+import warnings
 from collections.abc import Generator
 from pathlib import Path
 
 import pytest
 import requests
+
+
+def pytest_configure(config: pytest.Config) -> None:  # noqa: ARG001
+    """Configure global warning filters for the test suite."""
+    warnings.filterwarnings(
+        "ignore",
+        message=r"websockets\.legacy is deprecated;.*",
+        category=DeprecationWarning,
+    )
 
 
 @pytest.fixture(scope="session")
