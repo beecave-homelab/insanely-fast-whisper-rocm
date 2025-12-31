@@ -14,6 +14,35 @@ class TranscriptionError(Exception):  # pylint: disable=too-few-public-methods
     """
 
 
+class OutOfMemoryError(TranscriptionError):
+    """Base class for Out of Memory errors."""
+
+    def __init__(
+        self,
+        message: str,
+        device: str | None = None,
+        config: dict | None = None,
+    ) -> None:
+        """Initialize the OutOfMemoryError.
+
+        Args:
+            message: Error message.
+            device: Optional device identifier.
+            config: Optional configuration dictionary.
+        """
+        super().__init__(message)
+        self.device = device
+        self.config = config
+
+
+class ModelLoadingOOMError(OutOfMemoryError):
+    """Raised when model initialization fails due to OOM."""
+
+
+class InferenceOOMError(OutOfMemoryError):
+    """Raised when audio processing fails due to OOM."""
+
+
 class DeviceNotFoundError(Exception):  # pylint: disable=too-few-public-methods
     """Custom exception raised when a requested compute device is unavailable.
 
