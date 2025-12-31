@@ -27,6 +27,7 @@ def mock_asr_pipeline() -> Iterator[MagicMock]:
     """
     mock_pipeline = MagicMock()
     mock_pipeline.process.return_value = {"text": "test"}
+    mock_pipeline.asr_backend.config.model_name = "test-model"
 
     def get_mock_pipeline() -> MagicMock:
         return mock_pipeline
@@ -36,6 +37,28 @@ def mock_asr_pipeline() -> Iterator[MagicMock]:
         yield mock_pipeline
     finally:
         app.dependency_overrides.pop(get_asr_pipeline, None)
+
+
+@pytest.fixture
+def mock_orchestrator(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    """Mock the TranscriptionOrchestrator and override its factory.
+
+    Args:
+        monkeypatch: Pytest fixture for monkeypatching.
+
+    Returns:
+        MagicMock: The mocked orchestrator instance.
+    """
+    mock_orch = MagicMock()
+    mock_orch.run_transcription.return_value = {
+        "text": "test",
+        "segments": [],
+        "chunks": [],
+    }
+    monkeypatch.setattr(
+        "insanely_fast_whisper_rocm.api.routes.create_orchestrator", lambda: mock_orch
+    )
+    return mock_orch
 
 
 @pytest.fixture
@@ -52,6 +75,20 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
     monkeypatch.setattr(
         "insanely_fast_whisper_rocm.api.app.download_model_if_needed",
         lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "insanely_fast_whisper_rocm.core.asr_backend.HuggingFaceBackend._initialize_pipeline",
+        lambda *args, **kwargs: None,
+    )
+    # Prevent process_audio from trying to access self.asr_pipe.model
+    monkeypatch.setattr(
+        "insanely_fast_whisper_rocm.core.asr_backend.HuggingFaceBackend.process_audio",
+        lambda *args, **kwargs: {"text": "test", "segments": [], "chunks": []},
+    )
+    # Prevent stabilize_timestamps from trying to process empty audio
+    monkeypatch.setattr(
+        "insanely_fast_whisper_rocm.api.routes.stabilize_timestamps",
+        lambda result, **kwargs: result,
     )
     monkeypatch.setattr(
         "insanely_fast_whisper_rocm.core.asr_backend.HuggingFaceBackend._validate_device",
@@ -73,13 +110,13 @@ DUMMY_WAV_HEADER = b"RIFF$\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x
 
 
 def test_transcription_with_stabilization_options(
-    mock_asr_pipeline: MagicMock, client: TestClient
+    mock_orchestrator: MagicMock, client: TestClient
 ) -> None:
-    """Test that stabilization options are NOT passed to process(), but are handled separately.
+    """Test that stabilization options are NOT passed to run_transcription(), but are handled separately.
 
     The stabilize/demucs/vad/vad_threshold params are handled by stabilize_timestamps()
-    which is called AFTER asr_pipeline.process(). The process() method should only
-    receive the core ASR parameters.
+    which is called AFTER orchestrator.run_transcription(). The run_transcription()
+    method should only receive the core ASR parameters.
     """
     audio_file = io.BytesIO(DUMMY_WAV_HEADER)
     response = client.post(
@@ -93,10 +130,10 @@ def test_transcription_with_stabilization_options(
         },
     )
     assert response.status_code == 200
-    mock_asr_pipeline.process.assert_called_once()
-    _, call_kwargs = mock_asr_pipeline.process.call_args
+    mock_orchestrator.run_transcription.assert_called_once()
+    _, call_kwargs = mock_orchestrator.run_transcription.call_args
 
-    # Verify stabilization params are NOT passed to process()
+    # Verify stabilization params are NOT passed to run_transcription()
     # They are handled by separate stabilize_timestamps() post-processing
     assert "stabilize" not in call_kwargs
     assert "demucs" not in call_kwargs
@@ -104,18 +141,18 @@ def test_transcription_with_stabilization_options(
     assert "vad_threshold" not in call_kwargs
 
     # Verify valid params ARE passed
-    assert "audio_file_path" in call_kwargs
+    assert "audio_path" in call_kwargs
     assert call_kwargs.get("task") == "transcribe"
 
 
 def test_translation_with_stabilization_options(
-    mock_asr_pipeline: MagicMock, client: TestClient
+    mock_orchestrator: MagicMock, client: TestClient
 ) -> None:
-    """Test that stabilization options are NOT passed to process(), but are handled separately.
+    """Test that stabilization options are NOT passed to run_transcription(), but are handled separately.
 
     The stabilize/demucs/vad/vad_threshold params are handled by stabilize_timestamps()
-    which is called AFTER asr_pipeline.process(). The process() method should only
-    receive the core ASR parameters.
+    which is called AFTER orchestrator.run_transcription(). The run_transcription()
+    method should only receive the core ASR parameters.
     """
     audio_file = io.BytesIO(DUMMY_WAV_HEADER)
     response = client.post(
@@ -129,10 +166,10 @@ def test_translation_with_stabilization_options(
         },
     )
     assert response.status_code == 200
-    mock_asr_pipeline.process.assert_called_once()
-    _, call_kwargs = mock_asr_pipeline.process.call_args
+    mock_orchestrator.run_transcription.assert_called_once()
+    _, call_kwargs = mock_orchestrator.run_transcription.call_args
 
-    # Verify stabilization params are NOT passed to process()
+    # Verify stabilization params are NOT passed to run_transcription()
     # They are handled by separate stabilize_timestamps() post-processing
     assert "stabilize" not in call_kwargs
     assert "demucs" not in call_kwargs
@@ -140,7 +177,7 @@ def test_translation_with_stabilization_options(
     assert "vad_threshold" not in call_kwargs
 
     # Verify valid params ARE passed
-    assert "audio_file_path" in call_kwargs
+    assert "audio_path" in call_kwargs
     assert call_kwargs.get("task") == "translate"
 
 

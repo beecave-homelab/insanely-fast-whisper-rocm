@@ -28,8 +28,12 @@ def test_postprocess_stores_absolute_audio_path(tmp_path: pathlib.Path) -> None:
     # Create a test audio file in a subdirectory
     audio_dir = tmp_path / "uploads"
     audio_dir.mkdir()
+    fixture_path = (
+        pathlib.Path(__file__).parents[1] / "audio" / "fixtures" / "test_clip.mp3"
+    )
     audio_file = audio_dir / "test_audio.wav"
-    audio_file.write_bytes(b"fake audio data")
+    with open(fixture_path, "rb") as f:
+        audio_file.write_bytes(f.read())
 
     # Create a mock ASR backend
     mock_backend = MagicMock(spec=ASRBackend)
@@ -81,8 +85,12 @@ def test_postprocess_preserves_absolute_audio_path(tmp_path: pathlib.Path) -> No
         tmp_path: Pytest fixture for temporary directory.
     """
     # Create a test audio file
+    fixture_path = (
+        pathlib.Path(__file__).parents[1] / "audio" / "fixtures" / "test_clip.mp3"
+    )
     audio_file = tmp_path / "test_audio.wav"
-    audio_file.write_bytes(b"fake audio data")
+    with open(fixture_path, "rb") as f:
+        audio_file.write_bytes(f.read())
 
     mock_backend = MagicMock(spec=ASRBackend)
     pipeline = WhisperPipeline(
@@ -127,8 +135,12 @@ def test_postprocess_uses_original_filename_when_provided(
     Args:
         tmp_path: Pytest fixture for temporary directory.
     """
+    fixture_path = (
+        pathlib.Path(__file__).parents[1] / "audio" / "fixtures" / "test_clip.mp3"
+    )
     audio_file = tmp_path / "temp_chunk.wav"
-    audio_file.write_bytes(b"fake audio data")
+    with open(fixture_path, "rb") as f:
+        audio_file.write_bytes(f.read())
 
     mock_backend = MagicMock(spec=ASRBackend)
     pipeline = WhisperPipeline(
@@ -168,8 +180,12 @@ def test_postprocess_should_not_use_filename_only(tmp_path: pathlib.Path) -> Non
     # Create a test audio file in a subdirectory
     audio_dir = tmp_path / "uploads"
     audio_dir.mkdir()
+    fixture_path = (
+        pathlib.Path(__file__).parents[1] / "audio" / "fixtures" / "test_clip.mp3"
+    )
     audio_file = audio_dir / "test_audio.wav"
-    audio_file.write_bytes(b"fake audio data")
+    with open(fixture_path, "rb") as f:
+        audio_file.write_bytes(f.read())
 
     mock_backend = MagicMock(spec=ASRBackend)
     pipeline = WhisperPipeline(

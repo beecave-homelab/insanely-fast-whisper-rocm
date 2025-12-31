@@ -73,7 +73,7 @@ class RecordingPipeline:
         audio_file_path: str,
         language: str | None,
         task: str,
-        timestamp_type: str,
+        timestamp_type: str | bool,
         original_filename: str,
         progress_callback: ProgressCallback | None = None,
         cancellation_token: CancellationToken | None = None,
@@ -83,11 +83,18 @@ class RecordingPipeline:
         Returns:
             dict[str, str | None]: Details captured for assertion.
         """
+        # Normalize timestamp_type for assertions
+        ts_type = timestamp_type
+        if ts_type is False:
+            ts_type = "none"
+        elif ts_type is True:
+            ts_type = "chunk"
+
         call = {
             "audio_file_path": audio_file_path,
             "language": language,
             "task": task,
-            "timestamp_type": timestamp_type,
+            "timestamp_type": ts_type,
             "original_filename": original_filename,
         }
         self.calls.append(call)

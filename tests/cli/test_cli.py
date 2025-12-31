@@ -112,18 +112,18 @@ class TestCLIFacade:
         # Adjustments are applied during processing, not at config creation
         assert isinstance(config.batch_size, int)
 
-    @patch("insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend")
-    def test_transcribe_audio_success(self, mock_backend_class: Mock) -> None:
+    @patch("insanely_fast_whisper_rocm.cli.facade.create_orchestrator")
+    def test_transcribe_audio_success(self, mock_create_orchestrator: Mock) -> None:
         """Test successful audio transcription."""
-        # Mock the backend
-        mock_backend = Mock()
-        mock_backend.process_audio.return_value = {
+        # Mock the orchestrator
+        mock_orch = Mock()
+        mock_orch.run_transcription.return_value = {
             "text": "Test transcription",
             "chunks": [],
             "runtime_seconds": 1.5,
             "config_used": {},
         }
-        mock_backend_class.return_value = mock_backend
+        mock_create_orchestrator.return_value = mock_orch
 
         facade = CLIFacade()
         result = facade.process_audio(
@@ -134,14 +134,16 @@ class TestCLIFacade:
 
         assert result["text"] == "Test transcription"
         assert "runtime_seconds" in result
-        mock_backend.process_audio.assert_called_once()
+        mock_orch.run_transcription.assert_called_once()
 
-    @patch("insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend")
-    def test_transcribe_audio_backend_reuse(self, mock_backend_class: Mock) -> None:
-        """Test that backend is reused when configuration doesn't change."""
-        mock_backend = Mock()
-        mock_backend.process_audio.return_value = {"text": "Test", "chunks": []}
-        mock_backend_class.return_value = mock_backend
+    @patch("insanely_fast_whisper_rocm.cli.facade.create_orchestrator")
+    def test_transcribe_audio_backend_reuse(
+        self, mock_create_orchestrator: Mock
+    ) -> None:
+        """Test that orchestrator is used for repeated calls."""
+        mock_orch = Mock()
+        mock_orch.run_transcription.return_value = {"text": "Test", "chunks": []}
+        mock_create_orchestrator.return_value = mock_orch
 
         facade = CLIFacade()
 
@@ -150,9 +152,9 @@ class TestCLIFacade:
         # Second call with same config
         facade.process_audio(Path("test2.mp3"))
 
-        # Backend should only be created once
-        mock_backend_class.assert_called_once()
-        assert mock_backend.process_audio.call_count == 2
+        # Orchestrator factory should be called each time process_audio is called
+        assert mock_create_orchestrator.call_count == 2
+        assert mock_orch.run_transcription.call_count == 2
 
 
 @pytest.fixture(autouse=True)
@@ -211,7 +213,9 @@ class TestCLICommands:
     def setup_method(self) -> None:
         """Set up test fixtures."""
         self.runner = CliRunner()
-        self.test_audio_file = Path(__file__).parent / "test.mp3"
+        self.test_audio_file = (
+            Path(__file__).parents[2] / "tests" / "audio" / "fixtures" / "test_clip.mp3"
+        )
 
     def test_cli_group_help(self) -> None:
         """Test that CLI group shows help correctly."""
@@ -632,77 +636,97 @@ class TestErrorHandling:
     def test_facade_device_validation(self) -> None:
         """Test that device errors from the backend propagate."""
         facade = CLIFacade()
+        test_audio = (
+            Path(__file__).parents[2] / "tests" / "audio" / "fixtures" / "test_clip.mp3"
+        )
 
-        with patch(
-            "insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend",
-            side_effect=DeviceNotFoundError("CUDA device not available"),
+        mock_orch = Mock()
+        mock_orch.run_transcription.side_effect = DeviceNotFoundError(
+            "CUDA device not available"
+        )
+
+        # We must patch CLIFacade's _orchestrator_factory since it's used in process_audio
+        with patch.object(
+            facade,
+            "_orchestrator_factory",
+            return_value=mock_orch,
         ):
-            with pytest.raises(DeviceNotFoundError):
-                facade.process_audio(audio_file_path=Path("test.mp3"), device="cuda:0")
+            with pytest.raises(TranscriptionError) as exc_info:
+                facade.process_audio(audio_file_path=test_audio, device="cuda:0")
+            assert "CUDA device not available" in str(exc_info.value)
 
     def test_facade_transcription_error(self) -> None:
-        """Test that backend transcription errors propagate."""
-        with patch(
-            "insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend"
-        ) as mock_backend_class:
-            mock_backend = Mock()
-            mock_backend.process_audio.side_effect = TranscriptionError("Model failed")
-            mock_backend_class.return_value = mock_backend
+        """Test that orchestrator transcription errors propagate."""
+        mock_orch = Mock()
+        mock_orch.run_transcription.side_effect = TranscriptionError("Model failed")
+        test_audio = (
+            Path(__file__).parents[2] / "tests" / "audio" / "fixtures" / "test_clip.mp3"
+        )
 
-            facade = CLIFacade()
-
+        facade = CLIFacade()
+        with patch.object(
+            facade,
+            "_orchestrator_factory",
+            return_value=mock_orch,
+        ):
             with pytest.raises(TranscriptionError):
-                facade.process_audio(Path("test.mp3"))
+                facade.process_audio(test_audio)
 
     def test_cpu_parameter_adjustments(self) -> None:
         """Test that CPU device gets parameter adjustments for better stability."""
+        mock_orch = Mock()
+        mock_orch.run_transcription.return_value = {"text": "CPU test", "chunks": []}
+        test_audio = (
+            Path(__file__).parents[2] / "tests" / "audio" / "fixtures" / "test_clip.mp3"
+        )
+
         facade = CLIFacade()
-
-        with patch(
-            "insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend"
-        ) as mock_backend_class:
-            mock_backend = Mock()
-            mock_backend.process_audio.return_value = {"text": "CPU test", "chunks": []}
-            mock_backend_class.return_value = mock_backend
-
+        with patch.object(
+            facade,
+            "_orchestrator_factory",
+            return_value=mock_orch,
+        ):
             # Test with CPU device - should adjust chunk_length and batch_size
             facade.process_audio(
-                audio_file_path=Path("test.mp3"),
+                audio_file_path=test_audio,
                 device="cpu",
                 chunk_length=30,  # Should be reduced to 15 for CPU
                 batch_size=8,  # Should be reduced to 2 for CPU
             )
 
-            # Verify backend was created with adjusted parameters
-            mock_backend_class.assert_called_once()
-            call_args = mock_backend_class.call_args
-            config = call_args[0][0]
+            # Verify orchestrator was called with adjusted parameters
+            mock_orch.run_transcription.assert_called_once()
+            call_args = mock_orch.run_transcription.call_args[1]
+            config = call_args["backend_config"]
             assert config.chunk_length == 15  # Reduced from 30
             assert config.batch_size == 2  # Reduced from 8
 
     def test_cpu_parameter_adjustments_min_values(self) -> None:
         """Test CPU parameter adjustments respect maximum values for stability."""
+        mock_orch = Mock()
+        mock_orch.run_transcription.return_value = {"text": "CPU test", "chunks": []}
+        test_audio = (
+            Path(__file__).parents[2] / "tests" / "audio" / "fixtures" / "test_clip.mp3"
+        )
+
         facade = CLIFacade()
-
-        with patch(
-            "insanely_fast_whisper_rocm.cli.facade.HuggingFaceBackend"
-        ) as mock_backend_class:
-            mock_backend = Mock()
-            mock_backend.process_audio.return_value = {"text": "CPU test", "chunks": []}
-            mock_backend_class.return_value = mock_backend
-
+        with patch.object(
+            facade,
+            "_orchestrator_factory",
+            return_value=mock_orch,
+        ):
             # Test with values larger than CPU limits - should be reduced
             facade.process_audio(
-                audio_file_path=Path("test.mp3"),
+                audio_file_path=test_audio,
                 device="cpu",
                 chunk_length=20,  # Should be reduced to 15 for CPU
                 batch_size=4,  # Should be reduced to 2 for CPU
             )
 
-            # Verify backend was created with adjusted parameters
-            mock_backend_class.assert_called_once()
-            call_args = mock_backend_class.call_args
-            config = call_args[0][0]
+            # Verify orchestrator was called with adjusted parameters
+            mock_orch.run_transcription.assert_called_once()
+            call_args = mock_orch.run_transcription.call_args[1]
+            config = call_args["backend_config"]
             assert config.chunk_length == 15  # Reduced from 20 to max 15 for CPU
             assert config.batch_size == 2  # Reduced from 4 to max 2 for CPU
 

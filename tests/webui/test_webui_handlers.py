@@ -1,6 +1,5 @@
 """Unit tests for the WebUI handler functions."""
 
-import contextlib
 from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
@@ -13,7 +12,7 @@ from insanely_fast_whisper_rocm.webui.handlers import TranscriptionConfig, trans
 def mock_pipeline_and_stabilizer() -> Generator[
     tuple[MagicMock, MagicMock], None, None
 ]:
-    """Fixture to mock borrow_pipeline and ``stabilize_timestamps``.
+    """Fixture to mock orchestrator creation and ``stabilize_timestamps``.
 
     Yields:
         tuple[MagicMock, MagicMock]: A tuple of (mocked pipeline instance,
@@ -21,21 +20,22 @@ def mock_pipeline_and_stabilizer() -> Generator[
     """
     with (
         patch(
-            "insanely_fast_whisper_rocm.webui.handlers.borrow_pipeline"
-        ) as mock_borrow,
+            "insanely_fast_whisper_rocm.webui.handlers.create_orchestrator"
+        ) as mock_create_orchestrator,
         patch(
             "insanely_fast_whisper_rocm.webui.handlers.stabilize_timestamps"
         ) as mock_stabilize,
     ):
-        # Mock the pipeline's process method to return a dummy result
-        mock_pipeline_instance = MagicMock()
-        mock_pipeline_instance.process.return_value = {"text": "test transcription"}
-        mock_borrow.return_value = contextlib.nullcontext(mock_pipeline_instance)
+        mock_orchestrator = MagicMock()
+        mock_orchestrator.run_transcription.return_value = {
+            "text": "test transcription"
+        }
+        mock_create_orchestrator.return_value = mock_orchestrator
 
         # Make the mocked stabilize_timestamps function return its input
         mock_stabilize.side_effect = lambda result, **kwargs: result
 
-        yield mock_pipeline_instance, mock_stabilize
+        yield mock_orchestrator, mock_stabilize
 
 
 def test_transcribe_handler_with_stabilization(
