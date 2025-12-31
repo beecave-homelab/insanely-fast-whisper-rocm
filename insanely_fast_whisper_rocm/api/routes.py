@@ -14,7 +14,9 @@ from insanely_fast_whisper_rocm.api.dependencies import (
     get_file_handler,
 )
 from insanely_fast_whisper_rocm.api.responses import ResponseFormatter
+from insanely_fast_whisper_rocm.core.errors import OutOfMemoryError
 from insanely_fast_whisper_rocm.core.integrations.stable_ts import stabilize_timestamps
+from insanely_fast_whisper_rocm.core.orchestrator import create_orchestrator
 from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_rocm.utils import (
     DEFAULT_DEMUCS,
@@ -117,13 +119,37 @@ async def create_transcription(
 
     try:
         logger.info("Starting transcription process...")
-        result = asr_pipeline.process(
-            audio_file_path=temp_filepath,
-            language=language,
-            task=task,
-            timestamp_type=timestamp_type,
-            original_filename=file.filename,
-        )
+
+        # Use orchestrator for transcription with OOM recovery
+        orchestrator = create_orchestrator()
+
+        # We need to construct a backend config.
+        # Since we use dependency injection for asr_pipeline,
+        # we can get the config from it.
+        # However, the orchestrator handles pipeline acquisition
+        # via borrow_pipeline.
+        # We'll use the config from the injected pipeline as
+        # the starting point.
+        base_config = asr_pipeline.asr_backend.config
+
+        try:
+            result = orchestrator.run_transcription(
+                audio_path=temp_filepath,
+                backend_config=base_config,
+                language=language,
+                task=task,
+                timestamp_type=timestamp_type,
+            )
+        except OutOfMemoryError as oom:
+            raise HTTPException(
+                status_code=507,
+                detail=f"Insufficient GPU memory for transcription: {str(oom)}",
+            ) from oom
+        except Exception as e:
+            if isinstance(e, HTTPException):
+                raise
+            raise HTTPException(status_code=500, detail=str(e)) from e
+
         # Optional stabilization (post-process) applied here for API
         if stabilize:
             try:
@@ -228,13 +254,29 @@ async def create_translation(
 
     try:
         logger.info("Starting translation process...")
-        result = asr_pipeline.process(
-            audio_file_path=temp_filepath,
-            language=language,
-            task="translate",
-            timestamp_type=timestamp_type,
-            original_filename=file.filename,
-        )
+
+        # Use orchestrator for translation with OOM recovery
+        orchestrator = create_orchestrator()
+        base_config = asr_pipeline.asr_backend.config
+
+        try:
+            result = orchestrator.run_transcription(
+                audio_path=temp_filepath,
+                backend_config=base_config,
+                language=language,
+                task="translate",
+                return_timestamps=timestamp_type,
+            )
+        except OutOfMemoryError as oom:
+            raise HTTPException(
+                status_code=507,
+                detail=f"Insufficient GPU memory for translation: {str(oom)}",
+            ) from oom
+        except Exception as e:
+            if isinstance(e, HTTPException):
+                raise
+            raise HTTPException(status_code=500, detail=str(e)) from e
+
         # Optional stabilization (post-process) applied here for API
         if stabilize:
             try:

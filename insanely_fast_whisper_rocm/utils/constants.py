@@ -73,6 +73,7 @@ Architecture Benefits:
 - Maintainability: Configuration changes only need to be made once
 """
 
+import logging
 import os
 import sys
 from importlib.metadata import PackageNotFoundError
@@ -99,6 +100,9 @@ from insanely_fast_whisper_rocm.utils.env_loader import (
 __all__ = [
     "PROJECT_ROOT",
 ]
+
+# --- Logging Setup ---
+logger = logging.getLogger(__name__)
 
 # --- Load user-specific .env (overrides project .env) ---
 if USER_ENV_EXISTS:
@@ -244,9 +248,25 @@ DEFAULT_VAD_THRESHOLD = float(os.getenv("VAD_THRESHOLD_DEFAULT", "0.35"))
 HSA_OVERRIDE_GFX_VERSION = os.getenv(
     "HSA_OVERRIDE_GFX_VERSION"
 )  # Override for AMD GPU support
-PYTORCH_HIP_ALLOC_CONF = os.getenv(
-    "PYTORCH_HIP_ALLOC_CONF"
-)  # PyTorch ROCm memory allocation
+
+# PyTorch ROCm memory allocation
+PYTORCH_HIP_ALLOC_CONF = os.getenv("PYTORCH_HIP_ALLOC_CONF")
+if PYTORCH_HIP_ALLOC_CONF is None:
+    PYTORCH_HIP_ALLOC_CONF = "garbage_collection_threshold:0.7,max_split_size_mb:128"
+    logger.info(
+        "Applying default PyTorch HIP allocator configuration to reduce "
+        "fragmentation: %s. "
+        "You can customize this via the PYTORCH_HIP_ALLOC_CONF environment "
+        "variable or your .env file.",
+        PYTORCH_HIP_ALLOC_CONF,
+    )
+else:
+    logger.info(
+        "Using custom PyTorch HIP allocator configuration: %s", PYTORCH_HIP_ALLOC_CONF
+    )
+
+os.environ["PYTORCH_HIP_ALLOC_CONF"] = PYTORCH_HIP_ALLOC_CONF
+
 HIP_LAUNCH_BLOCKING = (
     os.getenv("HIP_LAUNCH_BLOCKING", "false").lower() == "true"
 )  # Synchronous HIP kernel launches
@@ -262,6 +282,7 @@ API_TITLE = "Insanely Fast Whisper API"
 API_DESCRIPTION = "A FastAPI wrapper around the insanely-fast-whisper tool."
 API_HOST = os.getenv("API_HOST", "0.0.0.0")  # API server host
 API_PORT = int(os.getenv("API_PORT", "8000"))  # API server port
+DEV_API_PORT = int(os.getenv("DEV_API_PORT", "8889"))  # Development API port
 DEFAULT_RESPONSE_FORMAT = "json"
 
 # WebUI configuration
@@ -270,6 +291,7 @@ DEFAULT_RESPONSE_FORMAT = "json"
 # provided on the command line.
 WEBUI_HOST = os.getenv("WEBUI_HOST", "0.0.0.0")  # WebUI server host
 WEBUI_PORT = int(os.getenv("WEBUI_PORT", "7860"))  # WebUI server port
+DEV_WEBUI_PORT = int(os.getenv("DEV_WEBUI_PORT", "7862"))  # Development WebUI port
 
 # API version (tests expect a specific string). Prefer package metadata but
 # fall back to the expected default for local/test runs.
