@@ -28,9 +28,10 @@ def classify_oom_error(exception: Exception) -> OutOfMemoryError | None:
         return None
 
     msg = str(exception)
+    msg_lower = msg.lower()
     # Check for common CUDA and HIP OOM signatures
     is_oom = any(
-        pattern in msg for pattern in ("HIP out of memory", "CUDA out of memory")
+        pattern in msg_lower for pattern in ("hip out of memory", "cuda out of memory")
     )
 
     if not is_oom:
