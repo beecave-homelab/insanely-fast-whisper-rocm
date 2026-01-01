@@ -16,12 +16,14 @@ class OutOfMemoryError(TranscriptionError):
         device: str | None = None,
         config: dict | None = None,
     ) -> None:
-        """Initialize the OutOfMemoryError.
-
-        Args:
-            message: Error message.
-            device: Optional device identifier.
-            config: Optional configuration dictionary.
+        """
+        Initialize the OutOfMemoryError with an error message and optional runtime context.
+        
+        Parameters:
+            message (str): Human-readable error message describing the out-of-memory condition.
+            device (str | None): Optional device identifier where the error occurred (e.g., "cpu", "cuda:0").
+            config (dict | None): Optional configuration or runtime settings present when the error occurred.
+        
         """
         super().__init__(message)
         self.device = device

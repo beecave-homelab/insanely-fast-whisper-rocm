@@ -103,19 +103,18 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             )
 
     def _initialize_pipeline(self, progress_cb: ProgressCallback | None = None) -> None:
-        """Lazily construct the Transformers pipeline if not already created.
-
-        Emits model load progress callbacks if provided.
-
-        Args:
-            progress_cb: Optional progress callback.
-
+        """
+        Initialize the Hugging Face automatic-speech-recognition pipeline lazily and emit progress events.
+        
+        Builds and configures the model, tokenizer, and feature extractor and constructs the Transformers pipeline only if it has not been created yet. Emits progress callbacks for start and finish, attempts device- and platform-specific loading hints and fallbacks, and backfills Whisper generation configuration when needed.
+        
+        Parameters:
+            progress_cb (ProgressCallback | None): Optional progress callback used to report model load start and completion. If omitted, no-op progress callbacks are used.
+        
         Raises:
-            ModelLoadingOOMError: If model initialization fails due to VRAM.
-            TranscriptionError: If the ASR model or associated components fail
-                to load.
-            RuntimeError: Propagated for low-level framework errors that may
-                occur prior to wrapping.
+            ModelLoadingOOMError: If model weight loading fails due to a VRAM out-of-memory condition.
+            TranscriptionError: If the ASR model, tokenizer, feature extractor, or pipeline cannot be loaded for other reasons.
+            RuntimeError: Propagated for low-level framework errors that are not converted to a more specific error.
         """
         if self.asr_pipe is None:
             cb = progress_cb or NoOpProgress()
@@ -278,24 +277,31 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         progress_cb: ProgressCallback | None = None,
         cancellation_token: CancellationToken | None = None,
     ) -> dict[str, Any]:
-        """Process an audio file and return the transcription result.
-
-        Args:
-            audio_file_path: Input audio path.
-            language: Optional language code.
-            task: "transcribe" or "translate".
-            return_timestamps_value: Whether/how to return timestamps.
-            progress_cb: Optional progress reporter.
-            cancellation_token: Optional cooperative cancellation token.
-
+        """
+        Transcribe or translate an audio file using the configured Hugging Face ASR pipeline.
+        
+        Ensures the pipeline is initialized (lazy), respects the optional progress callback and cooperative cancellation token, determines and validates timestamp support, configures pipeline generation and chunking options (including a special mode for word-level timestamps), invokes the ASR pipeline with robust OOM and runtime fallbacks, and normalizes the pipeline output to a stable result shape.
+        
+        Parameters:
+            audio_file_path: Path to the input audio file.
+            language: Optional ISO language code or None to let the model auto-detect.
+            task: Either "transcribe" or "translate".
+            return_timestamps_value: Controls timestamp production; may be False, True (chunk-level), or "word".
+            progress_cb: Optional progress reporter used during model initialization and inference.
+            cancellation_token: Optional cooperative cancellation token that may raise to abort processing.
+        
         Returns:
-            dict[str, Any]: Result with text, optional chunks, runtime, and
-            config used.
-
+            dict[str, Any]: Normalized result containing:
+                - "text": Transcribed (or translated) text (string).
+                - "chunks": Optional raw chunk-level output from the pipeline (or None).
+                - "segments": Normalized segment list (may be same as chunks).
+                - "runtime_seconds": Wall-clock runtime rounded to 2 decimals.
+                - "config_used": Snapshot of config values used (model, device, batch_size, language, dtype, chunk_length_s, task, return_timestamps).
+        
         Raises:
-            InferenceOOMError: If audio processing fails due to VRAM.
-            RuntimeError: If model initialization or inference fails.
-            TranscriptionError: If model loading or inference fails.
+            ModelLoadingOOMError: If model initialization fails due to VRAM/OOM during pipeline creation.
+            InferenceOOMError: If inference fails due to VRAM/OOM.
+            TranscriptionError: For other loading or inference failures and when fallbacks also fail.
         """
         cb = progress_cb or NoOpProgress()
         if cancellation_token is not None:

@@ -80,31 +80,27 @@ async def create_transcription(
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),  # noqa: B008
     file_handler: FileHandler = Depends(get_file_handler),  # noqa: B008
 ) -> str | dict:
-    """Transcribe speech in an audio file to text.
-
-    This endpoint processes an audio file and returns its transcription using the
-    specified Whisper model. It supports various configuration options including
-    timestamp generation.
-
-    Args:
-        file: The audio file to transcribe (supported formats: mp3, wav, etc.)
-        response_format: Desired response format ("json", "verbose_json",
-            "text", "srt", or "vtt").
-        timestamp_type: Type of timestamp to generate ("chunk" or "word")
-        language: Optional source language code (auto-detect if None)
-        task: ASR task type (must be "transcribe")
-        stabilize: Enable timestamp stabilization if True.
-        demucs: Enable Demucs noise reduction if True.
-        vad: Enable Voice Activity Detection if True.
-        vad_threshold: VAD sensitivity threshold (0.0 - 1.0).
-        asr_pipeline: Injected ASR pipeline instance
-        file_handler: Injected file handler instance
-
+    """
+    Transcribe an uploaded audio file using the configured Whisper ASR pipeline.
+    
+    Processes the uploaded file, runs transcription (orchestrator-managed), optionally post-processes timestamps, and returns the result in the requested format.
+    
+    Parameters:
+        response_format (str): Output format: "json", "verbose_json", "text", "srt", or "vtt".
+        timestamp_type (str): Timestamp generation mode: "chunk" or "word".
+        language (str | None): Source language code; auto-detect if None.
+        task (Literal["transcribe"]): ASR task; must be "transcribe".
+        stabilize (bool): If True, apply timestamp stabilization to the transcription.
+        demucs (bool): If True, enable Demucs noise reduction during stabilization.
+        vad (bool): If True, enable Voice Activity Detection during stabilization.
+        vad_threshold (float): VAD sensitivity threshold (0.0 - 1.0).
+    
     Returns:
-        Union[str, dict]: Transcription result as plain text or JSON with metadata
-
+        str | dict: Transcription result as plain text or a structured dictionary depending on `response_format`.
+    
     Raises:
-        HTTPException: If file validation fails or processing errors occur
+        HTTPException: If file validation fails, an unsupported response_format is requested,
+            or processing errors occur (including OutOfMemoryError mapped to HTTP 507).
     """
     logger.info("-" * 50)
     logger.info("Received transcription request:")
@@ -217,29 +213,26 @@ async def create_translation(
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),  # noqa: B008
     file_handler: FileHandler = Depends(get_file_handler),  # noqa: B008
 ) -> str | dict:
-    """Translate speech in an audio file to English.
-
-    This endpoint processes an audio file in any supported language and translates
-    the speech to English using the specified Whisper model. It supports various
-    configuration options.
-
-    Args:
-        file: The audio file to translate (supported formats: mp3, wav, etc.)
-        response_format: Desired response format ("json" or "text")
-        timestamp_type: Type of timestamp to generate ("chunk" or "word")
-        language: Optional source language code (auto-detect if None)
-        stabilize: Enable timestamp stabilization if True.
-        demucs: Enable Demucs noise reduction if True.
-        vad: Enable Voice Activity Detection if True.
-        vad_threshold: VAD sensitivity threshold (0.0 - 1.0).
-        asr_pipeline: Injected ASR pipeline instance
-        file_handler: Injected file handler instance
-
+    """
+    Translate speech in an uploaded audio file to English.
+    
+    Processes the uploaded audio, performs translation via the ASR orchestrator, optionally stabilizes timestamps, and returns the result in the requested format.
+    
+    Parameters:
+        file (UploadFile): The audio file to translate.
+        response_format (str): Response format to return; one of "json", "verbose_json", "text", "srt", or "vtt".
+        timestamp_type (str): Type of timestamp to generate; either "chunk" or "word".
+        language (str | None): Source language code; if None, the language will be auto-detected.
+        stabilize (bool): If True, apply timestamp stabilization to the transcription.
+        demucs (bool): If True, apply Demucs noise reduction during stabilization.
+        vad (bool): If True, apply Voice Activity Detection during stabilization.
+        vad_threshold (float): VAD sensitivity threshold between 0.0 and 1.0.
+    
     Returns:
-        Union[str, dict]: Translation result as plain text or JSON with metadata
-
+        str or dict: The translated output formatted according to `response_format` (plain text or a structured JSON-like object).
+    
     Raises:
-        HTTPException: If file validation fails or processing errors occur
+        HTTPException: If file validation fails, `response_format` is unsupported, or processing errors occur (including insufficient GPU memory).
     """
     logger.info("-" * 50)
     logger.info("Received translation request:")

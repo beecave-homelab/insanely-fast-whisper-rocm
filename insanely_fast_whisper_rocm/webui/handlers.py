@@ -182,22 +182,17 @@ def transcribe(
     current_file_idx: int = 0,
     total_files_for_session: int = 1,
 ) -> dict[str, Any]:
-    """Transcribe an audio file using the ASRPipeline.
-
-    Args:
-        audio_file_path: Path to the input audio file
-        config: Transcription configuration object
-        file_config: File handling configuration object
-        progress_tracker_instance: Optional Gradio progress tracker for UI updates.
-        current_file_idx: 0-based index of the current file being processed.
-        total_files_for_session: Total number of files in the current batch.
-
+    """
+    Transcribes a single audio or video file using the orchestrator, optionally stabilizes timestamps, and reports progress to an optional UI tracker.
+    
+    The function accepts an audio or video file path, extracts audio if needed, runs the transcription via the orchestrator (with an attached progress and warning callback), and may apply timestamp stabilization (with an indeterminate heartbeat shown to the UI while stabilizing). It returns the orchestration result data structure and may write temporary/export files according to file handling settings. Progress updates, multi-attempt summaries, and memory-related failures are surfaced via the progress tracker and exceptions.
+    
     Returns:
-        Dictionary containing the transcription results and metadata
-
+        A dictionary containing transcription results and metadata (for example: `segments`, any generated file paths, and `orchestrator_attempts` when present).
+    
     Raises:
-        TranscriptionError: If the transcription process fails
-        TranscriptionCancelledError: If the transcription is cancelled by user
+        TranscriptionCancelledError: If the operation is cancelled by the user.
+        TranscriptionError: For failures during extraction, transcription, stabilization, or export.
     """
     try:
         logger.info(
@@ -263,6 +258,14 @@ def transcribe(
         orchestrator = create_orchestrator()
 
         def _warning_callback(message: str) -> None:
+            """
+            Handle and forward orchestrator warning messages to logging and the UI progress tracker.
+            
+            Logs the warning, forwards it to the provided progress tracker (using the message verbatim for messages that start with "Attempt " and prefixing other messages with "⚠️ "), and logs an additional info entry if the message indicates a CPU fallback (case-insensitive substring "falling back to cpu").
+            
+            Parameters:
+                message (str): Warning text emitted by the orchestrator.
+            """
             logger.info("Orchestrator warning: %s", message)
             if progress_tracker_instance is not None:
                 if message.startswith("Attempt "):
@@ -316,6 +319,17 @@ def transcribe(
                 name: str,
                 cancel_token: CancellationToken,
             ) -> None:
+                """
+                Initialize the progress adapter for mapping orchestrator progress to the Gradio tracker for a specific file or chunk group.
+                
+                Parameters:
+                    tracker (gr.Progress): Gradio progress tracker instance to receive updates.
+                    base (float): Base progress fraction offset for this file within the overall session (0.0–1.0).
+                    total (int): Total number of top-level progress units (e.g., files or groups) used to scale progress.
+                    idx (int): Index of the current unit (0-based) within the session.
+                    name (str): Human-readable name used in progress descriptions.
+                    cancel_token (CancellationToken): Token checked to detect and respond to user cancellation.
+                """
                 self.tracker = tracker
                 self.base = base
                 self.total = total
@@ -325,6 +339,18 @@ def transcribe(
                 self._total_chunks: int | None = None
 
             def _update(self, fraction: float | None, message: str) -> None:
+                """
+                Update the associated progress tracker with a fractional progress and description, respecting cancellation.
+                
+                Parameters:
+                    fraction (float | None): Fractional progress for the current work unit, where 0.0 means start and 1.0 means complete. If None, the tracker is updated in an indeterminate/state-only mode.
+                    message (str): Human-readable status message to include in the tracker's description.
+                
+                Behavior:
+                    - If the cancellation token is already cancelled, the method returns without calling the tracker.
+                    - If the tracker's optional `cancelled` attribute is truthy, the method cancels the cancellation token and returns.
+                    - Otherwise, the method composes a description from `message` and the instance's `name`, and calls the tracker with either a computed overall fraction (based on the instance's `base` and `total`) or `None` when `fraction` is None.
+                """
                 if self.cancel_token.cancelled:
                     return
                 if getattr(self.tracker, "cancelled", False):
@@ -339,22 +365,62 @@ def transcribe(
                     self.tracker(None, desc=desc)
 
             def on_model_load_started(self) -> None:
+                """
+                Notify the UI that model loading has started.
+                
+                Updates the progress tracker with the message "Loading model...".
+                """
                 self._update(None, "Loading model...")
 
             def on_model_load_finished(self) -> None:
+                """
+                Notify the progress tracker that model loading has completed.
+                
+                Updates the associated progress state with the message "Model loaded" to indicate the model finished loading.
+                """
                 self._update(None, "Model loaded")
 
             def on_audio_loading_started(self, path: str) -> None:  # noqa: ARG002
+                """
+                Notify that audio loading has begun and update the UI status to "Preparing audio...".
+                
+                Parameters:
+                    path (str): Filesystem path or URI of the audio being loaded (may be unused by this implementation).
+                """
                 self._update(None, "Preparing audio...")
 
             def on_audio_loading_finished(self, duration_sec: float | None) -> None:  # noqa: ARG002
+                """
+                Signal that audio loading has completed.
+                
+                Parameters:
+                    duration_sec (float | None): Total duration of the loaded audio in seconds, if known.
+                """
                 self._update(None, "Audio ready")
 
             def on_chunking_started(self, total_chunks: int | None) -> None:
+                """
+                Record the total number of chunks to process and notify the progress tracker that transcription is starting.
+                
+                Parameters:
+                    total_chunks (int | None): Total number of chunks expected, or `None` if the total is unknown.
+                
+                Description:
+                    Stores `total_chunks` internally and sets the progress to 0.0 with a "Starting transcription..." status update.
+                """
                 self._total_chunks = total_chunks
                 self._update(0.0, "Starting transcription...")
 
             def on_chunk_done(self, index: int) -> None:
+                """
+                Update progress when a transcription chunk finishes.
+                
+                If the total number of chunks is unknown, sets an indeterminate "Transcribing..." state.
+                Otherwise, advances the progress fraction based on the completed chunk and updates the status message.
+                
+                Parameters:
+                    index (int): Zero-based index of the chunk that finished.
+                """
                 if not self._total_chunks:
                     self._update(None, "Transcribing...")
                     return
@@ -367,27 +433,75 @@ def transcribe(
                 )
 
             def on_inference_started(self, total_batches: int | None) -> None:  # noqa: ARG002
+                """
+                Notify that inference has started and provide an optional total batch count for progress estimation.
+                
+                Parameters:
+                    total_batches (int | None): Total number of batches expected for the inference run, or `None` if unknown.
+                """
                 return
 
             def on_inference_batch_done(self, index: int) -> None:  # noqa: ARG002
+                """
+                Hook invoked when an inference batch completes.
+                
+                Called after a batch of inference has finished so subclasses or consumers can perform per-batch handling such as logging or updating progress. The base implementation performs no action.
+                
+                Parameters:
+                    index (int): Index of the completed inference batch (0-based).
+                """
                 return
 
             def on_postprocess_started(self, name: str) -> None:
+                """
+                Notify the UI that a post-processing step has started.
+                
+                Parameters:
+                    name (str): Display name of the post-processing step (used in the progress description).
+                """
                 self._update(None, f"Post-processing: {name}")
 
             def on_postprocess_finished(self, name: str) -> None:
+                """
+                Notify the progress tracker that a post-processing step has completed.
+                
+                Parameters:
+                    name (str): Human-readable name of the completed post-processing stage (for display).
+                """
                 self._update(None, f"Post-processing done: {name}")
 
             def on_export_started(self, total_items: int) -> None:
+                """
+                Notify the UI that an export operation has started for a given number of items.
+                
+                Parameters:
+                    total_items (int): The number of files to be exported; used to populate the export status message.
+                """
                 self._update(None, f"Exporting {total_items} file(s)...")
 
             def on_export_item_done(self, index: int, label: str) -> None:
+                """
+                Notify that an export item finished and update the progress display.
+                
+                Parameters:
+                    index (int): Zero-based index of the exported item.
+                    label (str): Human-readable label or filename for the exported item.
+                """
                 self._update(None, f"Exported: {label} ({index + 1})")
 
             def on_completed(self) -> None:
+                """
+                Mark the progress as complete and update the description shown to the user.
+                """
                 self._update(1.0, "Transcription complete")
 
             def on_error(self, message: str) -> None:
+                """
+                Signal an error state to the UI progress tracker and display the given message.
+                
+                Parameters:
+                    message (str): Error text to present in the progress UI.
+                """
                 self._update(None, f"Error: {message}")
 
         webui_cb = None
@@ -502,6 +616,11 @@ def transcribe(
                 )
 
                 def _heartbeat() -> None:
+                    """
+                    Periodically pushes an indeterminate progress update to the UI until stopped.
+                    
+                    Runs a loop that every 5 seconds calls the progress tracker with a status description to indicate ongoing work. If the shared stop event is set or either the cancellation token or the progress tracker indicates cancellation, the function cancels the token (if needed) and exits early.
+                    """
                     while not heartbeat_stop.is_set():
                         if cancellation_token.cancelled:
                             return

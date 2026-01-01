@@ -13,7 +13,11 @@ import requests
 
 
 def pytest_configure(config: pytest.Config) -> None:  # noqa: ARG001
-    """Configure global warning filters for the test suite."""
+    """
+    Configure global test-suite warning filters.
+    
+    Installs a filter that ignores DeprecationWarning messages matching the regular expression "websockets\.legacy is deprecated;.*".
+    """
     warnings.filterwarnings(
         "ignore",
         message=r"websockets\.legacy is deprecated;.*",

@@ -101,7 +101,11 @@ class TestTranscriptionEndpoint:
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
     ) -> None:
-        """Test successful transcription with JSON response."""
+        """
+        Validate that POST /v1/audio/transcriptions returns a JSON transcription and that the orchestrator is invoked with expected backend options.
+        
+        Sets up a mock orchestrator and ASR pipeline, posts a multipart transcription request, asserts a 200 response with JSON content containing the expected transcription text, and verifies that orchestrator.run_transcription was called once with language "en", task "transcribe", and timestamp_type "chunk".
+        """
         # Setup mocks
         mock_orch = Mock()
         mock_orch.run_transcription.return_value = mock_asr_result
@@ -190,7 +194,11 @@ class TestTranscriptionEndpoint:
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
     ) -> None:
-        """Test that dependency injection works correctly."""
+        """
+        Verify that ASR pipeline dependency injection causes the orchestrator to receive the pipeline's default backend configuration.
+        
+        Posts a transcription request with explicit override parameters, while the ASR pipeline dependency supplies a mock pipeline configured with DEFAULT_* constants, and asserts the orchestrator's received `backend_config` matches those DEFAULT_* values.
+        """
         # Setup mocks
         mock_orch = Mock()
         mock_orch.run_transcription.return_value = mock_asr_result

@@ -12,11 +12,13 @@ from insanely_fast_whisper_rocm.webui.handlers import TranscriptionConfig, trans
 def mock_pipeline_and_stabilizer() -> Generator[
     tuple[MagicMock, MagicMock], None, None
 ]:
-    """Fixture to mock orchestrator creation and ``stabilize_timestamps``.
-
-    Yields:
-        tuple[MagicMock, MagicMock]: A tuple of (mocked pipeline instance,
-        mocked ``stabilize_timestamps`` function).
+    """
+    Provide a pytest fixture that patches orchestrator creation and the timestamp stabilizer.
+    
+    Patches `create_orchestrator` and `stabilize_timestamps` in the handlers module, yields a mocked orchestrator whose `run_transcription` returns `{"text": "test transcription"}`, and a mocked `stabilize_timestamps` that returns its input.
+    
+    Returns:
+        tuple[MagicMock, MagicMock]: A tuple of `(mock_orchestrator, mock_stabilize)` where `mock_orchestrator.run_transcription()` returns `{"text": "test transcription"}` and `mock_stabilize(result, **kwargs)` returns `result`.
     """
     with (
         patch(

@@ -36,11 +36,11 @@ class RecordingBackend:
         progress_cb: ProgressCallback | None = None,
         cancellation_token: CancellationToken | None = None,
     ) -> dict[str, str | None]:
-        """Record the invocation and emit a predictable payload.
-
+        """
+        Record the invocation and return a payload reflecting the call.
+        
         Returns:
-            dict[str, str | None]: Context captured from the invocation.
-
+            dict[str, str | None]: A dictionary with keys "source", "path", "language", "task", and "timestamps" captured from the invocation.
         """
         payload = {
             "source": "backend",
@@ -80,11 +80,17 @@ class RecordingPipeline:
         progress_callback: ProgressCallback | None = None,
         cancellation_token: CancellationToken | None = None,
     ) -> dict[str, str | None]:
-        """Record processing calls and return a deterministic payload.
-
+        """
+        Record the processing call and return a deterministic payload for assertions.
+        
+        Normalizes `timestamp_type` (False -> "none", True -> "chunk"; string values are unchanged) and appends a record to `self.calls`.
+        
+        Parameters:
+            timestamp_type (str | bool): Type of timestamps requested; booleans are normalized as described.
+        
         Returns:
-            dict[str, str | None]: Details captured for assertion.
-
+            dict[str, str | None]: A payload containing `"source": "pipeline"` and the recorded fields
+            `audio_file_path`, `language`, `task`, `timestamp_type`, and `original_filename`.
         """
         # Normalize timestamp_type for assertions
         ts_type = timestamp_type
@@ -110,11 +116,11 @@ class ErrorPipeline(RecordingPipeline):
     error_message = "unexpected failure"
 
     def process(self, **kwargs: object) -> NoReturn:  # type: ignore[override]
-        """Raise a ``TranscriptionError`` to simulate pipeline errors.
-
+        """
+        Simulates a pipeline failure by raising a TranscriptionError.
+        
         Raises:
-            TranscriptionError: Always raised to exercise error handling.
-
+            TranscriptionError: Always raised with the pipeline's configured error message.
         """
         raise TranscriptionError(self.error_message)
 
@@ -125,11 +131,13 @@ class FallbackPipeline(RecordingPipeline):
     facade_ref: CLIFacade | None = None
 
     def process(self, **kwargs: object) -> NoReturn:  # type: ignore[override]
-        """Force the facade to fall back to backend processing.
-
+        """
+        Trigger backend fallback by raising a TranscriptionError.
+        
+        If `facade_ref` is set, disables strict file existence checking on the referenced facade before raising the error.
+        
         Raises:
-            TranscriptionError: Raised to trigger backend fallback logic.
-
+            TranscriptionError: Always raised to force backend fallback (message: "audio file not found on disk").
         """
         if self.facade_ref is not None:
             # Simulate late detection that skips strict file checking.
@@ -183,6 +191,14 @@ def test_process_audio_uses_orchestrator_factory_each_time() -> None:
     factory_calls = 0
 
     def mock_factory() -> MagicMock:
+        """
+        Create a new MagicMock and record that the factory was invoked.
+        
+        Increments the enclosing scope's `factory_calls` counter each time it's called.
+        
+        Returns:
+            MagicMock: A new MagicMock instance.
+        """
         nonlocal factory_calls
         factory_calls += 1
         return MagicMock()
@@ -199,6 +215,12 @@ def test_process_audio_orchestrator_initialisation_failure_raises() -> None:
     """Facade surfaces errors when the orchestrator factory fails."""
 
     def broken_factory() -> None:
+        """
+        Factory function that always fails during initialization.
+        
+        Raises:
+            RuntimeError: Always raised with the message "Factory failed".
+        """
         raise RuntimeError("Factory failed")
 
     facade = CLIFacade(orchestrator_factory=broken_factory, check_file_exists=False)

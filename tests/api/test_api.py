@@ -30,6 +30,13 @@ def mock_asr_pipeline() -> Iterator[MagicMock]:
     mock_pipeline.asr_backend.config.model_name = "test-model"
 
     def get_mock_pipeline() -> MagicMock:
+        """
+        Provide the configured MagicMock ASR pipeline used by tests.
+        
+        Returns:
+            MagicMock: Mock ASR pipeline with `process` preset to return `{"text": "test"}` and
+            `asr_backend.config.model_name` set to `"test-model"`.
+        """
         return mock_pipeline
 
     app.dependency_overrides[get_asr_pipeline] = get_mock_pipeline
@@ -41,13 +48,17 @@ def mock_asr_pipeline() -> Iterator[MagicMock]:
 
 @pytest.fixture
 def mock_orchestrator(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    """Mock the TranscriptionOrchestrator and override its factory.
-
-    Args:
-        monkeypatch: Pytest fixture for monkeypatching.
-
+    """
+    Provide a mocked TranscriptionOrchestrator and override the factory that creates it.
+    
+    The returned mock has `run_transcription` configured to return a fixed result and the
+    module-level factory `create_orchestrator` is patched to return this mock.
+    
+    Parameters:
+        monkeypatch (pytest.MonkeyPatch): Fixture used to patch the orchestrator factory.
+    
     Returns:
-        MagicMock: The mocked orchestrator instance.
+        MagicMock: Mocked orchestrator whose `run_transcription` returns `{"text": "test", "segments": [], "chunks": []}`.
     """
     mock_orch = MagicMock()
     mock_orch.run_transcription.return_value = {
@@ -63,14 +74,15 @@ def mock_orchestrator(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 @pytest.fixture
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
-    """Create a TestClient overriding FileHandler to use a temp dir.
-
-    Args:
-        tmp_path: Temporary directory provided by pytest.
-        monkeypatch: Pytest fixture to temporarily modify attributes during tests.
-
+    """
+    Create a TestClient with app dependencies overridden to use a temporary upload directory and stub out external/back-end behaviors.
+    
+    Parameters:
+        tmp_path (Path): Temporary directory provided by pytest used as the FileHandler upload root.
+        monkeypatch (pytest.MonkeyPatch): Fixture used to patch functions and attributes for the test.
+    
     Yields:
-        TestClient: Configured client instance.
+        TestClient: FastAPI TestClient configured with the temporary FileHandler and patched backend behavior; dependency overrides are cleaned up after use.
     """
     monkeypatch.setattr(
         "insanely_fast_whisper_rocm.api.app.download_model_if_needed",

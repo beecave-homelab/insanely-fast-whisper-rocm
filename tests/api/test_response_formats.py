@@ -30,13 +30,28 @@ class _StubPipeline:  # noqa: D401 (simple class)
     """Minimal stub for WhisperPipeline that returns deterministic output."""
 
     def __init__(self) -> None:
-        """Initialize the stub with a mock backend."""
+        """
+        Initialize the stub pipeline with a mocked ASR backend.
+        
+        Sets self.asr_backend to a MagicMock and assigns "test-model" to its
+        config.model_name for deterministic test behavior.
+        """
         from unittest.mock import MagicMock
 
         self.asr_backend = MagicMock()
         self.asr_backend.config.model_name = "test-model"
 
     def process(self, *args: object, **kwargs: object) -> dict[str, Any]:  # noqa: D401
+        """
+        Produce a deterministic mock transcription result for testing.
+        
+        Returns:
+            dict[str, Any]: A dictionary with keys:
+                - "text": the full transcription string ("hello world").
+                - "chunks": a list of chunk dictionaries, each containing:
+                    - "id" (int), "seek" (int), "start" (float), "end" (float), "text" (str).
+                - "language": the ISO language code ("en").
+        """
         return {
             "text": "hello world",
             "chunks": [
@@ -93,10 +108,11 @@ def _override_dependencies() -> Generator[None, None, None]:
 def _post_file(
     client: TestClient, url: str, response_format: str = RESPONSE_FORMAT_JSON
 ) -> str:
-    """Helper to send a dummy wav file to a URL with specified response_format.
-
+    """
+    Send a minimal dummy WAV file to the given endpoint with the specified response_format.
+    
     Returns:
-        str: Response object from the FastAPI TestClient.
+        Response: The response object returned by the FastAPI TestClient.
     """
     dummy_audio = io.BytesIO(
         b"RIFF\x00\x00\x00\x00WAVEfmt "

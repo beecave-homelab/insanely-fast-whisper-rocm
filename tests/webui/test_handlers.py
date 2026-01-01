@@ -305,7 +305,11 @@ def test_transcribe_with_progress_tracker() -> None:
 
 
 def test_transcribe_with_chunk_duration_warning() -> None:
-    """Test transcribe logs warning when chunk_duration is set."""
+    """
+    Verify transcribe does not emit a warning when chunk_duration and chunk_overlap are provided.
+    
+    Calls handlers.transcribe with a TranscriptionConfig specifying chunk_duration and chunk_overlap and asserts that logger.warning is not called.
+    """
     mock_orchestrator = unittest.mock.MagicMock()
     mock_orchestrator.run_transcription.return_value = {"text": "test"}
 

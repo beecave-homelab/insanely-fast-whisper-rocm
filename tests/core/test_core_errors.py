@@ -36,6 +36,12 @@ def test_oom_error_is_raisable_and_catchable() -> None:
     """Raise/catch OOM errors via base exception types."""
 
     def _raise() -> None:
+        """
+        Raise an InferenceOOMError with a predefined message and device metadata.
+        
+        Raises:
+            InferenceOOMError: Error with message "infer" and `device` set to "cuda:0".
+        """
         raise InferenceOOMError("infer", device="cuda:0")
 
     with pytest.raises(OutOfMemoryError, match="infer"):

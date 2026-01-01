@@ -19,10 +19,11 @@ from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
 
 @pytest.fixture
 def audio_fixture_path() -> pathlib.Path:
-    """Return path to the test audio fixture.
-
+    """
+    Provide the path to the test audio fixture file tests/audio/fixtures/test_clip.mp3.
+    
     Returns:
-        Path to ``tests/audio/fixtures/test_clip.mp3``.
+        pathlib.Path: Absolute or relative Path pointing to the fixture file.
     """
     return pathlib.Path(__file__).parents[1] / "audio" / "fixtures" / "test_clip.mp3"
 
@@ -136,18 +137,10 @@ def test_postprocess_uses_original_filename_when_provided(
     tmp_path: pathlib.Path,
     audio_fixture_path: pathlib.Path,
 ) -> None:
-    """Ensure original_filename parameter takes precedence.
-
-    When original_filename is provided (e.g., for uploaded files),
-    it should be used instead of the audio_file_path.
-
-    IMPORTANT: original_filename should only be used for uploaded files
-    where we want to preserve the original upload name. For CLI usage
-    with local files, original_filename should NOT be passed.
-
-    Args:
-        tmp_path: Pytest fixture for temporary directory.
-        audio_fixture_path: Path to the test audio fixture.
+    """
+    Ensure that a provided original filename is used as the `original_file` in postprocessed output.
+    
+    Verifies that when `original_filename` is supplied (as with user uploads), the pipeline sets `original_file` to that value instead of deriving it from `audio_file_path`.
     """
     audio_file = tmp_path / "temp_chunk.wav"
     audio_file.write_bytes(audio_fixture_path.read_bytes())
@@ -182,14 +175,10 @@ def test_postprocess_should_not_use_filename_only(
     tmp_path: pathlib.Path,
     audio_fixture_path: pathlib.Path,
 ) -> None:
-    """Ensure passing just filename (without path) is avoided.
-
-    This test verifies that we don't pass just the filename as
-    original_filename, which would break stabilization.
-
-    Args:
-        tmp_path: Pytest fixture for temporary directory.
-        audio_fixture_path: Path to the test audio fixture.
+    """
+    Verify that passing only a filename as original_filename results in a non-absolute original_file, and that omitting original_filename produces an absolute, existing original_file path.
+    
+    This test writes a fixture audio file into a subdirectory and asserts the BAD case (original_filename set to the bare filename remains non-absolute) and the GOOD case (original_filename is None and the pipeline produces an absolute path suitable for stabilization).
     """
     # Create a test audio file in a subdirectory
     audio_dir = tmp_path / "uploads"

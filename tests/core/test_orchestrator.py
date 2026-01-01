@@ -21,6 +21,17 @@ from insanely_fast_whisper_rocm.core.orchestrator import TranscriptionOrchestrat
 def _config(
     *, device: str, batch_size: int = 4, chunk_length: int = 30
 ) -> HuggingFaceBackendConfig:
+    """
+    Create a HuggingFaceBackendConfig for the "openai/whisper-tiny" model with sensible defaults.
+    
+    Parameters:
+        device (str): Target device identifier (e.g., "cuda" or "cpu").
+        batch_size (int): Number of items per batch; defaults to 4.
+        chunk_length (int): Audio chunk length in seconds; defaults to 30.
+    
+    Returns:
+        HuggingFaceBackendConfig: Configuration for "openai/whisper-tiny" using dtype "float16" and progress_group_size 4, with the provided device, batch_size, and chunk_length.
+    """
     return HuggingFaceBackendConfig(
         model_name="openai/whisper-tiny",
         device=device,
@@ -33,6 +44,15 @@ def _config(
 
 @contextmanager
 def _borrow_pipeline_with_process(process: Mock) -> Generator[Any, None, None]:
+    """
+    Context manager that yields a Mock pipeline with its `process` attribute set to the provided mock.
+    
+    Parameters:
+        process (Mock): The mock object to assign to `pipeline.process`.
+    
+    Returns:
+        Generator[Any, None, None]: A generator (context manager) that yields the configured Mock pipeline.
+    """
     pipeline = Mock()
     pipeline.process = process
     yield pipeline

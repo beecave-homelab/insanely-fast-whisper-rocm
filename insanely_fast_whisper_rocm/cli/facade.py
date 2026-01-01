@@ -58,16 +58,16 @@ class CLIFacade:
         self.check_file_exists = check_file_exists
 
     def get_env_config(self) -> dict[str, Any]:
-        """Get configuration from environment variables with safe defaults.
-
+        """
+        Return a configuration mapping populated from module defaults with device string converted.
+        
         Returns:
-            dict[str, Any]: Mapping containing defaults for:
-                - model (str): Default model identifier.
-                - device (str): Device string resolved from environment.
-                - batch_size (int): Default batch size.
-                - timestamp_type (str): Default timestamp type.
-                - language (str | None): Default language code or None.
-
+            dict: Mapping with keys:
+                - model: default model identifier from module constants.
+                - device: device string resolved via convert_device_string.
+                - batch_size: default batch size from module constants.
+                - timestamp_type: default timestamp type from module constants.
+                - language: default language code, or `None` if configured as "none".
         """
         device_id = constants.DEFAULT_DEVICE
         return {
@@ -91,19 +91,19 @@ class CLIFacade:
         chunk_length: int,
         progress_group_size: int,
     ) -> HuggingFaceBackendConfig:
-        """Create a backend configuration from CLI-supplied arguments.
-
-        Args:
+        """
+        Create a HuggingFaceBackendConfig from CLI-provided backend parameters.
+        
+        Parameters:
             model (str): Model identifier (e.g., a Hugging Face repo id).
-            device (str): Target device (e.g., "cpu", "cuda:0").
-            dtype (str): Data type for inference (e.g., "float16").
+            device (str): Target device string (e.g., "cpu", "cuda:0").
+            dtype (str): Inference data type (e.g., "float16").
             batch_size (int): Number of samples to batch per inference step.
             chunk_length (int): Audio chunk size in seconds.
-            progress_group_size (int): Chunks per progress update group.
-
+            progress_group_size (int): Number of chunks grouped per progress update.
+        
         Returns:
-            HuggingFaceBackendConfig: The constructed backend configuration.
-
+            HuggingFaceBackendConfig: Configured backend settings for the orchestrator.
         """
         return HuggingFaceBackendConfig(
             model_name=model,
@@ -206,6 +206,12 @@ class CLIFacade:
         orchestrator = self.orchestrator_factory()
 
         def _warning_callback(message: str) -> None:
+            """
+            Log an orchestrator recovery action message at the warning level.
+            
+            Parameters:
+                message (str): Description of the recovery action or non-fatal warning emitted by the orchestrator.
+            """
             logger.warning("Orchestrator recovery action: %s", message)
 
         try:

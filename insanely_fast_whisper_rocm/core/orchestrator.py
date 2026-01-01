@@ -28,10 +28,14 @@ logger = logging.getLogger(__name__)
 
 
 def _format_backend_config(config: HuggingFaceBackendConfig) -> str:
-    """Format a backend config for user-facing status messages.
-
+    """
+    Produce a one-line human-readable summary of a backend configuration.
+    
+    Parameters:
+        config (HuggingFaceBackendConfig): Backend configuration to summarize.
+    
     Returns:
-        A single-line human readable summary.
+        str: Single-line string containing `model_name`, `device`, `dtype`, `batch_size`, and `chunk_length`.
     """
     return (
         f"model={config.model_name} device={config.device} dtype={config.dtype} "
@@ -40,10 +44,11 @@ def _format_backend_config(config: HuggingFaceBackendConfig) -> str:
 
 
 def _backend_config_to_dict(config: HuggingFaceBackendConfig) -> dict[str, Any]:
-    """Convert backend config to a JSON-serializable dict for UI/debugging.
-
+    """
+    Convert a HuggingFace backend configuration into a JSON-serializable dictionary suitable for UI or debugging.
+    
     Returns:
-        A JSON-serializable dictionary describing the backend configuration.
+        A dictionary with keys `model_name`, `device`, `dtype`, `batch_size`, `chunk_length`, and `progress_group_size` representing the backend configuration.
     """
     return {
         "model_name": config.model_name,
@@ -65,13 +70,16 @@ class TranscriptionOrchestrator:
     def _get_reduced_config(
         self, config: HuggingFaceBackendConfig
     ) -> HuggingFaceBackendConfig:
-        """Create a new configuration with reduced batch size.
-
-        Args:
-            config: The current backend configuration.
-
+        """
+        Create a new HuggingFaceBackendConfig with batch_size halved for OOM recovery.
+        
+        The returned config preserves model_name, device, dtype, chunk_length, and progress_group_size from the input and sets batch_size to max(MIN_BATCH_SIZE, config.batch_size // 2).
+        
+        Parameters:
+            config (HuggingFaceBackendConfig): Current backend configuration.
+        
         Returns:
-            A new configuration with batch_size halved (minimum 1).
+            HuggingFaceBackendConfig: New backend configuration with a reduced batch_size.
         """
         new_batch_size = max(MIN_BATCH_SIZE, config.batch_size // 2)
         logger.info(
@@ -91,13 +99,16 @@ class TranscriptionOrchestrator:
     def _get_cpu_fallback_config(
         self, config: HuggingFaceBackendConfig
     ) -> HuggingFaceBackendConfig:
-        """Create a new configuration for CPU fallback.
-
-        Args:
-            config: The current backend configuration.
-
+        """
+        Produce a backend configuration adjusted for CPU fallback.
+        
+        Creates a new HuggingFaceBackendConfig with device set to "cpu", dtype set to "float32", batch_size limited to at most 2, chunk_length limited to at most 15, and progress_group_size preserved.
+        
+        Parameters:
+            config (HuggingFaceBackendConfig): The current backend configuration to adapt for CPU execution.
+        
         Returns:
-            A new configuration with device set to "cpu" and constrained parameters.
+            HuggingFaceBackendConfig: A new configuration suitable for running on CPU.
         """
         logger.info("Creating CPU fallback configuration")
         return HuggingFaceBackendConfig(
@@ -121,27 +132,29 @@ class TranscriptionOrchestrator:
         save_transcriptions: bool = True,
         output_dir: str = "transcripts",
     ) -> dict[str, Any]:
-        """Run transcription with automatic retry and OOM recovery.
-
-        Args:
-            audio_path: Path to the audio file.
-            backend_config: Initial backend configuration.
-            task: "transcribe" or "translate".
-            language: Optional language code.
-            timestamp_type: Whether to return timestamps ("chunk", "word", or bool).
-            progress_callback: Optional progress reporter.
-            warning_callback: Optional callback for warning messages
-                (e.g., UI notifications).
-            save_transcriptions: Whether to persist results to disk.
-            output_dir: Directory for persisted results.
-
+        """
+        Orchestrates transcription with automatic retries and out-of-memory (OOM) recovery.
+        
+        Runs transcription attempts using the provided backend configuration, automatically retrying with reduced GPU batch size or switching to a CPU fallback when GPU OOMs occur. Attaches a per-attempt history under the `orchestrator_attempts` key in the returned result.
+        
+        Parameters:
+            audio_path: Path to the audio file to transcribe.
+            backend_config: Initial backend configuration used to acquire a pipeline.
+            task: Either "transcribe" or "translate".
+            language: Optional language code to force recognition/translation.
+            timestamp_type: Controls timestamps returned by the pipeline; may be a boolean or one of "chunk" or "word".
+            progress_callback: Optional callback invoked with progress updates from the pipeline.
+            warning_callback: Optional callback invoked with user-facing warning messages (e.g., when recovery actions occur).
+            save_transcriptions: If true, persist transcription outputs to disk via the pipeline.
+            output_dir: Directory to write persisted transcription files when saving is enabled.
+        
         Returns:
-            The transcription result dictionary.
-
+            A dictionary containing the transcription result. The dictionary includes an `orchestrator_attempts` entry describing each attempt's config, status, and any recovery actions or errors.
+        
         Raises:
-            InferenceOOMError: If inference fails with OOM.
-            ModelLoadingOOMError: If model loading fails with OOM.
-            TranscriptionError: For non-OOM related failures.
+            ModelLoadingOOMError: When model loading fails with OOM and no recovery is possible.
+            InferenceOOMError: When inference repeatedly fails with OOM and no recovery is possible.
+            TranscriptionError: For other transcription failures or when maximum retry attempts are exhausted.
         """
         current_config = backend_config
         attempt_index = 0
@@ -290,10 +303,11 @@ class TranscriptionOrchestrator:
 
 
 def create_orchestrator() -> TranscriptionOrchestrator:
-    """Factory function to create and return a TranscriptionOrchestrator instance.
-
+    """
+    Create a TranscriptionOrchestrator.
+    
     Returns:
-        A new TranscriptionOrchestrator.
+        A new TranscriptionOrchestrator instance.
     """
     return TranscriptionOrchestrator()
 

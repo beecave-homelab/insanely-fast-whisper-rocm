@@ -35,7 +35,12 @@ SOURCE_ENV_FILE = PROJECT_ROOT / ".env.example"
 
 
 def main() -> None:
-    """Manages the creation/update of the user-specific .env file."""
+    """
+    Create or update the user-specific .env file for the application.
+    
+    If the project .env.example is missing, the function prints an error and exits.
+    If a user .env file already exists, it prompts for confirmation before overwriting and treats EOF/KeyboardInterrupt as a cancellation. On success, it ensures the user config directory exists, copies the template to the user .env location, and prints post-setup guidance (including ROCm/GPU notes). Any exceptions during setup are reported to the user.
+    """
     print(f"🔧 Attempting to set up user configuration at: {USER_ENV_FILE}")
 
     if not SOURCE_ENV_FILE.exists():

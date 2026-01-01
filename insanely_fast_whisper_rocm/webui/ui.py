@@ -137,11 +137,11 @@ def _create_task_config_ui() -> tuple[gr.Radio, gr.Textbox, gr.Radio]:
 
 
 def _create_file_handling_ui() -> tuple[gr.Checkbox, gr.Textbox]:
-    """Helper function to create file handling UI components.
-
+    """
+    Create the "File Handling" accordion containing controls to save transcriptions.
+    
     Returns:
-        tuple[gr.Checkbox, gr.Textbox]: Save transcriptions toggle and save
-        directory input.
+        tuple: `save_transcriptions` — Checkbox that toggles saving transcriptions to disk; `temp_uploads_dir` — Textbox for the save directory path.
     """
     with gr.Accordion("File Handling", open=False):
         save_transcriptions = gr.Checkbox(
@@ -174,11 +174,13 @@ def _process_transcription_request_wrapper(
     temp_uploads_dir: str,
     progress: gr.Progress | None = None,
 ) -> tuple[object, ...]:
-    """Wrapper to adapt Gradio inputs to process_transcription_request.
-
+    """
+    Adapt Gradio form inputs into internal configuration objects and invoke transcription processing.
+    
+    Constructs a TranscriptionConfig and FileHandlingConfig from the provided inputs, applies stabilization options, and calls process_transcription_request.
+    
     Returns:
-        tuple: The outputs expected by the Gradio click handler (text,
-        JSON, state, and download button updates).
+        tuple: A tuple containing the transcription text output, the transcription JSON/details, the persistent state value, and values for download button updates (in that order).
     """
     if progress is None:
         progress = gr.Progress()

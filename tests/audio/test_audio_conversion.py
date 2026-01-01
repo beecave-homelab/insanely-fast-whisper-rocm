@@ -19,10 +19,12 @@ from insanely_fast_whisper_rocm.audio.conversion import (
 
 @pytest.fixture
 def mock_ffmpeg_chain() -> dict[str, Mock]:
-    """Provide a mocked ffmpeg chain for testing.
-
+    """
+    Create a mocked ffmpeg input/output/run chain for tests.
+    
     Returns:
-        Mapping containing the chained mocks used by the ffmpeg wrapper.
+        dict[str, Mock]: Mapping with keys "input", "output", and "run" whose values are Mock objects
+        representing the ffmpeg input object, the output object (chained), and the run result respectively.
     """
     mock_ffmpeg_input = Mock()
     mock_ffmpeg_output = Mock()
@@ -89,7 +91,15 @@ def test_ensure_wav_non_wav_file_conversion(mock_ffmpeg_chain: dict[str, Mock]) 
 
 
 def test_ensure_wav_custom_sample_rate(mock_ffmpeg_chain: dict[str, Mock]) -> None:
-    """Test ensure_wav with custom sample rate."""
+    """
+    Verifies that ensure_wav passes a custom sample rate to ffmpeg when converting an audio file.
+    
+    Asserts that ffmpeg's output call receives the provided sample_rate (`ar`) and cleans up the produced WAV file.
+    
+    Parameters:
+        mock_ffmpeg_chain (dict[str, Mock]): Fixture providing mocked ffmpeg chain objects with keys
+            "input", "output", and "run".
+    """
     fixture_path = Path(__file__).parent / "fixtures" / "test_clip.mp3"
     custom_sample_rate = 44100
 

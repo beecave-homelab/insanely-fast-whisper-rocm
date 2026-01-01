@@ -159,14 +159,17 @@ class TestCLIFacade:
 
 @pytest.fixture(autouse=True)
 def _stub_cli_facade(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    """Install a lightweight CLI facade for tests.
-
-    Args:
-        monkeypatch: Pytest helper providing attribute overrides.
-
-    Yields:
-        None: Allows callers to execute with the stub facade active.
-
+    """
+    Provide a pytest fixture that installs a lightweight CLIFacade stub for tests.
+    
+    Replaces the global `cli_facade` references with a stub whose `process_audio`
+    method returns a fixed transcription dictionary, allowing tests to run without
+    creating real backends or orchestrators.
+    
+    Parameters:
+        monkeypatch (pytest.MonkeyPatch): Pytest helper used to set attributes on
+            target modules so the stub replaces the real `cli_facade` during the
+            fixture's lifetime.
     """
 
     class _StubFacade(CLIFacade):
@@ -212,7 +215,11 @@ class TestCLICommands:
     """Test CLI commands functionality."""
 
     def setup_method(self) -> None:
-        """Set up test fixtures."""
+        """
+        Initialize test runner and path to the audio fixture.
+        
+        Sets self.runner to a Click CliRunner instance and self.test_audio_file to the test audio fixture path (tests/audio/fixtures/test_clip.mp3 two directories above this file).
+        """
         self.runner = CliRunner()
         self.test_audio_file = (
             Path(__file__).parents[2] / "tests" / "audio" / "fixtures" / "test_clip.mp3"

@@ -139,10 +139,10 @@ def release_pipeline(key: tuple[Hashable, ...]) -> None:
 
 
 def invalidate_gpu_cache() -> None:
-    """Close and remove all GPU-based pipelines from the cache.
-
-    This is useful for OOM recovery when falling back to CPU, to ensure
-    GPU memory is freed immediately.
+    """
+    Invalidate all GPU-backed cache entries by closing their backends and removing them from the cache.
+    
+    This frees GPU memory immediately and is intended for out-of-memory recovery when falling back to CPU.
     """
     with _LOCK:
         keys_to_remove = []
@@ -164,11 +164,13 @@ def invalidate_gpu_cache() -> None:
 
 
 def clear_cache(force_close: bool = False) -> None:
-    """Clear the entire cache.
-
-    Args:
-        force_close: If True, ``close()`` is called on all backends before
-            removing entries.
+    """
+    Clear all cached backend and pipeline entries.
+    
+    If `force_close` is True, attempt to call `close()` on each backend before removing entries; otherwise entries are removed without closing.
+    
+    Parameters:
+        force_close (bool): When True, attempt to close every backend before clearing the cache.
     """
     with _LOCK:
         if force_close:
