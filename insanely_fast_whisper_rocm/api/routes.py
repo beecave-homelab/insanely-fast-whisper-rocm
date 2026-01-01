@@ -265,7 +265,7 @@ async def create_translation(
                 backend_config=base_config,
                 language=language,
                 task="translate",
-                return_timestamps=timestamp_type,
+                timestamp_type=timestamp_type,
             )
         except OutOfMemoryError as oom:
             raise HTTPException(
