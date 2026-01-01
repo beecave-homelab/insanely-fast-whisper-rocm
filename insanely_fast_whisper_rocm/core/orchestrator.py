@@ -296,3 +296,6 @@ def create_orchestrator() -> TranscriptionOrchestrator:
         A new TranscriptionOrchestrator.
     """
     return TranscriptionOrchestrator()
+
+
+Orchestrator = TranscriptionOrchestrator
