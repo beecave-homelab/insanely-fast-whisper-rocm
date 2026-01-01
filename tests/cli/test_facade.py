@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import NoReturn
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -39,6 +40,7 @@ class RecordingBackend:
 
         Returns:
             dict[str, str | None]: Context captured from the invocation.
+
         """
         payload = {
             "source": "backend",
@@ -82,6 +84,7 @@ class RecordingPipeline:
 
         Returns:
             dict[str, str | None]: Details captured for assertion.
+
         """
         # Normalize timestamp_type for assertions
         ts_type = timestamp_type
@@ -111,6 +114,7 @@ class ErrorPipeline(RecordingPipeline):
 
         Raises:
             TranscriptionError: Always raised to exercise error handling.
+
         """
         raise TranscriptionError(self.error_message)
 
@@ -125,6 +129,7 @@ class FallbackPipeline(RecordingPipeline):
 
         Raises:
             TranscriptionError: Raised to trigger backend fallback logic.
+
         """
         if self.facade_ref is not None:
             # Simulate late detection that skips strict file checking.
@@ -146,11 +151,13 @@ def _reset_recording_backend() -> None:
     RecordingBackend.instances.clear()
 
 
-def test_process_audio_cpu_adjusts_configuration_and_uses_pipeline() -> None:
-    """When running on CPU the facade adjusts configuration and calls pipeline."""
+def test_process_audio_cpu_adjusts_configuration_and_uses_orchestrator() -> None:
+    """When running on CPU the facade adjusts configuration and calls orchestrator."""
+    mock_orchestrator = MagicMock()
+    mock_orchestrator.run_transcription.return_value = {"source": "mock"}
+
     facade = CLIFacade(
-        backend_factory=RecordingBackend,
-        pipeline_factory=RecordingPipeline,
+        orchestrator_factory=lambda: mock_orchestrator,
         check_file_exists=True,
     )
 
@@ -162,79 +169,53 @@ def test_process_audio_cpu_adjusts_configuration_and_uses_pipeline() -> None:
         return_timestamps_value="word",
     )
 
-    backend = facade.backend
-    assert backend is not None
-    assert backend.config.chunk_length == 15
-    assert backend.config.batch_size == 2
-
-    pipeline = facade.pipeline
-    assert pipeline is not None
-    assert pipeline.calls[0]["timestamp_type"] == "word"
-    assert result["source"] == "pipeline"
+    assert result["source"] == "mock"
+    mock_orchestrator.run_transcription.assert_called_once()
+    call_args = mock_orchestrator.run_transcription.call_args[1]
+    config = call_args["backend_config"]
+    assert config.chunk_length == 15
+    assert config.batch_size == 2
+    assert call_args["timestamp_type"] == "word"
 
 
-def test_process_audio_reuses_backend_and_recreates_pipeline() -> None:
-    """Facade reuses the backend config and rebuilds a missing pipeline."""
-    facade = CLIFacade(
-        backend_factory=RecordingBackend,
-        pipeline_factory=RecordingPipeline,
-        check_file_exists=True,
-    )
+def test_process_audio_uses_orchestrator_factory_each_time() -> None:
+    """Facade calls the orchestrator factory for every processing request."""
+    factory_calls = 0
+
+    def mock_factory() -> MagicMock:
+        nonlocal factory_calls
+        factory_calls += 1
+        return MagicMock()
+
+    facade = CLIFacade(orchestrator_factory=mock_factory, check_file_exists=True)
 
     facade.process_audio(audio_file_path=Path("first.wav"))
+    facade.process_audio(audio_file_path=Path("second.wav"))
 
-    backend = facade.backend
-    assert backend is not None
-    assert len(RecordingBackend.instances) == 1
-
-    facade.pipeline = None
-
-    result = facade.process_audio(
-        audio_file_path=Path("second.wav"),
-        return_timestamps_value=False,
-    )
-
-    assert len(RecordingBackend.instances) == 1
-    assert facade.pipeline is not None
-    assert facade.pipeline.calls[-1]["timestamp_type"] == "none"
-    assert result["source"] == "pipeline"
+    assert factory_calls == 2
 
 
-def test_process_audio_backend_initialisation_failure_raises() -> None:
-    """Facade surfaces a runtime error when the backend fails to initialise."""
-    facade = CLIFacade(backend_factory=NoneBackend, check_file_exists=False)
+def test_process_audio_orchestrator_initialisation_failure_raises() -> None:
+    """Facade surfaces errors when the orchestrator factory fails."""
 
-    with pytest.raises(RuntimeError, match="ASR backend failed to initialize"):
+    def broken_factory() -> None:
+        raise RuntimeError("Factory failed")
+
+    facade = CLIFacade(orchestrator_factory=broken_factory, check_file_exists=False)
+
+    with pytest.raises(RuntimeError, match="Factory failed"):
         facade.process_audio(audio_file_path=Path("broken.wav"))
 
 
-def test_process_audio_pipeline_error_is_propagated_for_unhandled_failure() -> None:
-    """Non-missing-file errors raised by the pipeline are propagated."""
+def test_process_audio_orchestrator_error_is_propagated() -> None:
+    """Errors raised by the orchestrator are propagated."""
+    mock_orchestrator = MagicMock()
+    mock_orchestrator.run_transcription.side_effect = TranscriptionError("orch failure")
+
     facade = CLIFacade(
-        backend_factory=RecordingBackend,
-        pipeline_factory=ErrorPipeline,
+        orchestrator_factory=lambda: mock_orchestrator,
         check_file_exists=True,
     )
 
-    with pytest.raises(TranscriptionError, match=ErrorPipeline.error_message):
+    with pytest.raises(TranscriptionError, match="orch failure"):
         facade.process_audio(audio_file_path=Path("failure.wav"))
-
-
-def test_process_audio_missing_file_falls_back_to_backend_when_available() -> None:
-    """When file handling is relaxed the facade falls back to backend processing."""
-    facade = CLIFacade(
-        backend_factory=RecordingBackend,
-        pipeline_factory=FallbackPipeline,
-        check_file_exists=True,
-    )
-    FallbackPipeline.facade_ref = facade
-
-    result = facade.process_audio(audio_file_path=Path("missing.wav"))
-
-    backend = facade.backend
-    assert backend is not None
-    assert backend.calls[-1]["path"].endswith("missing.wav")
-    assert result["source"] == "backend"
-
-    # Restore facade behaviour for subsequent tests
-    facade.check_file_exists = True

@@ -112,8 +112,8 @@ class TestCLIFacade:
         # Adjustments are applied during processing, not at config creation
         assert isinstance(config.batch_size, int)
 
-    @patch("insanely_fast_whisper_rocm.cli.facade.create_orchestrator")
-    def test_transcribe_audio_success(self, mock_create_orchestrator: Mock) -> None:
+    @patch.object(CLIFacade, "orchestrator_factory")
+    def test_transcribe_audio_success(self, mock_orchestrator_factory: Mock) -> None:
         """Test successful audio transcription."""
         # Mock the orchestrator
         mock_orch = Mock()
@@ -123,7 +123,7 @@ class TestCLIFacade:
             "runtime_seconds": 1.5,
             "config_used": {},
         }
-        mock_create_orchestrator.return_value = mock_orch
+        mock_orchestrator_factory.return_value = mock_orch
 
         facade = CLIFacade()
         result = facade.process_audio(
@@ -136,14 +136,14 @@ class TestCLIFacade:
         assert "runtime_seconds" in result
         mock_orch.run_transcription.assert_called_once()
 
-    @patch("insanely_fast_whisper_rocm.cli.facade.create_orchestrator")
+    @patch.object(CLIFacade, "orchestrator_factory")
     def test_transcribe_audio_backend_reuse(
-        self, mock_create_orchestrator: Mock
+        self, mock_orchestrator_factory: Mock
     ) -> None:
         """Test that orchestrator is used for repeated calls."""
         mock_orch = Mock()
         mock_orch.run_transcription.return_value = {"text": "Test", "chunks": []}
-        mock_create_orchestrator.return_value = mock_orch
+        mock_orchestrator_factory.return_value = mock_orch
 
         facade = CLIFacade()
 
@@ -153,7 +153,7 @@ class TestCLIFacade:
         facade.process_audio(Path("test2.mp3"))
 
         # Orchestrator factory should be called each time process_audio is called
-        assert mock_create_orchestrator.call_count == 2
+        assert mock_orchestrator_factory.call_count == 2
         assert mock_orch.run_transcription.call_count == 2
 
 
@@ -166,6 +166,7 @@ def _stub_cli_facade(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
     Yields:
         None: Allows callers to execute with the stub facade active.
+
     """
 
     class _StubFacade(CLIFacade):
@@ -645,10 +646,11 @@ class TestErrorHandling:
             "CUDA device not available"
         )
 
-        # We must patch CLIFacade's _orchestrator_factory since it's used in process_audio
+        # We must patch CLIFacade's orchestrator_factory since it's used in
+        # process_audio
         with patch.object(
             facade,
-            "_orchestrator_factory",
+            "orchestrator_factory",
             return_value=mock_orch,
         ):
             with pytest.raises(TranscriptionError) as exc_info:
@@ -666,7 +668,7 @@ class TestErrorHandling:
         facade = CLIFacade()
         with patch.object(
             facade,
-            "_orchestrator_factory",
+            "orchestrator_factory",
             return_value=mock_orch,
         ):
             with pytest.raises(TranscriptionError):
@@ -683,7 +685,7 @@ class TestErrorHandling:
         facade = CLIFacade()
         with patch.object(
             facade,
-            "_orchestrator_factory",
+            "orchestrator_factory",
             return_value=mock_orch,
         ):
             # Test with CPU device - should adjust chunk_length and batch_size
@@ -712,7 +714,7 @@ class TestErrorHandling:
         facade = CLIFacade()
         with patch.object(
             facade,
-            "_orchestrator_factory",
+            "orchestrator_factory",
             return_value=mock_orch,
         ):
             # Test with values larger than CPU limits - should be reduced
