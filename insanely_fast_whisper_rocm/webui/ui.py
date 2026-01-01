@@ -155,7 +155,7 @@ def _create_file_handling_ui() -> tuple[gr.Checkbox, gr.Textbox]:
     return save_transcriptions, temp_uploads_dir
 
 
-def _process_transcription_request_wrapper(  # pylint: disable=too-many-arguments, too-many-positional-arguments
+def _process_transcription_request_wrapper(
     audio_paths: list[str],
     model_name: str,
     device: str,
