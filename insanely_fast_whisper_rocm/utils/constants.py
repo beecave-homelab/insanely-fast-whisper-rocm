@@ -298,7 +298,7 @@ DEV_WEBUI_PORT = int(os.getenv("DEV_WEBUI_PORT", "7862"))  # Development WebUI p
 try:
     API_VERSION = pkg_version("insanely-fast-whisper-rocm")
 except PackageNotFoundError:
-    API_VERSION = "unknown"
+    API_VERSION = "2.1.0"
 
 # Convenience aliases expected by legacy code/tests
 # The tests reference FILENAME_TIMEZONE, CONFIG_DIR, and ENV_FILE.  Map these
