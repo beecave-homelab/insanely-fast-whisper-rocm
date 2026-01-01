@@ -3,7 +3,7 @@
 A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm) support** for high-performance (video to) audio transcription and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces and ROCm compatibility.
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v2.0.1-informational)](#insanely-fast-whisper-rocm)
+[![Version](https://img.shields.io/badge/Version-v2.1.0-informational)](#insanely-fast-whisper-rocm)
 [![ROCm Version](https://img.shields.io/badge/ROCm-v6.4-informational)](https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)

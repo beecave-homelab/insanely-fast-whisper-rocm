@@ -4,13 +4,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v2.0.1-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v2.1.0-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v2.0.1` (Current) - *08-12-2025*](#v201-current---08-12-2025)
+- [`v2.1.0` (Current) - *31-12-2025*](#v210-current---31-12-2025)
+- [`v2.0.1` - *08-12-2025*](#v201---08-12-2025)
 - [`v2.0.0` - *05-12-2025*](#v200---05-12-2025)
 - [`v1.0.2` - *05-12-2025*](#v102---05-12-2025)
 - [`v1.0.1` - *04-12-2025*](#v101---04-12-2025)
@@ -47,7 +48,33 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v2.0.1` (Current) - *08-12-2025*
+### `v2.1.0` (Current) - *31-12-2025*
+
+#### ✨ Feature Release: OOM Recovery Orchestration
+
+This release introduces OOM-aware transcription orchestration with automatic GPU batch-size reduction, CPU fallback, and explicit GPU backend cache invalidation. It also adds unit tests for OOM parsing and orchestrator behavior.
+
+#### ✨ **New Features in v2.1.0**
+
+- **Added**: Centralized orchestrator for OOM retry + CPU fallback (`core/orchestrator.py`).
+- **Added**: CUDA/HIP OOM classification helpers (`core/oom_utils.py`).
+- **Added**: GPU backend cache invalidation utility (`core/backend_cache.invalidate_gpu_cache`).
+
+#### 🧪 **Tests in v2.1.0**
+
+- **Added**: Core unit tests for OOM handling (`tests/core/test_orchestrator.py`, `tests/core/test_oom_utils.py`).
+
+#### 📦 **Maintenance in v2.1.0**
+
+- **Updated**: Dependencies and Pytest warning filters in `pyproject.toml`.
+
+#### 📝 **Key Commits in v2.1.0**
+
+`64b901a`, `6bfbaad`, `3bf7bcc`, `c93a256`, `b027e33`
+
+---
+
+### `v2.0.1` - *08-12-2025*
 
 #### 🐛 Patch Release: PR #27 Bug Fixes
 
