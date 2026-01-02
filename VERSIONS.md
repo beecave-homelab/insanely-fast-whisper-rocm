@@ -4,13 +4,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v2.1.0-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v2.1.1-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v2.1.0` (Current) - *31-12-2025*](#v210-current---31-12-2025)
+- [`v2.1.1` (Current) - *02-01-2026*](#v211-current---02-01-2026)
+- [`v2.1.0` - *31-12-2025*](#v210---31-12-2025)
 - [`v2.0.1` - *08-12-2025*](#v201---08-12-2025)
 - [`v2.0.0` - *05-12-2025*](#v200---05-12-2025)
 - [`v1.0.2` - *05-12-2025*](#v102---05-12-2025)
@@ -48,7 +49,32 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v2.1.0` (Current) - *31-12-2025*
+### `v2.1.1` (Current) - *02-01-2026*
+
+#### 🐛 Patch Release: Bug Fixes and Dependency Updates
+
+This release fixes a critical bug in the CLIFacade orchestrator factory method binding, updates dependencies including accelerate to 1.12.0, and documents ROCm v7.1 support.
+
+#### 🐛 **Bug Fixes in v2.1.1**
+
+- **Fixed**: CLIFacade orchestrator factory method binding issue.
+  - **Issue**: `create_orchestrator()` was being called with `self` as an argument when accessed via instance, causing `TypeError: takes 0 positional arguments but 1 was given`.
+  - **Root Cause**: Class-level callable assignment was converted to a bound method when accessed via `self`.
+  - **Solution**: Moved orchestrator_factory default assignment to `__init__` method to avoid method binding.
+
+#### 📦 **Maintenance in v2.1.1**
+
+- **Updated**: Accelerate dependency to version 1.12.0.
+- **Updated**: ROCm dependencies to versions 2.5.1 and 2.5.0 with <2.8.0 range.
+- **Updated**: Documentation to reflect ROCm v6.4.1 & v7.1 support with PyTorch 2.7.1+rocm7.1.0 and torchaudio 2.7.1+rocm7.1.0.
+
+#### 📝 **Key Commits in v2.1.1**
+
+`9fd896f`, `8dd95ac`, `9089c56`, `374f789`, `4d907b1`
+
+---
+
+### `v2.1.0` - *31-12-2025*
 
 #### ✨ Feature Release: OOM Recovery Orchestration
 
