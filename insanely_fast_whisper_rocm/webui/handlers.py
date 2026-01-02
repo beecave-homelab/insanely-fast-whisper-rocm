@@ -211,6 +211,7 @@ def transcribe(
         cancellation_token = CancellationToken()
 
         def _ensure_not_cancelled() -> None:
+            """Raise an exception if the transcription has been cancelled."""
             if progress_tracker_instance is not None and getattr(
                 progress_tracker_instance, "cancelled", False
             ):
@@ -263,6 +264,11 @@ def transcribe(
         orchestrator = create_orchestrator()
 
         def _warning_callback(message: str) -> None:
+            """Log orchestrator recovery warnings and update UI.
+
+            Args:
+                message: The warning message from the orchestrator.
+            """
             logger.info("Orchestrator warning: %s", message)
             if progress_tracker_instance is not None:
                 if message.startswith("Attempt "):
@@ -307,6 +313,12 @@ def transcribe(
         # I need to bridge these.
 
         class WebUIProgressCallback(ProgressCallback):
+            """Progress callback implementation for Gradio WebUI updates.
+
+            This callback translates pipeline progress events into Gradio
+            progress tracker updates for real-time UI feedback.
+            """
+
             def __init__(
                 self,
                 tracker: gr.Progress,
@@ -316,6 +328,16 @@ def transcribe(
                 name: str,
                 cancel_token: CancellationToken,
             ) -> None:
+                """Initialize the WebUI progress callback.
+
+                Args:
+                    tracker: Gradio progress tracker instance.
+                    base: Base progress value for this file in the batch.
+                    total: Total number of files being processed.
+                    idx: Index of the current file being processed.
+                    name: Name of the file being processed.
+                    cancel_token: Cancellation token for cooperative cancellation.
+                """
                 self.tracker = tracker
                 self.base = base
                 self.total = total
@@ -325,6 +347,12 @@ def transcribe(
                 self._total_chunks: int | None = None
 
             def _update(self, fraction: float | None, message: str) -> None:
+                """Update the Gradio progress tracker.
+
+                Args:
+                    fraction: Optional progress fraction (0.0-1.0).
+                    message: Progress message to display.
+                """
                 if self.cancel_token.cancelled:
                     return
                 if getattr(self.tracker, "cancelled", False):
@@ -339,22 +367,44 @@ def transcribe(
                     self.tracker(None, desc=desc)
 
             def on_model_load_started(self) -> None:
+                """Handle model load start event."""
                 self._update(None, "Loading model...")
 
             def on_model_load_finished(self) -> None:
+                """Handle model load complete event."""
                 self._update(None, "Model loaded")
 
             def on_audio_loading_started(self, path: str) -> None:  # noqa: ARG002
+                """Handle audio loading start event.
+
+                Args:
+                    path: Path to the audio file being loaded.
+                """
                 self._update(None, "Preparing audio...")
 
             def on_audio_loading_finished(self, duration_sec: float | None) -> None:  # noqa: ARG002
+                """Handle audio loading complete event.
+
+                Args:
+                    duration_sec: Duration of the loaded audio in seconds.
+                """
                 self._update(None, "Audio ready")
 
             def on_chunking_started(self, total_chunks: int | None) -> None:
+                """Handle audio chunking start event.
+
+                Args:
+                    total_chunks: Total number of audio chunks to process.
+                """
                 self._total_chunks = total_chunks
                 self._update(0.0, "Starting transcription...")
 
             def on_chunk_done(self, index: int) -> None:
+                """Handle chunk processing complete event.
+
+                Args:
+                    index: Index of the completed chunk.
+                """
                 if not self._total_chunks:
                     self._update(None, "Transcribing...")
                     return
@@ -367,27 +417,64 @@ def transcribe(
                 )
 
             def on_inference_started(self, total_batches: int | None) -> None:  # noqa: ARG002
+                """Handle inference start event.
+
+                Args:
+                    total_batches: Total number of inference batches.
+                """
                 return
 
             def on_inference_batch_done(self, index: int) -> None:  # noqa: ARG002
+                """Handle inference batch complete event.
+
+                Args:
+                    index: Index of the completed batch.
+                """
                 return
 
             def on_postprocess_started(self, name: str) -> None:
+                """Handle post-processing start event.
+
+                Args:
+                    name: Name of the post-processing step.
+                """
                 self._update(None, f"Post-processing: {name}")
 
             def on_postprocess_finished(self, name: str) -> None:
+                """Handle post-processing complete event.
+
+                Args:
+                    name: Name of the completed post-processing step.
+                """
                 self._update(None, f"Post-processing done: {name}")
 
             def on_export_started(self, total_items: int) -> None:
+                """Handle export start event.
+
+                Args:
+                    total_items: Total number of items to export.
+                """
                 self._update(None, f"Exporting {total_items} file(s)...")
 
             def on_export_item_done(self, index: int, label: str) -> None:
+                """Handle export item complete event.
+
+                Args:
+                    index: Index of the completed export item.
+                    label: Label of the exported item.
+                """
                 self._update(None, f"Exported: {label} ({index + 1})")
 
             def on_completed(self) -> None:
+                """Handle transcription complete event."""
                 self._update(1.0, "Transcription complete")
 
             def on_error(self, message: str) -> None:
+                """Handle error event.
+
+                Args:
+                    message: Error message to display.
+                """
                 self._update(None, f"Error: {message}")
 
         webui_cb = None
@@ -475,6 +562,11 @@ def transcribe(
             # Relay detailed stabilization progress messages to the UI
 
             def _stab_progress(msg: str) -> None:
+                """Update progress during timestamp stabilization.
+
+                Args:
+                    msg: Progress message from the stabilization process.
+                """
                 if cancellation_token.cancelled:
                     return
                 if progress_tracker_instance is not None and getattr(
@@ -502,6 +594,12 @@ def transcribe(
                 )
 
                 def _heartbeat() -> None:
+                    """Periodically update progress during long operations.
+
+                    This function runs in a background thread and updates the progress
+                    tracker every 5 seconds with a heartbeat message to keep the UI
+                    responsive during long-running stabilization operations.
+                    """
                     while not heartbeat_stop.is_set():
                         if cancellation_token.cancelled:
                             return
