@@ -171,6 +171,14 @@ def stabilize_timestamps(
             if "segments" in merged:
 
                 def _segments_have_timestamps(seg_list: list[dict]) -> bool:
+                    """Check if any segment has valid start and end timestamps.
+
+                    Args:
+                        seg_list: List of segment dictionaries to check.
+
+                    Returns:
+                        True if any segment has both start and end timestamps.
+                    """
                     return any(
                         (s.get("start") is not None and s.get("end") is not None)
                         for s in seg_list
@@ -235,6 +243,14 @@ def stabilize_timestamps(
         merged = {**result, **refined_dict, "stabilized": True}
 
         def _segments_have_timestamps(seg_list: list[dict]) -> bool:
+            """Check if any segment has valid start and end timestamps.
+
+            Args:
+                seg_list: List of segment dictionaries to check.
+
+            Returns:
+                True if any segment has both start and end timestamps.
+            """
             return any(
                 (s.get("start") is not None and s.get("end") is not None)
                 for s in seg_list
