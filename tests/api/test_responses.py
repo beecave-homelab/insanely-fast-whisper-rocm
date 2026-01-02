@@ -253,7 +253,9 @@ def test_format_transcription_vtt_response() -> None:
             "MockFormatter",
             (),
             {
-                "format": lambda x: "WEBVTT\n\n00:00:00.000 --> 00:00:02.500\nHello world\n\n"
+                "format": lambda x: (
+                    "WEBVTT\n\n00:00:00.000 --> 00:00:02.500\nHello world\n\n"
+                )
             },
         )()
     }
@@ -388,7 +390,9 @@ def test_format_translation_vtt_response() -> None:
             "MockFormatter",
             (),
             {
-                "format": lambda x: "WEBVTT\n\n00:00:00.000 --> 00:00:02.500\nHello world\n\n"
+                "format": lambda x: (
+                    "WEBVTT\n\n00:00:00.000 --> 00:00:02.500\nHello world\n\n"
+                )
             },
         )()
     }

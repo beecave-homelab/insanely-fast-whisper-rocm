@@ -7,7 +7,7 @@ updated: 2025-12-31T22:14:15+00:00
 
 # Project Overview | Insanely Fast Whisper API (ROCm)
 
-A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.4.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture.
+A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.4.1 & v7.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture.
 
 > [!NOTE]
 > This overview is the **single source of truth** for developers working on this codebase.
@@ -86,14 +86,15 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v2.1.0** *(31-12-2025)*
+### 🏷️ **Current Version: v2.1.1** *(02-01-2026)*
 
-**Latest improvements**: OOM-aware transcription orchestration (GPU batch-size retry, CPU fallback, and GPU cache invalidation) plus improved tests and dependency updates.
+**Latest improvements**: Bug fix for CLIFacade orchestrator factory method binding, dependency updates (accelerate 1.12.0, ROCm dependencies), and documentation updates for ROCm v7.1 support.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
 | ------- | ---- | ---- | ------------ |
+| **v2.1.1** | 02-01-2026 | 🐛 Patch | CLIFacade orchestrator fix, dependency updates, ROCm v7.1 docs |
 | **v2.1.0** | 31-12-2025 | ✨ Minor | OOM orchestration + CPU fallback, GPU cache invalidation, added core OOM tests |
 | **v2.0.1** | 08-12-2025 | 🐛 Patch | PR #27 fixes: audio conversion fallback, segment mutation, SRT counting, task params |
 | **v2.0.0** | 05-12-2025 | 🔄 Major | Modular package refactor, package/CLI rename, model caching & readable subtitles |
@@ -132,7 +133,7 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ### Primary Focus: ROCm Support
 
-- **AMD GPU (ROCm v6.4.1) Support**: First-class AMD GPU acceleration for Whisper models
+- **AMD GPU (ROCm v6.4.1 & v7.1) Support**: First-class AMD GPU acceleration for Whisper models, tested with PyTorch 2.7.1+rocm7.1.0 and torchaudio 2.7.1+rocm7.1.0
 
 - **Extended Original Package**: Builds upon [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) with additional interfaces and ROCm compatibility
 - **Production-Ready Architecture**: Beyond CLI-only approach of original package

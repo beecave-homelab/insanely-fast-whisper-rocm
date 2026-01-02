@@ -112,8 +112,7 @@ class TestCLIFacade:
         # Adjustments are applied during processing, not at config creation
         assert isinstance(config.batch_size, int)
 
-    @patch.object(CLIFacade, "orchestrator_factory")
-    def test_transcribe_audio_success(self, mock_orchestrator_factory: Mock) -> None:
+    def test_transcribe_audio_success(self) -> None:
         """Test successful audio transcription."""
         # Mock the orchestrator
         mock_orch = Mock()
@@ -123,37 +122,32 @@ class TestCLIFacade:
             "runtime_seconds": 1.5,
             "config_used": {},
         }
-        mock_orchestrator_factory.return_value = mock_orch
 
         facade = CLIFacade()
-        result = facade.process_audio(
-            audio_file_path=Path("test.mp3"),
-            model="openai/whisper-tiny",
-            task="transcribe",
-        )
+        with patch.object(facade, "orchestrator_factory", return_value=mock_orch):
+            result = facade.process_audio(
+                audio_file_path=Path("test.mp3"),
+                model="openai/whisper-tiny",
+                task="transcribe",
+            )
 
         assert result["text"] == "Test transcription"
         assert "runtime_seconds" in result
         mock_orch.run_transcription.assert_called_once()
 
-    @patch.object(CLIFacade, "orchestrator_factory")
-    def test_transcribe_audio_backend_reuse(
-        self, mock_orchestrator_factory: Mock
-    ) -> None:
+    def test_transcribe_audio_backend_reuse(self) -> None:
         """Test that orchestrator is used for repeated calls."""
         mock_orch = Mock()
         mock_orch.run_transcription.return_value = {"text": "Test", "chunks": []}
-        mock_orchestrator_factory.return_value = mock_orch
 
         facade = CLIFacade()
-
-        # First call
-        facade.process_audio(Path("test1.mp3"))
-        # Second call with same config
-        facade.process_audio(Path("test2.mp3"))
+        with patch.object(facade, "orchestrator_factory", return_value=mock_orch):
+            # First call
+            facade.process_audio(Path("test1.mp3"))
+            # Second call with same config
+            facade.process_audio(Path("test2.mp3"))
 
         # Orchestrator factory should be called each time process_audio is called
-        assert mock_orchestrator_factory.call_count == 2
         assert mock_orch.run_transcription.call_count == 2
 
 

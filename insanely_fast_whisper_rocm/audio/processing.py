@@ -64,7 +64,8 @@ def extract_audio_from_video(
         )
 
         (
-            ffmpeg.input(video_path)
+            ffmpeg
+            .input(video_path)
             .output(
                 output_path,
                 acodec="pcm_s16le",  # uncompressed WAV PCM 16-bit

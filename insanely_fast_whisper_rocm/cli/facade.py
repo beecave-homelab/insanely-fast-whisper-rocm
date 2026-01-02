@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class CLIFacade:
     """Facade for CLI access to ASR functionality."""
 
-    orchestrator_factory: Callable[[], Orchestrator] = create_orchestrator
+    orchestrator_factory: Callable[[], Orchestrator]
 
     def __init__(
         self,
@@ -53,8 +53,7 @@ class CLIFacade:
         """
         self.backend: Any | None = None
         self._current_config: HuggingFaceBackendConfig | None = None
-        if orchestrator_factory is not None:
-            self.orchestrator_factory = orchestrator_factory
+        self.orchestrator_factory = orchestrator_factory or create_orchestrator
         self.check_file_exists = check_file_exists
 
     def get_env_config(self) -> dict[str, Any]:

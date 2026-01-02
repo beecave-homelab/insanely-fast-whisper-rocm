@@ -149,8 +149,8 @@ class TestFilenameGenerator:
         """Extract the expected stem from various input audio paths."""
         mock_datetime_module.datetime.now.return_value = FIXED_DATETIME_UTC
         mock_datetime_module.timezone = datetime.timezone
-        mock_datetime_module.datetime.side_effect = (
-            lambda *args, **kwargs: datetime.datetime(*args, **kwargs)
+        mock_datetime_module.datetime.side_effect = lambda *args, **kwargs: (
+            datetime.datetime(*args, **kwargs)
         )
         filename = filename_generator.create_filename(
             audio_path, TaskType.TRANSCRIBE, "json"
@@ -169,8 +169,8 @@ class TestFilenameGenerator:
         mock_datetime_module.timezone = (
             datetime.timezone
         )  # Ensure datetime.timezone.utc is available
-        mock_datetime_module.datetime.side_effect = (
-            lambda *args, **kwargs: datetime.datetime(*args, **kwargs)
+        mock_datetime_module.datetime.side_effect = lambda *args, **kwargs: (
+            datetime.datetime(*args, **kwargs)
         )
 
         filename = filename_generator.create_filename(
@@ -199,8 +199,8 @@ class TestFilenameGenerator:
         # However, filename_generator.py uses datetime.timezone.utc directly from 'import datetime'.
         # So, mock_datetime_module.timezone should be sufficient for that.
         # Also ensure datetime.datetime itself can be called if needed (e.g. for isinstance checks, though unlikely here)
-        mock_datetime_module.datetime.side_effect = (
-            lambda *args, **kwargs: datetime.datetime(*args, **kwargs)
+        mock_datetime_module.datetime.side_effect = lambda *args, **kwargs: (
+            datetime.datetime(*args, **kwargs)
         )
 
         filename = filename_generator.create_filename(
@@ -268,8 +268,8 @@ class TestFilenameGenerator:
             FIXED_DATETIME_UTC  # Fallback should use this UTC time
         )
         mock_datetime_module.timezone = datetime.timezone
-        mock_datetime_module.datetime.side_effect = (
-            lambda *args, **kwargs: datetime.datetime(*args, **kwargs)
+        mock_datetime_module.datetime.side_effect = lambda *args, **kwargs: (
+            datetime.datetime(*args, **kwargs)
         )
 
         filename = filename_generator.create_filename(
@@ -290,8 +290,8 @@ class TestFilenameGenerator:
         """Normalize extension case and include task type in filename."""
         mock_datetime_module.datetime.now.return_value = FIXED_DATETIME_UTC
         mock_datetime_module.timezone = datetime.timezone
-        mock_datetime_module.datetime.side_effect = (
-            lambda *args, **kwargs: datetime.datetime(*args, **kwargs)
+        mock_datetime_module.datetime.side_effect = lambda *args, **kwargs: (
+            datetime.datetime(*args, **kwargs)
         )
 
         filename = filename_generator.create_filename(

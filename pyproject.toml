@@ -1,6 +1,6 @@
 [project]
 name = "insanely-fast-whisper-rocm"
-version = "2.1.0"
+version = "2.1.1"
 description = "A FastAPI wrapper around a custom Whisper-based ASR pipeline (ROCM version)"
 requires-python = "~=3.10"
 authors = [
@@ -103,8 +103,8 @@ dev = [
 ]
 
 rocm = [
-    "torch>=2.5.1",
-    "torchaudio>=2.5.0",
+    "torch>=2.5.1,<2.8.0",
+    "torchaudio>=2.5.0,<2.8.0",
     "onnxruntime-rocm",
 ]
 

@@ -94,7 +94,8 @@ def ensure_wav(
 
     try:
         (
-            ffmpeg.input(str(original_path))
+            ffmpeg
+            .input(str(original_path))
             .output(
                 str(output_path),
                 acodec=DEFAULT_CODEC,
