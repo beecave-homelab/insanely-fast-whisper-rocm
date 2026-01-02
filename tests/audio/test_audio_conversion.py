@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+import shutil
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -17,36 +17,13 @@ from insanely_fast_whisper_rocm.audio.conversion import (
 )
 
 
-def test_ensure_wav_wav_file_passthrough() -> None:
-    """Test ensure_wav with existing WAV file returns unchanged path."""
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-        tmp_path = tmp.name
+@pytest.fixture
+def mock_ffmpeg_chain() -> dict[str, Mock]:
+    """Provide a mocked ffmpeg chain for testing.
 
-    try:
-        result = ensure_wav(tmp_path)
-        assert result == tmp_path
-    finally:
-        os.unlink(tmp_path)
-
-
-def test_ensure_wav_wav_file_case_insensitive() -> None:
-    """Test ensure_wav handles WAV files with different cases."""
-    test_cases = [".WAV", ".Wav", ".wav"]
-
-    for suffix in test_cases:
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-            tmp_path = tmp.name
-
-        try:
-            result = ensure_wav(tmp_path)
-            assert result == tmp_path
-        finally:
-            os.unlink(tmp_path)
-
-
-def test_ensure_wav_non_wav_file_conversion() -> None:
-    """Test ensure_wav converts non-WAV files to WAV."""
-    # Mock ffmpeg to avoid actual conversion
+    Returns:
+        Mapping containing the chained mocks used by the ffmpeg wrapper.
+    """
     mock_ffmpeg_input = Mock()
     mock_ffmpeg_output = Mock()
     mock_run = Mock()
@@ -55,120 +32,109 @@ def test_ensure_wav_non_wav_file_conversion() -> None:
     mock_ffmpeg_output.overwrite_output.return_value = mock_ffmpeg_output
     mock_ffmpeg_output.run.return_value = mock_run
 
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-        tmp_path = tmp.name
-
-    try:
-        with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg") as mock_ffmpeg:
-            mock_ffmpeg.input.return_value = mock_ffmpeg_input
-
-            result = ensure_wav(tmp_path)
-
-            # Verify ffmpeg was called correctly
-            mock_ffmpeg.input.assert_called_once_with(tmp_path)
-            mock_ffmpeg_input.output.assert_called_once()
-            call_args = mock_ffmpeg_input.output.call_args[1]
-            assert call_args["acodec"] == DEFAULT_CODEC
-            assert call_args["ac"] == DEFAULT_CHANNELS
-            assert call_args["ar"] == DEFAULT_SAMPLE_RATE
-
-            # Verify result is a WAV file path
-            assert result.endswith(".wav")
-            assert os.path.exists(result)
-
-            # Cleanup the created file
-            os.unlink(result)
-    finally:
-        os.unlink(tmp_path)
+    return {
+        "input": mock_ffmpeg_input,
+        "output": mock_ffmpeg_output,
+        "run": mock_run,
+    }
 
 
-def test_ensure_wav_custom_sample_rate() -> None:
+def test_ensure_wav_wav_file_passthrough(tmp_path: Path) -> None:
+    """Test ensure_wav with existing WAV file returns unchanged path."""
+    tmp_file = tmp_path / "test.wav"
+    tmp_file.write_bytes(b"fake wav data")
+    tmp_path_str = str(tmp_file)
+
+    result = ensure_wav(tmp_path_str)
+    assert result == tmp_path_str
+
+
+def test_ensure_wav_wav_file_case_insensitive(tmp_path: Path) -> None:
+    """Test ensure_wav handles WAV files with different cases."""
+    test_cases = [".WAV", ".Wav", ".wav"]
+
+    for suffix in test_cases:
+        tmp_file = tmp_path / f"test{suffix}"
+        tmp_file.write_bytes(b"fake wav data")
+        tmp_path_str = str(tmp_file)
+
+        result = ensure_wav(tmp_path_str)
+        assert result == tmp_path_str
+
+
+def test_ensure_wav_non_wav_file_conversion(mock_ffmpeg_chain: dict[str, Mock]) -> None:
+    """Test ensure_wav converts non-WAV files to WAV."""
+    fixture_path = Path(__file__).parent / "fixtures" / "test_clip.mp3"
+
+    with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg") as mock_ffmpeg:
+        mock_ffmpeg.input.return_value = mock_ffmpeg_chain["input"]
+
+        result = ensure_wav(fixture_path)
+
+        # Verify ffmpeg was called correctly
+        mock_ffmpeg.input.assert_called_once_with(str(fixture_path))
+        mock_ffmpeg_chain["input"].output.assert_called_once()
+        call_args = mock_ffmpeg_chain["input"].output.call_args[1]
+        assert call_args["acodec"] == DEFAULT_CODEC
+        assert call_args["ac"] == DEFAULT_CHANNELS
+        assert call_args["ar"] == DEFAULT_SAMPLE_RATE
+
+        # Verify result is a WAV file path
+        assert result.endswith(".wav")
+        result_path = Path(result)
+        assert result_path.exists()
+
+        # Cleanup the created file
+        result_path.unlink()
+
+
+def test_ensure_wav_custom_sample_rate(mock_ffmpeg_chain: dict[str, Mock]) -> None:
     """Test ensure_wav with custom sample rate."""
+    fixture_path = Path(__file__).parent / "fixtures" / "test_clip.mp3"
     custom_sample_rate = 44100
 
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-        tmp_path = tmp.name
+    with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg") as mock_ffmpeg:
+        mock_ffmpeg.input.return_value = mock_ffmpeg_chain["input"]
 
-    try:
-        with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg") as mock_ffmpeg:
-            mock_ffmpeg_input = Mock()
-            mock_ffmpeg_output = Mock()
-            mock_run = Mock()
+        result = ensure_wav(fixture_path, sample_rate=custom_sample_rate)
 
-            mock_ffmpeg_input.output.return_value = mock_ffmpeg_output
-            mock_ffmpeg_output.overwrite_output.return_value = mock_ffmpeg_output
-            mock_ffmpeg_output.run.return_value = mock_run
+        # Verify custom sample rate was used
+        call_args = mock_ffmpeg_chain["input"].output.call_args[1]
+        assert call_args["ar"] == custom_sample_rate
 
-            mock_ffmpeg.input.return_value = mock_ffmpeg_input
-
-            result = ensure_wav(tmp_path, sample_rate=custom_sample_rate)
-
-            # Verify custom sample rate was used
-            call_args = mock_ffmpeg_input.output.call_args[1]
-            assert call_args["ar"] == custom_sample_rate
-
-            os.unlink(result)
-    finally:
-        os.unlink(tmp_path)
+        Path(result).unlink()
 
 
-def test_ensure_wav_custom_channels() -> None:
+def test_ensure_wav_custom_channels(mock_ffmpeg_chain: dict[str, Mock]) -> None:
     """Test ensure_wav with custom channel count."""
+    fixture_path = Path(__file__).parent / "fixtures" / "test_clip.mp3"
     custom_channels = 2
 
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-        tmp_path = tmp.name
+    with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg") as mock_ffmpeg:
+        mock_ffmpeg.input.return_value = mock_ffmpeg_chain["input"]
 
-    try:
-        with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg") as mock_ffmpeg:
-            mock_ffmpeg_input = Mock()
-            mock_ffmpeg_output = Mock()
-            mock_run = Mock()
+        result = ensure_wav(fixture_path, channels=custom_channels)
 
-            mock_ffmpeg_input.output.return_value = mock_ffmpeg_output
-            mock_ffmpeg_output.overwrite_output.return_value = mock_ffmpeg_output
-            mock_ffmpeg_output.run.return_value = mock_run
+        # Verify custom channels was used
+        call_args = mock_ffmpeg_chain["input"].output.call_args[1]
+        assert call_args["ac"] == custom_channels
 
-            mock_ffmpeg.input.return_value = mock_ffmpeg_input
-
-            result = ensure_wav(tmp_path, channels=custom_channels)
-
-            # Verify custom channels was used
-            call_args = mock_ffmpeg_input.output.call_args[1]
-            assert call_args["ac"] == custom_channels
-
-            os.unlink(result)
-    finally:
-        os.unlink(tmp_path)
+        Path(result).unlink()
 
 
-def test_ensure_wav_pathlib_input() -> None:
+def test_ensure_wav_pathlib_input(mock_ffmpeg_chain: dict[str, Mock]) -> None:
     """Test ensure_wav handles Path objects as input."""
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-        tmp_path = tmp.name
+    fixture_path = Path(__file__).parent / "fixtures" / "test_clip.mp3"
 
-    try:
-        path_obj = Path(tmp_path)
+    with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg") as mock_ffmpeg:
+        mock_ffmpeg.input.return_value = mock_ffmpeg_chain["input"]
 
-        with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg") as mock_ffmpeg:
-            mock_ffmpeg_input = Mock()
-            mock_ffmpeg_output = Mock()
-            mock_run = Mock()
+        result = ensure_wav(fixture_path)
 
-            mock_ffmpeg_input.output.return_value = mock_ffmpeg_output
-            mock_ffmpeg_output.overwrite_output.return_value = mock_ffmpeg_output
-            mock_ffmpeg_output.run.return_value = mock_run
+        # Verify it was converted to string internally
+        mock_ffmpeg.input.assert_called_once_with(str(fixture_path))
 
-            mock_ffmpeg.input.return_value = mock_ffmpeg_input
-
-            result = ensure_wav(path_obj)
-
-            # Verify it was converted to string internally
-            mock_ffmpeg.input.assert_called_once_with(tmp_path)
-
-            os.unlink(result)
-    finally:
-        os.unlink(tmp_path)
+        Path(result).unlink()
 
 
 def test_ensure_wav_constants() -> None:
@@ -186,40 +152,29 @@ def test_ensure_wav_file_not_found() -> None:
 
 def test_ensure_wav_ffmpeg_unavailable() -> None:
     """Test ensure_wav creates placeholder when ffmpeg is unavailable."""
-    # Use the real audio test fixture (10-second clip extracted from data/10-minute-test.mp3)
-    # This provides realistic audio data for testing the pydub fallback conversion path
+    # Use the real audio test fixture
     fixture_path = Path(__file__).parent / "fixtures" / "test_clip.mp3"
 
-    # Create a temporary copy of the fixture to avoid modifying the original
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-        tmp_path = tmp.name
-        with open(fixture_path, "rb") as src:
-            tmp.write(src.read())
+    # Mock ffmpeg as None
+    with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg", None):
+        result = ensure_wav(fixture_path)
 
-    try:
-        # Mock ffmpeg as None
-        with patch("insanely_fast_whisper_rocm.audio.conversion.ffmpeg", None):
-            result = ensure_wav(tmp_path)
+        # Should create a WAV file (placeholder copy)
+        assert result.endswith(".wav")
+        result_path = Path(result)
+        assert result_path.exists()
 
-            # Should create a WAV file (placeholder copy)
-            assert result.endswith(".wav")
-            assert os.path.exists(result)
+        # Verify content was copied
+        with open(result, "rb") as converted:
+            converted_content = converted.read()
 
-            # Verify content was copied
-            with open(result, "rb") as converted:
-                converted_content = converted.read()
+        # The converted file should contain the original audio data
+        # (pydub converts it to WAV format, so it won't be identical)
+        assert len(converted_content) > 0
 
-            # The converted file should contain the original audio data
-            # (pydub converts it to WAV format, so it won't be identical)
-            assert len(converted_content) > 0
-
-            os.unlink(result)
-            # Clean up the temp directory
-            import shutil
-
-            shutil.rmtree(Path(result).parent)
-    finally:
-        os.unlink(tmp_path)
+        result_path.unlink()
+        # Clean up the temp directory
+        shutil.rmtree(result_path.parent)
 
 
 def test_ensure_wav_ffmpeg_error() -> None:
@@ -255,7 +210,7 @@ def test_ensure_wav_ffmpeg_error() -> None:
             with pytest.raises(RuntimeError, match="Failed to convert.*to WAV"):
                 ensure_wav(tmp_path)
     finally:
-        os.unlink(tmp_path)
+        Path(tmp_path).unlink()
 
 
 def test_ensure_wav_output_not_created() -> None:
@@ -287,4 +242,4 @@ def test_ensure_wav_output_not_created() -> None:
                     mock_touch.assert_called_once()
                     assert result.endswith(".wav")
     finally:
-        os.unlink(tmp_path)
+        Path(tmp_path).unlink()

@@ -24,12 +24,13 @@ services:
     shm_size: 8G
 
     env_file:
-      - .env
+      # - .env
+      - "$HOME/.config/insanely-fast-whisper-rocm/.env"
 
     ports:
       - "${API_PORT:-8888}:${API_PORT:-8888}"  # API port
       - "${WEBUI_PORT:-7860}:${WEBUI_PORT:-7860}"  # WebUI port
-    
+
     volumes:
       - "./transcripts:/app/transcripts"
       - "./transcripts-txt:/app/transcripts-txt"

@@ -460,13 +460,33 @@ class WhisperPipeline(BasePipeline):
         # Suppress premature completion events from the backend while we
         # orchestrate chunk-level progress here.
         class _ProgressProxy:
+            """Proxy for progress callbacks that suppresses completion events.
+
+            This prevents the backend from emitting premature completion events
+            while the pipeline orchestrates chunk-level progress.
+            """
+
             def __init__(self, delegate: ProgressCallback) -> None:
+                """Initialize the progress proxy.
+
+                Args:
+                    delegate: The underlying progress callback to delegate to.
+                """
                 self._delegate = delegate
 
             def __getattr__(self, item: str) -> object:
+                """Delegate all other attributes to the underlying callback.
+
+                Args:
+                    item: The attribute name to access.
+
+                Returns:
+                    The attribute value from the delegate.
+                """
                 return cast(object, getattr(self._delegate, item))
 
             def on_completed(self) -> None:
+                """Suppress completion events from the backend."""
                 return
 
         progress_proxy = _ProgressProxy(progress_callback)

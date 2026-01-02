@@ -23,7 +23,8 @@ services:
     shm_size: 8G
 
     env_file:
-      - .env
+      - "$HOME/.config/insanely-fast-whisper-rocm/.env"
+
     environment:
       # Dev-specific ports are controlled by DEV_* variables to avoid clashing
       # with production defaults defined in .env. Compose variable substitution

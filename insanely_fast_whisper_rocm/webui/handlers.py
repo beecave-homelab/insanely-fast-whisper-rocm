@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
+import time
 import zipfile
 from dataclasses import dataclass
 from datetime import datetime
@@ -19,15 +21,16 @@ import gradio as gr
 
 from insanely_fast_whisper_rocm.audio.processing import extract_audio_from_video
 from insanely_fast_whisper_rocm.core.asr_backend import HuggingFaceBackendConfig
-from insanely_fast_whisper_rocm.core.backend_cache import borrow_pipeline
 from insanely_fast_whisper_rocm.core.cancellation import CancellationToken
 from insanely_fast_whisper_rocm.core.errors import (
+    OutOfMemoryError,
     TranscriptionCancelledError,
     TranscriptionError,
 )
 from insanely_fast_whisper_rocm.core.formatters import FORMATTERS
 from insanely_fast_whisper_rocm.core.integrations.stable_ts import stabilize_timestamps
-from insanely_fast_whisper_rocm.core.pipeline import ProgressEvent
+from insanely_fast_whisper_rocm.core.orchestrator import create_orchestrator
+from insanely_fast_whisper_rocm.core.progress import ProgressCallback
 from insanely_fast_whisper_rocm.utils import (
     DEFAULT_BATCH_SIZE,
     DEFAULT_DEMUCS,
@@ -208,6 +211,7 @@ def transcribe(
         cancellation_token = CancellationToken()
 
         def _ensure_not_cancelled() -> None:
+            """Raise an exception if the transcription has been cancelled."""
             if progress_tracker_instance is not None and getattr(
                 progress_tracker_instance, "cancelled", False
             ):
@@ -244,7 +248,7 @@ def transcribe(
 
         _ensure_not_cancelled()
 
-        # Build backend config and acquire a cached pipeline
+        # Build backend config and use the orchestrator for transcription
         backend_config = HuggingFaceBackendConfig(
             model_name=config.model,
             device=config.device,
@@ -257,107 +261,290 @@ def transcribe(
 
         _ensure_not_cancelled()
 
-        with borrow_pipeline(
-            backend_config,
-            save_transcriptions=file_config.save_transcriptions,
-            output_dir=file_config.temp_uploads_dir,
-        ) as asr_pipeline:
-            progress_listener = None
+        orchestrator = create_orchestrator()
 
+        def _warning_callback(message: str) -> None:
+            """Log orchestrator recovery warnings and update UI.
+
+            Args:
+                message: The warning message from the orchestrator.
+            """
+            logger.info("Orchestrator warning: %s", message)
             if progress_tracker_instance is not None:
-                # progress_listener needs access to base_progress,
-                # current_file_idx, total_files_for_session and
-                # original_file_name_for_desc for consistent messaging.
+                if message.startswith("Attempt "):
+                    progress_tracker_instance(None, desc=message)
+                else:
+                    progress_tracker_instance(None, desc=f"⚠️ {message}")
+            if "falling back to cpu" in message.lower():
+                logger.info("CPU fallback decision made by orchestrator")
 
-                def _progress_listener(event: ProgressEvent) -> None:
-                    if cancellation_token.cancelled:
-                        return
-                    if getattr(progress_tracker_instance, "cancelled", False):
-                        cancellation_token.cancel()
-                        return
+        # Create a progress listener that the orchestrator will use via the
+        # pipeline.
+        # Since the orchestrator calls pipeline.process, we need a way to
+        # attach our listener.
+        # However, the orchestrator uses borrow_pipeline which manages the
+        # pipeline lifecycle.
+        # We need to pass the progress_callback to run_transcription.
+        # The TranscriptionOrchestrator.run_transcription should handle
+        # progress listeners internally if we want to use the
+        # ProgressEvent system,
+        # OR we can adapt the current progress_listener logic.
 
-                    # Use original_file_name_for_desc captured from outer scope
-                    nonlocal base_progress
+        # Let's adjust orchestrator.run_transcription to accept
+        # progress_callback which it passes to pipeline.process
 
-                    if event.message:
-                        desc_message = (
-                            f"{event.message} ({original_file_name_for_desc})"
-                        )
-                    else:
-                        desc_message = (
-                            f"{event.event_type} for {original_file_name_for_desc}"
-                        )
+        # In handlers.py, we need a ProgressCallback implementation that
+        # translates to our ProgressEvent-based listener if we want to keep
+        # the detailed progress updates.
+        # Currently WhisperPipeline.process takes progress_callback:
+        # Optional[ProgressCallback].
+        # Our _progress_listener in handlers.py is a listener for
+        # ProgressEvents, not a ProgressCallback.
+        # WhisperPipeline.process(progress_cb=...) uses the callback.
 
-                    current_event_fraction_within_file = (
-                        None  # 0.0 to 1.0 for the current file's internal progress
+        # Actually, the orchestrator implementation I wrote uses:
+        # pipeline.process(..., progress_cb=progress_callback)
+        # So I should pass a ProgressCallback.
+
+        # But handlers.py currently uses:
+        # asr_pipeline.add_listener(progress_listener)
+        # and asr_pipeline.process(...)
+
+        # I need to bridge these.
+
+        class WebUIProgressCallback(ProgressCallback):
+            """Progress callback implementation for Gradio WebUI updates.
+
+            This callback translates pipeline progress events into Gradio
+            progress tracker updates for real-time UI feedback.
+            """
+
+            def __init__(
+                self,
+                tracker: gr.Progress,
+                base: float,
+                total: int,
+                idx: int,
+                name: str,
+                cancel_token: CancellationToken,
+            ) -> None:
+                """Initialize the WebUI progress callback.
+
+                Args:
+                    tracker: Gradio progress tracker instance.
+                    base: Base progress value for this file in the batch.
+                    total: Total number of files being processed.
+                    idx: Index of the current file being processed.
+                    name: Name of the file being processed.
+                    cancel_token: Cancellation token for cooperative cancellation.
+                """
+                self.tracker = tracker
+                self.base = base
+                self.total = total
+                self.idx = idx
+                self.name = name
+                self.cancel_token = cancel_token
+                self._total_chunks: int | None = None
+
+            def _update(self, fraction: float | None, message: str) -> None:
+                """Update the Gradio progress tracker.
+
+                Args:
+                    fraction: Optional progress fraction (0.0-1.0).
+                    message: Progress message to display.
+                """
+                if self.cancel_token.cancelled:
+                    return
+                if getattr(self.tracker, "cancelled", False):
+                    self.cancel_token.cancel()
+                    return
+
+                desc = f"{message} ({self.name})"
+                if fraction is not None:
+                    overall = self.base + (fraction / self.total)
+                    self.tracker(overall, desc=desc)
+                else:
+                    self.tracker(None, desc=desc)
+
+            def on_model_load_started(self) -> None:
+                """Handle model load start event."""
+                self._update(None, "Loading model...")
+
+            def on_model_load_finished(self) -> None:
+                """Handle model load complete event."""
+                self._update(None, "Model loaded")
+
+            def on_audio_loading_started(self, path: str) -> None:  # noqa: ARG002
+                """Handle audio loading start event.
+
+                Args:
+                    path: Path to the audio file being loaded.
+                """
+                self._update(None, "Preparing audio...")
+
+            def on_audio_loading_finished(self, duration_sec: float | None) -> None:  # noqa: ARG002
+                """Handle audio loading complete event.
+
+                Args:
+                    duration_sec: Duration of the loaded audio in seconds.
+                """
+                self._update(None, "Audio ready")
+
+            def on_chunking_started(self, total_chunks: int | None) -> None:
+                """Handle audio chunking start event.
+
+                Args:
+                    total_chunks: Total number of audio chunks to process.
+                """
+                self._total_chunks = total_chunks
+                self._update(0.0, "Starting transcription...")
+
+            def on_chunk_done(self, index: int) -> None:
+                """Handle chunk processing complete event.
+
+                Args:
+                    index: Index of the completed chunk.
+                """
+                if not self._total_chunks:
+                    self._update(None, "Transcribing...")
+                    return
+
+                chunk_num = index + 1
+                fraction = min(chunk_num / self._total_chunks, 1.0)
+                self._update(
+                    fraction,
+                    f"Processing chunk {chunk_num}/{self._total_chunks}",
+                )
+
+            def on_inference_started(self, total_batches: int | None) -> None:  # noqa: ARG002
+                """Handle inference start event.
+
+                Args:
+                    total_batches: Total number of inference batches.
+                """
+                return
+
+            def on_inference_batch_done(self, index: int) -> None:  # noqa: ARG002
+                """Handle inference batch complete event.
+
+                Args:
+                    index: Index of the completed batch.
+                """
+                return
+
+            def on_postprocess_started(self, name: str) -> None:
+                """Handle post-processing start event.
+
+                Args:
+                    name: Name of the post-processing step.
+                """
+                self._update(None, f"Post-processing: {name}")
+
+            def on_postprocess_finished(self, name: str) -> None:
+                """Handle post-processing complete event.
+
+                Args:
+                    name: Name of the completed post-processing step.
+                """
+                self._update(None, f"Post-processing done: {name}")
+
+            def on_export_started(self, total_items: int) -> None:
+                """Handle export start event.
+
+                Args:
+                    total_items: Total number of items to export.
+                """
+                self._update(None, f"Exporting {total_items} file(s)...")
+
+            def on_export_item_done(self, index: int, label: str) -> None:
+                """Handle export item complete event.
+
+                Args:
+                    index: Index of the completed export item.
+                    label: Label of the exported item.
+                """
+                self._update(None, f"Exported: {label} ({index + 1})")
+
+            def on_completed(self) -> None:
+                """Handle transcription complete event."""
+                self._update(1.0, "Transcription complete")
+
+            def on_error(self, message: str) -> None:
+                """Handle error event.
+
+                Args:
+                    message: Error message to display.
+                """
+                self._update(None, f"Error: {message}")
+
+        webui_cb = None
+        if progress_tracker_instance is not None:
+            webui_cb = WebUIProgressCallback(
+                tracker=progress_tracker_instance,
+                base=base_progress,
+                total=total_files_for_session,
+                idx=current_file_idx,
+                name=original_file_name_for_desc,
+                cancel_token=cancellation_token,
+            )
+
+        _ensure_not_cancelled()
+        try:
+            result = orchestrator.run_transcription(
+                audio_path=audio_file_path,
+                backend_config=backend_config,
+                task=config.task,
+                language=(
+                    config.language
+                    if config.language and config.language.lower() != "none"
+                    else None
+                ),
+                timestamp_type=config.timestamp_type,
+                progress_callback=webui_cb,
+                warning_callback=_warning_callback,
+                save_transcriptions=file_config.save_transcriptions,
+                output_dir=file_config.temp_uploads_dir,
+            )
+        except OutOfMemoryError as oom:
+            error_msg = (
+                f"Transcription failed due to insufficient memory. Try: "
+                f"(1) selecting a smaller model, (2) reducing batch size "
+                f"manually, "
+                f"or (3) processing shorter audio segments. "
+                f"Current settings: model={config.model}, "
+                f"batch_size={config.batch_size}, "
+                f"chunk_length={config.chunk_length}"
+            )
+            logger.error(error_msg)
+            raise TranscriptionError(error_msg) from oom
+
+        if progress_tracker_instance is not None and isinstance(result, dict):
+            attempts = result.get("orchestrator_attempts")
+            if isinstance(attempts, list) and len(attempts) > 1:
+                summary_parts: list[str] = []
+                for attempt in attempts:
+                    cfg = attempt.get("config")
+                    if not isinstance(cfg, dict):
+                        continue
+                    device = cfg.get("device")
+                    dtype = cfg.get("dtype")
+                    batch_size = cfg.get("batch_size")
+                    chunk_length = cfg.get("chunk_length")
+                    attempt_no = attempt.get("attempt")
+                    summary_parts.append(
+                        f"{attempt_no}) {device}/{dtype} bs={batch_size} "
+                        f"cl={chunk_length}"
                     )
-                    if event.event_type == "pipeline_start":
-                        current_event_fraction_within_file = 0.0
-                    elif (
-                        event.event_type == "chunk_start"
-                        and event.total_chunks
-                        and event.total_chunks > 0
-                        and event.chunk_num is not None
-                    ):
-                        current_event_fraction_within_file = (
-                            event.chunk_num - 1
-                        ) / event.total_chunks
-                    elif (
-                        event.event_type == "chunk_complete"
-                        and event.total_chunks
-                        and event.total_chunks > 0
-                        and event.chunk_num is not None
-                    ):
-                        current_event_fraction_within_file = (
-                            event.chunk_num / event.total_chunks
-                        )
-                    elif event.event_type == "pipeline_complete":
-                        current_event_fraction_within_file = 1.0
 
-                    if current_event_fraction_within_file is not None:
-                        # Scale the per-file fraction to its share of the overall
-                        # progress. Each file contributes equally to the session.
-                        overall_fraction = base_progress + (
-                            current_event_fraction_within_file / total_files_for_session
-                        )
-                        progress_tracker_instance(overall_fraction, desc=desc_message)
-                    else:
-                        # For other events, show indeterminate progress or just update
-                        # description
-                        progress_tracker_instance(None, desc=desc_message)
-
-                progress_listener = _progress_listener
-                asr_pipeline.add_listener(progress_listener)
-
-            # App-level chunking parameters (config.chunk_duration, etc.) are not
-            # directly used by the new pipeline in this basic setup.
-            # If that specific chunking logic is needed, it has to be implemented
-            # within the WhisperPipeline._prepare_input or a pre-processing step.
-            # The current HuggingFaceBackend relies on the model's internal chunking
-            # (chunk_length_s).
-            if config.chunk_duration is not None and config.chunk_overlap is not None:
-                logger.warning(
-                    "App-level chunk_duration and chunk_overlap are set in config, "
-                    "but the current refactored pipeline does not use them directly. "
-                    "Transcription will use the model's internal chunking."
-                )
-
-            _ensure_not_cancelled()
-            try:
-                result = asr_pipeline.process(
-                    audio_file_path=audio_file_path,
-                    language=(
-                        config.language
-                        if config.language and config.language.lower() != "none"
-                        else None
-                    ),
-                    task=config.task,
-                    timestamp_type=config.timestamp_type,
-                    cancellation_token=cancellation_token,
-                )
-            finally:
-                if progress_listener is not None:
-                    asr_pipeline.remove_listener(progress_listener)
+                if summary_parts:
+                    progress_tracker_instance(
+                        None,
+                        desc=(
+                            "Attempts: "
+                            + " | ".join(summary_parts)
+                            + f" ({original_file_name_for_desc})"
+                        ),
+                    )
 
         _ensure_not_cancelled()
 
@@ -375,6 +562,11 @@ def transcribe(
             # Relay detailed stabilization progress messages to the UI
 
             def _stab_progress(msg: str) -> None:
+                """Update progress during timestamp stabilization.
+
+                Args:
+                    msg: Progress message from the stabilization process.
+                """
                 if cancellation_token.cancelled:
                     return
                 if progress_tracker_instance is not None and getattr(
@@ -390,13 +582,52 @@ def transcribe(
 
             _ensure_not_cancelled()
             original_result = result
-            stabilized_result = stabilize_timestamps(
-                result,
-                demucs=config.demucs,
-                vad=config.vad,
-                vad_threshold=config.vad_threshold,
-                progress_cb=_stab_progress,
-            )
+
+            heartbeat_stop = threading.Event()
+            heartbeat_thread: threading.Thread | None = None
+            if progress_tracker_instance is not None:
+                demucs_label = "demucs" if config.demucs else "no-demucs"
+                vad_label = "vad" if config.vad else "no-vad"
+                heartbeat_desc = (
+                    "Stabilizing timestamps "
+                    f"({demucs_label}, {vad_label}) ({original_file_name_for_desc})"
+                )
+
+                def _heartbeat() -> None:
+                    """Periodically update progress during long operations.
+
+                    This function runs in a background thread and updates the progress
+                    tracker every 5 seconds with a heartbeat message to keep the UI
+                    responsive during long-running stabilization operations.
+                    """
+                    while not heartbeat_stop.is_set():
+                        if cancellation_token.cancelled:
+                            return
+                        if getattr(progress_tracker_instance, "cancelled", False):
+                            cancellation_token.cancel()
+                            return
+                        progress_tracker_instance(None, desc=heartbeat_desc)
+                        time.sleep(5)
+
+                heartbeat_thread = threading.Thread(
+                    target=_heartbeat,
+                    daemon=True,
+                )
+                heartbeat_thread.start()
+
+            try:
+                stabilized_result = stabilize_timestamps(
+                    result,
+                    demucs=config.demucs,
+                    vad=config.vad,
+                    vad_threshold=config.vad_threshold,
+                    progress_cb=_stab_progress,
+                )
+            finally:
+                heartbeat_stop.set()
+                if heartbeat_thread is not None:
+                    heartbeat_thread.join(timeout=1)
+
             _ensure_not_cancelled()
 
             if _is_stabilization_corrupt(stabilized_result.get("segments", [])):

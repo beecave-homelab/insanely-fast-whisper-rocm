@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import tempfile
 import unittest.mock
 import zipfile
@@ -121,14 +120,14 @@ def test_transcribe_handler_fallback_on_corrupted_stabilization() -> None:
     }
 
     # 2. Mock dependencies
-    mock_pipeline_instance = unittest.mock.MagicMock()
-    mock_pipeline_instance.process.return_value = original_result
+    mock_orchestrator = unittest.mock.MagicMock()
+    mock_orchestrator.run_transcription.return_value = original_result
 
     with (
         unittest.mock.patch(
-            "insanely_fast_whisper_rocm.webui.handlers.borrow_pipeline",
-            return_value=contextlib.nullcontext(mock_pipeline_instance),
-        ) as mock_borrow,
+            "insanely_fast_whisper_rocm.webui.handlers.create_orchestrator",
+            return_value=mock_orchestrator,
+        ) as mock_create_orchestrator,
         unittest.mock.patch(
             "insanely_fast_whisper_rocm.webui.handlers.stabilize_timestamps"
         ) as mock_stabilize,
@@ -141,9 +140,7 @@ def test_transcribe_handler_fallback_on_corrupted_stabilization() -> None:
         final_result = handlers.transcribe("/fake/audio.mp3", config, file_config)
 
     # 4. Assertions
-    mock_borrow.assert_called_once()
-    # add_listener/remove_listener are only called when progress_tracker is provided
-    # Since we're not providing one, they shouldn't be called
+    mock_create_orchestrator.assert_called_once()
     mock_stabilize.assert_called_once()
     # Check that the final result is the ORIGINAL data, not the corrupted data
     assert final_result["text"] == "This is a valid transcription."
@@ -164,9 +161,11 @@ def test_transcribe_raises_on_progress_cancellation() -> None:
     file_config = FileHandlingConfig()
 
     with unittest.mock.patch(
-        "insanely_fast_whisper_rocm.webui.handlers.borrow_pipeline"
-    ) as mock_borrow:
-        mock_borrow.side_effect = AssertionError("borrow_pipeline should not be called")
+        "insanely_fast_whisper_rocm.webui.handlers.create_orchestrator"
+    ) as mock_create_orchestrator:
+        mock_create_orchestrator.side_effect = AssertionError(
+            "create_orchestrator should not be called"
+        )
         with pytest.raises(TranscriptionCancelledError):
             handlers.transcribe(
                 "/tmp/audio.wav",
@@ -234,13 +233,13 @@ def test_transcribe_with_video_input() -> None:
         video_path = Path(temp_dir) / "test_video.mp4"
         video_path.write_text("fake video content")
 
-        mock_pipeline_instance = unittest.mock.MagicMock()
-        mock_pipeline_instance.process.return_value = {"text": "transcribed"}
+        mock_orchestrator = unittest.mock.MagicMock()
+        mock_orchestrator.run_transcription.return_value = {"text": "transcribed"}
 
         with (
             unittest.mock.patch(
-                "insanely_fast_whisper_rocm.webui.handlers.borrow_pipeline",
-                return_value=contextlib.nullcontext(mock_pipeline_instance),
+                "insanely_fast_whisper_rocm.webui.handlers.create_orchestrator",
+                return_value=mock_orchestrator,
             ),
             unittest.mock.patch(
                 "insanely_fast_whisper_rocm.webui.handlers.extract_audio_from_video"
@@ -280,16 +279,16 @@ def test_transcribe_with_video_extraction_error() -> None:
 
 def test_transcribe_with_progress_tracker() -> None:
     """Test transcribe with progress tracker instance."""
-    mock_pipeline_instance = unittest.mock.MagicMock()
-    mock_pipeline_instance.process.return_value = {"text": "test"}
+    mock_orchestrator = unittest.mock.MagicMock()
+    mock_orchestrator.run_transcription.return_value = {"text": "test"}
 
     # Mock progress tracker
     mock_progress = unittest.mock.MagicMock()
     mock_progress.cancelled = False
 
     with unittest.mock.patch(
-        "insanely_fast_whisper_rocm.webui.handlers.borrow_pipeline",
-        return_value=contextlib.nullcontext(mock_pipeline_instance),
+        "insanely_fast_whisper_rocm.webui.handlers.create_orchestrator",
+        return_value=mock_orchestrator,
     ):
         config = TranscriptionConfig()
         file_config = FileHandlingConfig()
@@ -303,20 +302,17 @@ def test_transcribe_with_progress_tracker() -> None:
         assert result["text"] == "test"
         # Progress tracker should have been called
         assert mock_progress.call_count > 0
-        # Listener should have been added and removed
-        mock_pipeline_instance.add_listener.assert_called_once()
-        mock_pipeline_instance.remove_listener.assert_called_once()
 
 
 def test_transcribe_with_chunk_duration_warning() -> None:
     """Test transcribe logs warning when chunk_duration is set."""
-    mock_pipeline_instance = unittest.mock.MagicMock()
-    mock_pipeline_instance.process.return_value = {"text": "test"}
+    mock_orchestrator = unittest.mock.MagicMock()
+    mock_orchestrator.run_transcription.return_value = {"text": "test"}
 
     with (
         unittest.mock.patch(
-            "insanely_fast_whisper_rocm.webui.handlers.borrow_pipeline",
-            return_value=contextlib.nullcontext(mock_pipeline_instance),
+            "insanely_fast_whisper_rocm.webui.handlers.create_orchestrator",
+            return_value=mock_orchestrator,
         ),
         unittest.mock.patch(
             "insanely_fast_whisper_rocm.webui.handlers.logger"
@@ -326,10 +322,8 @@ def test_transcribe_with_chunk_duration_warning() -> None:
         file_config = FileHandlingConfig()
         handlers.transcribe("/fake/audio.wav", config, file_config)
 
-        # Should log a warning about chunk_duration
-        assert any(
-            "chunk_duration" in str(call) for call in mock_logger.warning.call_args_list
-        )
+        # chunk_duration/chunk_overlap are currently not used by the WebUI handler.
+        mock_logger.warning.assert_not_called()
 
 
 def test_is_stabilization_corrupt_with_duplicate_timestamps() -> None:

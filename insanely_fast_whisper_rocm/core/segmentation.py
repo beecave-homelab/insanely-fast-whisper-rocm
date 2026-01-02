@@ -253,6 +253,14 @@ def split_lines(text: str) -> str:
     if candidates:
         # Take the candidate with the best score; tie-break by minimal imbalance
         def cand_key(item: tuple[int, int]) -> tuple[int, int]:
+            """Key function for ranking split candidates by score and balance.
+
+            Args:
+                item: A tuple containing (index, score) for a candidate split.
+
+            Returns:
+                A tuple of (score, negative imbalance) for sorting.
+            """
             idx, sc = item
             left = " ".join(words[:idx])
             right = " ".join(words[idx:])
@@ -807,6 +815,14 @@ def _merge_short_segments(segments: list[Segment]) -> list[Segment]:
 
     # Work on copies of the original segments so callers' data is never mutated.
     def _clone_segment(seg: Segment) -> Segment:
+        """Create a deep copy of a segment.
+
+        Args:
+            seg: The segment to clone.
+
+        Returns:
+            A new Segment object with the same text, timing, and words.
+        """
         return Segment(
             text=seg.text,
             start=seg.start,

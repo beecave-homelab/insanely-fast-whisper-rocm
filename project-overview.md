@@ -1,7 +1,7 @@
 ---
 repo: https://github.com/beecave-homelab/insanely-fast-whisper-rocm
-commit: e29f56677ee4ebf5857b415c70ff8ebdb298fbc9
-updated: 2025-12-08T22:20:00+01:00
+commit: 64b901ad24d296aefdebd5b443ce4309a573ff3b
+updated: 2025-12-31T22:14:15+00:00
 ---
 <!-- SECTIONS:API,CLI,WEBUI,CI,DOCKER,TESTS -->
 
@@ -13,7 +13,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 > This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v2.0.1-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v2.1.0-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -61,7 +61,7 @@ cd insanely-fast-whisper-rocm
 # Create your user configuration file (interactive)
 pdm run setup-config  # or `python scripts/setup_config.py`
 
-docker compose up --build -d
+docker compose -f docker-compose.dev.yaml up --build -d
 ```
 
 **Or run locally with PDM (for development):**
@@ -86,14 +86,15 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v2.0.1** *(08-12-2025)*
+### 🏷️ **Current Version: v2.1.0** *(31-12-2025)*
 
-**Latest improvements**: Bug fixes from PR #27 review—audio conversion fallback, segment mutation fix, SRT regex counting, task parameter handling, and improved error handling across CLI/API.
+**Latest improvements**: OOM-aware transcription orchestration (GPU batch-size retry, CPU fallback, and GPU cache invalidation) plus improved tests and dependency updates.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
-|---------|------|------|--------------|
+| ------- | ---- | ---- | ------------ |
+| **v2.1.0** | 31-12-2025 | ✨ Minor | OOM orchestration + CPU fallback, GPU cache invalidation, added core OOM tests |
 | **v2.0.1** | 08-12-2025 | 🐛 Patch | PR #27 fixes: audio conversion fallback, segment mutation, SRT counting, task params |
 | **v2.0.0** | 05-12-2025 | 🔄 Major | Modular package refactor, package/CLI rename, model caching & readable subtitles |
 | **v1.0.2** | 05-12-2025 | 🐛 Patch | API routes param fix, dead code removal, TDD tests |
@@ -172,63 +173,68 @@ pdm run cli transcribe audio.mp3  # CLI
 ## Project Structure
 
 ```md
-├── [insanely_fast_whisper_rocm/](./insanely_fast_whisper_rocm/)          # Main package
-│   ├── [__init__.py](./insanely_fast_whisper_rocm/__init__.py)                     # Package initialization
-│   ├── [__main__.py](./insanely_fast_whisper_rocm/__main__.py)                     # Module entry point
-│   ├── [main.py](./insanely_fast_whisper_rocm/main.py)                         # FastAPI application entry
-│   ├── [logging_config.yaml](./insanely_fast_whisper_rocm/logging_config.yaml)             # Logging configuration
-│   ├── [api/](./insanely_fast_whisper_rocm/api/)                            # FastAPI application layer
-│   │   ├── [__init__.py](./insanely_fast_whisper_rocm/api/__init__.py)
-│   │   ├── [__main__.py](./insanely_fast_whisper_rocm/api/__main__.py)                  # API module entry
-│   │   ├── [app.py](./insanely_fast_whisper_rocm/api/app.py)                      # FastAPI app setup
-│   │   ├── [routes.py](./insanely_fast_whisper_rocm/api/routes.py)                   # API endpoints
-│   │   ├── [models.py](./insanely_fast_whisper_rocm/api/models.py)                   # Pydantic data models
-│   │   ├── [dependencies.py](./insanely_fast_whisper_rocm/api/dependencies.py)             # Dependency injection
-│   │   ├── [middleware.py](./insanely_fast_whisper_rocm/api/middleware.py)               # Request/response middleware
-│   │   └── [responses.py](./insanely_fast_whisper_rocm/api/responses.py)                # Response formatters
-│   ├── [core/](./insanely_fast_whisper_rocm/core/)                           # Core ASR logic
-│   │   ├── [__init__.py](./insanely_fast_whisper_rocm/core/__init__.py)
-│   │   ├── [integrations/](./insanely_fast_whisper_rocm/core/integrations/)           # Integrations with other libs
-│   │   │   ├── [__init__.py](./insanely_fast_whisper_rocm/core/integrations/__init__.py)
-│   │   │   └── [stable_ts.py](./insanely_fast_whisper_rocm/core/integrations/stable_ts.py)      # stable-ts logic
-│   │   ├── [pipeline.py](./insanely_fast_whisper_rocm/core/pipeline.py)                 # ASR orchestration
-│   │   ├── [asr_backend.py](./insanely_fast_whisper_rocm/core/asr_backend.py)              # Whisper model backend
-│   │   ├── [storage.py](./insanely_fast_whisper_rocm/core/storage.py)                  # File lifecycle management
-│   │   ├── [utils.py](./insanely_fast_whisper_rocm/core/utils.py)                    # Core utilities
-│   │   ├── [formatters.py](./insanely_fast_whisper_rocm/core/formatters.py)              # Output formatting logic
-│   │   └── [errors.py](./insanely_fast_whisper_rocm/core/errors.py)                   # Exception classes
-│   ├── [audio/](./insanely_fast_whisper_rocm/audio/)                          # Audio processing
-│   │   ├── [__init__.py](./insanely_fast_whisper_rocm/audio/__init__.py)
-│   │   ├── [conversion.py](./insanely_fast_whisper_rocm/audio/conversion.py)               # Audio conversion logic
-│   │   ├── [processing.py](./insanely_fast_whisper_rocm/audio/processing.py)               # Validation and preprocessing
-│   │   └── [results.py](./insanely_fast_whisper_rocm/audio/results.py)                  # Output formatting
-│   ├── [cli/](./insanely_fast_whisper_rocm/cli/)                            # CLI tools
-│   │   ├── [__init__.py](./insanely_fast_whisper_rocm/cli/__init__.py)
-│   │   ├── [__main__.py](./insanely_fast_whisper_rocm/cli/__main__.py)                  # CLI module entry
-│   │   ├── [cli.py](./insanely_fast_whisper_rocm/cli/cli.py)                      # CLI entry point
-│   │   ├── [commands.py](./insanely_fast_whisper_rocm/cli/commands.py)                 # Subcommand logic
-│   │   ├── [common_options.py](./insanely_fast_whisper_rocm/cli/common_options.py)         # Shared CLI options
-│   │   └── [facade.py](./insanely_fast_whisper_rocm/cli/facade.py)                   # High-level CLI wrapper
-│   ├── [webui/](./insanely_fast_whisper_rocm/webui/)                          # Web UI (Gradio)
-│   │   ├── [__init__.py](./insanely_fast_whisper_rocm/webui/__init__.py)
-│   │   ├── [__main__.py](./insanely_fast_whisper_rocm/webui/__main__.py)                  # WebUI module entry
-│   │   ├── [app.py](./insanely_fast_whisper_rocm/webui/app.py)                      # Gradio App launcher
-│   │   ├── [ui.py](./insanely_fast_whisper_rocm/webui/ui.py)                       # Gradio interface
-│   │   ├── [handlers.py](./insanely_fast_whisper_rocm/webui/handlers.py)                 # Upload + result management
-│   │   ├── [merge_handler.py](./insanely_fast_whisper_rocm/webui/merge_handler.py)            # Transcription file merge handlers
-│   │   ├── [utils.py](./insanely_fast_whisper_rocm/webui/utils.py)                    # WebUI utilities
-│   │   └── [errors.py](./insanely_fast_whisper_rocm/webui/errors.py)                   # UI-specific exceptions
-│   └── [utils/](./insanely_fast_whisper_rocm/utils/)                          # General utilities
-│       ├── [__init__.py](./insanely_fast_whisper_rocm/utils/__init__.py)
-│       ├── [benchmark.py](./insanely_fast_whisper_rocm/utils/benchmark.py)                # Benchmarking utilities
-│       ├── [constants.py](./insanely_fast_whisper_rocm/utils/constants.py)                # Core environment variable definitions
-│       ├── [env_loader.py](./insanely_fast_whisper_rocm/utils/env_loader.py)               # Hierarchical .env loading & debug print logic
-│       ├── [download_hf_model.py](./insanely_fast_whisper_rocm/utils/download_hf_model.py)        # Model downloading & caching
-│       ├── [file_utils.py](./insanely_fast_whisper_rocm/utils/file_utils.py)               # File operations
-│       ├── [filename_generator.py](./insanely_fast_whisper_rocm/utils/filename_generator.py)       # Unified filename logic
-│       └── [format_time.py](./insanely_fast_whisper_rocm/utils/format_time.py)              # Time formatting utilities
-├── [scripts/](./scripts/)                            # Utility and maintenance scripts
-│   └── [setup_config.py](./scripts/setup_config.py)               # Script to set up user-specific .env file
+├── [insanely_fast_whisper_rocm/](insanely_fast_whisper_rocm/)          # Main package
+│   ├── [__init__.py](insanely_fast_whisper_rocm/__init__.py)                     # Package initialization
+│   ├── [__main__.py](insanely_fast_whisper_rocm/__main__.py)                     # Module entry point
+│   ├── [main.py](insanely_fast_whisper_rocm/main.py)                         # FastAPI application entry
+│   ├── [logging_config.yaml](insanely_fast_whisper_rocm/logging_config.yaml)             # Logging configuration
+│   ├── [api/](insanely_fast_whisper_rocm/api/)                            # FastAPI application layer
+│   │   ├── [__init__.py](insanely_fast_whisper_rocm/api/__init__.py)
+│   │   ├── [__main__.py](insanely_fast_whisper_rocm/api/__main__.py)                  # API module entry
+│   │   ├── [app.py](insanely_fast_whisper_rocm/api/app.py)                      # FastAPI app setup
+│   │   ├── [routes.py](insanely_fast_whisper_rocm/api/routes.py)                   # API endpoints
+│   │   ├── [models.py](insanely_fast_whisper_rocm/api/models.py)                   # Pydantic data models
+│   │   ├── [dependencies.py](insanely_fast_whisper_rocm/api/dependencies.py)             # Dependency injection
+│   │   ├── [middleware.py](insanely_fast_whisper_rocm/api/middleware.py)               # Request/response middleware
+│   │   └── [responses.py](insanely_fast_whisper_rocm/api/responses.py)                # Response formatters
+│   ├── [core/](insanely_fast_whisper_rocm/core/)                           # Core ASR logic
+│   │   ├── [__init__.py](insanely_fast_whisper_rocm/core/__init__.py)
+│   │   ├── [integrations/](insanely_fast_whisper_rocm/core/integrations/)           # Integrations with other libs
+│   │   │   ├── [__init__.py](insanely_fast_whisper_rocm/core/integrations/__init__.py)
+│   │   │   └── [stable_ts.py](insanely_fast_whisper_rocm/core/integrations/stable_ts.py)      # stable-ts logic
+│   │   ├── [backend_cache.py](insanely_fast_whisper_rocm/core/backend_cache.py)          # Backend/pipeline cache + GPU invalidation
+│   │   ├── [orchestrator.py](insanely_fast_whisper_rocm/core/orchestrator.py)            # OOM-aware retry + CPU fallback orchestration
+│   │   ├── [oom_utils.py](insanely_fast_whisper_rocm/core/oom_utils.py)                  # CUDA/HIP OOM classification helpers
+│   │   ├── [pipeline.py](insanely_fast_whisper_rocm/core/pipeline.py)                 # ASR orchestration
+│   │   ├── [asr_backend.py](insanely_fast_whisper_rocm/core/asr_backend.py)              # Whisper model backend
+│   │   ├── [cancellation.py](insanely_fast_whisper_rocm/core/cancellation.py)           # Cooperative cancellation token
+│   │   ├── [progress.py](insanely_fast_whisper_rocm/core/progress.py)                 # Progress callback interfaces
+│   │   ├── [storage.py](insanely_fast_whisper_rocm/core/storage.py)                  # File lifecycle management
+│   │   ├── [utils.py](insanely_fast_whisper_rocm/core/utils.py)                    # Core utilities
+│   │   ├── [formatters.py](insanely_fast_whisper_rocm/core/formatters.py)              # Output formatting logic
+│   │   └── [errors.py](insanely_fast_whisper_rocm/core/errors.py)                   # Exception classes
+│   ├── [audio/](insanely_fast_whisper_rocm/audio/)                          # Audio processing
+│   │   ├── [__init__.py](insanely_fast_whisper_rocm/audio/__init__.py)
+│   │   ├── [conversion.py](insanely_fast_whisper_rocm/audio/conversion.py)               # Audio conversion logic
+│   │   ├── [processing.py](insanely_fast_whisper_rocm/audio/processing.py)               # Validation and preprocessing
+│   │   └── [results.py](insanely_fast_whisper_rocm/audio/results.py)                  # Output formatting
+│   ├── [cli/](insanely_fast_whisper_rocm/cli/)                            # CLI tools
+│   │   ├── [__init__.py](insanely_fast_whisper_rocm/cli/__init__.py)
+│   │   ├── [__main__.py](insanely_fast_whisper_rocm/cli/__main__.py)                  # CLI module entry
+│   │   ├── [cli.py](insanely_fast_whisper_rocm/cli/cli.py)                      # CLI entry point
+│   │   ├── [commands.py](insanely_fast_whisper_rocm/cli/commands.py)                 # Subcommand logic
+│   │   ├── [common_options.py](insanely_fast_whisper_rocm/cli/common_options.py)         # Shared CLI options
+│   │   └── [facade.py](insanely_fast_whisper_rocm/cli/facade.py)                   # High-level CLI wrapper
+│   ├── [webui/](insanely_fast_whisper_rocm/webui/)                          # Web UI (Gradio)
+│   │   ├── [__init__.py](insanely_fast_whisper_rocm/webui/__init__.py)
+│   │   ├── [__main__.py](insanely_fast_whisper_rocm/webui/__main__.py)                  # WebUI module entry
+│   │   ├── [app.py](insanely_fast_whisper_rocm/webui/app.py)                      # Gradio App launcher
+│   │   ├── [ui.py](insanely_fast_whisper_rocm/webui/ui.py)                       # Gradio interface
+│   │   ├── [handlers.py](insanely_fast_whisper_rocm/webui/handlers.py)                 # Upload + result management
+│   │   ├── [merge_handler.py](insanely_fast_whisper_rocm/webui/merge_handler.py)            # Transcription file merge handlers
+│   │   ├── [utils.py](insanely_fast_whisper_rocm/webui/utils.py)                    # WebUI utilities
+│   │   └── [errors.py](insanely_fast_whisper_rocm/webui/errors.py)                   # UI-specific exceptions
+│   └── [utils/](insanely_fast_whisper_rocm/utils/)                          # General utilities
+│       ├── [__init__.py](insanely_fast_whisper_rocm/utils/__init__.py)
+│       ├── [benchmark.py](insanely_fast_whisper_rocm/utils/benchmark.py)                # Benchmarking utilities
+│       ├── [constants.py](insanely_fast_whisper_rocm/utils/constants.py)                # Core environment variable definitions
+│       ├── [env_loader.py](insanely_fast_whisper_rocm/utils/env_loader.py)               # Hierarchical .env loading & debug print logic
+│       ├── [download_hf_model.py](insanely_fast_whisper_rocm/utils/download_hf_model.py)        # Model downloading & caching
+│       ├── [file_utils.py](insanely_fast_whisper_rocm/utils/file_utils.py)               # File operations
+│       ├── [filename_generator.py](insanely_fast_whisper_rocm/utils/filename_generator.py)       # Unified filename logic
+│       └── [format_time.py](insanely_fast_whisper_rocm/utils/format_time.py)              # Time formatting utilities
+├── [scripts/](scripts/)                            # Utility and maintenance scripts
+│   └── [setup_config.py](scripts/setup_config.py)               # Script to set up user-specific .env file
 ```
 
 ---
@@ -247,11 +253,21 @@ This project uses the native Scaled Dot Product Attention (SDPA) available in Py
 
 The codebase automatically enables `sdpa` for any GPU-based device (`cuda`, `mps`) and disables it for CPU, ensuring optimal performance where available without manual configuration. `sdpa` is the current and recommended acceleration method.
 
+### OOM Recovery Orchestration (GPU -> CPU fallback)
+
+The core transcription path is wrapped by an OOM-aware orchestrator ([`core/orchestrator.py`](insanely_fast_whisper_rocm/core/orchestrator.py)) that implements deterministic recovery actions:
+
+- First `InferenceOOMError`: retry on GPU with batch size halved (down to `MIN_BATCH_SIZE`).
+- Subsequent GPU OOMs, or any `ModelLoadingOOMError`: switch to CPU (`dtype=float32`, `batch_size<=2`, `chunk_length<=15`) and invalidate cached GPU backends via [`invalidate_gpu_cache()`](insanely_fast_whisper_rocm/core/backend_cache.py).
+- Each attempt is recorded in `result["orchestrator_attempts"]` for UI/API visibility.
+
+The OOM signatures are parsed for CUDA/HIP/ROCm in [`core/oom_utils.py`](insanely_fast_whisper_rocm/core/oom_utils.py) and exercised in unit tests under `tests/core/`.
+
 ### Core Refactor (v0.2.0+)
 
 - Direct integration with Hugging Face `pipeline`
 - No subprocess dependency on `insanely-fast-whisper`
-- Modular architecture: [`pipeline.py`](./insanely_fast_whisper_rocm/core/pipeline.py), [`asr_backend.py`](./insanely_fast_whisper_rocm/core/asr_backend.py), etc.
+- Modular architecture: [`pipeline.py`](insanely_fast_whisper_rocm/core/pipeline.py), [`asr_backend.py`](insanely_fast_whisper_rocm/core/asr_backend.py), etc.
 - *See [v0.2.0 changelog](VERSIONS.md#v020---may-2025) for complete architectural changes*
 
 ### WebUI Refactor (v0.3.0+)
@@ -271,13 +287,13 @@ The codebase automatically enables `sdpa` for any GPU-based device (`cuda`, `mps
 
 ### Enhancement Highlights
 
-| Date     | ID                                     | Type | Description                                                                                             |
-|----------|----------------------------------------|------|---------------------------------------------------------------------------------------------------------|
-| Jun 2025 | Internal enhancement | ✨    | **Native SDPA Acceleration**: Integrated `attn_implementation="sdpa"` for faster attention, replacing the need for BetterTransformer. |
-| Jun 2025 | Internal enhancement | ✨    | **Modular CLI**: Refactored the CLI into a modular structure with `click` commands and a `facade` for cleaner logic. |
-| Jun 2025 | Internal enhancement | 🔧    | **`pdm` Migration**: Replaced `requirements.txt` with `pdm` for robust dependency management. See [Dependency Management](#dependency-management-with-pdm). |
-| Jun 2025 | Internal enhancement | 🔧    | **Import Refactor**: Standardized all imports to be absolute, improving clarity and maintainability. See [Import Standardization](#import-standardization). |
-| Jun 2025 | [#1](https://github.com/issue/1)       | 🐛    | **WebUI Stability**: Fixed issues with multi-file downloads and improved error handling in the Gradio interface. |
+| Date | ID | Type | Description |
+| ---- | -- | ---- | ----------- |
+| Jun 2025 | Internal enhancement | ✨ | **Native SDPA Acceleration**: Integrated `attn_implementation="sdpa"` for faster attention, replacing the need for BetterTransformer. |
+| Jun 2025 | Internal enhancement | ✨ | **Modular CLI**: Refactored the CLI into a modular structure with `click` commands and a `facade` for cleaner logic. |
+| Jun 2025 | Internal enhancement | 🔧 | **`pdm` Migration**: Replaced `requirements.txt` with `pdm` for robust dependency management. See [Dependency Management](#dependency-management-with-pdm). |
+| Jun 2025 | Internal enhancement | 🔧 | **Import Refactor**: Standardized all imports to be absolute, improving clarity and maintainability. See [Import Standardization](#import-standardization). |
+| Jun 2025 | [#1](https://github.com/issue/1) | 🐛 | **WebUI Stability**: Fixed issues with multi-file downloads and improved error handling in the Gradio interface. |
 
 ---
 
@@ -285,12 +301,12 @@ The codebase automatically enables `sdpa` for any GPU-based device (`cuda`, `mps
 
 **Pattern:** `{audio_stem}_{task}_{timestamp}.{extension}`
 
-| Part         | Meaning                              |
-| ------------ | ------------------------------------ |
-| `audio_stem` | Original filename without extension  |
-| `task`       | `transcribe` or `translate`          |
-| `timestamp`  | ISO 8601 format. Ends with 'Z' for UTC, or a UTC offset (e.g., `+0200`) for local/specific timezones. Format: `YYYYMMDDTHHMMSS[Z\|+HHMM\|-HHMM]` |
-| `extension`  | `json`, `txt`, or `srt`              |
+| Part | Meaning |
+| ---- | ------- |
+| `audio_stem` | Original filename without extension |
+| `task` | `transcribe` or `translate` |
+| `timestamp` | ISO 8601 format. Ends with 'Z' for UTC, or a UTC offset (e.g., `+0200`) for local/specific timezones. Format: `YYYYMMDDTHHMMSS[Z\|+HHMM\|-HHMM]` |
+| `extension` | `json`, `txt`, or `srt` |
 
 ### Example
 
@@ -321,7 +337,7 @@ TZ=Europe/Amsterdam
 
 ### Configuration Files & Loading
 
-The application uses a hierarchical approach for loading `.env` files, managed by [insanely_fast_whisper_rocm/utils/env_loader.py](./insanely_fast_whisper_rocm/utils/env_loader.py) and accessed via [insanely_fast_whisper_rocm/utils/constants.py](./insanely_fast_whisper_rocm/utils/constants.py).
+The application uses a hierarchical approach for loading `.env` files, managed by [insanely_fast_whisper_rocm/utils/env_loader.py](insanely_fast_whisper_rocm/utils/env_loader.py) and accessed via [insanely_fast_whisper_rocm/utils/constants.py](insanely_fast_whisper_rocm/utils/constants.py).
 
 1. **Project `.env`**: Located at the project root (e.g., `/path/to/project/.env`). This file can define project-specific defaults.
 2. **User-specific `.env`**: Located at `~/.config/insanely-fast-whisper-rocm/.env`. This file is for user-specific overrides and sensitive information (like API keys).
@@ -333,16 +349,16 @@ The application uses a hierarchical approach for loading `.env` files, managed b
 
 **Key Configuration Files:**
 
-- **[setup script](./scripts/setup_config.py)**: A template file in the project root. Users should copy this to create their configuration files.
+- **[setup script](scripts/setup_config.py)**: A template file in the project root. Users should copy this to create their configuration files.
 - **`~/.config/insanely-fast-whisper-rocm/.env`**: The primary user-specific configuration file. This is the recommended place for all user customizations.
 - **Project `.env`** (Optional): Can be used for development-specific settings or non-sensitive project defaults.
-- **[insanely_fast_whisper_rocm/utils/constants.py](./insanely_fast_whisper_rocm/utils/constants.py)**: Defines and provides centralized access to all configuration variables after they are loaded from the environment and `.env` files. This includes the `USE_READABLE_SUBTITLES` flag, which defaults to `true`.
-- **[insanely_fast_whisper_rocm/utils/env_loader.py](./insanely_fast_whisper_rocm/utils/env_loader.py)**: Contains the logic for loading `.env` files hierarchically and managing debug print statements based on `LOG_LEVEL` or CLI flags.
-- **[logging_config.yaml](./insanely_fast_whisper_rocm/logging_config.yaml)**: Configures the application's logging behavior.
+- **[insanely_fast_whisper_rocm/utils/constants.py](insanely_fast_whisper_rocm/utils/constants.py)**: Defines and provides centralized access to all configuration variables after they are loaded from the environment and `.env` files. This includes the `USE_READABLE_SUBTITLES` flag, which defaults to `true`.
+- **[insanely_fast_whisper_rocm/utils/env_loader.py](insanely_fast_whisper_rocm/utils/env_loader.py)**: Contains the logic for loading `.env` files hierarchically and managing debug print statements based on `LOG_LEVEL` or CLI flags.
+- **[logging_config.yaml](insanely_fast_whisper_rocm/logging_config.yaml)**: Configures the application's logging behavior.
 
 **User Configuration Setup Script:**
 
-A utility script [`scripts/setup_config.py`](./scripts/setup_config.py) is provided to help users create their user-specific configuration file. It copies the project's `.env.example` file to `~/.config/insanely-fast-whisper-rocm/.env`.
+A utility script [`scripts/setup_config.py`](scripts/setup_config.py) is provided to help users create their user-specific configuration file. It copies the project's `.env.example` file to `~/.config/insanely-fast-whisper-rocm/.env`.
 
 The script performs the following actions:
 
@@ -366,7 +382,7 @@ Or directly:
 python scripts/setup_config.py
 ```
 
-**Important**: No direct `os.getenv()` calls should be made outside of [insanely_fast_whisper_rocm/utils/env_loader.py](./insanely_fast_whisper_rocm/utils/env_loader.py) or [insanely_fast_whisper_rocm/utils/constants.py](./insanely_fast_whisper_rocm/utils/constants.py) to ensure consistent configuration loading.
+**Important**: No direct `os.getenv()` calls should be made outside of [insanely_fast_whisper_rocm/utils/env_loader.py](insanely_fast_whisper_rocm/utils/env_loader.py) or [insanely_fast_whisper_rocm/utils/constants.py](insanely_fast_whisper_rocm/utils/constants.py) to ensure consistent configuration loading.
 
 ---
 
@@ -500,7 +516,7 @@ python -m insanely_fast_whisper_rocm.cli transcribe audio.mp3 --benchmark --benc
 **Key behaviors**:
 
 | Feature | Description |
-|---------|-------------|
+| ------- | ----------- |
 | Transcript export suppression | When `--benchmark` is set, transcript files are *not* saved unless you explicitly provide `--export-format`. |
 | Auto `--no-timestamps` | Timestamps are disabled by default during benchmarking to measure raw model speed. Override by adding `--no-timestamps` on the CLI. |
 | Output location | A JSON file is written to `benchmarks/` with name pattern `benchmark_<audio>_<task>_<timestamp>.json`. |
@@ -778,7 +794,7 @@ class Segment:
 **Key Functions:**
 
 | Function | Purpose | Input | Output |
-|----------|---------|-------|--------|
+| -------- | ------- | ----- | ------ |
 | `segment_words()` | Orchestrates full pipeline | `list[Word]` | `list[Segment]` |
 | `_expand_multi_token_words()` | Splits multi-word tokens | `list[Word]` | `list[Word]` |
 | `_sanitize_words_timing()` | Enforces monotonic timing | `list[Word]` | `list[Word]` |
@@ -820,7 +836,7 @@ Centralized configuration for all segmentation parameters.
 **Subtitle Readability Constants:**
 
 | Constant | Default | Description |
-|----------|---------|-------------|
+| -------- | ------- | ----------- |
 | `USE_READABLE_SUBTITLES` | `true` | Master switch for advanced pipeline |
 | `MAX_LINE_CHARS` | `42` | Maximum characters per line |
 | `MAX_LINES_PER_BLOCK` | `2` | Maximum lines per subtitle block |
@@ -1063,7 +1079,7 @@ When modifying segmentation logic:
 ### Common Issues & Solutions
 
 | Issue | Cause | Solution |
-|-------|-------|----------|
+| ----- | ----- | -------- |
 | Segments too long | MAX_SEGMENT_DURATION_SEC too high | Reduce in constants.py |
 | Too many short segments | MIN_SEGMENT_DURATION_SEC too high | Decrease threshold |
 | CPS violations | Unrealistic ASR timing | Enable timestamp stabilization (--stabilize) |
@@ -1112,7 +1128,7 @@ python -m insanely_fast_whisper_rocm.cli transcribe audio.mp3 \
 
 ## Dependency Management with PDM
 
-This project uses [PDM (Python Development Master)](https://pdm-project.org/) for dependency management and package building, adhering to PEP 517, PEP 518, and PEP 621 standards. All project metadata, dependencies, and scripts are defined in the [`pyproject.toml`](./pyproject.toml) file.
+This project uses [PDM (Python Development Master)](https://pdm-project.org/) for dependency management and package building, adhering to PEP 517, PEP 518, and PEP 621 standards. All project metadata, dependencies, and scripts are defined in the [`pyproject.toml`](pyproject.toml) file.
 
 ### Torchaudio backend setup for stable-ts (SoundFile + libsndfile)
 
@@ -1143,7 +1159,7 @@ Notes for ROCm users:
 - Avoid `PYTORCH_HIP_ALLOC_CONF=expandable_segments:True` on stacks that do not support it; it can lead to stalls. Prefer leaving it unset or set `expandable_segments:False`.
 - The ASR backend attempts `attn_implementation="sdpa"` first on ROCm and falls back to `"eager"` automatically if the load fails.
 
-### [`pyproject.toml`](./pyproject.toml) Structure
+### [`pyproject.toml`](pyproject.toml) Structure
 
 - **`[project]`**: Contains core project metadata such as name, version, authors, description, and classifiers.
   - **`dependencies`**: Lists core runtime dependencies required for the application to function.
@@ -1221,19 +1237,19 @@ This allows reproducible benchmarking and easy switching between supported ROCm 
 
 ### Common PDM Commands
 
-- **`pdm install`**: Install all dependencies as specified in `pdm.lock` (if it exists) or [`pyproject.toml`](./pyproject.toml).
+- **`pdm install`**: Install all dependencies as specified in `pdm.lock` (if it exists) or [`pyproject.toml`](pyproject.toml).
   - `pdm install -G <group>`: Install dependencies from a specific optional group.
-- **`pdm add <package>`**: Add a new dependency to [`pyproject.toml`](./pyproject.toml) and install it.
+- **`pdm add <package>`**: Add a new dependency to [`pyproject.toml`](pyproject.toml) and install it.
   - `pdm add -dG <group> <package>`: Add a package to a specific optional group.
 - **`pdm remove <package>`**: Remove a dependency.
-- **`pdm update`**: Update dependencies to their latest allowed versions according to [`pyproject.toml`](./pyproject.toml) and update `pdm.lock`.
-- **`pdm run <script_name>`**: Execute a script defined in `[tool.pdm.scripts]` in [`pyproject.toml`](./pyproject.toml).
+- **`pdm update`**: Update dependencies to their latest allowed versions according to [`pyproject.toml`](pyproject.toml) and update `pdm.lock`.
+- **`pdm run <script_name>`**: Execute a script defined in `[tool.pdm.scripts]` in [`pyproject.toml`](pyproject.toml).
 - **`pdm lock`**: Resolve dependencies and write to `pdm.lock` without installing.
 - **`pdm shell`**: Activate the PDM-managed virtual environment in the current shell.
 
 ### Relationship with `requirements-*.txt` Files
 
-The Docker build now uses PDM to install all project dependencies directly from [`pyproject.toml`](./pyproject.toml) via `pdm install --prod`. The `requirements-*.txt` files (e.g., `requirements.txt`, `requirements-rocm.txt`, `requirements-dev.txt`) are maintained only for legacy or special environments where PDM is not available, but are no longer used in the Docker build.
+The Docker build now uses PDM to install all project dependencies directly from [`pyproject.toml`](pyproject.toml) via `pdm install --prod`. The `requirements-*.txt` files (e.g., `requirements.txt`, `requirements-rocm.txt`, `requirements-dev.txt`) are maintained only for legacy or special environments where PDM is not available, but are no longer used in the Docker build.
 
 Ideally, these `requirements.txt` files can be generated from `pdm.lock` using `pdm export` to ensure consistency:
 
@@ -1250,7 +1266,7 @@ pdm export -G dev -o requirements-dev.txt --without-hashes
 
 This practice helps keep them synchronized with the PDM-managed dependencies.
 
-> **PyTorch Note**: Due to PyTorch's specific index URL requirements for different compute platforms (CPU, CUDA, ROCm), its installation is carefully managed within PDM's dependency groups or via the `requirements-*.txt` files to ensure the correct version is fetched. PDM can handle custom source URLs if needed, which should be configured in [`pyproject.toml`](./pyproject.toml).
+> **PyTorch Note**: Due to PyTorch's specific index URL requirements for different compute platforms (CPU, CUDA, ROCm), its installation is carefully managed within PDM's dependency groups or via the `requirements-*.txt` files to ensure the correct version is fetched. PDM can handle custom source URLs if needed, which should be configured in [`pyproject.toml`](pyproject.toml).
 
 ---
 
@@ -1444,14 +1460,14 @@ python -m insanely_fast_whisper_rocm.cli translate audio_file.mp3
 
 The project includes Docker configurations for both production and development environments, managed via Docker Compose.
 
-- **Production (`docker-compose.yaml`)**: The [`docker-compose.yaml`](./docker-compose.yaml) file is optimized for production use. It builds a clean, minimal image and runs the application in a stable configuration. Use this for deployments or for running the application as a standalone service.
+- **Production (`docker-compose.yaml`)**: The [`docker-compose.yaml`](docker-compose.yaml) file is optimized for production use. It builds a clean, minimal image and runs the application in a stable configuration. Use this for deployments or for running the application as a standalone service.
 
   ```bash
   # Build and run the production container
   docker compose up --build -d
   ```
 
-- **Development (`docker-compose.dev.yaml`)**: The [`docker-compose.dev.yaml`](./docker-compose.dev.yaml) file is tailored for local development. It mounts the local source code into the container, enabling hot-reloading for immediate feedback on code changes. Use this file to work on the application without needing to rebuild the image for every change.
+- **Development (`docker-compose.dev.yaml`)**: The [`docker-compose.dev.yaml`](docker-compose.dev.yaml) file is tailored for local development. It mounts the local source code into the container, enabling hot-reloading for immediate feedback on code changes. Use this file to work on the application without needing to rebuild the image for every change.
 
   ```bash
   # Build and run the development container

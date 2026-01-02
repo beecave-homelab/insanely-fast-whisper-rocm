@@ -27,8 +27,11 @@ from transformers.utils import logging as hf_logging
 from insanely_fast_whisper_rocm.core.cancellation import CancellationToken
 from insanely_fast_whisper_rocm.core.errors import (
     DeviceNotFoundError,
+    InferenceOOMError,
+    ModelLoadingOOMError,
     TranscriptionError,
 )
+from insanely_fast_whisper_rocm.core.oom_utils import classify_oom_error
 from insanely_fast_whisper_rocm.core.progress import NoOpProgress, ProgressCallback
 from insanely_fast_whisper_rocm.core.utils import convert_device_string
 
@@ -108,16 +111,11 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             progress_cb: Optional progress callback.
 
         Raises:
+            ModelLoadingOOMError: If model initialization fails due to VRAM.
             TranscriptionError: If the ASR model or associated components fail
                 to load.
-            ImportError: Propagated if a required backend or package is missing
-                and cannot be recovered.
-            OSError: Propagated if underlying IO or model loading fails in a way
-                that cannot be wrapped.
             RuntimeError: Propagated for low-level framework errors that may
                 occur prior to wrapping.
-            ValueError: Propagated for invalid configuration detected during
-                model initialization when not recoverable.
         """
         if self.asr_pipe is None:
             cb = progress_cb or NoOpProgress()
@@ -160,6 +158,15 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                         self.config.model_name, **model_load_kwargs
                     )
                 except (OSError, ValueError, RuntimeError, ImportError) as e_first:
+                    # Check for OOM during first attempt
+                    oom_error = classify_oom_error(e_first)
+                    if oom_error:
+                        raise ModelLoadingOOMError(
+                            f"OOM during initial model load: {str(e_first)}",
+                            device=self.effective_device,
+                            config={"model": self.config.model_name},
+                        ) from e_first
+
                     # On ROCm, fallback to 'eager' if SDPA attempt fails at load.
                     if (
                         getattr(torch.version, "hip", None) is not None
@@ -176,9 +183,19 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                             self.config.model_name,
                             model_load_kwargs,
                         )
-                        model = AutoModelForSpeechSeq2Seq.from_pretrained(
-                            self.config.model_name, **model_load_kwargs
-                        )
+                        try:
+                            model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                                self.config.model_name, **model_load_kwargs
+                            )
+                        except RuntimeError as e_retry:
+                            oom_error = classify_oom_error(e_retry)
+                            if oom_error:
+                                raise ModelLoadingOOMError(
+                                    f"OOM during model load retry: {str(e_retry)}",
+                                    device=self.effective_device,
+                                    config={"model": self.config.model_name},
+                                ) from e_retry
+                            raise
                     else:
                         raise
                 tokenizer = AutoTokenizer.from_pretrained(self.config.model_name)
@@ -276,6 +293,8 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             config used.
 
         Raises:
+            InferenceOOMError: If audio processing fails due to VRAM.
+            RuntimeError: If model initialization or inference fails.
             TranscriptionError: If model loading or inference fails.
         """
         cb = progress_cb or NoOpProgress()
@@ -426,7 +445,20 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             )
             if cancellation_token is not None:
                 cancellation_token.raise_if_cancelled()
-            outputs = self.asr_pipe(str(audio_file_path), **pipeline_kwargs)
+            try:
+                outputs = self.asr_pipe(str(audio_file_path), **pipeline_kwargs)
+            except RuntimeError as e:
+                oom_error = classify_oom_error(e)
+                if oom_error:
+                    raise InferenceOOMError(
+                        f"OOM during inference: {str(e)}",
+                        device=self.effective_device,
+                        config={
+                            "batch_size": self.config.batch_size,
+                            "chunk_length": self.config.chunk_length,
+                        },
+                    ) from e
+                raise
         except RuntimeError as e:
             # Check if this is the specific tensor size mismatch error in
             # timestamp extraction

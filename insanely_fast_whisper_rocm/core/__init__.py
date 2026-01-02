@@ -49,6 +49,19 @@ class _DummyBackend(ASRBackend):
         progress_cb: ProgressCallback | None = None,
         cancellation_token: CancellationToken | None = None,
     ) -> dict[str, Any]:
+        """Return a fake transcription result for testing.
+
+        Args:
+            audio_file_path: Path to the audio file (unused).
+            language: Language code (unused).
+            task: ASR task (unused).
+            return_timestamps_value: Whether to return timestamps (unused).
+            progress_cb: Progress callback (unused).
+            cancellation_token: Cancellation token (unused).
+
+        Returns:
+            A dictionary containing fake transcription data.
+        """
         # A fake but realistic looking result that unit-tests can introspect.
         return {
             "text": (
@@ -146,6 +159,14 @@ class ASRPipeline(BasePipeline):  # type: ignore[misc]
 
     # pylint: disable=unused-argument
     def _prepare_input(self, audio_file_path: Path) -> str:  # type: ignore[override]
+        """Prepare audio input for the dummy backend.
+
+        Args:
+            audio_file_path: Path to the audio file.
+
+        Returns:
+            The audio file path as a string.
+        """
         if self._progress_callback:
             self._progress_callback("AUDIO_LOADING_START", 0, 1, None)
         # Just accept the path; no validation to avoid I/O in unit tests.
@@ -195,6 +216,17 @@ class ASRPipeline(BasePipeline):  # type: ignore[misc]
         task: str,
         original_filename: str | None = None,
     ) -> dict[str, Any]:
+        """Return the ASR output unchanged for the dummy backend.
+
+        Args:
+            asr_output: The raw output from the ASR backend.
+            audio_file_path: Path to the processed audio file.
+            task: The ASR task performed.
+            original_filename: Original filename of the audio file.
+
+        Returns:
+            The unchanged ASR output dictionary.
+        """
         return asr_output
 
 

@@ -11,11 +11,26 @@ import pathlib
 from typing import Any
 from unittest.mock import MagicMock
 
+import pytest
+
 from insanely_fast_whisper_rocm.core.asr_backend import ASRBackend
 from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
 
 
-def test_postprocess_stores_absolute_audio_path(tmp_path: pathlib.Path) -> None:
+@pytest.fixture
+def audio_fixture_path() -> pathlib.Path:
+    """Return path to the test audio fixture.
+
+    Returns:
+        Path to ``tests/audio/fixtures/test_clip.mp3``.
+    """
+    return pathlib.Path(__file__).parents[1] / "audio" / "fixtures" / "test_clip.mp3"
+
+
+def test_postprocess_stores_absolute_audio_path(
+    tmp_path: pathlib.Path,
+    audio_fixture_path: pathlib.Path,
+) -> None:
     """Ensure _postprocess_output stores absolute path in audio_file_path.
 
     This test verifies that audio_file_path contains the absolute filesystem
@@ -24,12 +39,13 @@ def test_postprocess_stores_absolute_audio_path(tmp_path: pathlib.Path) -> None:
 
     Args:
         tmp_path: Pytest fixture for temporary directory.
+        audio_fixture_path: Path to the test audio fixture.
     """
     # Create a test audio file in a subdirectory
     audio_dir = tmp_path / "uploads"
     audio_dir.mkdir()
     audio_file = audio_dir / "test_audio.wav"
-    audio_file.write_bytes(b"fake audio data")
+    audio_file.write_bytes(audio_fixture_path.read_bytes())
 
     # Create a mock ASR backend
     mock_backend = MagicMock(spec=ASRBackend)
@@ -74,15 +90,19 @@ def test_postprocess_stores_absolute_audio_path(tmp_path: pathlib.Path) -> None:
     assert "uploads" in str(audio_path_obj)
 
 
-def test_postprocess_preserves_absolute_audio_path(tmp_path: pathlib.Path) -> None:
+def test_postprocess_preserves_absolute_audio_path(
+    tmp_path: pathlib.Path,
+    audio_fixture_path: pathlib.Path,
+) -> None:
     """Ensure _postprocess_output preserves already-absolute paths.
 
     Args:
         tmp_path: Pytest fixture for temporary directory.
+        audio_fixture_path: Path to the test audio fixture.
     """
     # Create a test audio file
     audio_file = tmp_path / "test_audio.wav"
-    audio_file.write_bytes(b"fake audio data")
+    audio_file.write_bytes(audio_fixture_path.read_bytes())
 
     mock_backend = MagicMock(spec=ASRBackend)
     pipeline = WhisperPipeline(
@@ -114,6 +134,7 @@ def test_postprocess_preserves_absolute_audio_path(tmp_path: pathlib.Path) -> No
 
 def test_postprocess_uses_original_filename_when_provided(
     tmp_path: pathlib.Path,
+    audio_fixture_path: pathlib.Path,
 ) -> None:
     """Ensure original_filename parameter takes precedence.
 
@@ -126,9 +147,10 @@ def test_postprocess_uses_original_filename_when_provided(
 
     Args:
         tmp_path: Pytest fixture for temporary directory.
+        audio_fixture_path: Path to the test audio fixture.
     """
     audio_file = tmp_path / "temp_chunk.wav"
-    audio_file.write_bytes(b"fake audio data")
+    audio_file.write_bytes(audio_fixture_path.read_bytes())
 
     mock_backend = MagicMock(spec=ASRBackend)
     pipeline = WhisperPipeline(
@@ -156,7 +178,10 @@ def test_postprocess_uses_original_filename_when_provided(
     assert result.get("original_file") == original_filename
 
 
-def test_postprocess_should_not_use_filename_only(tmp_path: pathlib.Path) -> None:
+def test_postprocess_should_not_use_filename_only(
+    tmp_path: pathlib.Path,
+    audio_fixture_path: pathlib.Path,
+) -> None:
     """Ensure passing just filename (without path) is avoided.
 
     This test verifies that we don't pass just the filename as
@@ -164,12 +189,13 @@ def test_postprocess_should_not_use_filename_only(tmp_path: pathlib.Path) -> Non
 
     Args:
         tmp_path: Pytest fixture for temporary directory.
+        audio_fixture_path: Path to the test audio fixture.
     """
     # Create a test audio file in a subdirectory
     audio_dir = tmp_path / "uploads"
     audio_dir.mkdir()
     audio_file = audio_dir / "test_audio.wav"
-    audio_file.write_bytes(b"fake audio data")
+    audio_file.write_bytes(audio_fixture_path.read_bytes())
 
     mock_backend = MagicMock(spec=ASRBackend)
     pipeline = WhisperPipeline(

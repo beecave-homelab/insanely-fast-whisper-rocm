@@ -52,6 +52,15 @@ def get_asr_pipeline(
     # the function robust by extracting the `.default` attribute when a parameter is
     # a FastAPI param instance.
     def _normalize(value: object, default: object | None = None) -> object:
+        """Normalize a FastAPI parameter to its default value if applicable.
+
+        Args:
+            value: The parameter value to normalize, potentially a FastAPI param.
+            default: The default value to return if normalization fails.
+
+        Returns:
+            The normalized value, either the parameter's default or the original value.
+        """
         # Detect fastapi.params.Param types without importing fastapi here.
         if hasattr(value, "__class__") and value.__class__.__module__.startswith(
             "fastapi."

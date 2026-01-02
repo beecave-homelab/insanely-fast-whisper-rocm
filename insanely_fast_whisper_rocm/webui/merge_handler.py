@@ -230,9 +230,25 @@ class TxtMerger(MergeHandler):
     """Merge handler for TXT format."""
 
     def _is_valid_file_result(self, result_data: dict[str, Any]) -> bool:
+        """Check if file result contains valid TXT data.
+
+        Args:
+            result_data: The transcription result data to validate.
+
+        Returns:
+            True if the result contains non-empty text content.
+        """
         return "text" in result_data and result_data["text"].strip()
 
     def _format_file_content(self, result_data: dict[str, Any]) -> str:
+        """Format transcription result as TXT content.
+
+        Args:
+            result_data: The transcription result data to format.
+
+        Returns:
+            The formatted TXT content string.
+        """
         return FORMATTERS["txt"].format(result_data).strip()
 
     def get_format_name(self) -> str:
@@ -257,11 +273,27 @@ class SrtMerger(MergeHandler):
         self.entry_counter = 1
 
     def _is_valid_file_result(self, result_data: dict[str, Any]) -> bool:
+        """Check if file result contains valid SRT data.
+
+        Args:
+            result_data: The transcription result data to validate.
+
+        Returns:
+            True if the result contains chunks or segments with timestamps.
+        """
         return ("chunks" in result_data and result_data["chunks"]) or (
             "segments" in result_data and result_data["segments"]
         )
 
     def _format_file_content(self, result_data: dict[str, Any]) -> str:
+        """Format transcription result as SRT content.
+
+        Args:
+            result_data: The transcription result data to format.
+
+        Returns:
+            The formatted SRT content with renumbered entries.
+        """
         srt_content = FORMATTERS["srt"].format(result_data)
         return self._renumber_srt(srt_content)
 
@@ -286,6 +318,14 @@ class SrtMerger(MergeHandler):
         return "\n\n".join(renumbered)
 
     def _finalize_content(self, content: str) -> str:
+        """Finalize SRT content without headers.
+
+        Args:
+            content: The merged SRT content.
+
+        Returns:
+            The unchanged SRT content (no headers for SRT format).
+        """
         return content  # No headers for SRT
 
     def get_format_name(self) -> str:
@@ -301,14 +341,38 @@ class VttMerger(MergeHandler):
     """Merge handler for VTT format."""
 
     def _is_valid_file_result(self, result_data: dict[str, Any]) -> bool:
+        """Check if file result contains valid VTT data.
+
+        Args:
+            result_data: The transcription result data to validate.
+
+        Returns:
+            True if the result contains chunks or segments with timestamps.
+        """
         return ("chunks" in result_data and result_data["chunks"]) or (
             "segments" in result_data and result_data["segments"]
         )
 
     def _format_file_content(self, result_data: dict[str, Any]) -> str:
+        """Format transcription result as VTT content.
+
+        Args:
+            result_data: The transcription result data to format.
+
+        Returns:
+            The formatted VTT content string.
+        """
         return FORMATTERS["vtt"].format(result_data)
 
     def _finalize_content(self, content: str) -> str:
+        """Finalize VTT content with WEBVTT header.
+
+        Args:
+            content: The merged VTT content.
+
+        Returns:
+            The VTT content with the required WEBVTT header.
+        """
         return f"WEBVTT\n\n{content}" if content.strip() else "WEBVTT\n"
 
     def get_format_name(self) -> str:

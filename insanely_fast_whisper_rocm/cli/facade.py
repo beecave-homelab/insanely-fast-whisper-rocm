@@ -3,16 +3,22 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from insanely_fast_whisper_rocm.core.asr_backend import (
-    HuggingFaceBackend,
     HuggingFaceBackendConfig,
 )
 from insanely_fast_whisper_rocm.core.cancellation import CancellationToken
-from insanely_fast_whisper_rocm.core.errors import TranscriptionError
-from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
+from insanely_fast_whisper_rocm.core.errors import (
+    OutOfMemoryError,
+    TranscriptionError,
+)
+from insanely_fast_whisper_rocm.core.orchestrator import (
+    Orchestrator,
+    create_orchestrator,
+)
 from insanely_fast_whisper_rocm.core.progress import ProgressCallback
 from insanely_fast_whisper_rocm.core.utils import convert_device_string
 from insanely_fast_whisper_rocm.utils import constants
@@ -23,11 +29,12 @@ logger = logging.getLogger(__name__)
 class CLIFacade:
     """Facade for CLI access to ASR functionality."""
 
+    orchestrator_factory: Callable[[], Orchestrator] = create_orchestrator
+
     def __init__(
         self,
         *,
-        backend_factory: type[HuggingFaceBackend] | None = None,
-        pipeline_factory: type[WhisperPipeline] | None = None,
+        orchestrator_factory: Callable[[], Orchestrator] | None = None,
         check_file_exists: bool = False,
     ) -> None:
         """Initialize the CLI facade.
@@ -36,23 +43,19 @@ class CLIFacade:
         repeated calls with the same configuration can reuse the backend.
 
         Args:
-            backend_factory: Optional factory used to create the ASR backend.
-                Defaults to :class:`HuggingFaceBackend` (used in production).
-            pipeline_factory: Optional factory for the pipeline class. Defaults
-                to :class:`WhisperPipeline`. Tests can inject a stub to avoid
-                touching the filesystem.
+            orchestrator_factory: Factory used to create the orchestrator.
+                Defaults to :func:`create_orchestrator`.
             check_file_exists: Whether to verify input audio paths exist. Disabled
                 by default so tests and programmatic callers can provide synthetic
                 paths. Production entry points should pass ``True`` to retain
                 strict validation.
-        """
-        self.backend_factory = backend_factory
-        self.pipeline_factory = pipeline_factory
-        self.check_file_exists = check_file_exists
 
-        self.backend: HuggingFaceBackend | None = None
-        self.pipeline: WhisperPipeline | None = None
+        """
+        self.backend: Any | None = None
         self._current_config: HuggingFaceBackendConfig | None = None
+        if orchestrator_factory is not None:
+            self.orchestrator_factory = orchestrator_factory
+        self.check_file_exists = check_file_exists
 
     def get_env_config(self) -> dict[str, Any]:
         """Get configuration from environment variables with safe defaults.
@@ -64,6 +67,7 @@ class CLIFacade:
                 - batch_size (int): Default batch size.
                 - timestamp_type (str): Default timestamp type.
                 - language (str | None): Default language code or None.
+
         """
         device_id = constants.DEFAULT_DEVICE
         return {
@@ -78,7 +82,7 @@ class CLIFacade:
             ),
         }
 
-    def _create_backend_config(  # pylint: disable=too-many-arguments
+    def _create_backend_config(
         self,
         model: str,
         device: str,
@@ -99,6 +103,7 @@ class CLIFacade:
 
         Returns:
             HuggingFaceBackendConfig: The constructed backend configuration.
+
         """
         return HuggingFaceBackendConfig(
             model_name=model,
@@ -109,7 +114,7 @@ class CLIFacade:
             progress_group_size=progress_group_size,
         )
 
-    def process_audio(  # pylint: disable=too-many-arguments
+    def process_audio(
         self,
         audio_file_path: Path,
         model: str | None = None,
@@ -148,9 +153,9 @@ class CLIFacade:
             dict[str, Any]: Transcription or translation payload.
 
         Raises:
-            RuntimeError: If the ASR backend cannot be initialized.
             TranscriptionError: When the pipeline fails and fallback processing
                 is unavailable or also fails.
+
         """
         # Get config from environment with defaults
         config = self.get_env_config()
@@ -197,86 +202,37 @@ class CLIFacade:
             language,
         )
 
-        backend_cls = self.backend_factory or HuggingFaceBackend
-        pipeline_cls = self.pipeline_factory or WhisperPipeline
+        # Create orchestrator using factory
+        orchestrator = self.orchestrator_factory()
 
-        backend_changed = self.backend is None or self._current_config != backend_config
-        if backend_changed:
-            self.backend = backend_cls(backend_config)
-            if self.check_file_exists:
-                self.pipeline = pipeline_cls(
-                    asr_backend=self.backend,
-                    storage_backend=None,
-                    save_transcriptions=False,
-                )
-            else:
-                self.pipeline = None
-            self._current_config = backend_config
-        elif self.pipeline is None and self.backend is not None:
-            if self.check_file_exists:
-                self.pipeline = pipeline_cls(
-                    asr_backend=self.backend,
-                    storage_backend=None,
-                    save_transcriptions=False,
-                )
+        def _warning_callback(message: str) -> None:
+            """Log orchestrator recovery warnings.
 
-        # Get language from config if not provided
-        if language is None:
-            language = config["language"]
-
-        if self.backend is None:
-            raise RuntimeError("ASR backend failed to initialize for CLI pipeline.")
-
-        if self.pipeline is None or not self.check_file_exists:
-            return self.backend.process_audio(
-                audio_file_path=str(audio_file_path),
-                language=language,
-                task=task,
-                return_timestamps_value=return_timestamps_value,
-                progress_cb=progress_cb,
-                cancellation_token=cancellation_token,
-            )
-
-        if return_timestamps_value == "word":
-            timestamp_type = "word"
-        elif return_timestamps_value:
-            timestamp_type = "chunk"
-        else:
-            timestamp_type = "none"
+            Args:
+                message: The warning message from the orchestrator.
+            """
+            logger.warning("Orchestrator recovery action: %s", message)
 
         try:
-            # CRITICAL FIX: Do NOT pass original_filename for CLI usage.
-            # The pipeline will use the absolute path from audio_file_path,
-            # which is required for stabilization to locate the audio file.
-            # original_filename should only be used for uploaded files (API)
-            # where we want to preserve the upload's original name.
-            return self.pipeline.process(
-                audio_file_path=str(audio_file_path),
-                language=language,
+            # Use orchestrator for robust transcription with OOM recovery.
+            # It internally handles pipeline acquisition and retries.
+            return orchestrator.run_transcription(
+                audio_path=str(audio_file_path),
+                backend_config=backend_config,
                 task=task,
-                timestamp_type=timestamp_type,  # type: ignore[arg-type]
-                original_filename=None,  # Let pipeline use absolute path
+                language=language,
+                timestamp_type=return_timestamps_value,
                 progress_callback=progress_cb,
-                cancellation_token=cancellation_token,
+                warning_callback=_warning_callback,
+                save_transcriptions=False,  # CLI usually doesn't need auto-save
+                # to transcripts/
             )
-        except TranscriptionError as exc:
-            missing_file = "audio file not found" in str(exc).lower()
-            if self.check_file_exists or not missing_file:
-                raise
-            logger.debug(
-                "Falling back to backend-only processing for %s due to missing"
-                " file: %s",
-                audio_file_path,
-                exc,
-            )
-            return self.backend.process_audio(
-                audio_file_path=str(audio_file_path),
-                language=language,
-                task=task,
-                return_timestamps_value=return_timestamps_value,
-                progress_cb=progress_cb,
-                cancellation_token=cancellation_token,
-            )
+        except OutOfMemoryError as oom:
+            logger.error("CLI processing failed: Out of GPU memory even after retries.")
+            err_msg = f"Insufficient memory for CLI processing: {str(oom)}"
+            raise TranscriptionError(err_msg) from oom
+        except TranscriptionError:
+            raise
 
 
 # Global facade instance for CLI use (exposes process_audio for

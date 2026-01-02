@@ -93,19 +93,26 @@ class TestTranscriptionEndpoint:
         assert response.status_code == 400
         assert "Unsupported file format" in response.json()["detail"]
 
-    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.routes.create_orchestrator")
     def test_transcription_endpoint_success_json(
         self,
-        mock_borrow: Mock,
+        mock_create_orchestrator: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
     ) -> None:
         """Test successful transcription with JSON response."""
         # Setup mocks
-        mock_pipeline_instance = Mock()
-        mock_pipeline_instance.process.return_value = mock_asr_result
-        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
+        mock_orch = Mock()
+        mock_orch.run_transcription.return_value = mock_asr_result
+        mock_create_orchestrator.return_value = mock_orch
+
+        # Mock the ASR pipeline that is injected via dependency
+        from insanely_fast_whisper_rocm.api.dependencies import get_asr_pipeline
+
+        mock_pipeline = Mock()
+        mock_pipeline.asr_backend.config.model_name = "test-model"
+        client.app.dependency_overrides[get_asr_pipeline] = lambda: mock_pipeline
 
         # Make request
         response = client.post(
@@ -130,26 +137,33 @@ class TestTranscriptionEndpoint:
         result = response.json()
         assert result["text"] == "Hello, this is a test transcription."
 
-        # Verify pipeline was called correctly
-        mock_pipeline_instance.process.assert_called_once()
-        call_args = mock_pipeline_instance.process.call_args[1]
+        # Verify orchestrator was called correctly
+        mock_orch.run_transcription.assert_called_once()
+        call_args = mock_orch.run_transcription.call_args[1]
         assert call_args["language"] == "en"
         assert call_args["task"] == "transcribe"
         assert call_args["timestamp_type"] == "chunk"
 
-    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.routes.create_orchestrator")
     def test_transcription_endpoint_success_text(
         self,
-        mock_borrow: Mock,
+        mock_create_orchestrator: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
     ) -> None:
         """Test successful transcription with text response."""
         # Setup mocks
-        mock_pipeline_instance = Mock()
-        mock_pipeline_instance.process.return_value = mock_asr_result
-        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
+        mock_orch = Mock()
+        mock_orch.run_transcription.return_value = mock_asr_result
+        mock_create_orchestrator.return_value = mock_orch
+
+        # Mock the ASR pipeline
+        from insanely_fast_whisper_rocm.api.dependencies import get_asr_pipeline
+
+        mock_pipeline = Mock()
+        mock_pipeline.asr_backend.config.model_name = "test-model"
+        client.app.dependency_overrides[get_asr_pipeline] = lambda: mock_pipeline
 
         # Make request with text response format
         response = client.post(
@@ -168,19 +182,30 @@ class TestTranscriptionEndpoint:
         assert response.headers["content-type"] == "text/plain; charset=utf-8"
         assert response.text == "Hello, this is a test transcription."
 
-    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.routes.create_orchestrator")
     def test_transcription_endpoint_dependency_injection(
         self,
-        mock_borrow: Mock,
+        mock_create_orchestrator: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
     ) -> None:
         """Test that dependency injection works correctly."""
         # Setup mocks
-        mock_pipeline_instance = Mock()
-        mock_pipeline_instance.process.return_value = mock_asr_result
-        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
+        mock_orch = Mock()
+        mock_orch.run_transcription.return_value = mock_asr_result
+        mock_create_orchestrator.return_value = mock_orch
+
+        # Mock the ASR pipeline
+        from insanely_fast_whisper_rocm.api.dependencies import get_asr_pipeline
+
+        mock_pipeline = Mock()
+        mock_pipeline.asr_backend.config.model_name = constants.DEFAULT_MODEL
+        mock_pipeline.asr_backend.config.device = constants.DEFAULT_DEVICE
+        mock_pipeline.asr_backend.config.batch_size = constants.DEFAULT_BATCH_SIZE
+        mock_pipeline.asr_backend.config.dtype = constants.DEFAULT_DTYPE
+        mock_pipeline.asr_backend.config.chunk_length = constants.DEFAULT_CHUNK_LENGTH
+        client.app.dependency_overrides[get_asr_pipeline] = lambda: mock_pipeline
 
         # Make request with specific parameters
         _ = client.post(
@@ -196,9 +221,9 @@ class TestTranscriptionEndpoint:
             },
         )
 
-        # Verify borrow_pipeline was called with the correct configuration
-        mock_borrow.assert_called_once()
-        backend_config = mock_borrow.call_args[0][0]
+        # Verify orchestrator was called with the correct configuration
+        mock_orch.run_transcription.assert_called_once()
+        backend_config = mock_orch.run_transcription.call_args[1]["backend_config"]
         assert backend_config.model_name == constants.DEFAULT_MODEL
         assert backend_config.device == constants.DEFAULT_DEVICE
         assert backend_config.batch_size == constants.DEFAULT_BATCH_SIZE
@@ -221,19 +246,26 @@ class TestTranslationEndpoint:
         assert response.status_code == 400
         assert "Unsupported file format" in response.json()["detail"]
 
-    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.routes.create_orchestrator")
     def test_translation_endpoint_success_json(
         self,
-        mock_borrow: Mock,
+        mock_create_orchestrator: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
     ) -> None:
         """Test successful translation with JSON response."""
         # Setup mocks
-        mock_pipeline_instance = Mock()
-        mock_pipeline_instance.process.return_value = mock_asr_result
-        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
+        mock_orch = Mock()
+        mock_orch.run_transcription.return_value = mock_asr_result
+        mock_create_orchestrator.return_value = mock_orch
+
+        # Mock the ASR pipeline
+        from insanely_fast_whisper_rocm.api.dependencies import get_asr_pipeline
+
+        mock_pipeline = Mock()
+        mock_pipeline.asr_backend.config.model_name = "test-model"
+        client.app.dependency_overrides[get_asr_pipeline] = lambda: mock_pipeline
 
         # Make request
         response = client.post(
@@ -252,25 +284,32 @@ class TestTranslationEndpoint:
         result = response.json()
         assert result["text"] == "Hello, this is a test transcription."
 
-        # Verify pipeline was called with translate task
-        mock_pipeline_instance.process.assert_called_once()
-        call_args = mock_pipeline_instance.process.call_args[1]
+        # Verify orchestrator was called with translate task
+        mock_orch.run_transcription.assert_called_once()
+        call_args = mock_orch.run_transcription.call_args[1]
         assert call_args["task"] == "translate"
         assert call_args["language"] == "es"
 
-    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.routes.create_orchestrator")
     def test_translation_endpoint_success_text(
         self,
-        mock_borrow: Mock,
+        mock_create_orchestrator: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
     ) -> None:
         """Test successful translation with text response."""
         # Setup mocks
-        mock_pipeline_instance = Mock()
-        mock_pipeline_instance.process.return_value = mock_asr_result
-        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
+        mock_orch = Mock()
+        mock_orch.run_transcription.return_value = mock_asr_result
+        mock_create_orchestrator.return_value = mock_orch
+
+        # Mock the ASR pipeline
+        from insanely_fast_whisper_rocm.api.dependencies import get_asr_pipeline
+
+        mock_pipeline = Mock()
+        mock_pipeline.asr_backend.config.model_name = "test-model"
+        client.app.dependency_overrides[get_asr_pipeline] = lambda: mock_pipeline
 
         # Make request with text response format
         response = client.post(
@@ -288,21 +327,28 @@ class TestTranslationEndpoint:
 class TestFileHandling:
     """Test file handling in the refactored routes."""
 
-    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.routes.create_orchestrator")
     @patch("insanely_fast_whisper_rocm.utils.FileHandler.cleanup")
     def test_file_cleanup_called(
         self,
         mock_cleanup: Mock,
-        mock_borrow: Mock,
+        mock_create_orchestrator: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
     ) -> None:
         """Test that file cleanup is called even when processing succeeds."""
         # Setup mocks
-        mock_pipeline_instance = Mock()
-        mock_pipeline_instance.process.return_value = mock_asr_result
-        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
+        mock_orch = Mock()
+        mock_orch.run_transcription.return_value = mock_asr_result
+        mock_create_orchestrator.return_value = mock_orch
+
+        # Mock the ASR pipeline
+        from insanely_fast_whisper_rocm.api.dependencies import get_asr_pipeline
+
+        mock_pipeline = Mock()
+        mock_pipeline.asr_backend.config.model_name = "test-model"
+        client.app.dependency_overrides[get_asr_pipeline] = lambda: mock_pipeline
 
         # Make request
         response = client.post(
@@ -314,20 +360,27 @@ class TestFileHandling:
         assert response.status_code == 200
         mock_cleanup.assert_called_once()
 
-    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.routes.create_orchestrator")
     @patch("insanely_fast_whisper_rocm.utils.FileHandler.cleanup")
     def test_file_cleanup_called_on_error(
         self,
         mock_cleanup: Mock,
-        mock_borrow: Mock,
+        mock_create_orchestrator: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
     ) -> None:
         """Test that file cleanup is called even when processing fails."""
         # Setup mocks to raise an exception during processing
-        mock_pipeline_instance = Mock()
-        mock_pipeline_instance.process.side_effect = Exception("Processing failed")
-        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
+        mock_orch = Mock()
+        mock_orch.run_transcription.side_effect = Exception("Processing failed")
+        mock_create_orchestrator.return_value = mock_orch
+
+        # Mock the ASR pipeline
+        from insanely_fast_whisper_rocm.api.dependencies import get_asr_pipeline
+
+        mock_pipeline = Mock()
+        mock_pipeline.asr_backend.config.model_name = "test-model"
+        client.app.dependency_overrides[get_asr_pipeline] = lambda: mock_pipeline
 
         # Make request - expect it to raise an exception due to our mock
         try:
@@ -362,19 +415,30 @@ class TestBackwardsCompatibility:
         response = client.get("/v1/audio/translations")
         assert response.status_code == 405  # Method not allowed (POST required)
 
-    @patch("insanely_fast_whisper_rocm.api.dependencies.borrow_pipeline")
+    @patch("insanely_fast_whisper_rocm.api.routes.create_orchestrator")
     def test_parameter_names_unchanged(
         self,
-        mock_borrow: Mock,
+        mock_create_orchestrator: Mock,
         client: TestClient,
         mock_audio_file: tuple[str, BytesIO, str],
         mock_asr_result: dict[str, Any],
     ) -> None:
         """Test that parameter names remain the same for backwards compatibility."""
         # Setup mocks
-        mock_pipeline_instance = Mock()
-        mock_pipeline_instance.process.return_value = mock_asr_result
-        mock_borrow.return_value.__enter__.return_value = mock_pipeline_instance
+        mock_orch = Mock()
+        mock_orch.run_transcription.return_value = mock_asr_result
+        mock_create_orchestrator.return_value = mock_orch
+
+        # Mock the ASR pipeline
+        from insanely_fast_whisper_rocm.api.dependencies import get_asr_pipeline
+
+        mock_pipeline = Mock()
+        mock_pipeline.asr_backend.config.model_name = constants.DEFAULT_MODEL
+        mock_pipeline.asr_backend.config.device = constants.DEFAULT_DEVICE
+        mock_pipeline.asr_backend.config.batch_size = constants.DEFAULT_BATCH_SIZE
+        mock_pipeline.asr_backend.config.dtype = constants.DEFAULT_DTYPE
+        mock_pipeline.asr_backend.config.chunk_length = constants.DEFAULT_CHUNK_LENGTH
+        client.app.dependency_overrides[get_asr_pipeline] = lambda: mock_pipeline
 
         # This should not raise validation errors for parameter names
         response = client.post(
@@ -397,9 +461,9 @@ class TestBackwardsCompatibility:
         # Should succeed with proper mocking
         assert response.status_code == 200
 
-        # Verify borrow_pipeline was called with the correct configuration
-        mock_borrow.assert_called_once()
-        backend_config = mock_borrow.call_args[0][0]
+        # Verify orchestrator was called with the correct configuration
+        mock_orch.run_transcription.assert_called_once()
+        backend_config = mock_orch.run_transcription.call_args[1]["backend_config"]
         assert backend_config.model_name == constants.DEFAULT_MODEL
         assert backend_config.device == constants.DEFAULT_DEVICE
         assert backend_config.batch_size == constants.DEFAULT_BATCH_SIZE

@@ -65,6 +65,33 @@ def main() -> None:
         print("\nPlease edit this file to add your specific configurations, such as:")
         print("  - HF_TOKEN (if using gated models like speaker diarization)")
         print("  - Other API keys or custom settings as needed.")
+        print(
+            "\nROCm / AMD GPUs: if you have an unsupported GPU model "
+            "(e.g. RX 6600 / gfx1032),"
+        )
+        print(
+            "you can sometimes patch ROCm compatibility by uncommenting "
+            "HSA_OVERRIDE_GFX_VERSION in your .env file."
+        )
+        print("\nTo find your GPU's GFX target:")
+        print("  - rocm_agent_enumerator -name")
+        print("  - rocminfo  (look for a GPU agent 'Name: gfxXXXX')")
+        print("\nThen choose a supported target from the ROCm compatibility matrix:")
+        print(
+            "  - https://rocm.docs.amd.com/en/latest/compatibility/compatibility-matrix.html"
+        )
+        print(
+            "\nThe env-var format is MAJOR.MINOR.PATCH derived from the target gfx "
+            "string."
+        )
+        print(
+            "For example, forcing gfx1030 corresponds to: "
+            "HSA_OVERRIDE_GFX_VERSION=10.3.0"
+        )
+        print(
+            "GPU-to-gfx reference: "
+            "https://rocm.docs.amd.com/en/latest/reference/gpu-arch-specs.html"
+        )
     except Exception as e:
         print(f"\n❌ An error occurred during setup: {e}")
 

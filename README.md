@@ -3,7 +3,7 @@
 A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm) support** for high-performance (video to) audio transcription and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces and ROCm compatibility.
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v2.0.1-informational)](#insanely-fast-whisper-rocm)
+[![Version](https://img.shields.io/badge/Version-v2.1.0-informational)](#insanely-fast-whisper-rocm)
 [![ROCm Version](https://img.shields.io/badge/ROCm-v6.4-informational)](https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
@@ -199,6 +199,30 @@ To create or update your user-specific configuration file (`~/.config/insanely-f
 2. **Edit your configuration file:**
 
     After running the script, open `~/.config/insanely-fast-whisper-rocm/.env` with your preferred text editor and customize the settings. Pay special attention to `HF_TOKEN` if using gated models. Refer to [`.env.example`](./.env.example) in the project root for a full list of available options and their descriptions.
+
+    > [!IMPORTANT]
+    > **ROCm / AMD GPU compatibility (check your `gfx` target):**
+    >
+    > Some AMD GPUs are not officially supported by a given ROCm release (for example, an RX 6600 is `gfx1032`, while many ROCm builds only ship kernels for `gfx1030`). If ROCm can’t find a matching code object for your card, GPU inference may fail.
+    >
+    > In that case, you can often work around this by **uncommenting** `HSA_OVERRIDE_GFX_VERSION` in your `.env` file and setting it to a supported target.
+    >
+    > To discover your GPU target:
+    >
+    > ```bash
+    > rocm_agent_enumerator -name
+    > rocminfo  # look for a GPU agent line like: Name: gfxXXXX
+    > ```
+    >
+    > To choose a supported target for your ROCm version:
+    >
+    > - [ROCm compatibility matrix](https://rocm.docs.amd.com/en/latest/compatibility/compatibility-matrix.html)
+    >
+    > GPU-to-`gfx` reference table:
+    >
+    > - [GPU hardware specifications (gfx targets)](https://rocm.docs.amd.com/en/latest/reference/gpu-arch-specs.html)
+    >
+    > Example: forcing `gfx1030` corresponds to `HSA_OVERRIDE_GFX_VERSION=10.3.0`.
 
     If no configuration file exists, the API will use these default values. The configuration file will be automatically created with default values on first run.
 
