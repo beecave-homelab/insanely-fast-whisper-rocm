@@ -206,6 +206,11 @@ class CLIFacade:
         orchestrator = self.orchestrator_factory()
 
         def _warning_callback(message: str) -> None:
+            """Log orchestrator recovery warnings.
+
+            Args:
+                message: The warning message from the orchestrator.
+            """
             logger.warning("Orchestrator recovery action: %s", message)
 
         try:

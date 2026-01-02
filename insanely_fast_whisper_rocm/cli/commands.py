@@ -218,12 +218,22 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
     cancellation_token = CancellationToken()
 
     def _ensure_not_cancelled() -> None:
+        """Raise an exception if the transcription has been cancelled.
+
+        Raises:
+            TranscriptionCancelledError: If the cancellation token is set.
+        """
         if cancellation_token.cancelled:
             raise TranscriptionCancelledError("Transcription cancelled by user")
 
     previous_signal_handlers: list[tuple[int, Any]] = []
 
     def _register_signal(sig: int) -> None:
+        """Register a signal handler for graceful cancellation.
+
+        Args:
+            sig: The signal number to register (e.g., signal.SIGINT).
+        """
         previous_signal_handlers.append((sig, signal.getsignal(sig)))
         signal.signal(sig, lambda signum, frame: cancellation_token.cancel())
 
