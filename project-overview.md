@@ -86,14 +86,15 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v2.1.0** *(31-12-2025)*
+### 🏷️ **Current Version: v2.1.1** *(02-01-2026)*
 
-**Latest improvements**: OOM-aware transcription orchestration (GPU batch-size retry, CPU fallback, and GPU cache invalidation) plus improved tests and dependency updates.
+**Latest improvements**: Bug fix for CLIFacade orchestrator factory method binding, dependency updates (accelerate 1.12.0, ROCm dependencies), and documentation updates for ROCm v7.1 support.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
 | ------- | ---- | ---- | ------------ |
+| **v2.1.1** | 02-01-2026 | 🐛 Patch | CLIFacade orchestrator fix, dependency updates, ROCm v7.1 docs |
 | **v2.1.0** | 31-12-2025 | ✨ Minor | OOM orchestration + CPU fallback, GPU cache invalidation, added core OOM tests |
 | **v2.0.1** | 08-12-2025 | 🐛 Patch | PR #27 fixes: audio conversion fallback, segment mutation, SRT counting, task params |
 | **v2.0.0** | 05-12-2025 | 🔄 Major | Modular package refactor, package/CLI rename, model caching & readable subtitles |
