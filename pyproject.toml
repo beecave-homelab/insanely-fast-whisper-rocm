@@ -93,14 +93,13 @@ include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-r
 
 [project.optional-dependencies]
 dev = [
-    # Testing
     "pytest",
     "pytest-cov",
-    # Code Quality
     "ruff",
-    # Type stubs for better static analysis
     "types-PyYAML",
     "typing-extensions",
+    "docstr-coverage>=2.3.2",
+    "interrogate>=1.7.0",
 ]
 
 rocm = [
