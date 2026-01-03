@@ -577,6 +577,28 @@ def _handle_output_and_benchmarks(
     }
 
     # ------------------------------------------------------------------ #
+    # Compute format quality metrics (if benchmarking enabled)          #
+    # ------------------------------------------------------------------ #
+    format_quality_by_format: dict[str, Any] = {}
+    if benchmark_enabled:
+        try:
+            quality_segments = build_quality_segments(detailed_result)
+            logger.debug(
+                "Built %d quality segments for SRT quality scoring",
+                len(quality_segments),
+            )
+            srt_formatter = FORMATTERS["srt"]
+            srt_text = srt_formatter.format(detailed_result)
+            srt_quality = compute_srt_quality(
+                segments=quality_segments,
+                srt_text=srt_text,
+            )
+            logger.debug("SRT quality metrics: %s", srt_quality)
+            format_quality_by_format["srt"] = srt_quality
+        except Exception:  # pragma: no cover - defensive logging
+            logger.exception("Failed to compute SRT quality metrics")
+
+    # ------------------------------------------------------------------ #
     # Export each requested format                                       #
     # ------------------------------------------------------------------ #
     # Export progress
@@ -587,32 +609,12 @@ def _handle_output_and_benchmarks(
     except Exception:  # pragma: no cover
         pass
 
-    srt_text_captured: str | None = None
-    format_quality_by_format: dict[str, Any] = {}
     for idx, fmt in enumerate(formats_to_export):
         if cancellation_token is not None and cancellation_token.cancelled:
             raise TranscriptionCancelledError("Transcription cancelled by user")
         formatter = FORMATTERS[fmt]
         content = formatter.format(detailed_result)
         ext = formatter.get_file_extension()
-        if fmt == "srt":
-            srt_text_captured = content
-            if benchmark_enabled:
-                try:
-                    quality_segments = build_quality_segments(detailed_result)
-                    logger.debug(
-                        "Built %d quality segments for SRT quality scoring",
-                        len(quality_segments),
-                    )
-                    srt_quality = compute_srt_quality(
-                        segments=quality_segments,
-                        srt_text=srt_text_captured,
-                    )
-                    logger.debug("SRT quality metrics: %s", srt_quality)
-                except Exception:  # pragma: no cover - defensive logging
-                    logger.exception("Failed to compute SRT quality metrics")
-                else:
-                    format_quality_by_format["srt"] = srt_quality
 
         if output and export_format_explicit and fmt != "all":
             output_path = (
