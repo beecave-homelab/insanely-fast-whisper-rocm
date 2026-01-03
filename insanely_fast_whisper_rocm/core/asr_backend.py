@@ -553,7 +553,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 "return_timestamps": return_timestamps_value,
             },
         }
-        logger.info(
+        logger.debug(
             "Transcription completed in %.2fs for %s", elapsed_time, audio_file_path
         )
         logger.debug(
