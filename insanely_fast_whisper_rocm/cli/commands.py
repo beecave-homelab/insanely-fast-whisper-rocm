@@ -301,7 +301,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
     try:
         return_timestamps_value = False
         if not no_timestamps:
-            return_timestamps_value = "word" if timestamp_type == "word" else True
+            return_timestamps_value = timestamp_type
 
         # Configuration details logged by facade at INFO level
         _ensure_not_cancelled()
@@ -576,6 +576,8 @@ def _handle_output_and_benchmarks(
         },
     }
 
+    formatted_by_format: dict[str, str] = {}
+
     # ------------------------------------------------------------------ #
     # Compute format quality metrics (if benchmarking enabled)          #
     # ------------------------------------------------------------------ #
@@ -588,7 +590,10 @@ def _handle_output_and_benchmarks(
                 len(quality_segments),
             )
             srt_formatter = FORMATTERS["srt"]
-            srt_text = srt_formatter.format(detailed_result)
+            srt_text = formatted_by_format.get("srt")
+            if srt_text is None:
+                srt_text = srt_formatter.format(detailed_result)
+                formatted_by_format["srt"] = srt_text
             srt_quality = compute_srt_quality(
                 segments=quality_segments,
                 srt_text=srt_text,
@@ -613,7 +618,10 @@ def _handle_output_and_benchmarks(
         if cancellation_token is not None and cancellation_token.cancelled:
             raise TranscriptionCancelledError("Transcription cancelled by user")
         formatter = FORMATTERS[fmt]
-        content = formatter.format(detailed_result)
+        content = formatted_by_format.get(fmt)
+        if content is None:
+            content = formatter.format(detailed_result)
+            formatted_by_format[fmt] = content
         ext = formatter.get_file_extension()
 
         if output and export_format_explicit and fmt != "all":
