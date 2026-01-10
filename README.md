@@ -89,10 +89,10 @@ The recommended way to run the application is using Docker Compose:
 2. Set up configuration (see [Configuration](#configuration)) for more details:
 
     ```bash
-    # Create your user configuration file (interactive)
+    # Create your user configuration file and guides you which settings to adjust
     # This generates `~/.config/insanely-fast-whisper-rocm/.env` with sensible defaults
-    pdm run setup-config  # or `python scripts/setup_config.py` if you do not use PDM
-    ```
+    python scripts/setup_config.py
+    # or run `cp .env.example ~/.config/insanely-fast-whisper-rocm/.env`
 
 3. Start the application:
 
@@ -121,28 +121,14 @@ For local development, PDM (Python Development Master) is used to manage depende
 
 3. Install project dependencies using PDM:
 
-> [!IMPORTANT]  
-> **Benchmarking with Multiple ROCm Torch Versions:**
->
-> To benchmark with a specific ROCm-compatible torch version, install the matching optional group (e.g., `bench-torch-2_3_0`):
->
-> ```bash
-> pdm install -G bench-torch-2_3_0
-> ```
->
-> This will install the specified torch version and benchmarking tools. See [`project-overview.md`](./project-overview.md#benchmarking-with-multiple-rocm-torch-versions) for details and the full list of available groups.
->
-> This application is specifically designed to provide **AMD GPU (ROCm) support** for Whisper models. The `rocm` dependency group in [`pyproject.toml`](./pyproject.toml) ensures proper PyTorch and ONNX runtime installation for AMD GPUs. While it should technically also works on CPU and NVIDIA GPUs, ROCm support was the primary motivation for this package.
+    ```bash
+    # To install ROCm support
+    pdm install -G rocm-6-4-1
+    # or swap `rocm-6-4-1` for `rocm-7-1` if you want to use a different ROCm version
 
-This command installs the project's core dependencies. To install optional groups for development or specific hardware support (like ROCm), use the `-G` flag:
-
-```bash
-# To install ROCm support
-pdm install -G rocm
-
-# To include development tools and ROCm support
-pdm install -G dev -G rocm 
-```
+    # To include development tools and ROCm support
+    pdm install -G dev -G rocm-6-4-1 -G bench
+    ```
 
 ### Model Download
 
