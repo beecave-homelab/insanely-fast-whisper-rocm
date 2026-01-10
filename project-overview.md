@@ -59,7 +59,7 @@ cd insanely-fast-whisper-rocm
 
 ```bash
 # Create your user configuration file (interactive)
-pdm run setup-config  # or `python scripts/setup_config.py`
+python scripts/setup_config.py
 
 docker compose -f docker-compose.dev.yaml up --build -d
 ```
@@ -71,7 +71,7 @@ docker compose -f docker-compose.dev.yaml up --build -d
 curl -sSL https://pdm-project.org/install-pdm.py | python3 -
 
 # Install project dependencies (including dev and rocm groups)
-pdm install -G dev -G rocm
+pdm install -G rocm-7-1,bench,dev
 
 # Activate the PDM-managed environment (optional, PDM handles it)
 # pdm shell
@@ -384,6 +384,79 @@ python scripts/setup_config.py
 ```
 
 **Important**: No direct `os.getenv()` calls should be made outside of [insanely_fast_whisper_rocm/utils/env_loader.py](insanely_fast_whisper_rocm/utils/env_loader.py) or [insanely_fast_whisper_rocm/utils/constants.py](insanely_fast_whisper_rocm/utils/constants.py) to ensure consistent configuration loading.
+
+### PyTorch Allocator Configuration (Automatic Version Detection)
+
+The application implements automatic detection and configuration of PyTorch's memory allocator based on the installed PyTorch version. This is critical for ROCm/AMD GPU support because PyTorch 2.9.0+ renamed the allocator configuration environment variable.
+
+**Background:**
+
+- **PyTorch < 2.9.0**: Uses `PYTORCH_HIP_ALLOC_CONF` for ROCm memory allocation settings
+- **PyTorch >= 2.9.0**: Uses `PYTORCH_ALLOC_CONF` (the variable was renamed and `PYTORCH_HIP_ALLOC_CONF` was deprecated)
+
+**Implementation Details:**
+
+The automatic detection logic is implemented in [insanely_fast_whisper_rocm/utils/constants.py](insanely_fast_whisper_rocm/utils/constants.py):
+
+- **Version Detection**:
+  - Uses `importlib.util.find_spec("torch")` to check if torch is installed
+  - Retrieves the torch version using `pkg_version("torch")`
+  - Parses the version string to extract major and minor version numbers
+
+- **Environment Variable Selection**:
+
+```python
+if (major, minor) >= (2, 9):
+    os.environ["PYTORCH_ALLOC_CONF"] = _pytorch_alloc_conf
+else:
+    os.environ["PYTORCH_HIP_ALLOC_CONF"] = _pytorch_alloc_conf
+```
+
+- **Fallback Handling**:
+  - If torch is not yet installed (e.g., during initial setup), both environment variables are set for backward compatibility
+  - If version metadata is unavailable, defaults to the newer `PYTORCH_ALLOC_CONF`
+
+- **Configuration Loading Order**:
+  - Checks `PYTORCH_ALLOC_CONF` first
+  - Falls back to `PYTORCH_HIP_ALLOC_CONF` if the first is not set
+  - Applies default configuration if neither is set: `garbage_collection_threshold:0.7,max_split_size_mb:128`
+
+**User Configuration:**
+
+Users can customize the allocator configuration in their `.env` file:
+
+```bash
+# For PyTorch 2.9.0+ (recommended)
+PYTORCH_ALLOC_CONF=garbage_collection_threshold:0.7,max_split_size_mb:128
+
+# For PyTorch < 2.9.0 (legacy)
+PYTORCH_HIP_ALLOC_CONF=garbage_collection_threshold:0.7,max_split_size_mb:128
+```
+
+**VRAM Tuning:**
+
+The `max_split_size_mb` parameter can be adjusted based on available GPU memory:
+
+- **4GB VRAM**: `max_split_size_mb:64`
+- **8GB-16GB VRAM**: `max_split_size_mb:128` (default)
+- **24GB+ VRAM**: `max_split_size_mb:256` or `max_split_size_mb:512`
+
+**Logging:**
+
+The application logs the detected PyTorch version and which environment variable is being set at startup:
+
+```text
+INFO - PyTorch 2.9.1 detected: using PYTORCH_ALLOC_CONF
+```
+
+This provides visibility into the automatic configuration process and helps with debugging.
+
+**Benefits:**
+
+- **No Manual Configuration**: Users don't need to adjust their `.env` files when switching between ROCm versions
+- **Deprecation Warning Elimination**: Prevents the `PYTORCH_HIP_ALLOC_CONF is deprecated` warning in PyTorch 2.9.0+
+- **Backward Compatibility**: Works seamlessly with both old and new PyTorch versions
+- **Flexible Override**: Users can still manually set either variable if needed for specific use cases
 
 ---
 
@@ -1256,13 +1329,19 @@ Ideally, these `requirements.txt` files can be generated from `pdm.lock` using `
 
 ```bash
 # Export default dependencies
-pdm export -o requirements.txt --without-hashes
+pdm export --pyproject -o requirements.txt --without-hashes --prod
 
 # Export a specific group (e.g., rocm)
-pdm export -G rocm -o requirements-rocm.txt --without-hashes
+pdm export --pyproject -G rocm-7-1,bench -o requirements-rocm-v7-1.txt --without-hashes 
+
+# Export a specific group (e.g., rocm)
+pdm export --pyproject -G rocm-6-4-1,bench -o requirements-rocm-v6-4-1.txt --without-hashes
 
 # Export development dependencies
-pdm export -G dev -o requirements-dev.txt --without-hashes
+pdm export --pyproject -G dev -o requirements-dev.txt --without-hashes --no-default
+
+# Export all dependencies
+pdm export -G :all -o requirements-all.txt --without-hashes --no-extras
 ```
 
 This practice helps keep them synchronized with the PDM-managed dependencies.

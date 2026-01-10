@@ -174,6 +174,16 @@ Key configuration options include:
 - `WHISPER_DEVICE`: The device to run on (`0` for CUDA, `mps` for Apple Silicon, `cpu`).
 - `USE_READABLE_SUBTITLES`: `true` or `false`. Enables the new readable subtitle segmentation pipeline. Defaults to `true`.
 
+> [!NOTE]
+> **PyTorch Allocator Configuration:**
+>
+> The application automatically detects your PyTorch version and sets the correct allocator configuration:
+
+- PyTorch < 2.9.0: Uses `PYTORCH_HIP_ALLOC_CONF`
+- PyTorch >= 2.9.0: Uses `PYTORCH_ALLOC_CONF`
+
+This eliminates deprecation warnings and ensures compatibility across different PyTorch versions. You can customize the allocator settings in your `.env` file if needed (e.g., for different VRAM sizes).
+
 For a detailed explanation of the configuration system, including hierarchical loading and key files, please see the [`Configuration System` section in `project-overview.md`](./project-overview.md#configuration-system).
 
 ### Initial User Configuration Setup
