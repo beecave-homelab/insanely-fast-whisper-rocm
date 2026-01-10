@@ -13,7 +13,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 > This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v2.1.0-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v2.1.2-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -86,14 +86,15 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v2.1.1** *(02-01-2026)*
+### 🏷️ **Current Version: v2.1.2** *(10-01-2026)*
 
-**Latest improvements**: Bug fix for CLIFacade orchestrator factory method binding, dependency updates (accelerate 1.12.0, ROCm dependencies), and documentation updates for ROCm v7.1 support.
+**Latest improvements**: Automatic PyTorch allocator configuration with version detection, timestamp handling fixes, distil-whisper version detection improvements, log verbosity reductions, and ROCm version-specific dependency management.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
 | ------- | ---- | ---- | ------------ |
+| **v2.1.2** | 10-01-2026 | 🐛 Patch | PyTorch allocator auto-config, timestamp fixes, log improvements, ROCm deps |
 | **v2.1.1** | 02-01-2026 | 🐛 Patch | CLIFacade orchestrator fix, dependency updates, ROCm v7.1 docs |
 | **v2.1.0** | 31-12-2025 | ✨ Minor | OOM orchestration + CPU fallback, GPU cache invalidation, added core OOM tests |
 | **v2.0.1** | 08-12-2025 | 🐛 Patch | PR #27 fixes: audio conversion fallback, segment mutation, SRT counting, task params |
