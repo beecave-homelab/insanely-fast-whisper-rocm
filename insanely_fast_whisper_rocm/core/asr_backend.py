@@ -297,6 +297,13 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             RuntimeError: If model initialization or inference fails.
             TranscriptionError: If model loading or inference fails.
         """
+        logger.debug(
+            "process_audio called: model=%s, return_timestamps_value=%s, task=%s",
+            self.config.model_name,
+            return_timestamps_value,
+            task,
+        )
+
         cb = progress_cb or NoOpProgress()
         if cancellation_token is not None:
             cancellation_token.raise_if_cancelled()
@@ -312,6 +319,10 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         # ------------------------------------------------------------------
         _return_timestamps_value = return_timestamps_value
         if _return_timestamps_value and "distil-whisper" in self.config.model_name:
+            logger.debug(
+                "Distil-whisper model detected: %s, checking timestamp support",
+                self.config.model_name,
+            )
             # distil-whisper versions ≥ v2 have timestamp support; earlier ones do not.
             # Determine this heuristically from the model name.
             # Examples that support timestamps:
@@ -322,12 +333,31 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             try:
                 # Extract the suffix after the last "-v"
                 last_part = self.config.model_name.split("-v")[-1]
-                version_num = int(last_part.split("/")[0].split(".")[0])
+                # Handle decimal versions like "v3.5" by extracting just the major
+                # version
+                version_str = last_part.split("/")[0].split(".")[0]
+                version_num = int(version_str)
                 supports_timestamps = version_num >= 2
-            except (ValueError, IndexError):
+                logger.debug(
+                    "Distil-whisper version detection: last_part=%s, version_str=%s, "
+                    "version_num=%d, supports_timestamps=%s",
+                    last_part,
+                    version_str,
+                    version_num,
+                    supports_timestamps,
+                )
+            except (ValueError, IndexError) as e:
                 # Fallback: if model name explicitly contains "large-v2" etc.
+                logger.debug(
+                    "Version parsing failed for %s: %s, using fallback check",
+                    self.config.model_name,
+                    e,
+                )
                 supports_timestamps = any(
                     token in self.config.model_name for token in ("-v2", "-v3", "-v4")
+                )
+                logger.debug(
+                    "Fallback check result: supports_timestamps=%s", supports_timestamps
                 )
 
             if not supports_timestamps:
