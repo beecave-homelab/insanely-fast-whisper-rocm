@@ -1,7 +1,7 @@
 ---
 repo: https://github.com/beecave-homelab/insanely-fast-whisper-rocm
-commit: 64b901ad24d296aefdebd5b443ce4309a573ff3b
-updated: 2025-12-31T22:14:15+00:00
+commit: 02ce442e8864435a1d0f4b48e76ba2c415041137
+updated: 2026-01-10T12:06:00+00:00
 ---
 <!-- SECTIONS:API,CLI,WEBUI,CI,DOCKER,TESTS -->
 
@@ -1239,41 +1239,33 @@ Notes for ROCm users:
 - **`[project]`**: Contains core project metadata such as name, version, authors, description, and classifiers.
   - **`dependencies`**: Lists core runtime dependencies required for the application to function.
   - **`optional-dependencies`**: Defines groups of dependencies that are not required for the core functionality but can be installed for specific purposes. Key groups include:
-    - `dev`: Tools for development, such as linters (`black`, `isort`, `flake8`, `mypy`), testing frameworks (`pytest`, `pytest-cov`), and other utilities.
-    - `rocm`: Dependencies specific to AMD ROCm GPU support, including the appropriate PyTorch build and ONNX runtime for ROCm.
-    - `bench-torch-2_0_1`, `bench-torch-2_3_0`, `bench-torch-2_4_1`, `bench-torch-2_5_1`, `bench-torch-2_6_0`: Benchmarking groups for ROCm, each pinning a specific torch version (from the ROCm wheels source) and including `pyamdgpuinfo` for GPU metrics.
-    - `cpu`: Dependencies for CPU-only PyTorch execution.
-    - `cuda`: Dependencies for NVIDIA CUDA GPU execution.
+    - `dev`: Tools for development, such as linters (`ruff`), testing frameworks (`pytest`, `pytest-cov`), and other utilities.
+    - `rocm-6-4-1`: Dependencies for AMD ROCm v6.4.1 GPU support, including PyTorch 2.5.0-2.8.0, torchaudio 2.5.0-2.8.0, onnxruntime-rocm, and pytorch-triton-rocm.
+    - `rocm-7-1`: Dependencies for AMD ROCm v7.1 GPU support, including PyTorch 2.9.0-2.10.0, torchaudio 2.9.0, onnxruntime-rocm, and triton.
+    - `bench`: Benchmarking utilities including `pyamdgpuinfo` for GPU metrics.
 
-#### Benchmarking with Multiple ROCm Torch Versions
+#### ROCm Version-Specific Dependency Groups
 
-To facilitate benchmarking across different ROCm-compatible PyTorch versions, the following optional dependency groups are available:
+The project provides separate dependency groups for different ROCm versions to ensure compatibility:
 
-- `bench-torch-2-0-1`
-- `bench-torch-2-3-0`
-- `bench-torch-2-4-1`
-- `bench-torch-2-5-1`
-- `bench-torch-2-6-0`
+- **`rocm-6-4-1`**: For ROCm 6.4.1 with PyTorch 2.5.0-2.8.0
+  - Includes: `torch>=2.5.0,<2.8.0`, `torchaudio>=2.5.0,<2.8.0`, `onnxruntime-rocm`, `pytorch-triton-rocm>=3.2.0,<=3.3.1`
 
-Each group includes:
+- **`rocm-7-1`**: For ROCm 7.1 with PyTorch 2.9.0-2.10.0
+  - Includes: `torch>=2.9.0,<2.10.0`, `torchaudio==2.9.0`, `onnxruntime-rocm`, `triton>=3.2.0,<=3.5.1`
 
-- The corresponding `torch` version from the ROCm wheels source
-- `pyamdgpuinfo` for collecting GPU metrics during benchmarking
-
-**Install a specific benchmarking group:**
+**Install ROCm dependencies:**
 
 ```bash
-pdm install -G bench-torch-2_3_0
+# For ROCm v6.4.1
+pdm install -G rocm-6-4-1
+
+# For ROCm v7.1
+pdm install -G rocm-7-1
+
+# For development with ROCm v7.1
+pdm install -G rocm-7-1,bench,dev
 ```
-
-**Example**: Benchmarking CLI with a specific torch version
-
-```bash
-pdm install -G bench-torch-2_4_1
-python -m insanely_fast_whisper_rocm.cli transcribe audio.mp3 --benchmark
-```
-
-This allows reproducible benchmarking and easy switching between supported ROCm torch versions for performance comparison.
 
 - **`[tool.pdm]`**: Configures PDM-specific settings.
   - **`scripts`**: Defines shortcuts for common commands (e.g., `lint`, `format`, `test`, `api`, `webui`, `cli`). These can be run using `pdm run <script_name>`.
@@ -1301,11 +1293,11 @@ This allows reproducible benchmarking and easy switching between supported ROCm 
     # Install core + development tools
     pdm install -G dev
 
-    # Install core + ROCm support
-    pdm install -G rocm
+    # Install core + ROCm v6.4.1 support
+    pdm install -G rocm-6-4-1
 
-    # Install core + development tools + ROCm support
-    pdm install -G dev -G rocm
+    # Install core + development tools + ROCm v7.1 support
+    pdm install -G dev -G rocm-7-1
     ```
 
     PDM creates a `.venv` directory for the virtual environment and a `pdm.lock` file to ensure deterministic builds.
