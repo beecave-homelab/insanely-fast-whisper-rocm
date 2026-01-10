@@ -125,7 +125,7 @@ def segment_words(words: list[Word]) -> list[Segment]:
         lines = wrapped.split("\n")
         sent_dur = sentence[-1].end - sentence[0].start
 
-        logger.info(
+        logger.debug(
             "Processing sentence: dur=%.2fs, len=%d chars, text=%r",
             sent_dur,
             len(txt),
@@ -139,7 +139,7 @@ def segment_words(words: list[Word]) -> list[Segment]:
             and all(len(line) <= constants.MAX_LINE_CHARS for line in lines)
             and _respect_limits(sentence)
         ):
-            logger.info("  -> Branch A: wrapping works + respects limits")
+            logger.debug("  -> Branch A: wrapping works + respects limits")
             segments.append(
                 Segment(
                     text=wrapped,
@@ -150,9 +150,11 @@ def segment_words(words: list[Word]) -> list[Segment]:
             )
         elif not _respect_limits(sentence):
             # If wrapping doesn't work and limits aren't respected, split into clauses
-            logger.info("  -> Branch B: doesn't respect limits, splitting into clauses")
+            logger.debug(
+                "  -> Branch B: doesn't respect limits, splitting into clauses"
+            )
             clauses = _split_at_clause_boundaries(sentence, force_line_limit=False)
-            logger.info("  -> Split into %d clauses", len(clauses))
+            logger.debug("  -> Split into %d clauses", len(clauses))
             for clause in clauses:
                 clause_dur = clause[-1].end - clause[0].start
                 segments.append(
@@ -163,9 +165,9 @@ def segment_words(words: list[Word]) -> list[Segment]:
                         words=clause,
                     )
                 )
-                logger.info("  -> Clause: dur=%.2fs", clause_dur)
+                logger.debug("  -> Clause: dur=%.2fs", clause_dur)
         else:
-            logger.info("  -> Branch C: wrapping doesn't work, but respects limits")
+            logger.debug("  -> Branch C: wrapping doesn't work, but respects limits")
             segments.append(
                 Segment(
                     text=" ".join(w.text for w in sentence),
