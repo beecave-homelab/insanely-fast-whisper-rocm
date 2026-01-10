@@ -7,7 +7,7 @@ datasets>=4.0.0
 demucs>=4.0.1
 fastapi>=0.116.1
 ffmpeg-python>=0.2.0
-gradio>=5.38.0
+gradio<6.0.0,>=5.38.0
 huggingface-hub>=0.34.4
 numpy>=1.26.4
 onnxruntime-rocm
