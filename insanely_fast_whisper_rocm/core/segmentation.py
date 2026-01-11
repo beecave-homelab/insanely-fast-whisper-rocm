@@ -480,16 +480,16 @@ def _split_at_clause_boundaries(
             or clause_duration > constants.MAX_SEGMENT_DURATION_SEC
         ):
             # Split this clause into smaller chunks
-            logger.info(
+            logger.debug(
                 "    Clause exceeds limits (dur=%.2fs, len=%d), splitting by duration",
                 clause_duration,
                 len(clause_text),
             )
             sub_clauses = _split_by_duration(clause, constants.MAX_SEGMENT_DURATION_SEC)
-            logger.info("    -> Split into %d sub-clauses", len(sub_clauses))
+            logger.debug("    -> Split into %d sub-clauses", len(sub_clauses))
             for sub in sub_clauses:
                 sub_dur = sub[-1].end - sub[0].start
-                logger.info("      Sub-clause: dur=%.2fs", sub_dur)
+                logger.debug("      Sub-clause: dur=%.2fs", sub_dur)
             final_clauses.extend(sub_clauses)
         else:
             final_clauses.append(clause)
