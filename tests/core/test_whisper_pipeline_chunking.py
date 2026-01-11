@@ -431,7 +431,7 @@ def test_whisper_pipeline_accepts_bool_true_as_chunk_timestamps(
 
     monkeypatch.setattr(
         "insanely_fast_whisper_rocm.utils.file_utils.cleanup_temp_files",
-        lambda paths: None,
+        lambda _paths: None,
     )
 
     pipeline = WhisperPipeline(
