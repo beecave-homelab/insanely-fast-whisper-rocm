@@ -92,6 +92,12 @@ def main() -> None:
             "GPU-to-gfx reference: "
             "https://rocm.docs.amd.com/en/latest/reference/gpu-arch-specs.html"
         )
+        print(
+            "\nNote: The application automatically detects your PyTorch version and "
+            "sets the correct allocator configuration (PYTORCH_ALLOC_CONF for >=2.9.0, "
+            "PYTORCH_HIP_ALLOC_CONF for <2.9.0). You can customize this in your .env "
+            "file if needed."
+        )
     except Exception as e:
         print(f"\n❌ An error occurred during setup: {e}")
 

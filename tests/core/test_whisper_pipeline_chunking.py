@@ -390,3 +390,72 @@ def test_whisper_pipeline_word_timestamps_passthrough(
     ]
     assert progress_recorder.completed_count == 1
     assert cleaned == []
+
+
+def test_whisper_pipeline_accepts_bool_true_as_chunk_timestamps(
+    monkeypatch: pytest.MonkeyPatch, progress_recorder: _ProgressRecorder
+) -> None:
+    """Pipeline should treat a legacy bool ``True`` timestamp flag as chunk-level."""
+    backend = _RecordingBackend(
+        responses=[
+            {
+                "text": "one chunk",
+                "chunks": [],
+                "runtime_seconds": 0.75,
+                "config_used": {"model": "stub"},
+            }
+        ],
+        chunk_length=15,
+    )
+
+    monkeypatch.setattr(
+        "insanely_fast_whisper_rocm.audio.conversion.ensure_wav", lambda path: path
+    )
+
+    def single_chunk(
+        path: str,
+        *,
+        chunk_duration: float,
+        chunk_overlap: float,
+        min_chunk_duration: float = 1.0,
+    ) -> list[tuple[str, float]]:
+        assert chunk_duration == 15.0
+        assert chunk_overlap == 0.0
+        assert min_chunk_duration == 1.0
+        return [(path, 0.0)]
+
+    monkeypatch.setattr(
+        "insanely_fast_whisper_rocm.audio.processing.split_audio",
+        single_chunk,
+    )
+
+    monkeypatch.setattr(
+        "insanely_fast_whisper_rocm.utils.file_utils.cleanup_temp_files",
+        lambda _paths: None,
+    )
+
+    pipeline = WhisperPipeline(
+        asr_backend=backend,
+        storage_backend=None,
+        save_transcriptions=False,
+    )
+
+    result = pipeline.process(
+        audio_file_path="already.wav",
+        language=None,
+        task="translate",
+        timestamp_type=True,
+        progress_callback=progress_recorder,
+    )
+
+    assert result["text"] == "one chunk"
+    assert backend.calls == [
+        {
+            "path": "already.wav",
+            "language": None,
+            "task": "translate",
+            "return_timestamps": True,
+            "progress_cb_has_on_completed": True,
+        }
+    ]
+    assert progress_recorder.completed_count == 1

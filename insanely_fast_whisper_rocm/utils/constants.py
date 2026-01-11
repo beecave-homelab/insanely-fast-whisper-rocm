@@ -73,6 +73,7 @@ Architecture Benefits:
 - Maintainability: Configuration changes only need to be made once
 """
 
+import importlib.util
 import logging
 import os
 import sys
@@ -250,22 +251,66 @@ HSA_OVERRIDE_GFX_VERSION = os.getenv(
 )  # Override for AMD GPU support
 
 # PyTorch ROCm memory allocation
-PYTORCH_HIP_ALLOC_CONF = os.getenv("PYTORCH_HIP_ALLOC_CONF")
-if PYTORCH_HIP_ALLOC_CONF is None:
-    PYTORCH_HIP_ALLOC_CONF = "garbage_collection_threshold:0.7,max_split_size_mb:128"
+# PyTorch 2.9.0+ renamed PYTORCH_HIP_ALLOC_CONF to PYTORCH_ALLOC_CONF
+# We detect the version and set the appropriate environment variable
+_pytorch_alloc_conf = os.getenv("PYTORCH_ALLOC_CONF") or os.getenv(
+    "PYTORCH_HIP_ALLOC_CONF"
+)
+if _pytorch_alloc_conf is None:
+    _pytorch_alloc_conf = "garbage_collection_threshold:0.7,max_split_size_mb:128"
     logger.info(
-        "Applying default PyTorch HIP allocator configuration to reduce "
+        "Applying default PyTorch allocator configuration to reduce "
         "fragmentation: %s. "
-        "You can customize this via the PYTORCH_HIP_ALLOC_CONF environment "
-        "variable or your .env file.",
-        PYTORCH_HIP_ALLOC_CONF,
+        "You can customize this via the PYTORCH_ALLOC_CONF or PYTORCH_HIP_ALLOC_CONF "
+        "environment variable or your .env file.",
+        _pytorch_alloc_conf,
     )
 else:
-    logger.info(
-        "Using custom PyTorch HIP allocator configuration: %s", PYTORCH_HIP_ALLOC_CONF
-    )
+    logger.info("Using custom PyTorch allocator configuration: %s", _pytorch_alloc_conf)
 
-os.environ["PYTORCH_HIP_ALLOC_CONF"] = PYTORCH_HIP_ALLOC_CONF
+# Detect PyTorch version to determine which environment variable to set
+try:
+    _torch_spec = importlib.util.find_spec("torch")
+except (AttributeError, ImportError, ModuleNotFoundError, ValueError):
+    # Torch module cannot be located or is in a broken/partially-initialized state
+    _torch_spec = None
+
+if _torch_spec is not None:
+    try:
+        torch_version = pkg_version("torch")
+        major, minor, *_ = map(int, torch_version.split(".")[:2])
+        _use_new_alloc_conf = (major, minor) >= (2, 9)
+
+        if _use_new_alloc_conf:
+            os.environ["PYTORCH_ALLOC_CONF"] = _pytorch_alloc_conf
+            logger.info("PyTorch %s detected: using PYTORCH_ALLOC_CONF", torch_version)
+        else:
+            os.environ["PYTORCH_HIP_ALLOC_CONF"] = _pytorch_alloc_conf
+            logger.info(
+                "PyTorch %s detected: using PYTORCH_HIP_ALLOC_CONF", torch_version
+            )
+    except PackageNotFoundError:
+        # torch package found but version metadata unavailable
+        # Default to the newer variable for PyTorch 2.9.0+
+        os.environ["PYTORCH_ALLOC_CONF"] = _pytorch_alloc_conf
+        logger.debug(
+            "PyTorch version metadata unavailable, defaulting to PYTORCH_ALLOC_CONF"
+        )
+        # Also set the old variable for backward compatibility
+        os.environ["PYTORCH_HIP_ALLOC_CONF"] = _pytorch_alloc_conf
+else:
+    # torch not installed yet (e.g., during initial setup)
+    # Default to the newer variable for PyTorch 2.9.0+
+    os.environ["PYTORCH_ALLOC_CONF"] = _pytorch_alloc_conf
+    logger.debug(
+        "PyTorch not yet installed, defaulting to PYTORCH_ALLOC_CONF "
+        "(will be auto-adjusted on first import)"
+    )
+    # Also set the old variable for backward compatibility during setup
+    os.environ["PYTORCH_HIP_ALLOC_CONF"] = _pytorch_alloc_conf
+
+# Export for backward compatibility
+PYTORCH_HIP_ALLOC_CONF = _pytorch_alloc_conf
 
 HIP_LAUNCH_BLOCKING = (
     os.getenv("HIP_LAUNCH_BLOCKING", "false").lower() == "true"

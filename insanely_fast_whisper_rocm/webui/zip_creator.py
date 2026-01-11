@@ -384,10 +384,17 @@ class BatchZipBuilder:
                     "[_add_files_by_format] Preparing to format for: %s",
                     archive_path,
                 )
+                text = result_data.get("text")
+                chunks = result_data.get("chunks")
+                segments = result_data.get("segments")
                 logger.debug(
-                    "[_add_files_by_format] Raw result_data for %s: %s",
+                    "[_add_files_by_format] Raw result_data summary for %s: "
+                    "keys=%s text_len=%s chunks=%s segments=%s",
                     file_path,
-                    json.dumps(result_data, indent=2),
+                    sorted(result_data.keys()),
+                    len(text) if isinstance(text, str) else None,
+                    len(chunks) if isinstance(chunks, list) else None,
+                    len(segments) if isinstance(segments, list) else None,
                 )
 
                 content = self._format_result(result_data, format_type)
@@ -488,10 +495,17 @@ class BatchZipBuilder:
                     "[_add_files_flat] Preparing to format for: %s",
                     archive_path,
                 )
+                text = result_data.get("text")
+                chunks = result_data.get("chunks")
+                segments = result_data.get("segments")
                 logger.debug(
-                    "[_add_files_flat] Raw result_data for %s: %s",
+                    "[_add_files_flat] Raw result_data summary for %s: "
+                    "keys=%s text_len=%s chunks=%s segments=%s",
                     file_path,
-                    json.dumps(result_data, indent=2),
+                    sorted(result_data.keys()),
+                    len(text) if isinstance(text, str) else None,
+                    len(chunks) if isinstance(chunks, list) else None,
+                    len(segments) if isinstance(segments, list) else None,
                 )
 
                 content = self._format_result(result_data, format_type)

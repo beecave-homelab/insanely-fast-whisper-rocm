@@ -4,13 +4,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v2.1.1-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v2.1.2-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v2.1.1` (Current) - *02-01-2026*](#v211-current---02-01-2026)
+- [`v2.1.2` (Current) - *10-01-2026*](#v212-current---10-01-2026)
+- [`v2.1.1` - *02-01-2026*](#v211---02-01-2026)
 - [`v2.1.0` - *31-12-2025*](#v210---31-12-2025)
 - [`v2.0.1` - *08-12-2025*](#v201---08-12-2025)
 - [`v2.0.0` - *05-12-2025*](#v200---05-12-2025)
@@ -49,7 +50,84 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v2.1.1` (Current) - *02-01-2026*
+### `v2.1.2` (Current) - *10-01-2026*
+
+#### 🐛 Patch Release: PyTorch Allocator Configuration & Bug Fixes
+
+This release adds automatic PyTorch allocator configuration with version detection to eliminate deprecation warnings, fixes timestamp handling with backward compatibility, improves distil-whisper version detection, reduces log verbosity, and adds ROCm version-specific dependency management.
+
+#### ✨ **New Features in v2.1.2**
+
+- **Added**: Automatic PyTorch allocator configuration with version detection.
+  - Automatically detects the installed PyTorch version and sets the correct allocator environment variable (`PYTORCH_ALLOC_CONF` for >=2.9.0; `PYTORCH_HIP_ALLOC_CONF` for <2.9.0), which is especially relevant when ROCm images ship different torch versions (e.g., `rocm-6-4-1` vs `rocm-7-1`).
+  - Eliminates deprecation warnings in PyTorch 2.9.0+.
+  - Backward compatible with older PyTorch versions.
+  - Users don't need to manually adjust .env files when upgrading PyTorch.
+
+#### 🐛 **Bug Fixes in v2.1.2**
+
+- **Fixed**: Timestamp handling with backward compatibility for bool True.
+  - **Issue**: Pipeline did not accept boolean True as a legacy timestamp flag.
+  - **Root Cause**: Type signature only accepted Literal['chunk', 'word'].
+  - **Solution**: Updated type signature to accept bool | Literal['chunk', 'word'] and treat True as chunk timestamps for backward compatibility.
+
+- **Fixed**: WebUI freezing regression caused by Gradio 6.x frontend behavior.
+  - **Issue**: The WebUI could hard-freeze after rendering results in the browser.
+  - **Root Cause**: Unbounded `gradio>=...` dependency resolution allowed Gradio 6.x to be installed in Docker images, triggering a frontend regression.
+  - **Solution**: Pinned Gradio to `>=5.38.0,<6.0.0` in the project dependencies and Docker requirements.
+
+- **Fixed**: Distil-whisper version detection to handle decimal versions.
+  - **Issue**: Version parsing failed for decimal versions like 'v3.5'.
+  - **Root Cause**: Code tried to parse entire version string as an integer.
+  - **Solution**: Extract only the major version number by splitting on '.' before parsing.
+
+- **Fixed**: None chunks handling in merge_chunk_results().
+  - **Issue**: Code would crash when result['chunks'] was None.
+  - **Root Cause**: Only checked for key existence, not None value.
+  - **Solution**: Added None check before iterating over chunks.
+
+#### 🔧 **Improvements in v2.1.2**
+
+- **Improved**: Reduced segmentation log verbosity from INFO to DEBUG.
+  - Detailed branching logic and clause processing now at DEBUG level.
+  - Reduces noise in normal operation while preserving debugging capability.
+
+- **Improved**: Reduced orchestrator status log verbosity.
+  - Status messages starting with 'Attempt ' now logged at DEBUG level.
+  - Actual recovery actions still logged at WARNING level.
+
+- **Improved**: Performance optimization for format export.
+  - Added caching for formatted output to avoid duplicate computation.
+  - Each format is only computed once when multiple export formats are requested.
+
+- **Improved**: Reduced WebUI payload size to avoid browser-side rendering slowdowns.
+  - WebUI now returns a compact JSON summary for display instead of the full raw transcription payload.
+  - Download buttons continue to provide access to full-fidelity outputs via files.
+
+#### 📦 **Maintenance in v2.1.2**
+
+- **Updated**: Dependency management with ROCm version-specific requirements.
+  - Split rocm optional dependency into rocm-6-4-1 and rocm-7-1 groups.
+  - Added triton to rocm-wheels sources for proper dependency resolution.
+  - Added nvidia-* packages to pypi exclude list to prevent conflicts.
+  - Updated torch version ranges for each ROCm version.
+
+- **Added**: New requirement files for ROCm versions.
+  - requirements-rocm-v6-4-1.txt: For ROCm 6.4.1 with torch 2.5.0-2.8.0.
+  - requirements-rocm-v7-1.txt: For ROCm 7.1 with torch 2.9.0-2.10.0.
+
+- **Updated**: Docker configuration.
+  - Changed to use requirements-rocm-v6-4-1.txt instead of requirements-all.txt.
+  - Changed API port from 8888 to 8889.
+  - Changed WebUI port from 7860 to 7862.
+
+#### 📝 **Key Commits in v2.1.2**
+
+`5a40d13`, `720478d`, `1c9264f`, `f4ac651`, `9989525`, `0cd06ba`, `08f45dd`
+
+---
+
+### `v2.1.1` - *02-01-2026*
 
 #### 🐛 Patch Release: Bug Fixes and Dependency Updates
 

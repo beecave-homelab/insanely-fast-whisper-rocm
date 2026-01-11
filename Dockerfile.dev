@@ -23,14 +23,14 @@ RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive ap
 WORKDIR /app
 
 # Copy requirement files first
-COPY requirements-all.txt /app/
+COPY requirements-rocm-v6-4-1.txt /app/
 # COPY requirements.txt /app/
 # COPY requirements-onnxruntime-rocm.txt /app/
 # COPY requirements-rocm.txt /app/
 COPY requirements-dev.txt /app/
 
 # Install project dependencies from requirements files.
-RUN pip install --no-cache-dir -r requirements-all.txt
+RUN pip install --no-cache-dir -r requirements-rocm-v6-4-1.txt
 # RUN pip install --no-cache-dir -r requirements.txt
 # RUN pip install --no-cache-dir -r requirements-onnxruntime-rocm.txt
 # RUN pip install --no-cache-dir -r requirements-rocm.txt
@@ -58,8 +58,8 @@ ENV GRADIO_SERVER_NAME="0.0.0.0"
 ENV TORCHAUDIO_USE_SOUNDFILE=1
 
 # Expose default internal ports (API/WebUI). Actual host bindings are controlled by Compose.
-EXPOSE 8888
-EXPOSE 7860
+EXPOSE 8889
+EXPOSE 7862
 
 # Use the package entrypoint so host/port are controlled by env vars (API_HOST/API_PORT).
 # docker-compose.dev.yaml overrides this CMD to run the WebUI as needed.
