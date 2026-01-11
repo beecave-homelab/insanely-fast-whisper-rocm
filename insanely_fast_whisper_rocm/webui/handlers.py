@@ -951,7 +951,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 visible=True,
                 interactive=True,
             )
-        except Exception as txt_e:  # noqa: BLE001
+        except Exception as txt_e:
             logger.error("Failed to prepare TXT download: %s", txt_e, exc_info=True)
             txt_btn_update = dl_btn_hidden_update
 
@@ -967,7 +967,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 visible=True,
                 interactive=True,
             )
-        except Exception as srt_e:  # noqa: BLE001
+        except Exception as srt_e:
             logger.error("Failed to prepare SRT download: %s", srt_e, exc_info=True)
             srt_btn_update = dl_btn_hidden_update
 
@@ -978,7 +978,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 visible=True,
                 interactive=True,
             )
-        except Exception as json_e:  # noqa: BLE001
+        except Exception as json_e:
             logger.error("Failed to prepare JSON download: %s", json_e, exc_info=True)
             json_btn_update = dl_btn_hidden_update
 
