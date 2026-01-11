@@ -1,7 +1,7 @@
 ---
 repo: https://github.com/beecave-homelab/insanely-fast-whisper-rocm
-commit: 64b901ad24d296aefdebd5b443ce4309a573ff3b
-updated: 2025-12-31T22:14:15+00:00
+commit: 02ce442e8864435a1d0f4b48e76ba2c415041137
+updated: 2026-01-10T12:06:00+00:00
 ---
 <!-- SECTIONS:API,CLI,WEBUI,CI,DOCKER,TESTS -->
 
@@ -13,7 +13,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 > This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v2.1.0-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v2.1.2-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -59,7 +59,7 @@ cd insanely-fast-whisper-rocm
 
 ```bash
 # Create your user configuration file (interactive)
-pdm run setup-config  # or `python scripts/setup_config.py`
+python scripts/setup_config.py
 
 docker compose -f docker-compose.dev.yaml up --build -d
 ```
@@ -71,7 +71,7 @@ docker compose -f docker-compose.dev.yaml up --build -d
 curl -sSL https://pdm-project.org/install-pdm.py | python3 -
 
 # Install project dependencies (including dev and rocm groups)
-pdm install -G dev -G rocm
+pdm install -G rocm-7-1,bench,dev
 
 # Activate the PDM-managed environment (optional, PDM handles it)
 # pdm shell
@@ -86,14 +86,15 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v2.1.1** *(02-01-2026)*
+### 🏷️ **Current Version: v2.1.2** *(10-01-2026)*
 
-**Latest improvements**: Bug fix for CLIFacade orchestrator factory method binding, dependency updates (accelerate 1.12.0, ROCm dependencies), and documentation updates for ROCm v7.1 support.
+**Latest improvements**: Automatic PyTorch allocator configuration with version detection, timestamp handling fixes, distil-whisper version detection improvements, log verbosity reductions, and ROCm version-specific dependency management.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
 | ------- | ---- | ---- | ------------ |
+| **v2.1.2** | 10-01-2026 | 🐛 Patch | PyTorch allocator auto-config, timestamp fixes, log improvements, ROCm deps |
 | **v2.1.1** | 02-01-2026 | 🐛 Patch | CLIFacade orchestrator fix, dependency updates, ROCm v7.1 docs |
 | **v2.1.0** | 31-12-2025 | ✨ Minor | OOM orchestration + CPU fallback, GPU cache invalidation, added core OOM tests |
 | **v2.0.1** | 08-12-2025 | 🐛 Patch | PR #27 fixes: audio conversion fallback, segment mutation, SRT counting, task params |
@@ -384,6 +385,79 @@ python scripts/setup_config.py
 ```
 
 **Important**: No direct `os.getenv()` calls should be made outside of [insanely_fast_whisper_rocm/utils/env_loader.py](insanely_fast_whisper_rocm/utils/env_loader.py) or [insanely_fast_whisper_rocm/utils/constants.py](insanely_fast_whisper_rocm/utils/constants.py) to ensure consistent configuration loading.
+
+### PyTorch Allocator Configuration (Automatic Version Detection)
+
+The application implements automatic detection and configuration of PyTorch's memory allocator based on the installed PyTorch version. This is critical for ROCm/AMD GPU support because PyTorch 2.9.0+ renamed the allocator configuration environment variable.
+
+**Background:**
+
+- **PyTorch < 2.9.0**: Uses `PYTORCH_HIP_ALLOC_CONF` for ROCm memory allocation settings
+- **PyTorch >= 2.9.0**: Uses `PYTORCH_ALLOC_CONF` (the variable was renamed and `PYTORCH_HIP_ALLOC_CONF` was deprecated)
+
+**Implementation Details:**
+
+The automatic detection logic is implemented in [insanely_fast_whisper_rocm/utils/constants.py](insanely_fast_whisper_rocm/utils/constants.py):
+
+- **Version Detection**:
+  - Uses `importlib.util.find_spec("torch")` to check if torch is installed
+  - Retrieves the torch version using `pkg_version("torch")`
+  - Parses the version string to extract major and minor version numbers
+
+- **Environment Variable Selection**:
+
+```python
+if (major, minor) >= (2, 9):
+    os.environ["PYTORCH_ALLOC_CONF"] = _pytorch_alloc_conf
+else:
+    os.environ["PYTORCH_HIP_ALLOC_CONF"] = _pytorch_alloc_conf
+```
+
+- **Fallback Handling**:
+  - If torch is not yet installed (e.g., during initial setup), both environment variables are set for backward compatibility
+  - If version metadata is unavailable, defaults to the newer `PYTORCH_ALLOC_CONF`
+
+- **Configuration Loading Order**:
+  - Checks `PYTORCH_ALLOC_CONF` first
+  - Falls back to `PYTORCH_HIP_ALLOC_CONF` if the first is not set
+  - Applies default configuration if neither is set: `garbage_collection_threshold:0.7,max_split_size_mb:128`
+
+**User Configuration:**
+
+Users can customize the allocator configuration in their `.env` file:
+
+```bash
+# For PyTorch 2.9.0+ (recommended)
+PYTORCH_ALLOC_CONF=garbage_collection_threshold:0.7,max_split_size_mb:128
+
+# For PyTorch < 2.9.0 (legacy)
+PYTORCH_HIP_ALLOC_CONF=garbage_collection_threshold:0.7,max_split_size_mb:128
+```
+
+**VRAM Tuning:**
+
+The `max_split_size_mb` parameter can be adjusted based on available GPU memory:
+
+- **4GB VRAM**: `max_split_size_mb:64`
+- **8GB-16GB VRAM**: `max_split_size_mb:128` (default)
+- **24GB+ VRAM**: `max_split_size_mb:256` or `max_split_size_mb:512`
+
+**Logging:**
+
+The application logs the detected PyTorch version and which environment variable is being set at startup:
+
+```text
+INFO - PyTorch 2.9.1 detected: using PYTORCH_ALLOC_CONF
+```
+
+This provides visibility into the automatic configuration process and helps with debugging.
+
+**Benefits:**
+
+- **No Manual Configuration**: Users don't need to adjust their `.env` files when switching between ROCm versions
+- **Deprecation Warning Elimination**: Prevents the `PYTORCH_HIP_ALLOC_CONF is deprecated` warning in PyTorch 2.9.0+
+- **Backward Compatibility**: Works seamlessly with both old and new PyTorch versions
+- **Flexible Override**: Users can still manually set either variable if needed for specific use cases
 
 ---
 
@@ -1165,41 +1239,33 @@ Notes for ROCm users:
 - **`[project]`**: Contains core project metadata such as name, version, authors, description, and classifiers.
   - **`dependencies`**: Lists core runtime dependencies required for the application to function.
   - **`optional-dependencies`**: Defines groups of dependencies that are not required for the core functionality but can be installed for specific purposes. Key groups include:
-    - `dev`: Tools for development, such as linters (`black`, `isort`, `flake8`, `mypy`), testing frameworks (`pytest`, `pytest-cov`), and other utilities.
-    - `rocm`: Dependencies specific to AMD ROCm GPU support, including the appropriate PyTorch build and ONNX runtime for ROCm.
-    - `bench-torch-2_0_1`, `bench-torch-2_3_0`, `bench-torch-2_4_1`, `bench-torch-2_5_1`, `bench-torch-2_6_0`: Benchmarking groups for ROCm, each pinning a specific torch version (from the ROCm wheels source) and including `pyamdgpuinfo` for GPU metrics.
-    - `cpu`: Dependencies for CPU-only PyTorch execution.
-    - `cuda`: Dependencies for NVIDIA CUDA GPU execution.
+    - `dev`: Tools for development, such as linters (`ruff`), testing frameworks (`pytest`, `pytest-cov`), and other utilities.
+    - `rocm-6-4-1`: Dependencies for AMD ROCm v6.4.1 GPU support, including PyTorch 2.5.0-2.8.0, torchaudio 2.5.0-2.8.0, onnxruntime-rocm, and pytorch-triton-rocm.
+    - `rocm-7-1`: Dependencies for AMD ROCm v7.1 GPU support, including PyTorch 2.9.0-2.10.0, torchaudio 2.9.0, onnxruntime-rocm, and triton.
+    - `bench`: Benchmarking utilities including `pyamdgpuinfo` for GPU metrics.
 
-#### Benchmarking with Multiple ROCm Torch Versions
+#### ROCm Version-Specific Dependency Groups
 
-To facilitate benchmarking across different ROCm-compatible PyTorch versions, the following optional dependency groups are available:
+The project provides separate dependency groups for different ROCm versions to ensure compatibility:
 
-- `bench-torch-2-0-1`
-- `bench-torch-2-3-0`
-- `bench-torch-2-4-1`
-- `bench-torch-2-5-1`
-- `bench-torch-2-6-0`
+- **`rocm-6-4-1`**: For ROCm 6.4.1 with PyTorch 2.5.0-2.8.0
+  - Includes: `torch>=2.5.0,<2.8.0`, `torchaudio>=2.5.0,<2.8.0`, `onnxruntime-rocm`, `pytorch-triton-rocm>=3.2.0,<=3.3.1`
 
-Each group includes:
+- **`rocm-7-1`**: For ROCm 7.1 with PyTorch 2.9.0-2.10.0
+  - Includes: `torch>=2.9.0,<2.10.0`, `torchaudio==2.9.0`, `onnxruntime-rocm`, `triton>=3.2.0,<=3.5.1`
 
-- The corresponding `torch` version from the ROCm wheels source
-- `pyamdgpuinfo` for collecting GPU metrics during benchmarking
-
-**Install a specific benchmarking group:**
+**Install ROCm dependencies:**
 
 ```bash
-pdm install -G bench-torch-2_3_0
+# For ROCm v6.4.1
+pdm install -G rocm-6-4-1
+
+# For ROCm v7.1
+pdm install -G rocm-7-1
+
+# For development with ROCm v7.1
+pdm install -G rocm-7-1,bench,dev
 ```
-
-**Example**: Benchmarking CLI with a specific torch version
-
-```bash
-pdm install -G bench-torch-2_4_1
-python -m insanely_fast_whisper_rocm.cli transcribe audio.mp3 --benchmark
-```
-
-This allows reproducible benchmarking and easy switching between supported ROCm torch versions for performance comparison.
 
 - **`[tool.pdm]`**: Configures PDM-specific settings.
   - **`scripts`**: Defines shortcuts for common commands (e.g., `lint`, `format`, `test`, `api`, `webui`, `cli`). These can be run using `pdm run <script_name>`.
@@ -1227,11 +1293,11 @@ This allows reproducible benchmarking and easy switching between supported ROCm 
     # Install core + development tools
     pdm install -G dev
 
-    # Install core + ROCm support
-    pdm install -G rocm
+    # Install core + ROCm v6.4.1 support
+    pdm install -G rocm-6-4-1
 
-    # Install core + development tools + ROCm support
-    pdm install -G dev -G rocm
+    # Install core + development tools + ROCm v7.1 support
+    pdm install -G dev -G rocm-7-1
     ```
 
     PDM creates a `.venv` directory for the virtual environment and a `pdm.lock` file to ensure deterministic builds.
@@ -1256,13 +1322,19 @@ Ideally, these `requirements.txt` files can be generated from `pdm.lock` using `
 
 ```bash
 # Export default dependencies
-pdm export -o requirements.txt --without-hashes
+pdm export --pyproject -o requirements.txt --without-hashes --prod
 
 # Export a specific group (e.g., rocm)
-pdm export -G rocm -o requirements-rocm.txt --without-hashes
+pdm export --pyproject -G rocm-7-1,bench -o requirements-rocm-v7-1.txt --without-hashes 
+
+# Export a specific group (e.g., rocm)
+pdm export --pyproject -G rocm-6-4-1,bench -o requirements-rocm-v6-4-1.txt --without-hashes
 
 # Export development dependencies
-pdm export -G dev -o requirements-dev.txt --without-hashes
+pdm export --pyproject -G dev -o requirements-dev.txt --without-hashes --no-default
+
+# Export all dependencies
+pdm export -G :all -o requirements-all.txt --without-hashes --no-extras
 ```
 
 This practice helps keep them synchronized with the PDM-managed dependencies.

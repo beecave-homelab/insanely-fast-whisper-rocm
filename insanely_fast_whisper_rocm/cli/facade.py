@@ -210,7 +210,10 @@ class CLIFacade:
             Args:
                 message: The warning message from the orchestrator.
             """
-            logger.warning("Orchestrator recovery action: %s", message)
+            if message.startswith("Attempt "):
+                logger.debug("Orchestrator status: %s", message)
+            else:
+                logger.warning("Orchestrator recovery action: %s", message)
 
         try:
             # Use orchestrator for robust transcription with OOM recovery.

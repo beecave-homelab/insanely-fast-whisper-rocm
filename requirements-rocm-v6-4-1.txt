@@ -10,16 +10,20 @@ ffmpeg-python==0.2.0
 gradio==5.50.0
 huggingface-hub==0.36.0
 numpy==2.2.6
+onnxruntime-rocm==1.22.2.post1
 optimum==2.1.0
+pyamdgpuinfo==2.1.7
 pydub==0.25.1
 python-dotenv==1.2.1
 python-multipart==0.0.21
+pytorch-triton-rocm==3.3.1
 PyYAML==6.0.3
 sniffio==1.3.1
 soundfile==0.13.1
 stable-ts==2.19.1
+torch==2.7.1
+torchaudio==2.7.1
 transformers==4.57.3
 uvicorn==0.40.0
 --index-url https://pypi.org/simple/
 --find-links https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/
---find-links https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/

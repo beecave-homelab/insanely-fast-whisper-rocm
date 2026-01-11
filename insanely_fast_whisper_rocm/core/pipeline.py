@@ -126,7 +126,7 @@ class BasePipeline(ABC):
         audio_file_path: str,
         language: str | None,
         task: Literal["transcribe", "translate"],
-        timestamp_type: Literal["chunk", "word"],
+        timestamp_type: Literal["chunk", "word"] | bool,
         original_filename: str | None = None,
         progress_callback: ProgressCallback | None = None,
         cancellation_token: CancellationToken | None = None,
@@ -262,7 +262,7 @@ class BasePipeline(ABC):
         prepared_data: InputType,
         language: str | None,
         task: str,
-        timestamp_type: str,
+        timestamp_type: str | bool,
         progress_callback: ProgressCallback,
         cancellation_token: CancellationToken | None,
     ) -> dict[str, Any]:
@@ -386,7 +386,7 @@ class WhisperPipeline(BasePipeline):
         prepared_data: str,  # This is the audio_file_path from _prepare_input
         language: str | None,
         task: str,
-        timestamp_type: str,
+        timestamp_type: str | bool,
         progress_callback: ProgressCallback,
         cancellation_token: CancellationToken | None,
     ) -> dict[str, Any]:
@@ -415,10 +415,14 @@ class WhisperPipeline(BasePipeline):
             type(self.asr_backend).__name__,
             self.asr_backend.config.chunk_length,
         )
-        # Determine return_timestamps_value for the backend based on timestamp_type
+        # Determine return_timestamps_value for the backend based on timestamp_type.
+        #
+        # Note: Some callers historically passed boolean ``True`` to mean
+        # "chunk" timestamps (Transformers default behavior). Accept that for
+        # backward compatibility.
         if timestamp_type == "word":
             return_timestamps_value: bool | str = "word"
-        elif timestamp_type == "chunk":
+        elif timestamp_type in ("chunk", True):
             return_timestamps_value = (
                 True  # For Whisper, True implies chunk-level timestamps
             )

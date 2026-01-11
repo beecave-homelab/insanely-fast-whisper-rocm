@@ -25,7 +25,7 @@ def merge_chunk_results(chunk_results: list[tuple[dict, float]]) -> dict[str, An
         full_text.append(result.get("text", "").strip())
         total_runtime += result.get("runtime_seconds", 0.0)
 
-        if "chunks" in result:
+        if "chunks" in result and result["chunks"] is not None:
             for segment in result["chunks"]:
                 # Adjust segment timestamps, but guard None values
                 if "timestamp" in segment and isinstance(

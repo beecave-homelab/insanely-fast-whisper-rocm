@@ -14,7 +14,7 @@ python-multipart>=0.0.20
 python-dotenv>=1.1.1
 PyYAML>=6.0.2
 click>=8.2.1
-gradio>=5.38.0
+gradio<6.0.0,>=5.38.0
 pydub>=0.25.1
 ffmpeg-python>=0.2.0
 
