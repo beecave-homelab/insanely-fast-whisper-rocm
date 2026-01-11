@@ -262,7 +262,7 @@ class BasePipeline(ABC):
         prepared_data: InputType,
         language: str | None,
         task: str,
-        timestamp_type: str,
+        timestamp_type: str | bool,
         progress_callback: ProgressCallback,
         cancellation_token: CancellationToken | None,
     ) -> dict[str, Any]:

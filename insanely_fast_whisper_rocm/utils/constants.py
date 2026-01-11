@@ -271,8 +271,8 @@ else:
 # Detect PyTorch version to determine which environment variable to set
 try:
     _torch_spec = importlib.util.find_spec("torch")
-except ValueError:
-    # torch.__spec__ is not set (module already imported)
+except (ModuleNotFoundError, ImportError, AttributeError):
+    # Torch module cannot be located or has import issues
     _torch_spec = None
 
 if _torch_spec is not None:
