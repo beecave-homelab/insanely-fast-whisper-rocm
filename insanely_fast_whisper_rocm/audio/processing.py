@@ -1,10 +1,19 @@
 """Audio processing utilities for chunking and manipulation."""
 
+from __future__ import annotations
+
 import os
 import tempfile
 
-import ffmpeg
-from pydub import AudioSegment
+try:  # pragma: no cover - optional dependency
+    import ffmpeg  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover - handled gracefully
+    ffmpeg = None  # type: ignore
+
+try:  # pragma: no cover - optional dependency
+    from pydub import AudioSegment  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover - handled gracefully
+    AudioSegment = None  # type: ignore
 
 from insanely_fast_whisper_rocm.utils.file_utils import cleanup_temp_files
 
@@ -19,9 +28,15 @@ def get_audio_duration(audio_path: str) -> float:
         float: Duration of the audio in seconds.
 
     Raises:
-        RuntimeError: If fetching the audio duration fails.
+        RuntimeError: If fetching the audio duration fails or pydub is not available.
 
     """
+    if AudioSegment is None:
+        raise RuntimeError(
+            "pydub is not installed. Install the 'pydub' package "
+            "to enable audio duration detection."
+        )
+
     try:
         audio = AudioSegment.from_file(audio_path)
         return len(audio) / 1000.0  # Convert ms to seconds
@@ -50,9 +65,15 @@ def extract_audio_from_video(
 
     Raises:
         FileNotFoundError: If the input video file does not exist.
-        RuntimeError: If FFmpeg fails during extraction.
+        RuntimeError: If FFmpeg fails during extraction or is not available.
 
     """
+    if ffmpeg is None:
+        raise RuntimeError(
+            "FFmpeg is not installed. Install the 'ffmpeg-python' package "
+            "to enable video audio extraction."
+        )
+
     try:
         if not os.path.isfile(video_path):
             raise FileNotFoundError(f"Video file not found: {video_path}")
@@ -108,9 +129,15 @@ def split_audio(
     Raises:
         ValueError: If input parameters are invalid.
         RuntimeError: If splitting the audio fails due to an OS, runtime,
-            or memory error.
+            or memory error, or if pydub is not available.
 
     """
+    if AudioSegment is None:
+        raise RuntimeError(
+            "pydub is not installed. Install the 'pydub' package "
+            "to enable audio splitting."
+        )
+
     try:
         # Validate inputs
         if chunk_duration <= 0:
