@@ -42,8 +42,6 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - [Deployment Options](#deployment-options)
 - [Monitoring & Security](#monitoring--security)
 - [Import Standardization](#import-standardization)
-- [Enhancement Highlights](#enhancement-highlights)
-- [Bug Fixes](#bug-fixes)
 
 ---
 
@@ -77,8 +75,10 @@ pdm install -G rocm-7-1,bench,dev
 # pdm shell
 
 # Choose your interface (run via PDM):
-pdm run start-api          # API Server
-pdm run start-webui        # WebUI Interface  
+pdm run api                # API Server
+pdm run api-debug          # API Server (verbose)
+pdm run webui              # WebUI Interface
+pdm run webui-debug        # WebUI Interface (debug)
 pdm run cli transcribe audio.mp3  # CLI
 ```
 
@@ -166,9 +166,11 @@ pdm run cli transcribe audio.mp3  # CLI
 
 - **Modular Design**: Split core, audio, API, CLI, WebUI, and utils
 - **Error Handling**: Layered, type-specific, with full trace logging
-- **Direct Hugging Face Integration**: Native `transformers.pipeline` support
-- **Configurable Processing**: Batch size, device, model selection
-- **ROCm Integration**: Optimized PyTorch and ONNX runtime configurations for AMD GPUs
+- **Direct Hugging Face Integration**: Native `transformers.pipeline` support <!-- DELETE -->
+- **Configurable Processing**: Batch size, device, model selection <!-- DELETE -->
+- **ROCm Integration**: Optimized PyTorch and ONNX runtime configurations for AMD GPUs <!-- DELETE -->
+- **Native SDPA Acceleration vs. BetterTransformer**: This project uses the native Scaled Dot Product Attention (SDPA) available in PyTorch 2.0+ and `transformers` as its primary method for accelerating the Whisper model's attention mechanism. This is achieved by setting `attn_implementation="sdpa"` when loading the model.
+- **OOM Recovery Orchestration (GPU -> CPU fallback)**: The core transcription path is wrapped by an OOM-aware orchestrator ([`core/orchestrator.py`](insanely_fast_whisper_rocm/core/orchestrator.py)) that implements deterministic recovery actions:
 
 ---
 
@@ -264,38 +266,6 @@ The core transcription path is wrapped by an OOM-aware orchestrator ([`core/orch
 - Each attempt is recorded in `result["orchestrator_attempts"]` for UI/API visibility.
 
 The OOM signatures are parsed for CUDA/HIP/ROCm in [`core/oom_utils.py`](insanely_fast_whisper_rocm/core/oom_utils.py) and exercised in unit tests under `tests/core/`.
-
-### Core Refactor (v0.2.0+)
-
-- Direct integration with Hugging Face `pipeline`
-- No subprocess dependency on `insanely-fast-whisper`
-- Modular architecture: [`pipeline.py`](insanely_fast_whisper_rocm/core/pipeline.py), [`asr_backend.py`](insanely_fast_whisper_rocm/core/asr_backend.py), etc.
-- *See [v0.2.0 changelog](VERSIONS.md#v020---may-2025) for complete architectural changes*
-
-### WebUI Refactor (v0.3.0+)
-
-- Full Gradio-based multi-file support
-- Native ZIP creation and download buttons
-- Real-time batch progress with `gr.Progress`
-- Backward-compatible with single-file use
-- *See [v0.3.0 changelog](VERSIONS.md#v030---may-2025) for WebUI modularization details*
-
-### Multiple File Support (v0.3.1+)
-
-- `gr.File(file_count="multiple")`
-- Native batching + ZIP archive output
-- Chunk-level processing progress
-- *See [v0.3.1 changelog](VERSIONS.md#v031---june-2025) for latest enhancements*
-
-### Enhancement Highlights
-
-| Date | ID | Type | Description |
-| ---- | -- | ---- | ----------- |
-| Jun 2025 | Internal enhancement | ✨ | **Native SDPA Acceleration**: Integrated `attn_implementation="sdpa"` for faster attention, replacing the need for BetterTransformer. |
-| Jun 2025 | Internal enhancement | ✨ | **Modular CLI**: Refactored the CLI into a modular structure with `click` commands and a `facade` for cleaner logic. |
-| Jun 2025 | Internal enhancement | 🔧 | **`pdm` Migration**: Replaced `requirements.txt` with `pdm` for robust dependency management. See [Dependency Management](#dependency-management-with-pdm). |
-| Jun 2025 | Internal enhancement | 🔧 | **Import Refactor**: Standardized all imports to be absolute, improving clarity and maintainability. See [Import Standardization](#import-standardization). |
-| Jun 2025 | [#1](https://github.com/issue/1) | 🐛 | **WebUI Stability**: Fixed issues with multi-file downloads and improved error handling in the Gradio interface. |
 
 ---
 
@@ -508,7 +478,9 @@ The API endpoints have distinct parameters. Core model settings (`model`, `devic
 
 - `/v1/audio/transcriptions`:
   - `file`: The audio file to transcribe (required).
-  - `timestamp_type`: The granularity of the timestamps (`chunk` or `word`). If you provide `text` here, the response will be plain text instead of JSON. Defaults to `chunk`.
+  - `timestamp_type`: The granularity of the timestamps (`chunk` or `word`). If you provide `text` here, the response will be plain text instead of JSON. Defaults to `chunk`. <!-- DELETE -->
+  - `response_format`: The desired output format (`json`, `verbose_json`, `text`, `srt`, `vtt`). Defaults to `json`.
+  - `timestamp_type`: The granularity of the timestamps (`chunk` or `word`). Defaults to `chunk`.
   - `language`: The language of the audio. If omitted, the model will auto-detect the language.
   - `stabilize`: `bool` - Enable timestamp stabilization using `stable-ts`. Defaults to `False`.
   - `demucs`: `bool` - Enable Demucs noise reduction before transcription. Defaults to `False`.
@@ -516,7 +488,8 @@ The API endpoints have distinct parameters. Core model settings (`model`, `devic
   - `vad_threshold`: `float` - The threshold for VAD. Defaults to `0.35`.
 - `/v1/audio/translations`:
   - `file`: The audio file to translate (required).
-  - `response_format`: The desired output format (`json` or `text`). Defaults to `json`.
+  - `response_format`: The desired output format (`json` or `text`). Defaults to `json`. <!-- DELETE -->
+  - `response_format`: The desired output format (`json`, `verbose_json`, `text`, `srt`, `vtt`). Defaults to `json`.
   - `stabilize`: `bool` - Enable timestamp stabilization using `stable-ts`. Defaults to `False`.
   - `demucs`: `bool` - Enable Demucs noise reduction before transcription. Defaults to `False`.
   - `vad`: `bool` - Enable Silero VAD to filter out silent parts of the audio. Defaults to `False`.
@@ -578,7 +551,8 @@ Use the `--benchmark` flag to measure processing speed and collect hardware stat
 > ```
 
 ```bash
-# Quick benchmark (JSON only; timestamps auto-disabled)
+# Quick benchmark (JSON only; timestamps auto-disabled) <!-- DELETE -->
+# Quick benchmark (writes benchmark JSON; transcript export is unchanged by --benchmark)
 python -m insanely_fast_whisper_rocm.cli transcribe audio.mp3 --benchmark
 
 # Benchmark and also export transcript as TXT
@@ -592,8 +566,10 @@ python -m insanely_fast_whisper_rocm.cli transcribe audio.mp3 --benchmark --benc
 
 | Feature | Description |
 | ------- | ----------- |
-| Transcript export suppression | When `--benchmark` is set, transcript files are *not* saved unless you explicitly provide `--export-format`. |
-| Auto `--no-timestamps` | Timestamps are disabled by default during benchmarking to measure raw model speed. Override by adding `--no-timestamps` on the CLI. |
+| Transcript export suppression <!-- DELETE --> | When `--benchmark` is set, transcript files are *not* saved unless you explicitly provide `--export-format`. |
+| Transcript export behavior | Unchanged by `--benchmark`; exports follow `--export-format` (default: `json`). |
+| Auto `--no-timestamps` <!-- DELETE --> | Timestamps are disabled by default during benchmarking to measure raw model speed. Override by adding `--no-timestamps` on the CLI. |
+| Timestamps | Unchanged by `--benchmark`; controlled by `--no-timestamps` and `--timestamp-type`. |
 | Output location | A JSON file is written to `benchmarks/` with name pattern `benchmark_<audio>_<task>_<timestamp>.json`. |
 | Extra metadata | Use repeated `--benchmark-extra key=value` pairs to inject custom fields into the JSON. |
 | Completion message | The benchmark path is printed **at the end** of the CLI output (📈 line) for quick copy-paste. |
@@ -1314,6 +1290,7 @@ pdm install -G rocm-7-1,bench,dev
 - **`pdm lock`**: Resolve dependencies and write to `pdm.lock` without installing.
 - **`pdm shell`**: Activate the PDM-managed virtual environment in the current shell.
 
+<!-- DELETE START -->
 ### Relationship with `requirements-*.txt` Files
 
 The Docker build now uses PDM to install all project dependencies directly from [`pyproject.toml`](pyproject.toml) via `pdm install --prod`. The `requirements-*.txt` files (e.g., `requirements.txt`, `requirements-rocm.txt`, `requirements-dev.txt`) are maintained only for legacy or special environments where PDM is not available, but are no longer used in the Docker build.
@@ -1334,15 +1311,17 @@ pdm export --pyproject -G rocm-6-4-1,bench -o requirements-rocm-v6-4-1.txt --wit
 pdm export --pyproject -G dev -o requirements-dev.txt --without-hashes --no-default
 
 # Export all dependencies
-pdm export -G :all -o requirements-all.txt --without-hashes --no-extras
+pdm export --pyproject -G rocm-6-4-1,bench,dev -o requirements-all.txt --without-hashes --no-extras
 ```
 
 This practice helps keep them synchronized with the PDM-managed dependencies.
+<!-- DELETE END -->
 
 > **PyTorch Note**: Due to PyTorch's specific index URL requirements for different compute platforms (CPU, CUDA, ROCm), its installation is carefully managed within PDM's dependency groups or via the `requirements-*.txt` files to ensure the correct version is fetched. PDM can handle custom source URLs if needed, which should be configured in [`pyproject.toml`](pyproject.toml).
 
 ---
 
+<!-- DELETE START -->
 ## API Endpoints
 
 ### `POST /v1/audio/transcriptions`
@@ -1363,6 +1342,7 @@ Translates audio to English.
 - **`language`**: Source language code (e.g., `en`). Auto-detects if not specified.
 
 *Note: Key model parameters (model name, device, batch size, etc.) are configured globally via environment variables and are not modifiable per-request.*
+<!-- DELETE END -->
 
 ---
 
@@ -1392,7 +1372,8 @@ Translates audio to English.
 ### Code Style
 
 - PEP8 + 88-char lines
-- `black`, `isort`, `mypy`, `pylint`
+- `black`, `isort`, `mypy`, `pylint` <!-- DELETE -->
+- `ruff`
 - Type hints everywhere
 
 ### Testing
@@ -1400,7 +1381,8 @@ Translates audio to English.
 Unit & API test suite:
 
 ```bash
-pytest tests/
+pytest tests/  <!-- DELETE -->
+pdm run pytest --maxfail=1 -q
 ```
 
 #### WebUI integration tests (Gradio)
@@ -1427,47 +1409,11 @@ markers =
 
 Average runtime < 10 s on a laptop-class GPU.
 
-### Code Quality Checks (Docker-based)
-
-**Check Commands (No Changes):**
-
-```bash
-# Access the container
-docker exec -it insanely-fast-whisper-rocm-api bash
-
-# Check Black formatting (dry run)
-black --check .
-
-# Check isort import sorting (dry run)  
-isort --check-only .
-
-# Run mypy type checking
-mypy insanely_fast_whisper_rocm/
-
-# Run all checks together
-black --check . && isort --check-only . && mypy insanely_fast_whisper_rocm/
-```
-
-**Auto-Fix Commands:**
-
-```bash
-# Access the container
-docker exec -it insanely-fast-whisper-rocm-api bash
-
-# Auto-format with Black
-black .
-
-# Auto-sort imports with isort
-isort .
-
-# Run auto-fixes together (Black + isort)
-black . && isort .
-```
-
 ---
 
 ## Deployment Options
 
+<!-- DELETE START -->
 ### Local Development
 
 **API Server (FastAPI):**
@@ -1528,6 +1474,7 @@ python -m insanely_fast_whisper_rocm.cli transcribe tests/data/conversion-test-f
 # Translate audio to English
 python -m insanely_fast_whisper_rocm.cli translate audio_file.mp3
 ```
+<!-- DELETE END -->
 
 ### Docker Deployment
 
@@ -1547,10 +1494,17 @@ The project includes Docker configurations for both production and development e
   docker compose -f docker-compose.dev.yaml up --build -d
   ```
 
+<!-- DELETE START -->
 **Access URLs:**
 
 - WebUI: [http://localhost:7860](http://localhost:7860)
 - API (when enabled): [http://localhost:8000/docs](http://localhost:8000/docs)
+<!-- DELETE END -->
+
+**Access URLs:**
+
+- WebUI: [http://localhost:7860](http://localhost:7860)
+- API (when enabled): [http://localhost:8888/docs](http://localhost:8888/docs)
 
 ---
 
@@ -1584,96 +1538,6 @@ from insanely_fast_whisper_rocm.utils.constants import WHISPER_MODEL
 - Consistent import patterns across the codebase
 
 *See [v0.2.1 changelog in VERSIONS.md](VERSIONS.md#v021---may-29-30-2025) for implementation details.*
-
----
-
-## Enhancement Timeline
-
-*For complete feature details and changelog, see [VERSIONS.md](VERSIONS.md).*
-
-### Multi-file WebUI Support (v0.3.1)
-
-- Batch uploads with improved error handling
-- ZIP downloads with TXT/SRT/JSON formats
-- Real-time chunk-level progress tracking
-- Fixed empty ZIP file bug
-
-### Modular WebUI Architecture (v0.3.0)
-
-- `ui.py`, `handlers.py`, `formatters.py`, `errors.py`
-- Replaces monolithic `webui.py`
-- CLI entrypoint for WebUI launches
-- Configuration dataclasses
-
-### Core Architecture Revolution (v0.2.0)
-
-- Direct Hugging Face Transformers integration
-- Dropped subprocess-based `insanely-fast-whisper` dependency
-- Native `transformers.pipeline` support
-- Performance optimizations with configurable batching
-
-### Native SDPA Acceleration (v0.7.0)
-
-- Integrated `attn_implementation="sdpa"` for faster attention, replacing the need for BetterTransformer.
-
----
-
-## Bug Fixes
-
-*For complete bug fix details and changelog, see [VERSIONS.md](VERSIONS.md).*
-
-### Fixed empty ZIP files (v0.3.1)
-
-- **Issue**: WebUI ZIP downloads were missing transcription content
-- **Root Cause**: `result_dict` was incorrectly accessed in `handlers.py`
-- **Fix**: Corrected data structure access and improved error handling
-- **Result**: Properly populated ZIP downloads with all transcription formats
-
-### ✅ Audio Format Validation (v0.3.1)
-
-- **Issue**: Deprecated audio extensions causing processing errors
-- **Fix**: Updated supported format validation and removed legacy extensions
-- **Result**: More reliable audio file processing
-
-### ✅ Configuration Test Stability (v0.3.1)
-
-- **Issue**: Inconsistent configuration test results
-- **Fix**: Refactored centralized configuration tests for improved robustness
-- **Result**: More reliable testing and validation
-
-### ✅ WebUI Batch Download (v0.3.1)
-
-- **Issue**: `TypeError` in Gradio `DownloadButton` when processing multiple files
-- **Fix**: Ensured `value` parameter receives a file path instead of a function
-- **Result**: Fixed `TypeError` in WebUI batch download functionality
-
-### ✅ Native SDPA Acceleration (v0.7.0)
-
-- Integrated `attn_implementation="sdpa"` for faster attention, replacing the need for BetterTransformer.
-
-### ✅ Audio Conversion Fallback (v2.0.1)
-
-- **Issue**: `ensure_wav()` failed on systems without FFmpeg installed
-- **Fix**: Added fallback to pure-Python conversion via `pydub` when `ffmpeg-python` is unavailable
-- **Result**: More robust audio conversion across different environments
-
-### ✅ Segment Mutation Fix (v2.0.1)
-
-- **Issue**: `merge_short_segments()` mutated input segment list, causing side effects
-- **Fix**: Now works on a copy of the segments list
-- **Result**: Predictable behavior without unintended side effects
-
-### ✅ SRT Regex Counting (v2.0.1)
-
-- **Issue**: Segment count was incorrect for certain SRT formats
-- **Fix**: Updated regex pattern to handle all valid SRT index formats
-- **Result**: Accurate segment counting in benchmark quality metrics
-
-### ✅ Task Parameter Handling (v2.0.1)
-
-- **Issue**: Incorrect parameter passing in transcribe/translate task functions
-- **Fix**: Updated functions to use object for kwargs consistently
-- **Result**: Reliable task execution across CLI and API
 
 ---
 
