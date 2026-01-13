@@ -69,11 +69,6 @@ This release addresses WebUI frontend freezing issues through payload optimizati
   - **Root Cause**: Exception handling was too narrow and didn't cover all edge cases.
   - **Solution**: Expanded exception handling to gracefully handle version detection failures.
 
-- **Fixed**: Segmentation clause splitting log verbosity.
-  - **Issue**: Excessive logging during segmentation clause splitting.
-  - **Root Cause**: Detailed branching logic was logged at INFO level.
-  - **Solution**: Reduced log level from INFO to DEBUG to reduce noise in normal operation.
-
 - **Fixed**: Type hints and exception handling in pipeline and constants.
   - **Issue**: Inconsistent type hints and exception handling patterns.
   - **Root Cause**: Code quality improvements were needed for better maintainability.
@@ -100,7 +95,7 @@ This release addresses WebUI frontend freezing issues through payload optimizati
   - Added coverage package to dev dependencies for better test coverage tracking.
 
 - **Improved**: Dependency management with gradio version pinning.
-  - Pinned gradio version to `<6.0.0` to prevent breaking changes from future versions.
+  - Pinned gradio version to 5.50.0 for stability.
   - Ensures stability of the WebUI interface.
 
 #### 📦 **Maintenance in v2.1.3**
