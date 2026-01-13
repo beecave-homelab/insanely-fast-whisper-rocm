@@ -4,13 +4,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v2.1.2-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v2.1.3-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v2.1.2` (Current) - *10-01-2026*](#v212-current---10-01-2026)
+- [`v2.1.3` (Current) - *13-01-2026*](#v213-current---13-01-2026)
+- [`v2.1.2` - *10-01-2026*](#v212---10-01-2026)
 - [`v2.1.1` - *02-01-2026*](#v211---02-01-2026)
 - [`v2.1.0` - *31-12-2025*](#v210---31-12-2025)
 - [`v2.0.1` - *08-12-2025*](#v201---08-12-2025)
@@ -50,7 +51,73 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v2.1.2` (Current) - *10-01-2026*
+### `v2.1.3` (Current) - *13-01-2026*
+
+#### 🐛 Patch Release: WebUI Stability & Code Quality Improvements
+
+This release addresses WebUI frontend freezing issues through payload optimization, improves type hints and exception handling across the codebase, reduces log verbosity, simplifies Dockerfile configuration, and updates dependencies.
+
+#### 🐛 **Bug Fixes in v2.1.3**
+
+- **Fixed**: WebUI frontend hangs caused by large JSON payloads.
+  - **Issue**: The WebUI could hard-freeze after rendering large transcription results in the browser.
+  - **Root Cause**: Full transcription payload (especially chunks/segments) was too large for Gradio's JSON rendering.
+  - **Solution**: Added `_build_ui_json_summary()` to create compact JSON summaries for UI display, replacing full raw_result with summary containing counts.
+
+- **Fixed**: PyTorch version detection exception handling.
+  - **Issue**: Insufficient exception handling when detecting PyTorch version for allocator configuration.
+  - **Root Cause**: Exception handling was too narrow and didn't cover all edge cases.
+  - **Solution**: Expanded exception handling to gracefully handle version detection failures.
+
+- **Fixed**: Segmentation clause splitting log verbosity.
+  - **Issue**: Excessive logging during segmentation clause splitting.
+  - **Root Cause**: Detailed branching logic was logged at INFO level.
+  - **Solution**: Reduced log level from INFO to DEBUG to reduce noise in normal operation.
+
+- **Fixed**: Type hints and exception handling in pipeline and constants.
+  - **Issue**: Inconsistent type hints and exception handling patterns.
+  - **Root Cause**: Code quality improvements were needed for better maintainability.
+  - **Solution**: Improved type hints and standardized exception handling across affected modules.
+
+- **Fixed**: Unnecessary noqa comments in WebUI exception handlers.
+  - **Issue**: Redundant noqa comments cluttering the code.
+  - **Root Cause**: Noqa comments were added but not actually needed.
+  - **Solution**: Removed unnecessary noqa comments from exception handlers.
+
+- **Fixed**: Lambda parameter naming convention.
+  - **Issue**: Unused lambda parameter not following naming conventions.
+  - **Root Cause**: Lambda parameter was not properly named according to project standards.
+  - **Solution**: Renamed unused lambda parameter to follow naming convention.
+
+#### 🔧 **Improvements in v2.1.3**
+
+- **Improved**: Dockerfile.dev by consolidating requirements files.
+  - Simplified Dockerfile.dev by consolidating multiple requirements files into a single reference.
+  - Reduces complexity and improves maintainability of the development Docker configuration.
+
+- **Improved**: Requirements file organization.
+  - Reorganized and updated requirements files for better dependency management.
+  - Added coverage package to dev dependencies for better test coverage tracking.
+
+- **Improved**: Dependency management with gradio version pinning.
+  - Pinned gradio version to `<6.0.0` to prevent breaking changes from future versions.
+  - Ensures stability of the WebUI interface.
+
+#### 📦 **Maintenance in v2.1.3**
+
+- **Updated**: pdm.lock file with latest dependency resolutions.
+- **Updated**: Documentation for ROCm version-specific dependencies in README.
+- **Updated**: VERSIONS.md with v2.1.2 WebUI fixes and improvements.
+- **Updated**: project-overview.md for v2.1.2 changes and cleaned up outdated sections.
+- **Added**: Bash shell command example to docker-compose.dev.yaml for better usability.
+
+#### 📝 **Key Commits in v2.1.3**
+
+`09dd896`, `c484fbd`, `fced039`, `3b55e46`, `52120f0`, `c5dfc12`, `25a4f0a`, `4536724`, `71ea801`, `b618c96`, `b2ff6e4`, `5af4cd3`, `734c701`, `25fbdc9`, `f7f4bbd`
+
+---
+
+### `v2.1.2` - *10-01-2026*
 
 #### 🐛 Patch Release: PyTorch Allocator Configuration & Bug Fixes
 
