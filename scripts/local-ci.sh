@@ -3,10 +3,10 @@ set -euo pipefail
 
 # Script Description: Run local CI pipeline (fix, format, test, coverage)
 # Author: elvee
-# Version: 0.1.0
+# Version: 0.2.0
 # License: MIT
 # Creation Date: 03/12/2025
-# Last Modified: 03/12/2025
+# Last Modified: 15/01/2026
 # Usage: local-ci.sh
 
 # Constants
