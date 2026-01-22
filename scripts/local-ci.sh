@@ -3,10 +3,10 @@ set -euo pipefail
 
 # Script Description: Run local CI pipeline (fix, format, test, coverage)
 # Author: elvee
-# Version: 0.1.0
+# Version: 0.2.0
 # License: MIT
 # Creation Date: 03/12/2025
-# Last Modified: 03/12/2025
+# Last Modified: 15/01/2026
 # Usage: local-ci.sh
 
 # Constants
@@ -35,6 +35,7 @@ This script performs:
   • pdm run format
   • pdm run test
   • pdm run test-cov
+  • pdm run docstring-coverage
 "
 }
 
@@ -51,6 +52,7 @@ main_logic() {
   echo "    • pdm run format"
   echo "    • pdm run test"
   echo "    • pdm run test-cov"
+  echo "    • pdm run docstring-coverage"
   echo ""
 
   local output_file="$1"
@@ -69,6 +71,9 @@ main_logic() {
     echo "[+] Running test coverage..."
     pdm run test-cov
     echo ""
+    echo "[+] Running docstring coverage..."
+    pdm run docstring-coverage
+    echo ""
     echo "[+] Local CI check successful. You can commit these changes."
   } | tee "${output_file}"
 }
@@ -80,11 +85,6 @@ main() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -o|--output_file)
-        if [[ $# -lt 2 ]]; then
-          echo "Error: Option '$1' requires a file path argument" >&2
-          show_help
-          exit 1
-        fi
         output_file="$2"
         shift 2
         ;;

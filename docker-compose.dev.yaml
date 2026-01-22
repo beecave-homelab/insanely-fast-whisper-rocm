@@ -68,3 +68,6 @@ services:
     #
     # CLI transcription example:
     # command: ["python", "-m", "insanely_fast_whisper_rocm.cli", "transcribe", "tests/data/conversion-test-file.mp3", "--debug"]
+    #
+    # For testing without starting the app
+    # command: ["/bin/bash"]

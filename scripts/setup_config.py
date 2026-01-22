@@ -7,44 +7,48 @@ It's designed to be run both directly and via PDM.
 """
 
 import shutil
-import sys
 from pathlib import Path
 
-# --- Add project root to Python path ---
-# This allows the script to import modules from the main application package,
-# ensuring it works correctly when run directly or via PDM.
-try:
-    # Assumes the script is in the 'scripts' directory, one level below project root
-    _project_root = Path(__file__).resolve().parent.parent
-    sys.path.insert(0, str(_project_root))
 
-    from insanely_fast_whisper_rocm.utils.constants import (
-        PROJECT_ROOT,
-        USER_CONFIG_DIR,
-        USER_ENV_FILE,
-    )
-except ImportError as e:
-    print(f"❌ Error: Failed to import project constants. {e}")
-    print("Please ensure you are running this script from the project root,")
-    print("or that the 'insanely_fast_whisper_rocm' package is in your PYTHONPATH.")
-    sys.exit(1)
+def get_project_root() -> Path:
+    """Return the project root directory.
+
+    The script is in the 'scripts' directory, one level below project root.
+    """
+    return Path(__file__).resolve().parent.parent
 
 
-# The source template is always located at the project root.
-SOURCE_ENV_FILE = PROJECT_ROOT / ".env.example"
+def get_user_config_dir() -> Path:
+    """Return the user configuration directory."""
+    return Path.home() / ".config" / "insanely-fast-whisper-rocm"
+
+
+def get_source_env_file(project_root: Path) -> Path:
+    """Return the path to the source .env.example file."""
+    return project_root / ".env.example"
+
+
+def get_user_env_file(user_config_dir: Path) -> Path:
+    """Return the path to the user's .env file."""
+    return user_config_dir / ".env"
 
 
 def main() -> None:
     """Manages the creation/update of the user-specific .env file."""
-    print(f"🔧 Attempting to set up user configuration at: {USER_ENV_FILE}")
+    project_root = get_project_root()
+    user_config_dir = get_user_config_dir()
+    source_env_file = get_source_env_file(project_root)
+    user_env_file = get_user_env_file(user_config_dir)
 
-    if not SOURCE_ENV_FILE.exists():
-        print(f"❌ ERROR: Source file '{SOURCE_ENV_FILE}' not found.")
+    print(f"🔧 Attempting to set up user configuration at: {user_env_file}")
+
+    if not source_env_file.exists():
+        print(f"❌ ERROR: Source file '{source_env_file}' not found.")
         print("Please ensure '.env.example' exists in the project root.")
         return
 
-    if USER_ENV_FILE.exists():
-        print(f"⚠️ User configuration file already exists at '{USER_ENV_FILE}'.")
+    if user_env_file.exists():
+        print(f"⚠️ User configuration file already exists at '{user_env_file}'.")
         try:
             overwrite_choice = (
                 input("Do you want to overwrite it? (yes/no) [no]: ").strip().lower()
@@ -59,9 +63,9 @@ def main() -> None:
         print("Proceeding to overwrite existing configuration...")
 
     try:
-        USER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(SOURCE_ENV_FILE, USER_ENV_FILE)
-        print(f"\n✅ Successfully copied '{SOURCE_ENV_FILE}' to '{USER_ENV_FILE}'.")
+        user_config_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_env_file, user_env_file)
+        print(f"\n✅ Successfully copied '{source_env_file}' to '{user_env_file}'.")
         print("\nPlease edit this file to add your specific configurations, such as:")
         print("  - HF_TOKEN (if using gated models like speaker diarization)")
         print("  - Other API keys or custom settings as needed.")
