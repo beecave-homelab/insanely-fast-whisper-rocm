@@ -19,7 +19,7 @@ pydub==0.25.1
 pytest==9.0.2
 pytest-cov==7.0.0
 python-dotenv==1.2.1
-python-multipart==0.0.21
+python-multipart==0.0.22
 pytorch-triton-rocm==3.3.1
 PyYAML==6.0.3
 ruff==0.14.11
