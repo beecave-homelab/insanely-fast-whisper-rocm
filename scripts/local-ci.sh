@@ -72,7 +72,7 @@ main_logic() {
     pdm run test-cov
     echo ""
     echo "[+] Running interrogate to check docstring coverage..."
-    pdm run pdm run interrogate . --fail-under=85 -vvvv --style=google
+    pdm run interrogate . --fail-under=85 -vvvv --style=google
     echo ""
     echo "[+] Local CI check successful. You can commit these changes."
   } | tee "${output_file}"
