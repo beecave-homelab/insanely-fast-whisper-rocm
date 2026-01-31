@@ -7,7 +7,7 @@ updated: 2026-01-10T12:06:00+00:00
 
 # Project Overview | Insanely Fast Whisper API (ROCm)
 
-A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.4.1 & v7.1) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture.
+A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm v6.4.1 & v7.0) support** for high-performance Automatic Speech Recognition (ASR) and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces, ROCm compatibility, and production-ready architecture.
 
 > [!NOTE]
 > This overview is the **single source of truth** for developers working on this codebase.
@@ -69,7 +69,7 @@ docker compose -f docker-compose.dev.yaml up --build -d
 curl -sSL https://pdm-project.org/install-pdm.py | python3 -
 
 # Install project dependencies (including dev and rocm groups)
-pdm install -G rocm-7-1,bench,dev
+pdm install -G rocm-7-0,bench,dev
 
 # Activate the PDM-managed environment (optional, PDM handles it)
 # pdm shell
@@ -135,7 +135,7 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ### Primary Focus: ROCm Support
 
-- **AMD GPU (ROCm v6.4.1 & v7.1) Support**: First-class AMD GPU acceleration for Whisper models, tested with PyTorch 2.7.1+rocm7.1.0 and torchaudio 2.7.1+rocm7.1.0
+- **AMD GPU (ROCm v6.4.1 & v7.0) Support**: First-class AMD GPU acceleration for Whisper models, tested with PyTorch 2.8.0+rocm7.0.0 and torchaudio 2.8.0+rocm7.0.0
 
 - **Extended Original Package**: Builds upon [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) with additional interfaces and ROCm compatibility
 - **Production-Ready Architecture**: Beyond CLI-only approach of original package
@@ -1220,7 +1220,7 @@ Notes for ROCm users:
   - **`optional-dependencies`**: Defines groups of dependencies that are not required for the core functionality but can be installed for specific purposes. Key groups include:
     - `dev`: Tools for development, such as linters (`ruff`), testing frameworks (`pytest`, `pytest-cov`), and other utilities.
     - `rocm-6-4-1`: Dependencies for AMD ROCm v6.4.1 GPU support, including PyTorch 2.5.0-2.8.0, torchaudio 2.5.0-2.8.0, onnxruntime-rocm, and pytorch-triton-rocm.
-    - `rocm-7-1`: Dependencies for AMD ROCm v7.1 GPU support, including PyTorch 2.9.0-2.10.0, torchaudio 2.9.0, onnxruntime-rocm, and triton.
+    - `rocm-7-0`: Dependencies for AMD ROCm v7.0 GPU support, including PyTorch 2.8.0, torchaudio 2.8.0, onnxruntime-rocm, and pytorch-triton-rocm.
     - `bench`: Benchmarking utilities including `pyamdgpuinfo` for GPU metrics.
 
 #### ROCm Version-Specific Dependency Groups
@@ -1230,8 +1230,8 @@ The project provides separate dependency groups for different ROCm versions to e
 - **`rocm-6-4-1`**: For ROCm 6.4.1 with PyTorch 2.5.0-2.8.0
   - Includes: `torch>=2.5.0,<2.8.0`, `torchaudio>=2.5.0,<2.8.0`, `onnxruntime-rocm`, `pytorch-triton-rocm>=3.2.0,<=3.3.1`
 
-- **`rocm-7-1`**: For ROCm 7.1 with PyTorch 2.9.0-2.10.0
-  - Includes: `torch>=2.9.0,<2.10.0`, `torchaudio==2.9.0`, `onnxruntime-rocm`, `triton>=3.2.0,<=3.5.1`
+- **`rocm-7-0`**: For ROCm 7.0 with PyTorch 2.8.0
+  - Includes: `torch==2.8.0`, `torchaudio==2.8.0`, `onnxruntime-rocm==1.22.1`, `pytorch-triton-rocm==3.4.0`
 
 **Install ROCm dependencies:**
 
@@ -1239,11 +1239,11 @@ The project provides separate dependency groups for different ROCm versions to e
 # For ROCm v6.4.1
 pdm install -G rocm-6-4-1
 
-# For ROCm v7.1
-pdm install -G rocm-7-1
+# For ROCm v7.0
+pdm install -G rocm-7-0
 
-# For development with ROCm v7.1
-pdm install -G rocm-7-1,bench,dev
+# For development with ROCm v7.0
+pdm install -G rocm-7-0,bench,dev
 ```
 
 - **`[tool.pdm]`**: Configures PDM-specific settings.
@@ -1275,8 +1275,8 @@ pdm install -G rocm-7-1,bench,dev
     # Install core + ROCm v6.4.1 support
     pdm install -G rocm-6-4-1
 
-    # Install core + development tools + ROCm v7.1 support
-    pdm install -G dev -G rocm-7-1
+    # Install core + development tools + ROCm v7.0 support
+    pdm install -G dev -G rocm-7-0
     ```
 
     PDM creates a `.venv` directory for the virtual environment and a `pdm.lock` file to ensure deterministic builds.
@@ -1293,7 +1293,6 @@ pdm install -G rocm-7-1,bench,dev
 - **`pdm lock`**: Resolve dependencies and write to `pdm.lock` without installing.
 - **`pdm shell`**: Activate the PDM-managed virtual environment in the current shell.
 
-<!-- DELETE START -->
 ### Relationship with `requirements-*.txt` Files
 
 The Docker build now uses PDM to install all project dependencies directly from [`pyproject.toml`](pyproject.toml) via `pdm install --prod`. The `requirements-*.txt` files are maintained only for docker builds to keep a smaller memory footprint.
@@ -1305,7 +1304,7 @@ Ideally, these `requirements.txt` files can be generated from `pdm.lock` using `
 pdm export -o requirements.txt --without-hashes --prod
 
 # Export a specific group (e.g., rocm)
-pdm export -G rocm-7-1,bench -o requirements-rocm-v7-1.txt --without-hashes 
+pdm export -G rocm-7-0,bench -o requirements-rocm-v7-0.txt --without-hashes 
 
 # Export a specific group (e.g., rocm)
 pdm export -G rocm-6-4-1,bench -o requirements-rocm-v6-4-1.txt --without-hashes
@@ -1314,7 +1313,7 @@ pdm export -G rocm-6-4-1,bench -o requirements-rocm-v6-4-1.txt --without-hashes
 pdm export -G dev -o requirements-dev.txt --without-hashes --no-default
 
 # Export all dependencies
-pdm export -G rocm-6-4-1,bench,dev -o requirements-all.txt --without-hashes --no-extras
+pdm export -G rocm-7-0,bench,dev -o requirements-all.txt --without-hashes --no-extras
 ```
 
 This practice helps keep them synchronized with the PDM-managed dependencies.

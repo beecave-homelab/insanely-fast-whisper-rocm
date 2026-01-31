@@ -35,7 +35,7 @@ This script performs:
   • pdm run format
   • pdm run test
   • pdm run test-cov
-  • pdm run docstring-coverage
+  • pdm run interrogate
 "
 }
 
@@ -52,7 +52,7 @@ main_logic() {
   echo "    • pdm run format"
   echo "    • pdm run test"
   echo "    • pdm run test-cov"
-  echo "    • pdm run docstring-coverage"
+  echo "    • pdm run interrogate"
   echo ""
 
   local output_file="$1"
@@ -71,8 +71,8 @@ main_logic() {
     echo "[+] Running test coverage..."
     pdm run test-cov
     echo ""
-    echo "[+] Running docstring coverage..."
-    pdm run docstring-coverage
+    echo "[+] Running interrogate to check docstring coverage..."
+    pdm run interrogate . --fail-under=85 -vvvv --style=google
     echo ""
     echo "[+] Local CI check successful. You can commit these changes."
   } | tee "${output_file}"

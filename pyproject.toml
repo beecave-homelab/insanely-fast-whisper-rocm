@@ -9,7 +9,7 @@ authors = [
 dependencies = [
     "fastapi==0.128.0",
     "uvicorn==0.40.0",
-    "python-multipart==0.0.21",
+    "python-multipart==0.0.22",
     "transformers==4.57.3",
     "python-dotenv==1.2.1",
     "PyYAML==6.0.3",
@@ -84,8 +84,8 @@ type = "find_links"
 include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton"]
 
 [[tool.pdm.source]]
-name = "rocm-wheels-7.1"
-url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/"
+name = "rocm-wheels-7.0"
+url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.0/"
 verify_ssl = true
 type = "find_links"
 include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton"]
@@ -102,18 +102,19 @@ dev = [
     "interrogate==1.7.0",
 ]
 
-# Should allow version from rocm-wheels-6.4.1 and rocm-wheels-7.1
+# Should allow version from rocm-wheels-6.4.1 and rocm-wheels-7.0
 rocm-6-4-1 = [
-    "torch==2.7.1",
-    "torchaudio==2.7.1",
+    "torch==2.7.1+rocm6.4.1",
+    "torchaudio==2.7.1+rocm6.4.1",
     "onnxruntime-rocm==1.22.2.post1",
     "pytorch-triton-rocm==3.3.1",
 ]
-rocm-7-1 = [
-    "torch>=2.9.0,<2.10.0",
-    "torchaudio<2.10.0,>=2.9.0",
-    "onnxruntime-rocm",
-    "triton>=3.2.0,<=3.5.1",
+rocm-7-0 = [
+    # Pin to the full ROCm wheel (avoid the smaller *.lw build for docker containers).
+    "torch==2.8.0+rocm7.0.0.git64359f59",
+    "torchaudio==2.8.0+rocm7.0.0.git6e1c7fe9",
+    "onnxruntime-rocm==1.22.1",
+    "pytorch-triton-rocm==3.4.0",
 ]
 
 # Tool configurations for development

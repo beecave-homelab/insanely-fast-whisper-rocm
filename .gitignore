@@ -99,7 +99,7 @@ tests/data/repo-tree.txt
 to-do/**
 to-do/*.md
 
-
+# GitHub pull request
 .github/PULL_REQUEST/**
 
 pdm.lock.bak

@@ -4,7 +4,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
 [![Version](https://img.shields.io/badge/Version-v2.1.3-informational)](#insanely-fast-whisper-rocm)
-[![ROCm Version](https://img.shields.io/badge/ROCm-v6.4%20%7C%20v7.1-informational)](https://repo.radeon.com/rocm/)
+[![ROCm Version](https://img.shields.io/badge/ROCm-v6.4%20%7C%20v7.0-informational)](https://repo.radeon.com/rocm/)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface)
@@ -17,7 +17,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **⚡ CLI Tools**: Command-line interface for single-file processing
 - **📦 Model Management**: Automatic Hugging Face model downloading and caching
 - **🏗️ Docker Support**: Full containerization with development and production configurations (now using PDM for dependency management in Docker builds)
-- **🎯 ROCm Integration**: AMD GPU [(ROCm v6.4 & v7.1)](https://repo.radeon.com/rocm/) support for accelerated inference
+- **🎯 ROCm Integration**: AMD GPU [(ROCm v6.4 & v7.0)](https://repo.radeon.com/rocm/) support for accelerated inference
 
 ## Table of Contents
 
@@ -124,7 +124,7 @@ For local development, PDM (Python Development Master) is used to manage depende
     ```bash
     # To install ROCm support
     pdm install -G rocm-6-4-1
-    # or swap `rocm-6-4-1` for `rocm-7-1` if you want to use a different ROCm version
+    # or swap `rocm-6-4-1` for `rocm-7-0` if you want to use a different ROCm version
 
     # To include development tools and ROCm support
     pdm install -G dev -G rocm-6-4-1 -G bench
