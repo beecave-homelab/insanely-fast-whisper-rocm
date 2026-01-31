@@ -176,7 +176,7 @@ This release adds automatic PyTorch allocator configuration with version detecti
 
 - **Added**: New requirement files for ROCm versions.
   - requirements-rocm-v6-4-1.txt: For ROCm 6.4.1 with torch 2.5.0-2.8.0.
-  - requirements-rocm-v7-1.txt: For ROCm 7.1 with torch 2.9.0-2.10.0.
+  - requirements-rocm-v7-0.txt: For ROCm 7.0 with torch 2.8.0
 
 - **Updated**: Docker configuration.
   - Changed to use requirements-rocm-v6-4-1.txt instead of requirements-all.txt.
