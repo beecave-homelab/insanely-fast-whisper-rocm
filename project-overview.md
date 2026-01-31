@@ -1313,7 +1313,7 @@ pdm export -G rocm-6-4-1,bench -o requirements-rocm-v6-4-1.txt --without-hashes
 pdm export -G dev -o requirements-dev.txt --without-hashes --no-default
 
 # Export all dependencies
-pdm export -G rocm-6-4-1,bench,dev -o requirements-all.txt --without-hashes --no-extras
+pdm export -G rocm-7-0,bench,dev -o requirements-all.txt --without-hashes --no-extras
 ```
 
 This practice helps keep them synchronized with the PDM-managed dependencies.
