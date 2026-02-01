@@ -1,6 +1,6 @@
 [project]
 name = "insanely-fast-whisper-rocm"
-version = "2.1.3"
+version = "2.1.4"
 description = "A FastAPI wrapper around a custom Whisper-based ASR pipeline (ROCM version)"
 requires-python = "~=3.10"
 authors = [
@@ -103,9 +103,12 @@ dev = [
 ]
 
 # Should allow version from rocm-wheels-6.4.1 and rocm-wheels-7.0
-rocm-6-4-1 = [
-    "torch==2.7.1+rocm6.4.1",
-    "torchaudio==2.7.1+rocm6.4.1",
+rocm-6-4-4 = [
+
+    # "torch==2.7.1+rocm6.4.1",
+    "torch==2.6.0+rocm6.4.1.git1ded221d",
+    # "torchaudio==2.7.1+rocm6.4.1",
+    "torchaudio==2.6.0+rocm6.4.1.gitd8831425",
     "onnxruntime-rocm==1.22.2.post1",
     "pytorch-triton-rocm==3.3.1",
 ]
@@ -154,7 +157,7 @@ bench = [
 
 
 [tool.pdm.resolution]
-excludes = ["torch==2.0.1", "torch==2.3.0", "torch==2.4.1", "torch==2.6.0"]
+excludes = ["torch==2.0.1", "torch==2.3.0", "torch==2.4.1", "torch==2.7.1"]
 
 # ------------------------------
 #   Ruff (linter + formatter)
