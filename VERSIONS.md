@@ -4,13 +4,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v2.1.3-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v2.1.4-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v2.1.3` (Current) - *13-01-2026*](#v213-current---13-01-2026)
+- [`v2.1.4` (Current) - *31-01-2026*](#v214-current---31-01-2026)
+- [`v2.1.3` - *13-01-2026*](#v213---13-01-2026)
 - [`v2.1.2` - *10-01-2026*](#v212---10-01-2026)
 - [`v2.1.1` - *02-01-2026*](#v211---02-01-2026)
 - [`v2.1.0` - *31-12-2025*](#v210---31-12-2025)
@@ -51,7 +52,33 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v2.1.3` (Current) - *13-01-2026*
+### `v2.1.4` (Current) - *31-01-2026*
+
+#### 🐛 Patch Release: ROCm 7.0 Wheels & Requirements Alignment
+
+This release aligns ROCm 7.0 wheel guidance and documentation, updates test layout guidance, and removes the obsolete ROCm 7.1 requirements export.
+
+#### 🔧 **Improvements in v2.1.4**
+
+- **Improved**: ROCm 7.0 requirements documentation and release notes.
+  - **Issue**: Release notes referenced an outdated ROCm 7.1 requirements file.
+  - **Solution**: Updated documentation to reflect ROCm 7.0 wheel pins and removed the obsolete export.
+
+- **Improved**: Testing guidelines to reflect current test layout.
+  - Clarified unit test locations for API, audio, and CLI tests.
+
+#### 📦 **Maintenance in v2.1.4**
+
+- **Updated**: VERSIONS.md release notes and badges for ROCm 7.0.
+- **Removed**: Deprecated `requirements-rocm-v7-1.txt` export.
+
+#### 📝 **Key Commits in v2.1.4**
+
+`812c9e7`, `d9556f2`, `dc34a91`, `27e37f7`, `b9275f0`
+
+---
+
+### `v2.1.3` - *13-01-2026*
 
 #### 🐛 Patch Release: WebUI Stability & Code Quality Improvements
 
