@@ -126,9 +126,18 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 self.config.model_name,
                 self.config.dtype,
             )
+            cuda_available = torch.cuda.is_available()
+            device_count = torch.cuda.device_count() if cuda_available else 0
+            hip_version = getattr(torch.version, "hip", None)
+            logger.info(
+                "Torch backend status: cuda_available=%s, device_count=%d, hip=%s",
+                cuda_available,
+                device_count,
+                hip_version,
+            )
 
             model_load_kwargs = {
-                "torch_dtype": (
+                "dtype": (
                     torch.float16 if self.config.dtype == "float16" else torch.float32
                 ),
                 "use_safetensors": True,
@@ -198,6 +207,25 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                             raise
                     else:
                         raise
+                model_device = getattr(model, "device", None)
+                if model_device is None:
+                    model_parameters = getattr(model, "parameters", None)
+                    if callable(model_parameters):
+                        try:
+                            first_param = next(iter(model_parameters()))
+                        except (TypeError, StopIteration):
+                            first_param = None
+                        if first_param is not None:
+                            model_device = getattr(first_param, "device", None)
+                if model_device is not None:
+                    logger.info("ASR model loaded on device: %s", model_device)
+                    if self.effective_device != "cpu" and str(model_device) == "cpu":
+                        logger.warning(
+                            "Requested device %s but model appears on CPU",
+                            self.effective_device,
+                        )
+                else:
+                    logger.debug("Unable to determine ASR model device")
                 tokenizer = AutoTokenizer.from_pretrained(self.config.model_name)
                 feature_extractor = AutoFeatureExtractor.from_pretrained(
                     self.config.model_name
@@ -257,6 +285,12 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                     feature_extractor=feature_extractor,
                     device=self.effective_device,
                 )
+                pipeline_device = getattr(self.asr_pipe, "device", None)
+                if pipeline_device is not None:
+                    logger.info(
+                        "ASR pipeline initialized on device: %s",
+                        pipeline_device,
+                    )
 
                 cb.on_model_load_finished()
 

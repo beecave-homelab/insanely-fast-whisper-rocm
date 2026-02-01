@@ -24,7 +24,7 @@ Description: Keep tests fast, deterministic, and hermetic by default; mirror pac
 
 ## Layout & scoping
 
-- Unit tests: `tests/<subpkg>/test_*.py`  
+- Unit tests: `tests/<subpkg>/test_*.py` (for example, `tests/api`, `tests/audio`, `tests/cli`).  
 - Boundary / integration tests: `tests/integration/**` (API, CLI subprocesses, real ffmpeg, etc.)  
 - Optional E2E smoke tests: `tests/integration/**` or `tests/e2e/**`  
 - Keep integration/E2E tests minimal and opt-in via markers.

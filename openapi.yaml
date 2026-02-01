@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Insanely Fast Whisper API (ROCm)
   description: A FastAPI wrapper around a custom Whisper-based ASR pipeline.
-  version: 2.1.3
+  version: 2.1.4
 paths:
   /v1/audio/transcriptions:
     post:

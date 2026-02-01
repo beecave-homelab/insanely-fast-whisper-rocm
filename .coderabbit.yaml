@@ -5,7 +5,7 @@ reviews:
   auto_review:
     enabled: true
     drafts: true
-    auto_incremental_review: false
+    auto_incremental_review: true
 
   # Focus review scope on source, tests, and scripts; skip generated/auxiliary dirs
   path_filters:
