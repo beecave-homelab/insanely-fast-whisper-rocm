@@ -116,7 +116,7 @@ def test_initialize_pipeline_loads_model_with_float16(
 
     # Verify float16 was passed
     call_kwargs = mock_model_load.call_args[1]
-    assert call_kwargs["torch_dtype"] == torch.float16
+    assert call_kwargs["dtype"] == torch.float16
     assert call_kwargs["use_safetensors"] is True
     assert backend.asr_pipe is not None
 
@@ -160,7 +160,7 @@ def test_initialize_pipeline_loads_model_with_float32(
                     backend._initialize_pipeline()
 
     call_kwargs = mock_model_load.call_args[1]
-    assert call_kwargs["torch_dtype"] == torch.float32
+    assert call_kwargs["dtype"] == torch.float32
 
 
 def test_initialize_pipeline_uses_sdpa_on_cuda(tmp_path: pathlib.Path) -> None:

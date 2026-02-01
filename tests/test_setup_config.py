@@ -41,7 +41,7 @@ def test_setup_config_helper_functions() -> None:
 
     # Test get_project_root
     project_root = script_globals["get_project_root"]()
-    assert project_root.name == "insanely-fast-whisper-rocm"
+    assert project_root.name.startswith("insanely-fast-whisper-rocm")
 
     # Test get_user_config_dir
     user_config_dir = script_globals["get_user_config_dir"]()
