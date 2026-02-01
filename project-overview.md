@@ -13,7 +13,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 > This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v2.1.3-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v2.1.4-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -86,14 +86,15 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v2.1.3** *(13-01-2026)*
+### 🏷️ **Current Version: v2.1.4** *(31-01-2026)*
 
-**Latest improvements**: WebUI payload optimization to prevent frontend hangs, improved type hints and exception handling, reduced log verbosity, Dockerfile simplification, and dependency updates.
+**Latest improvements**: ROCm 7.0 wheel guidance and requirements alignment, updated test layout guidance, and removal of the obsolete ROCm 7.1 export.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
 | ------- | ---- | ---- | ------------ |
+| **v2.1.4** | 31-01-2026 | 🐛 Patch | ROCm 7.0 wheel guidance, test layout clarification, requirements cleanup |
 | **v2.1.3** | 13-01-2026 | 🐛 Patch | WebUI payload optimization, type hints, logging, Dockerfile simplification |
 | **v2.1.2** | 10-01-2026 | 🐛 Patch | PyTorch allocator auto-config, timestamp fixes, log improvements, ROCm deps |
 | **v2.1.1** | 02-01-2026 | 🐛 Patch | CLIFacade orchestrator fix, dependency updates, ROCm v7.1 docs |
