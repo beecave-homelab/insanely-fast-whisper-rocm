@@ -58,7 +58,17 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 This release aligns ROCm 7.0 wheel guidance and documentation, updates test layout guidance, and removes the obsolete ROCm 7.1 requirements export.
 
-#### 🔧 **Improvements in v2.1.4**
+#### 🐛 **Bug Fixes in v2.1.4**
+
+- **Fixed**: HuggingFace backend now checks CUDA availability and reports device details.
+  - **Issue**: CUDA device information could be queried when CUDA was unavailable, causing confusing diagnostics.
+  - **Solution**: Added explicit availability checks before reporting device information.
+
+- **Fixed**: HuggingFace backend enforces dtype selection for model loading.
+  - **Issue**: Model initialization did not consistently respect the configured dtype.
+  - **Solution**: Explicitly map the configured dtype to the corresponding torch dtype.
+
+#### � **Improvements in v2.1.4**
 
 - **Improved**: ROCm 7.0 requirements documentation and release notes.
   - **Issue**: Release notes referenced an outdated ROCm 7.1 requirements file.
