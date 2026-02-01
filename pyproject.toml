@@ -103,7 +103,7 @@ dev = [
 ]
 
 # Should allow version from rocm-wheels-6.4.1 and rocm-wheels-7.0
-rocm-6-4-4 = [
+rocm-6-4-1 = [
 
     # "torch==2.7.1+rocm6.4.1",
     "torch==2.6.0+rocm6.4.1.git1ded221d",
