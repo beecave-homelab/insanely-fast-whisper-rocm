@@ -4,13 +4,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v2.1.4-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v2.1.5-informational)](#release-timeline)
 
 ---
 
 ## 📑 Table of Contents
 
-- [`v2.1.4` (Current) - *31-01-2026*](#v214-current---31-01-2026)
+- [`v2.1.5` (Current) - *19-02-2026*](#v215-current---19-02-2026)
+- [`v2.1.4` - *31-01-2026*](#v214---31-01-2026)
 - [`v2.1.3` - *13-01-2026*](#v213---13-01-2026)
 - [`v2.1.2` - *10-01-2026*](#v212---10-01-2026)
 - [`v2.1.1` - *02-01-2026*](#v211---02-01-2026)
@@ -52,7 +53,37 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
-### `v2.1.4` (Current) - *31-01-2026*
+### `v2.1.5` (Current) - *19-02-2026*
+
+#### 🐛 Patch Release: ROCm 7.0 Docker Requirements Alignment
+
+This release aligns Docker builds and requirements with ROCm 7.0 wheels and
+ensures torch/torchaudio pins match ROCm-specific builds.
+
+#### 🐛 **Bug Fixes in v2.1.5**
+
+- **Fixed**: Docker images now pull ROCm 7.0 requirements during builds.
+  - **Issue**: Containers could fail to start when torch dependencies were
+    mismatched, leading to missing ROCm libraries at runtime.
+  - **Solution**: Updated Dockerfile requirements references to ROCm 7.0.
+
+#### 🔧 **Improvements in v2.1.5**
+
+- **Improved**: Explicit ROCm torch/torchaudio pins in requirements exports.
+  - Ensures the correct ROCm wheel builds are installed in Docker and local
+    setups.
+
+#### 📦 **Maintenance in v2.1.5**
+
+- **Updated**: ROCm requirements documentation and dependency pins.
+
+#### 📝 **Key Commits in v2.1.5**
+
+`918506e`, `c02e635`, `6f5caea`, `4de3494`, `6ee9c71`
+
+---
+
+### `v2.1.4` - *31-01-2026*
 
 #### 🐛 Patch Release: ROCm 7.0 Wheels & Requirements Alignment
 
