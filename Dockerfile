@@ -20,11 +20,12 @@ RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive ap
 WORKDIR /app
 
 # Copy requirements file for installing dependencies
-COPY requirements-rocm-v6-4-1.txt .
+# COPY requirements-rocm-v6-4-1.txt .
+COPY requirements-rocm-v7-0.txt .
 COPY .python-version .
 
 # Install project dependencies using pip
-RUN pip install --no-cache-dir -r requirements-rocm-v6-4-1.txt
+RUN pip install --no-cache-dir -r requirements-rocm-v7-0.txt
 
 # Copy the OpenAPI spec file
 COPY openapi.yaml /app/

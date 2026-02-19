@@ -102,5 +102,8 @@ to-do/*.md
 # GitHub pull request
 .github/PULL_REQUEST/**
 
+# PDM lock backup
 pdm.lock.bak
+
+# PR comments
 pr-27-comments.md
