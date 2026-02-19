@@ -73,6 +73,8 @@ Architecture Benefits:
 - Maintainability: Configuration changes only need to be made once
 """
 
+from __future__ import annotations
+
 import importlib.util
 import logging
 import os
