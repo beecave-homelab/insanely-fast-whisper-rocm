@@ -13,7 +13,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 > This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v2.1.4-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v2.1.5-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -86,14 +86,15 @@ pdm run cli transcribe audio.mp3  # CLI
 
 ## Version Summary
 
-### 🏷️ **Current Version: v2.1.4** *(31-01-2026)*
+### 🏷️ **Current Version: v2.1.5** *(19-02-2026)*
 
-**Latest improvements**: ROCm 7.0 wheel guidance and requirements alignment, updated test layout guidance, and removal of the obsolete ROCm 7.1 export.
+**Latest improvements**: ROCm 7.0 Docker requirements alignment, explicit ROCm torch/torchaudio pins, and refreshed ROCm requirements guidance.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
 | ------- | ---- | ---- | ------------ |
+| **v2.1.5** | 19-02-2026 | 🐛 Patch | ROCm 7.0 Docker requirements alignment, ROCm torch/torchaudio pins |
 | **v2.1.4** | 31-01-2026 | 🐛 Patch | ROCm 7.0 wheel guidance, test layout clarification, requirements cleanup |
 | **v2.1.3** | 13-01-2026 | 🐛 Patch | WebUI payload optimization, type hints, logging, Dockerfile simplification |
 | **v2.1.2** | 10-01-2026 | 🐛 Patch | PyTorch allocator auto-config, timestamp fixes, log improvements, ROCm deps |
@@ -479,6 +480,10 @@ python -m insanely_fast_whisper_rocm.api --debug
 
 # Launch with SSL (ensure dummy.key and dummy.crt exist or provide paths)
 # python -m insanely_fast_whisper_rocm.api --ssl-keyfile dummy.key --ssl-certfile dummy.crt
+
+> **Note:** Docker Compose defaults map the API to port **8888** (production) and
+> **8889** (dev). The application itself defaults to **8000**, so ensure your
+> `.env`/Compose variables align with your desired port.
 ```
 
 **API Parameters:**
@@ -523,6 +528,9 @@ python -m insanely_fast_whisper_rocm.webui --debug
 
 # Custom host and port
 python -m insanely_fast_whisper_rocm.webui --port 7860 --host 0.0.0.0 --debug
+
+> **Note:** Docker Compose defaults map the WebUI to port **7860** (production)
+> and **7862** (dev). Use `WEBUI_PORT` / `DEV_WEBUI_PORT` to align.
 ```
 
 ### CLI (Command Line Interface) Details
@@ -1296,7 +1304,9 @@ pdm install -G rocm-7-0,bench,dev
 
 ### Relationship with `requirements-*.txt` Files
 
-The Docker build now uses PDM to install all project dependencies directly from [`pyproject.toml`](pyproject.toml) via `pdm install --prod`. The `requirements-*.txt` files are maintained only for docker builds to keep a smaller memory footprint.
+Docker builds install dependencies from the exported `requirements-*.txt` files
+using `pip` (see `Dockerfile`/`Dockerfile.dev`). The requirements exports remain
+the source of truth for container builds to keep image sizes lean.
 
 Ideally, these `requirements.txt` files can be generated from `pdm.lock` using `pdm export` to ensure consistency:
 
