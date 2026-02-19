@@ -93,18 +93,17 @@ include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-r
 
 [project.optional-dependencies]
 dev = [
-    "pytest==9.0.2",
-    "pytest-cov==7.0.0",
-    "ruff==0.14.11",
-    "types-PyYAML==6.0.12.20250915",
-    "typing-extensions==4.15.0",
-    "docstr-coverage==2.3.2",
-    "interrogate==1.7.0",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.11",
+    "types-PyYAML>=6.0.12.20250915",
+    "typing-extensions>=4.15.0",
+    "docstr-coverage>=2.3.2",
+    "interrogate>=1.7.0",
 ]
 
 # Should allow version from rocm-wheels-6.4.1 and rocm-wheels-7.0
 rocm-6-4-1 = [
-
     # "torch==2.7.1+rocm6.4.1",
     "torch==2.6.0+rocm6.4.1.git1ded221d",
     # "torchaudio==2.7.1+rocm6.4.1",
