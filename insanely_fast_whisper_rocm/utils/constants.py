@@ -161,10 +161,17 @@ MAX_CONCURRENT_REQUESTS = 10  # Maximum number of concurrent processing requests
 DEFAULT_PROGRESS_GROUP_SIZE = int(os.getenv("PROGRESS_GROUP_SIZE", "4"))
 
 # Diarization configuration
+DEFAULT_DIARIZE = os.getenv("DIARIZE_DEFAULT", "false").lower() == "true"
+DEFAULT_NUM_SPEAKERS = None  # None means auto-detect
+DEFAULT_DIARIZATION_DEVICE = os.getenv("DIARIZATION_DEVICE", "cpu")
 DEFAULT_DIARIZATION_MODEL = os.getenv(
-    "WHISPER_DIARIZATION_MODEL", "pyannote/speaker-diarization"
+    "WHISPER_DIARIZATION_MODEL", "pyannote/speaker-diarization-3.1"
 )
-HF_TOKEN = os.getenv("HF_TOKEN")
+HF_TOKEN = (
+    os.getenv("HF_TOKEN")
+    or os.getenv("HUGGINGFACE_TOKEN")
+    or os.getenv("HUGGINGFACE_HUB_TOKEN")
+)
 MIN_SPEAKERS = 1  # Minimum number of speakers for diarization
 MAX_SPEAKERS = 10  # Maximum number of speakers for diarization
 

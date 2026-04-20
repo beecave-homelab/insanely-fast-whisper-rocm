@@ -207,6 +207,13 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                             raise
                     else:
                         raise
+                # from_pretrained loads onto CPU by default;
+                # move to target device immediately so the device
+                # check below is accurate and the pipeline doesn't
+                # need to do it later.
+                if self.effective_device != "cpu":
+                    model = model.to(self.effective_device)
+
                 model_device = getattr(model, "device", None)
                 if model_device is None:
                     model_parameters = getattr(model, "parameters", None)

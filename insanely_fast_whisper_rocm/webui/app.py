@@ -11,6 +11,7 @@ import click
 from insanely_fast_whisper_rocm.utils import constants
 from insanely_fast_whisper_rocm.utils.constants import (
     DEFAULT_DEMUCS,
+    DEFAULT_DIARIZE,
     DEFAULT_MODEL,
     DEFAULT_STABILIZE,
     DEFAULT_VAD,
@@ -72,6 +73,11 @@ logger = logging.getLogger("insanely_fast_whisper_rocm.webui.app")
     help="Enable word-level timestamp stabilization.",
 )
 @click.option(
+    "--diarize/--no-diarize",
+    default=DEFAULT_DIARIZE,
+    help="Enable speaker diarization by default in the WebUI.",
+)
+@click.option(
     "--debug",
     is_flag=True,
     help="Enable debug logging.",
@@ -85,6 +91,7 @@ def launch_webui(
     demucs: bool,
     vad: bool,
     vad_threshold: float,
+    diarize: bool,
     debug: bool,
 ) -> None:
     """Launch the Insanely Fast Whisper WebUI."""
@@ -113,6 +120,7 @@ def launch_webui(
         default_demucs=demucs,
         default_vad=vad,
         default_vad_threshold=vad_threshold,
+        default_diarize=diarize,
     )
 
     # Launch the interface

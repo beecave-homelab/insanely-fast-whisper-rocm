@@ -23,6 +23,7 @@ from insanely_fast_whisper_rocm.audio.processing import extract_audio_from_video
 from insanely_fast_whisper_rocm.core.asr_backend import HuggingFaceBackendConfig
 from insanely_fast_whisper_rocm.core.cancellation import CancellationToken
 from insanely_fast_whisper_rocm.core.errors import (
+    DiarizationError,
     OutOfMemoryError,
     TranscriptionCancelledError,
     TranscriptionError,
@@ -85,6 +86,12 @@ class TranscriptionConfig:  # pylint: disable=too-many-instance-attributes
     demucs: bool = DEFAULT_DEMUCS
     vad: bool = DEFAULT_VAD
     vad_threshold: float = DEFAULT_VAD_THRESHOLD
+    # Diarization options
+    diarize: bool = False
+    num_speakers: int | None = None
+    min_speakers: int = 1
+    max_speakers: int = 10
+    diarization_device: str = "cpu"
 
 
 @dataclass
@@ -654,6 +661,61 @@ def transcribe(
                     None,
                     desc=(f"Stabilization complete for {original_file_name_for_desc}"),
                 )
+
+            _ensure_not_cancelled()
+
+        # Optional diarization post-processing
+        if config.diarize:
+            _ensure_not_cancelled()
+            logger.info(
+                "Diarization enabled for %s (device=%s, num=%s, min=%s, max=%s)",
+                original_file_name_for_desc,
+                config.diarization_device,
+                config.num_speakers,
+                config.min_speakers,
+                config.max_speakers,
+            )
+            try:
+                from insanely_fast_whisper_rocm.core.integrations.diarization import (
+                    diarize as diarize_result,
+                )
+
+                if progress_tracker_instance is not None:
+                    progress_tracker_instance(
+                        None, desc="Running speaker diarization..."
+                    )
+                result = diarize_result(
+                    result,
+                    audio_path=audio_file_path,
+                    num_speakers=config.num_speakers,
+                    min_speakers=config.min_speakers,
+                    max_speakers=config.max_speakers,
+                    device=config.diarization_device,
+                    hf_token=constants.HF_TOKEN,
+                )
+                if result.get("diarized"):
+                    logger.info(
+                        "Diarization completed for %s", original_file_name_for_desc
+                    )
+                else:
+                    logger.warning(
+                        "Diarization did not annotate result for %s",
+                        original_file_name_for_desc,
+                    )
+            except DiarizationError as exc:
+                logger.warning("Diarization failed: %s", exc)
+                result = {
+                    **result,
+                    "diarized": False,
+                    "diarization_error": str(exc),
+                }
+            except Exception as exc:  # pragma: no cover — defensive
+                logger.warning("Diarization failed: %s", exc)
+                result = {
+                    **result,
+                    "diarized": False,
+                    "diarization_error": str(exc),
+                }
 
             _ensure_not_cancelled()
 
