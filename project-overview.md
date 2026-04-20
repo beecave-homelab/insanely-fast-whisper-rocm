@@ -1314,17 +1314,17 @@ Ideally, these `requirements.txt` files can be generated from `pdm.lock` using `
 # Export default dependencies
 pdm export -o requirements.txt --without-hashes --prod
 
-# Export a specific group (e.g., rocm)
-pdm export -G rocm-7-0,bench -o requirements-rocm-v7-0.txt --without-hashes 
+# Export ROCm v7.0 dependencies used by containers (includes diarization)
+pdm export -G rocm-7-0,bench,diarization -o requirements-rocm-v7-0.txt --without-hashes
 
-# Export a specific group (e.g., rocm)
-pdm export -G rocm-6-4-1,bench -o requirements-rocm-v6-4-1.txt --without-hashes
+# Export ROCm v6.4.1 dependencies used by containers (includes diarization)
+pdm export -G rocm-6-4-1,bench,diarization -o requirements-rocm-v6-4-1.txt --without-hashes
 
 # Export development dependencies
 pdm export -G dev -o requirements-dev.txt --without-hashes --no-default
 
-# Export all dependencies
-pdm export -G rocm-7-0,bench,dev -o requirements-all.txt --without-hashes --no-extras
+# Export all dependencies used by the dev container
+pdm export -G rocm-7-0,bench,dev,diarization -o requirements-all.txt --without-hashes --no-extras
 ```
 
 This practice helps keep them synchronized with the PDM-managed dependencies.
