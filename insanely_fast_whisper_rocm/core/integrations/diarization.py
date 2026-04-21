@@ -23,7 +23,10 @@ try:
     import torchcodec  # noqa: F401
 
     _TORCHCODEC_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError):
+    # ImportError: package not installed.
+    # OSError: package installed but native libs fail to load (e.g. ROCm
+    # PyTorch build has incompatible symbols, or FFmpeg .so missing).
     _TORCHCODEC_AVAILABLE = False
 
 logger = logging.getLogger(__name__)

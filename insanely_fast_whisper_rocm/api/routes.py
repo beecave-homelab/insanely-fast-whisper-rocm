@@ -18,9 +18,6 @@ from insanely_fast_whisper_rocm.core.errors import (
     DiarizationError,
     OutOfMemoryError,
 )
-from insanely_fast_whisper_rocm.core.integrations.diarization import (
-    diarize as diarize_result,
-)
 from insanely_fast_whisper_rocm.core.integrations.stable_ts import (
     stabilize_timestamps,
 )
@@ -183,6 +180,10 @@ async def create_transcription(
         # Optional diarization (post-process)
         if diarize:
             try:
+                from insanely_fast_whisper_rocm.core.integrations.diarization import (
+                    diarize as diarize_result,
+                )
+
                 result = diarize_result(
                     result,
                     audio_path=temp_filepath,
@@ -338,6 +339,10 @@ async def create_translation(
         # Optional diarization (post-process)
         if diarize:
             try:
+                from insanely_fast_whisper_rocm.core.integrations.diarization import (
+                    diarize as diarize_result,
+                )
+
                 result = diarize_result(
                     result,
                     audio_path=temp_filepath,
