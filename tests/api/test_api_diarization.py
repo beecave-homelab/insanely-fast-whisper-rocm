@@ -32,7 +32,7 @@ def _mock_diarize_ok() -> None:
         "diarized": True,
     }
     with patch(
-        "insanely_fast_whisper_rocm.api.routes.diarize_result",
+        "insanely_fast_whisper_rocm.core.integrations.diarization.diarize",
         return_value=diarized_result,
     ):
         yield
@@ -46,7 +46,7 @@ def _mock_diarize_error() -> None:
         None: Control returns to the test after the patch is applied.
     """
     with patch(
-        "insanely_fast_whisper_rocm.api.routes.diarize_result",
+        "insanely_fast_whisper_rocm.core.integrations.diarization.diarize",
         side_effect=DiarizationError(
             "HF_TOKEN required",
             model="pyannote/speaker-diarization-3.1",
