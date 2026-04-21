@@ -27,6 +27,7 @@ COPY requirements-all.txt /app/
 
 # Install project dependencies from requirements files.
 RUN pip install --no-cache-dir -r requirements-all.txt
+RUN pip uninstall -y torchcodec
 
 # Copy the project definition file to leverage Docker layer caching for dependencies
 COPY pyproject.toml /app/
@@ -37,10 +38,11 @@ COPY openapi.yaml /app/
 # It assumes your main package source is in the 'insanely_fast_whisper_rocm' directory.
 COPY ./insanely_fast_whisper_rocm /app/insanely_fast_whisper_rocm/
 
-# Now, install the local package itself
-# This command reads pyproject.toml (already copied) and installs the current project.
+# Now, install the local package itself (no-deps: all dependencies are already
+# installed from the PDM-generated requirements file which excludes torchcodec
+# and other ROCm-incompatible packages).
 RUN pip install -U pip
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir --no-deps .
 
 # After `pip install .`, the package `insanely_fast_whisper_rocm` and its CLI/modules
 # should be available in the Python environment.
