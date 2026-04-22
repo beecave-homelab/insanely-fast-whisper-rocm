@@ -844,11 +844,12 @@ The core segmentation engine that implements readability rules.
 class Word:
     text: str
     start: float  # seconds
-    end: float    # seconds
+    end: float  # seconds
+
 
 @dataclass
 class Segment:
-    text: str        # May contain \n for line breaks
+    text: str  # May contain \n for line breaks
     start: float
     end: float
     words: list[Word]
@@ -1049,8 +1050,8 @@ To change line length limits:
 
 ```python
 # In .env or environment
-MAX_LINE_CHARS=50  # Increase from 42
-MAX_BLOCK_CHARS=100  # Increase proportionally
+MAX_LINE_CHARS = 50  # Increase from 42
+MAX_BLOCK_CHARS = 100  # Increase proportionally
 ```
 
 Or programmatically in tests:

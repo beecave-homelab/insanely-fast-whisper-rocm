@@ -411,13 +411,16 @@ from __future__ import annotations
 from typing import Protocol
 import pathlib
 
+
 class Storage(Protocol):
     def write(self, path: pathlib.Path, data: bytes) -> None: ...
+
 
 class FileStorage:
     def write(self, path: pathlib.Path, data: bytes) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
+
 
 class Uploader:
     """Upload artifacts using an injected Storage (DIP, OCP, ISP).
@@ -425,12 +428,14 @@ class Uploader:
     Args:
         storage: Minimal interface that supports 'write'.
     """
+
     def __init__(self, storage: Storage) -> None:
         self._storage = storage  # DIP
 
     def publish(self, dest: pathlib.Path, payload: bytes) -> None:
         # SRP: only orchestrates publication; no direct filesystem logic here.
         self._storage.write(dest, payload)
+
 
 # LSP test idea: any Storage conformer can be used transparently (FakeStorage, S3Storage, ...).
 ```
@@ -485,6 +490,7 @@ These rules standardize how environment variables are loaded and accessed across
 # <package>/utils/env_loader.py
 from __future__ import annotations
 import os
+
 
 def load_project_env() -> dict[str, str]:
     # Parse once: could expand to load .env, validate, coerce types, etc.
