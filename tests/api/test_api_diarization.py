@@ -132,3 +132,22 @@ def test_error_response_when_hf_token_missing(
     )
     assert response.status_code == 400
     assert "HF_TOKEN" in response.json()["detail"]
+
+
+def test_invalid_diarization_device_returns_400(
+    client: TestClient,
+    mock_orchestrator: pytest.MonkeyPatch,
+) -> None:
+    """Invalid diarization_device form value returns an HTTP 400 error."""
+    audio_file = io.BytesIO(DUMMY_WAV_HEADER)
+    response = client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("test.wav", audio_file, "audio/wav")},
+        data={
+            "diarize": "true",
+            "diarization_device": "invalid-device",
+            "response_format": "json",
+        },
+    )
+    assert response.status_code == 400
+    assert "Invalid diarization_device" in response.json()["detail"]

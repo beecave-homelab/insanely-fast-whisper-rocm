@@ -120,13 +120,17 @@ def test_diarize_assigns_speakers_to_chunks() -> None:
     mock_pipeline_cls = MagicMock()
     mock_pipeline_cls.from_pretrained.return_value = mock_pipeline_instance
 
-    with patch(
-        "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
-        mock_pipeline_cls,
-    ), patch(
-        "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
-        False,
-    ), patch("torchaudio.load") as mock_load:
+    with (
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
+            mock_pipeline_cls,
+        ),
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
+            False,
+        ),
+        patch("torchaudio.load") as mock_load,
+    ):
         mock_load.return_value = (MagicMock(shape=torch.Size([1, 48000])), 16000)
         out = diarize(
             result,
@@ -183,6 +187,16 @@ def test_align_multiple_speakers_dominant() -> None:
     ]
     aligned = _align_speakers_to_segments(chunks, turns)
     assert aligned[0]["speaker"] == "B"
+
+
+def test_align_handles_none_timestamp_end() -> None:
+    """Chunk with ``timestamp=(start, None)`` does not crash alignment."""
+    chunks = [{"timestamp": (2.0, None), "text": "tail"}]
+    turns = [(1.0, 3.0, "A")]
+
+    aligned = _align_speakers_to_segments(chunks, turns)
+
+    assert aligned[0]["speaker"] is None
 
 
 # ---------------------------------------------------------------------------
@@ -276,13 +290,17 @@ def test_diarize_raises_on_inference_error() -> None:
     mock_pipeline_cls = MagicMock()
     mock_pipeline_cls.from_pretrained.return_value = mock_pipeline_instance
 
-    with patch(
-        "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
-        mock_pipeline_cls,
-    ), patch(
-        "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
-        False,
-    ), patch("torchaudio.load") as mock_load:
+    with (
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
+            mock_pipeline_cls,
+        ),
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
+            False,
+        ),
+        patch("torchaudio.load") as mock_load,
+    ):
         mock_load.return_value = (MagicMock(shape=torch.Size([1, 48000])), 16000)
         with pytest.raises(DiarizationError, match="inference"):
             diarize(result, audio_path="/fake.wav", hf_token="tok")
@@ -308,13 +326,17 @@ def test_diarize_no_chunks_returns_unchanged() -> None:
     mock_pipeline_cls = MagicMock()
     mock_pipeline_cls.from_pretrained.return_value = mock_pipeline_instance
 
-    with patch(
-        "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
-        mock_pipeline_cls,
-    ), patch(
-        "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
-        False,
-    ), patch("torchaudio.load") as mock_load:
+    with (
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
+            mock_pipeline_cls,
+        ),
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
+            False,
+        ),
+        patch("torchaudio.load") as mock_load,
+    ):
         mock_load.return_value = (MagicMock(shape=torch.Size([1, 48000])), 16000)
         out = diarize(result, audio_path="/fake.wav", hf_token="tok")
 
@@ -340,13 +362,17 @@ def test_diarize_no_speaker_turns_returns_unchanged() -> None:
     mock_pipeline_cls = MagicMock()
     mock_pipeline_cls.from_pretrained.return_value = mock_pipeline_instance
 
-    with patch(
-        "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
-        mock_pipeline_cls,
-    ), patch(
-        "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
-        False,
-    ), patch("torchaudio.load") as mock_load:
+    with (
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
+            mock_pipeline_cls,
+        ),
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
+            False,
+        ),
+        patch("torchaudio.load") as mock_load,
+    ):
         mock_load.return_value = (MagicMock(shape=torch.Size([1, 48000])), 16000)
         out = diarize(result, audio_path="/fake.wav", hf_token="tok")
 
@@ -378,13 +404,17 @@ def test_diarize_preloads_audio_when_torchcodec_unavailable() -> None:
     mock_pipeline_cls.from_pretrained.return_value = mock_pipeline_instance
 
     mock_waveform = MagicMock(shape=torch.Size([1, 48000]))
-    with patch(
-        "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
-        mock_pipeline_cls,
-    ), patch(
-        "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
-        False,
-    ), patch("torchaudio.load") as mock_load:
+    with (
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
+            mock_pipeline_cls,
+        ),
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
+            False,
+        ),
+        patch("torchaudio.load") as mock_load,
+    ):
         mock_load.return_value = (mock_waveform, 16000)
         out = diarize(result, audio_path="/fake.wav", hf_token="tok")
 
@@ -417,12 +447,15 @@ def test_diarize_passes_file_path_when_torchcodec_available() -> None:
     mock_pipeline_cls = MagicMock()
     mock_pipeline_cls.from_pretrained.return_value = mock_pipeline_instance
 
-    with patch(
-        "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
-        mock_pipeline_cls,
-    ), patch(
-        "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
-        True,
+    with (
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
+            mock_pipeline_cls,
+        ),
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
+            True,
+        ),
     ):
         out = diarize(result, audio_path="/fake.wav", hf_token="tok")
 
@@ -430,3 +463,54 @@ def test_diarize_passes_file_path_when_torchcodec_available() -> None:
     call_args = mock_pipeline_instance.call_args
     assert call_args[0][0] == "/fake.wav"
     assert out["diarized"] is True
+
+
+def test_diarize_preserves_stabilized_segments_structure() -> None:
+    """Diarization keeps existing ``segments`` shape while adding speakers."""
+    result = {
+        "text": "Hello world. Goodbye world.",
+        "chunks": [
+            {"timestamp": (0.0, 2.0), "text": "Hello world."},
+            {"timestamp": (2.0, 4.0), "text": "Goodbye world."},
+        ],
+        "segments": [
+            {"start": 0.0, "end": 2.0, "text": "Hello world."},
+            {"start": 2.0, "end": 4.0, "text": "Goodbye world."},
+        ],
+    }
+
+    mock_annotation = MagicMock()
+    mock_annotation.itertracks.return_value = [
+        (MagicMock(start=0.0, end=2.0), None, "SPEAKER_00"),
+        (MagicMock(start=2.0, end=4.0), None, "SPEAKER_01"),
+    ]
+
+    mock_output = MagicMock(spec=[])
+    mock_output.speaker_diarization = mock_annotation
+
+    mock_pipeline_instance = MagicMock()
+    mock_pipeline_instance.return_value = mock_output
+    mock_pipeline_instance.to.return_value = mock_pipeline_instance
+
+    mock_pipeline_cls = MagicMock()
+    mock_pipeline_cls.from_pretrained.return_value = mock_pipeline_instance
+
+    with (
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
+            mock_pipeline_cls,
+        ),
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
+            False,
+        ),
+        patch("torchaudio.load") as mock_load,
+    ):
+        mock_load.return_value = (MagicMock(shape=torch.Size([1, 48000])), 16000)
+        out = diarize(result, audio_path="/fake.wav", hf_token="tok")
+
+    assert out["diarized"] is True
+    assert "timestamp" in out["chunks"][0]
+    assert out["segments"][0]["start"] == 0.0
+    assert out["segments"][0]["end"] == 2.0
+    assert out["segments"][0]["speaker"] == "SPEAKER_00"

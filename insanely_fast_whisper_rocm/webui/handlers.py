@@ -36,6 +36,8 @@ from insanely_fast_whisper_rocm.utils import (
     DEFAULT_BATCH_SIZE,
     DEFAULT_DEMUCS,
     DEFAULT_DEVICE,
+    DEFAULT_DIARIZATION_DEVICE,
+    DEFAULT_DIARIZE,
     DEFAULT_LANGUAGE,
     DEFAULT_MODEL,
     DEFAULT_STABILIZE,
@@ -87,11 +89,11 @@ class TranscriptionConfig:  # pylint: disable=too-many-instance-attributes
     vad: bool = DEFAULT_VAD
     vad_threshold: float = DEFAULT_VAD_THRESHOLD
     # Diarization options
-    diarize: bool = False
+    diarize: bool = DEFAULT_DIARIZE
     num_speakers: int | None = None
-    min_speakers: int = 1
-    max_speakers: int = 10
-    diarization_device: str = "cpu"
+    min_speakers: int | None = None
+    max_speakers: int | None = None
+    diarization_device: str = DEFAULT_DIARIZATION_DEVICE
 
 
 @dataclass

@@ -25,6 +25,8 @@ from insanely_fast_whisper_rocm.core.orchestrator import create_orchestrator
 from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_rocm.utils import (
     DEFAULT_DEMUCS,
+    DEFAULT_DIARIZATION_DEVICE,
+    DEFAULT_DIARIZE,
     DEFAULT_STABILIZE,
     DEFAULT_TIMESTAMP_TYPE,
     DEFAULT_VAD,
@@ -38,6 +40,7 @@ from insanely_fast_whisper_rocm.utils import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+VALID_DIARIZATION_DEVICES = {"cpu", "cuda", "gpu"}
 
 
 @router.post(
@@ -83,12 +86,13 @@ async def create_transcription(
     vad_threshold: float = Form(
         DEFAULT_VAD_THRESHOLD, description="VAD threshold for speech detection"
     ),
-    diarize: bool = Form(False, description="Enable speaker diarization"),
+    diarize: bool = Form(DEFAULT_DIARIZE, description="Enable speaker diarization"),
     num_speakers: int | None = Form(None, description="Exact number of speakers"),
     min_speakers: int | None = Form(None, description="Minimum number of speakers"),
     max_speakers: int | None = Form(None, description="Maximum number of speakers"),
     diarization_device: str = Form(
-        "cpu", description="Device for diarization (cpu or cuda)"
+        DEFAULT_DIARIZATION_DEVICE,
+        description="Device for diarization (cpu, cuda, or gpu)",
     ),
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),  # noqa: B008
     file_handler: FileHandler = Depends(get_file_handler),  # noqa: B008
@@ -179,6 +183,16 @@ async def create_transcription(
 
         # Optional diarization (post-process)
         if diarize:
+            if diarization_device not in VALID_DIARIZATION_DEVICES:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Invalid diarization_device "
+                        f"'{diarization_device}'. Must be one of: "
+                        f"{sorted(VALID_DIARIZATION_DEVICES)}"
+                    ),
+                )
+
             try:
                 from insanely_fast_whisper_rocm.core.integrations.diarization import (
                     diarize as diarize_result,
@@ -252,12 +266,13 @@ async def create_translation(
     vad_threshold: float = Form(
         DEFAULT_VAD_THRESHOLD, description="VAD threshold for speech detection"
     ),
-    diarize: bool = Form(False, description="Enable speaker diarization"),
+    diarize: bool = Form(DEFAULT_DIARIZE, description="Enable speaker diarization"),
     num_speakers: int | None = Form(None, description="Exact number of speakers"),
     min_speakers: int | None = Form(None, description="Minimum number of speakers"),
     max_speakers: int | None = Form(None, description="Maximum number of speakers"),
     diarization_device: str = Form(
-        "cpu", description="Device for diarization (cpu or cuda)"
+        DEFAULT_DIARIZATION_DEVICE,
+        description="Device for diarization (cpu, cuda, or gpu)",
     ),
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),  # noqa: B008
     file_handler: FileHandler = Depends(get_file_handler),  # noqa: B008
@@ -338,6 +353,16 @@ async def create_translation(
 
         # Optional diarization (post-process)
         if diarize:
+            if diarization_device not in VALID_DIARIZATION_DEVICES:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Invalid diarization_device "
+                        f"'{diarization_device}'. Must be one of: "
+                        f"{sorted(VALID_DIARIZATION_DEVICES)}"
+                    ),
+                )
+
             try:
                 from insanely_fast_whisper_rocm.core.integrations.diarization import (
                     diarize as diarize_result,

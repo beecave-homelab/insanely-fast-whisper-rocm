@@ -99,6 +99,20 @@ def _get_or_create_pipeline(
         # Another thread may have created the same entry meanwhile.
         if key not in _CACHE:
             _CACHE[key] = pipeline
+        else:
+            # Another thread won the race; move orphaned pipeline off GPU
+            # to avoid leaked device memory.
+            try:
+                import torch
+
+                pipeline.to(torch.device("cpu"))
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                logger.warning(
+                    "Duplicate pipeline created for key=%s; orphan freed", key
+                )
+            except Exception:  # pragma: no cover
+                pass
         return _CACHE[key]
 
 
@@ -173,10 +187,14 @@ def _align_speakers_to_segments(
         # Whisper chunks may use "timestamp" (tuple) or "start"/"end" keys.
         ts = chunk.get("timestamp")
         if ts is not None:
-            chunk_start, chunk_end = ts[0], ts[1]
+            chunk_start = ts[0]
+            chunk_end = ts[1] if len(ts) > 1 and ts[1] is not None else chunk_start
         else:
             chunk_start = chunk.get("start", 0.0)
             chunk_end = chunk.get("end", 0.0)
+
+        if chunk_end is None:
+            chunk_end = chunk_start
 
         best_speaker: str | None = None
         best_overlap = 0.0
@@ -311,9 +329,14 @@ def diarize(
 
     aligned_chunks = _align_speakers_to_segments(chunks, speaker_turns)
 
+    segments = result.get("segments", [])
+    aligned_segments = aligned_chunks
+    if segments and segments is not chunks:
+        aligned_segments = _align_speakers_to_segments(segments, speaker_turns)
+
     return {
         **result,
         "chunks": aligned_chunks,
-        "segments": aligned_chunks,
+        "segments": aligned_segments,
         "diarized": True,
     }

@@ -275,12 +275,14 @@ class TxtFormatter(BaseFormatter):
                         if not text:
                             continue
                         if speaker != prev_speaker:
+                            if lines:
+                                lines.append("")
                             lines.append(f"[{speaker}] {text}" if speaker else text)
                             prev_speaker = speaker
                         else:
                             lines.append(text)
                     if lines:
-                        return " ".join(lines)
+                        return "\n".join(lines)
 
             text = result.get("text", "")
             if not isinstance(text, str):

@@ -154,16 +154,14 @@ def audio_options(func: Callable[..., None]) -> Callable[..., None]:
         click.option(
             "--min-speakers",
             type=click.IntRange(constants.MIN_SPEAKERS, constants.MAX_SPEAKERS),
-            default=constants.MIN_SPEAKERS,
+            default=None,
             help="Minimum number of speakers for diarization",
-            show_default=True,
         ),
         click.option(
             "--max-speakers",
             type=click.IntRange(constants.MIN_SPEAKERS, constants.MAX_SPEAKERS),
-            default=constants.MAX_SPEAKERS,
+            default=None,
             help="Maximum number of speakers for diarization",
-            show_default=True,
         ),
         click.option(
             "--diarization-device",
