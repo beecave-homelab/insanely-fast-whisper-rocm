@@ -193,7 +193,8 @@ async def create_transcription(
         num_speakers: Exact number of speakers (auto-detect if None).
         min_speakers: Minimum number of speakers for diarization.
         max_speakers: Maximum number of speakers for diarization.
-        diarization_device: Device for diarization ("cpu" or "cuda").
+        diarization_device: Device for diarization ("cpu", "cuda", or
+            "gpu"; "gpu" is an alias for "cuda").
         asr_pipeline: Injected ASR pipeline instance
         file_handler: Injected file handler instance
 
@@ -348,7 +349,8 @@ async def create_translation(
         num_speakers: Exact number of speakers (auto-detect if None).
         min_speakers: Minimum number of speakers for diarization.
         max_speakers: Maximum number of speakers for diarization.
-        diarization_device: Device for diarization ("cpu" or "cuda").
+        diarization_device: Device for diarization ("cpu", "cuda", or
+            "gpu"; "gpu" is an alias for "cuda").
         asr_pipeline: Injected ASR pipeline instance
         file_handler: Injected file handler instance
 
