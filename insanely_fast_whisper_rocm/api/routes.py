@@ -43,6 +43,81 @@ router = APIRouter()
 VALID_DIARIZATION_DEVICES = {"cpu", "cuda", "gpu"}
 
 
+def _apply_post_processing(
+    result: dict,
+    *,
+    stabilize: bool,
+    demucs: bool,
+    vad: bool,
+    vad_threshold: float,
+    diarize: bool,
+    diarization_device: str,
+    num_speakers: int | None,
+    min_speakers: int | None,
+    max_speakers: int | None,
+    audio_path: str,
+) -> dict:
+    """Apply optional stabilization and diarization post-processing.
+
+    Args:
+        result: Raw Whisper transcription result.
+        stabilize: Whether to run timestamp stabilization.
+        demucs: Enable Demucs noise reduction in stabilization.
+        vad: Enable VAD in stabilization.
+        vad_threshold: VAD sensitivity threshold.
+        diarize: Whether to run speaker diarization.
+        diarization_device: Device for diarization pipeline.
+        num_speakers: Exact speaker count (None = auto).
+        min_speakers: Minimum speaker count.
+        max_speakers: Maximum speaker count.
+        audio_path: Path to the audio file on disk.
+
+    Returns:
+        The result dict, potentially enriched with stabilization and/or
+        speaker labels.
+
+    Raises:
+        HTTPException: If diarization_device is invalid or diarization fails.
+    """
+    if stabilize:
+        try:
+            result = stabilize_timestamps(
+                result, demucs=demucs, vad=vad, vad_threshold=vad_threshold
+            )
+        except Exception as stab_exc:  # noqa: BLE001
+            logger.error("Stabilization failed: %s", stab_exc, exc_info=True)
+
+    if diarize:
+        if diarization_device not in VALID_DIARIZATION_DEVICES:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Invalid diarization_device "
+                    f"'{diarization_device}'. Must be one of: "
+                    f"{sorted(VALID_DIARIZATION_DEVICES)}"
+                ),
+            )
+
+        try:
+            from insanely_fast_whisper_rocm.core.integrations.diarization import (
+                diarize as diarize_result,
+            )
+
+            result = diarize_result(
+                result,
+                audio_path=audio_path,
+                num_speakers=num_speakers,
+                min_speakers=min_speakers,
+                max_speakers=max_speakers,
+                device=diarization_device,
+                hf_token=HF_TOKEN,
+            )
+        except DiarizationError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return result
+
+
 @router.post(
     "/v1/audio/transcriptions",
     tags=["Transcription"],
@@ -172,43 +247,20 @@ async def create_transcription(
                 raise
             raise HTTPException(status_code=500, detail=str(e)) from e
 
-        # Optional stabilization (post-process) applied here for API
-        if stabilize:
-            try:
-                result = stabilize_timestamps(
-                    result, demucs=demucs, vad=vad, vad_threshold=vad_threshold
-                )
-            except Exception as stab_exc:  # noqa: BLE001
-                logger.error("Stabilization failed: %s", stab_exc, exc_info=True)
-
-        # Optional diarization (post-process)
-        if diarize:
-            if diarization_device not in VALID_DIARIZATION_DEVICES:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        "Invalid diarization_device "
-                        f"'{diarization_device}'. Must be one of: "
-                        f"{sorted(VALID_DIARIZATION_DEVICES)}"
-                    ),
-                )
-
-            try:
-                from insanely_fast_whisper_rocm.core.integrations.diarization import (
-                    diarize as diarize_result,
-                )
-
-                result = diarize_result(
-                    result,
-                    audio_path=temp_filepath,
-                    num_speakers=num_speakers,
-                    min_speakers=min_speakers,
-                    max_speakers=max_speakers,
-                    device=diarization_device,
-                    hf_token=HF_TOKEN,
-                )
-            except DiarizationError as e:
-                raise HTTPException(status_code=400, detail=str(e)) from e
+        # Optional post-processing (stabilization + diarization)
+        result = _apply_post_processing(
+            result,
+            stabilize=stabilize,
+            demucs=demucs,
+            vad=vad,
+            vad_threshold=vad_threshold,
+            diarize=diarize,
+            diarization_device=diarization_device,
+            num_speakers=num_speakers,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+            audio_path=temp_filepath,
+        )
 
         logger.info("Transcription completed successfully")
 
@@ -342,43 +394,20 @@ async def create_translation(
                 raise
             raise HTTPException(status_code=500, detail=str(e)) from e
 
-        # Optional stabilization (post-process) applied here for API
-        if stabilize:
-            try:
-                result = stabilize_timestamps(
-                    result, demucs=demucs, vad=vad, vad_threshold=vad_threshold
-                )
-            except Exception as stab_exc:  # noqa: BLE001
-                logger.error("Stabilization failed: %s", stab_exc, exc_info=True)
-
-        # Optional diarization (post-process)
-        if diarize:
-            if diarization_device not in VALID_DIARIZATION_DEVICES:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        "Invalid diarization_device "
-                        f"'{diarization_device}'. Must be one of: "
-                        f"{sorted(VALID_DIARIZATION_DEVICES)}"
-                    ),
-                )
-
-            try:
-                from insanely_fast_whisper_rocm.core.integrations.diarization import (
-                    diarize as diarize_result,
-                )
-
-                result = diarize_result(
-                    result,
-                    audio_path=temp_filepath,
-                    num_speakers=num_speakers,
-                    min_speakers=min_speakers,
-                    max_speakers=max_speakers,
-                    device=diarization_device,
-                    hf_token=HF_TOKEN,
-                )
-            except DiarizationError as e:
-                raise HTTPException(status_code=400, detail=str(e)) from e
+        # Optional post-processing (stabilization + diarization)
+        result = _apply_post_processing(
+            result,
+            stabilize=stabilize,
+            demucs=demucs,
+            vad=vad,
+            vad_threshold=vad_threshold,
+            diarize=diarize,
+            diarization_device=diarization_device,
+            num_speakers=num_speakers,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+            audio_path=temp_filepath,
+        )
 
         logger.info("Translation completed successfully")
         logger.debug("Translation result: %s", result)
