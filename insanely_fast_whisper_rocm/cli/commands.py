@@ -27,6 +27,7 @@ from insanely_fast_whisper_rocm.cli.progress_tqdm import TqdmProgressReporter
 from insanely_fast_whisper_rocm.core.cancellation import CancellationToken
 from insanely_fast_whisper_rocm.core.errors import (
     DeviceNotFoundError,
+    DiarizationError,
     TranscriptionCancelledError,
     TranscriptionError,
 )
@@ -180,6 +181,12 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
     demucs: bool = kwargs.pop("demucs")
     vad: bool = kwargs.pop("vad")
     vad_threshold: float = kwargs.pop("vad_threshold")
+    # Diarization options
+    diarize: bool = kwargs.pop("diarize", False)
+    num_speakers: int | None = kwargs.pop("num_speakers", None)
+    min_speakers: int | None = kwargs.pop("min_speakers", None)
+    max_speakers: int | None = kwargs.pop("max_speakers", None)
+    diarization_device: str = kwargs.pop("diarization_device", "cpu")
 
     debug: bool = kwargs.pop("debug", False)
     quiet: bool = kwargs.pop("quiet", False)
@@ -391,13 +398,49 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
 
         _ensure_not_cancelled()
 
+        # Optional diarization post-processing
+        if diarize:
+            _ensure_not_cancelled()
+            from insanely_fast_whisper_rocm.core.integrations.diarization import (
+                diarize as diarize_result,
+            )
+
+            reporter.on_postprocess_started("diarization")
+            try:
+                result = diarize_result(
+                    result,
+                    audio_path=str(audio_file),
+                    num_speakers=num_speakers,
+                    min_speakers=min_speakers,
+                    max_speakers=max_speakers,
+                    device=diarization_device,
+                    hf_token=constants.HF_TOKEN,
+                )
+            except DiarizationError as exc:
+                if not quiet:
+                    click.secho(
+                        f"\u26a0\ufe0f  Diarization failed: {exc}",
+                        fg="yellow",
+                    )
+            except Exception as exc:  # pragma: no cover — defensive
+                if not quiet:
+                    click.secho(
+                        f"\u26a0\ufe0f  Diarization failed: {exc}",
+                        fg="yellow",
+                    )
+            finally:
+                reporter.on_postprocess_finished("diarization")
+
+        _ensure_not_cancelled()
+
         # INFO-level summary (lazy logging) — skip when quiet
         if not quiet:
             logger.info(
-                "Segments: %s | Stabilized: %s (%s)",
+                "Segments: %s | Stabilized: %s (%s) | Diarized: %s",
                 result.get("segments_count"),
                 bool(result.get("stabilized")),
                 result.get("stabilization_path", "n/a"),
+                bool(result.get("diarized")),
             )
 
         total_time = time.time() - start_time

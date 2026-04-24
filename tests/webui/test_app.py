@@ -139,6 +139,44 @@ class TestLaunchWebUI:
 
     @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")
     @patch("insanely_fast_whisper_rocm.webui.app.create_ui_components")
+    def test_launch_webui__with_diarization_flag(
+        self, mock_create_ui: MagicMock, mock_download: MagicMock
+    ) -> None:
+        """Test launch_webui with --diarize flag."""
+        runner = CliRunner()
+        mock_iface = Mock()
+        mock_iface.launch = Mock()
+        mock_create_ui.return_value = mock_iface
+
+        with runner.isolated_filesystem():
+            result = runner.invoke(launch_webui, ["--diarize"], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        create_ui_args = mock_create_ui.call_args
+        assert create_ui_args.kwargs["default_diarize"] is True
+
+    @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.webui.app.create_ui_components")
+    def test_launch_webui__with_no_diarization_flag(
+        self, mock_create_ui: MagicMock, mock_download: MagicMock
+    ) -> None:
+        """Test launch_webui with --no-diarize flag."""
+        runner = CliRunner()
+        mock_iface = Mock()
+        mock_iface.launch = Mock()
+        mock_create_ui.return_value = mock_iface
+
+        with runner.isolated_filesystem():
+            result = runner.invoke(
+                launch_webui, ["--no-diarize"], catch_exceptions=False
+            )
+
+        assert result.exit_code == 0
+        create_ui_args = mock_create_ui.call_args
+        assert create_ui_args.kwargs["default_diarize"] is False
+
+    @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")
+    @patch("insanely_fast_whisper_rocm.webui.app.create_ui_components")
     def test_launch_webui__with_no_stabilize_flags(
         self, mock_create_ui: MagicMock, mock_download: MagicMock
     ) -> None:
@@ -304,3 +342,4 @@ class TestLaunchWebUI:
         assert create_ui_args.kwargs["default_demucs"] is True
         assert create_ui_args.kwargs["default_vad"] is True
         assert create_ui_args.kwargs["default_vad_threshold"] == 0.4
+        assert create_ui_args.kwargs["default_diarize"] is False

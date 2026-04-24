@@ -216,7 +216,7 @@ class TestCLICommands:
         """Test that CLI group shows help correctly."""
         result = self.runner.invoke(cli, ["--help"])
         assert result.exit_code == 0
-        assert "Insanely Fast Whisper API" in result.output
+        assert "Insanely Fast Whisper" in result.output
         assert "transcribe" in result.output
 
     def test_cli_version(self) -> None:
@@ -1079,6 +1079,208 @@ class TestBenchmarkCollection:
             assert call_args[1]["extra"]["key1"] == "value1"
             assert call_args[1]["extra"]["key2"] == "value2"
             assert "Benchmark saved" in result.output
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+
+class TestCLIDiarizationOptions:
+    """Test CLI diarization options parsing and invocation."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
+    def test_diarize_flag_parsed(self, mock_process: Mock) -> None:
+        """Test that --diarize flag is parsed and passed through."""
+        mock_process.return_value = {
+            "text": "Test",
+            "chunks": [],
+            "runtime_seconds": 1.0,
+        }
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            with patch(
+                "insanely_fast_whisper_rocm.core.integrations.diarization.diarize"
+            ) as mock_diarize:
+                mock_diarize.return_value = {
+                    "text": "Test",
+                    "chunks": [
+                        {
+                            "start": 0.0,
+                            "end": 1.0,
+                            "text": "Test",
+                            "speaker": "SPEAKER_00",
+                        }
+                    ],
+                    "diarized": True,
+                }
+                result = self.runner.invoke(
+                    cli,
+                    ["transcribe", str(tmp_path), "--diarize"],
+                )
+            assert result.exit_code == 0
+            mock_diarize.assert_called_once()
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
+    def test_no_diarize_flag_default(self, mock_process: Mock) -> None:
+        """Test that --no-diarize is the default (diarization not called)."""
+        mock_process.return_value = {
+            "text": "Test",
+            "chunks": [],
+            "runtime_seconds": 1.0,
+        }
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            with patch(
+                "insanely_fast_whisper_rocm.core.integrations.diarization.diarize"
+            ) as mock_diarize:
+                result = self.runner.invoke(
+                    cli,
+                    ["transcribe", str(tmp_path), "--no-diarize"],
+                )
+            assert result.exit_code == 0
+            mock_diarize.assert_not_called()
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
+    def test_num_speakers_option(self, mock_process: Mock) -> None:
+        """Test that --num-speakers is parsed correctly."""
+        mock_process.return_value = {
+            "text": "Test",
+            "chunks": [],
+            "runtime_seconds": 1.0,
+        }
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            with patch(
+                "insanely_fast_whisper_rocm.core.integrations.diarization.diarize"
+            ) as mock_diarize:
+                mock_diarize.return_value = {
+                    "text": "Test",
+                    "chunks": [],
+                    "diarized": True,
+                }
+                result = self.runner.invoke(
+                    cli,
+                    [
+                        "transcribe",
+                        str(tmp_path),
+                        "--diarize",
+                        "--num-speakers",
+                        "3",
+                    ],
+                )
+            assert result.exit_code == 0
+            call_kwargs = mock_diarize.call_args[1]
+            assert call_kwargs["num_speakers"] == 3
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
+    def test_diarization_device_option(self, mock_process: Mock) -> None:
+        """Test that --diarization-device is parsed correctly."""
+        mock_process.return_value = {
+            "text": "Test",
+            "chunks": [],
+            "runtime_seconds": 1.0,
+        }
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            with patch(
+                "insanely_fast_whisper_rocm.core.integrations.diarization.diarize"
+            ) as mock_diarize:
+                mock_diarize.return_value = {
+                    "text": "Test",
+                    "chunks": [],
+                    "diarized": True,
+                }
+                result = self.runner.invoke(
+                    cli,
+                    [
+                        "transcribe",
+                        str(tmp_path),
+                        "--diarize",
+                        "--diarization-device",
+                        "cuda",
+                    ],
+                )
+            assert result.exit_code == 0
+            call_kwargs = mock_diarize.call_args[1]
+            assert call_kwargs["device"] == "cuda"
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
+    def test_num_speakers_autodetect_omitted(self, mock_process: Mock) -> None:
+        """Test that omitting --num-speakers passes None (auto-detect)."""
+        mock_process.return_value = {
+            "text": "Test",
+            "chunks": [],
+            "runtime_seconds": 1.0,
+        }
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            with patch(
+                "insanely_fast_whisper_rocm.core.integrations.diarization.diarize"
+            ) as mock_diarize:
+                mock_diarize.return_value = {
+                    "text": "Test",
+                    "chunks": [],
+                    "diarized": True,
+                }
+                result = self.runner.invoke(
+                    cli,
+                    [
+                        "transcribe",
+                        str(tmp_path),
+                        "--diarize",
+                    ],
+                )
+            assert result.exit_code == 0
+            call_kwargs = mock_diarize.call_args[1]
+            assert call_kwargs["num_speakers"] is None
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    def test_diarization_device_option_rejects_invalid(self) -> None:
+        """Test that --diarization-device rejects invalid values."""
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(
+                cli,
+                [
+                    "transcribe",
+                    str(tmp_path),
+                    "--diarize",
+                    "--diarization-device",
+                    "invalid-device",
+                ],
+            )
+            assert result.exit_code != 0
+            assert (
+                "invalid-device" in result.output.lower() or "Invalid" in result.output
+            )
         finally:
             tmp_path.unlink(missing_ok=True)
 

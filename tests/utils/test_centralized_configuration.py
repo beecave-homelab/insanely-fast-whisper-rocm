@@ -130,21 +130,23 @@ class TestCentralizedConfiguration:
             assert constants_module.AUDIO_CHUNK_OVERLAP == 2.5
             assert constants_module.AUDIO_CHUNK_MIN_DURATION == 10.0
 
-    def test_hf_token_no_fallback(self) -> None:
-        """Test that HF_TOKEN is sourced only from HF_TOKEN env var (no fallback)."""
+    def test_hf_token_alias_fallback(self) -> None:
+        """Test HF token lookup precedence and alias fallback behavior."""
         # When HF_TOKEN is set, constant should reflect it
         with patch(
             "insanely_fast_whisper_rocm.utils.constants.os.getenv"
         ) as mock_getenv:
             mock_getenv.side_effect = lambda key, default=None: {
                 "HF_TOKEN": "primary_token",
+                "HUGGINGFACE_TOKEN": "secondary_token",
+                "HUGGINGFACE_HUB_TOKEN": "tertiary_token",
             }.get(key, default)
 
             reload(constants_module)
 
             assert constants_module.HF_TOKEN == "primary_token"
 
-        # When only HUGGINGFACE_TOKEN is set, HF_TOKEN should remain None
+        # When only HUGGINGFACE_TOKEN is set, it should be used as fallback
         with patch(
             "insanely_fast_whisper_rocm.utils.constants.os.getenv"
         ) as mock_getenv:
@@ -154,7 +156,19 @@ class TestCentralizedConfiguration:
 
             reload(constants_module)
 
-            assert constants_module.HF_TOKEN is None
+            assert constants_module.HF_TOKEN == "fallback_token"
+
+        # When only HUGGINGFACE_HUB_TOKEN is set, it should be used as fallback
+        with patch(
+            "insanely_fast_whisper_rocm.utils.constants.os.getenv"
+        ) as mock_getenv:
+            mock_getenv.side_effect = lambda key, default=None: {
+                "HUGGINGFACE_HUB_TOKEN": "hub_fallback_token",
+            }.get(key, default)
+
+            reload(constants_module)
+
+            assert constants_module.HF_TOKEN == "hub_fallback_token"
 
 
 class TestModuleCentralizedConfigurationUsage:

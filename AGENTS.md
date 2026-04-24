@@ -46,7 +46,7 @@ When in doubt, prefer **correctness → clarity → consistency → brevity** (i
 - [22) Troubleshooting quick guide](#22-troubleshooting-quick-guide)
 - [Final note](#final-note)
 
----
+______________________________________________________________________
 
 ## 1) Correctness (Ruff F - Pyflakes)
 
@@ -64,7 +64,7 @@ When in doubt, prefer **correctness → clarity → consistency → brevity** (i
 - Use local scopes (comprehensions, context managers) where appropriate.
 - Do **not** read configuration from `os.environ` directly outside the dedicated constants module (see section 16).
 
----
+______________________________________________________________________
 
 ## 2) PEP 8 surface rules (Ruff E, W - pycodestyle)
 
@@ -80,7 +80,7 @@ When in doubt, prefer **correctness → clarity → consistency → brevity** (i
 - Break long expressions cleanly (after operators, around commas).
 - End files with exactly one trailing newline.
 
----
+______________________________________________________________________
 
 ## 3) Naming conventions (Ruff N - pep8-naming)
 
@@ -95,7 +95,7 @@ When in doubt, prefer **correctness → clarity → consistency → brevity** (i
 
 - Avoid camelCase unless mirroring a third-party API; if unavoidable, use a targeted pragma for that line only.
 
----
+______________________________________________________________________
 
 ## 4) Imports: order & style (Ruff I - isort rules)
 
@@ -127,7 +127,7 @@ from yourpkg.utils.paths import ensure_dir
 
 *(Replace `yourpkg` with your top-level package. In app-only repos, keep first-party imports minimal.)*
 
----
+______________________________________________________________________
 
 ## 5) Docstrings — content & style (Ruff D + DOC)
 
@@ -176,7 +176,7 @@ class ResourceManager:
     """
 ```
 
----
+______________________________________________________________________
 
 ## 6) Import hygiene (Ruff TID - flake8-tidy-imports)
 
@@ -195,7 +195,7 @@ except ModuleNotFoundError:  # pragma: no cover
     rich = None  # type: ignore[assignment]
 ```
 
----
+______________________________________________________________________
 
 ## 7) Modern Python upgrades (Ruff UP - pyupgrade)
 
@@ -212,7 +212,7 @@ except ModuleNotFoundError:  # pragma: no cover
 - Use assignment expressions (`:=`) sparingly and only when clearer.
 - Prefer `is None`/`is not None`.
 
----
+______________________________________________________________________
 
 ## 8) Future annotations (Ruff FA - flake8-future-annotations)
 
@@ -226,7 +226,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 - Targeting **Python ≥ 3.11**: you may omit it; align the `FA` rule in Ruff config.
 
----
+______________________________________________________________________
 
 ## 9) Local ignores (only when justified)
 
@@ -240,7 +240,7 @@ value = compute()  # noqa: F401  # used by plugin loader via reflection
 
 For docstring mismatches caused by third-party constraints, use a targeted `# noqa: D…, DOC…` with a brief reason.
 
----
+______________________________________________________________________
 
 ## 10) Tests & examples (Pytest + Coverage)
 
@@ -277,7 +277,7 @@ pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml
 - Guideline: **≥ 85%** line coverage, with critical paths covered.
 - Make CI fail below the threshold (see “CI expectations”).
 
----
+______________________________________________________________________
 
 ## 11) Commit discipline
 
@@ -287,7 +287,7 @@ Run Ruff and tests **before** committing. Keep commits small and focused.
 
 Use your project’s conventional commit format.
 
----
+______________________________________________________________________
 
 ## 12) Quick DO / DON’T
 
@@ -306,7 +306,7 @@ Use your project’s conventional commit format.
 - Leave parameters undocumented in public functions.
 - Add broad `noqa`—always keep ignores narrow and justified.
 
----
+______________________________________________________________________
 
 ## 13) Pre-commit (recommended)
 
@@ -323,7 +323,7 @@ repos:
       - id: ruff-format
 ```
 
----
+______________________________________________________________________
 
 ## 14) CI expectations
 
@@ -342,7 +342,7 @@ pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml -
 
 Enforce a minimum coverage threshold (example: 85%). Fail the pipeline if below.
 
----
+______________________________________________________________________
 
 ## 15) SOLID design principles — Explanation & Integration
 
@@ -421,13 +421,16 @@ from __future__ import annotations
 from typing import Protocol
 import pathlib
 
+
 class Storage(Protocol):
     def write(self, path: pathlib.Path, data: bytes) -> None: ...
+
 
 class FileStorage:
     def write(self, path: pathlib.Path, data: bytes) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
+
 
 class Uploader:
     """Upload artifacts using an injected Storage (DIP, OCP, ISP).
@@ -435,12 +438,14 @@ class Uploader:
     Args:
         storage: Minimal interface that supports 'write'.
     """
+
     def __init__(self, storage: Storage) -> None:
         self._storage = storage  # DIP
 
     def publish(self, dest: pathlib.Path, payload: bytes) -> None:
         # SRP: only orchestrates publication; no direct filesystem logic here.
         self._storage.write(dest, payload)
+
 
 # LSP test idea: any Storage conformer can be used transparently (FakeStorage, S3Storage, ...).
 ```
@@ -453,7 +458,7 @@ class Uploader:
 - **ISP**: Prefer small protocols; accept only what you need.
 - **DIP**: Depend on abstractions; inject dependencies (avoid hard-coded singletons/globals).
 
----
+______________________________________________________________________
 
 ## 16) Configuration management — environment variables & constants
 
@@ -479,6 +484,7 @@ These rules standardize how environment variables are loaded and accessed across
 ### 16.4 Enforcement policy
 
 - Pull requests that introduce scattered env access in non-config modules should be rejected in favor of constants imports.
+
 - Suggested CI guardrail (example grep check):
 
   ```bash
@@ -496,7 +502,7 @@ These rules standardize how environment variables are loaded and accessed across
 - Integration tests that depend on env values should set env vars **before** importing `insanely_fast_whisper_rocm.utils.constants`; reload only when required in the same process.
 - Cover both default and overridden env paths for new configuration behavior.
 
----
+______________________________________________________________________
 
 ## 17) Setup & Commands (repo-specific)
 
@@ -557,7 +563,7 @@ pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml
 pdm run local-ci
 ```
 
----
+______________________________________________________________________
 
 ## 18) Project structure quick map
 
@@ -573,7 +579,7 @@ High-level layout (keep this in sync when moving modules):
 - `scripts/`: project automation (`setup_config.py`, `local-ci.sh`, benchmark helpers).
 - `docker-compose*.yaml` + `Dockerfile*`: deployment/runtime definitions.
 
----
+______________________________________________________________________
 
 ## 19) Architecture & runtime patterns
 
@@ -597,7 +603,7 @@ Prefer these module entrypoints (or equivalent `pdm run` scripts) over ad-hoc sc
 - Allocator configuration is normalized in constants (`PYTORCH_ALLOC_CONF` / `PYTORCH_HIP_ALLOC_CONF` handling).
 - Keep GPU/allocator logic centralized; avoid scattering hardware-specific conditionals.
 
----
+______________________________________________________________________
 
 ## 20) Boundaries for code changes
 
@@ -622,7 +628,7 @@ Prefer these module entrypoints (or equivalent `pdm run` scripts) over ad-hoc sc
 - Mix unrelated refactors with bug fixes in one PR.
 - Introduce fallback logic that silently changes model output semantics without tests.
 
----
+______________________________________________________________________
 
 ## 21) Common tasks playbooks
 
@@ -648,7 +654,7 @@ Prefer these module entrypoints (or equivalent `pdm run` scripts) over ad-hoc sc
 3. Validate all response/export formats still behave as expected.
 4. Avoid UI/API workarounds for core-pipeline defects; fix root cause in `core/`.
 
----
+______________________________________________________________________
 
 ## 22) Troubleshooting quick guide
 
@@ -682,7 +688,7 @@ Actions:
 - Dev compose uses `DEV_API_PORT` and `DEV_WEBUI_PORT`.
 - Keep port changes synchronized between `.env`, compose files, and docs.
 
----
+______________________________________________________________________
 
 ## Final note
 

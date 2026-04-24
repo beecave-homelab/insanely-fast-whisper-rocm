@@ -14,16 +14,24 @@ from insanely_fast_whisper_rocm.api.dependencies import (
     get_file_handler,
 )
 from insanely_fast_whisper_rocm.api.responses import ResponseFormatter
-from insanely_fast_whisper_rocm.core.errors import OutOfMemoryError
-from insanely_fast_whisper_rocm.core.integrations.stable_ts import stabilize_timestamps
+from insanely_fast_whisper_rocm.core.errors import (
+    DiarizationError,
+    OutOfMemoryError,
+)
+from insanely_fast_whisper_rocm.core.integrations.stable_ts import (
+    stabilize_timestamps,
+)
 from insanely_fast_whisper_rocm.core.orchestrator import create_orchestrator
 from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_rocm.utils import (
     DEFAULT_DEMUCS,
+    DEFAULT_DIARIZATION_DEVICE,
+    DEFAULT_DIARIZE,
     DEFAULT_STABILIZE,
     DEFAULT_TIMESTAMP_TYPE,
     DEFAULT_VAD,
     DEFAULT_VAD_THRESHOLD,
+    HF_TOKEN,
     RESPONSE_FORMAT_JSON,
     SUPPORTED_RESPONSE_FORMATS,
     FileHandler,
@@ -32,6 +40,82 @@ from insanely_fast_whisper_rocm.utils import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+VALID_DIARIZATION_DEVICES = {"cpu", "cuda", "gpu"}
+
+
+def _apply_post_processing(
+    result: dict,
+    *,
+    stabilize: bool,
+    demucs: bool,
+    vad: bool,
+    vad_threshold: float,
+    diarize: bool,
+    diarization_device: str,
+    num_speakers: int | None,
+    min_speakers: int | None,
+    max_speakers: int | None,
+    audio_path: str,
+) -> dict:
+    """Apply optional stabilization and diarization post-processing.
+
+    Args:
+        result: Raw Whisper transcription result.
+        stabilize: Whether to run timestamp stabilization.
+        demucs: Enable Demucs noise reduction in stabilization.
+        vad: Enable VAD in stabilization.
+        vad_threshold: VAD sensitivity threshold.
+        diarize: Whether to run speaker diarization.
+        diarization_device: Device for diarization pipeline.
+        num_speakers: Exact speaker count (None = auto).
+        min_speakers: Minimum speaker count.
+        max_speakers: Maximum speaker count.
+        audio_path: Path to the audio file on disk.
+
+    Returns:
+        The result dict, potentially enriched with stabilization and/or
+        speaker labels.
+
+    Raises:
+        HTTPException: If diarization_device is invalid or diarization fails.
+    """
+    if stabilize:
+        try:
+            result = stabilize_timestamps(
+                result, demucs=demucs, vad=vad, vad_threshold=vad_threshold
+            )
+        except Exception as stab_exc:  # noqa: BLE001
+            logger.error("Stabilization failed: %s", stab_exc, exc_info=True)
+
+    if diarize:
+        if diarization_device not in VALID_DIARIZATION_DEVICES:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Invalid diarization_device "
+                    f"'{diarization_device}'. Must be one of: "
+                    f"{sorted(VALID_DIARIZATION_DEVICES)}"
+                ),
+            )
+
+        try:
+            from insanely_fast_whisper_rocm.core.integrations.diarization import (
+                diarize as diarize_result,
+            )
+
+            result = diarize_result(
+                result,
+                audio_path=audio_path,
+                num_speakers=num_speakers,
+                min_speakers=min_speakers,
+                max_speakers=max_speakers,
+                device=diarization_device,
+                hf_token=HF_TOKEN,
+            )
+        except DiarizationError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return result
 
 
 @router.post(
@@ -77,6 +161,14 @@ async def create_transcription(
     vad_threshold: float = Form(
         DEFAULT_VAD_THRESHOLD, description="VAD threshold for speech detection"
     ),
+    diarize: bool = Form(DEFAULT_DIARIZE, description="Enable speaker diarization"),
+    num_speakers: int | None = Form(None, description="Exact number of speakers"),
+    min_speakers: int | None = Form(None, description="Minimum number of speakers"),
+    max_speakers: int | None = Form(None, description="Maximum number of speakers"),
+    diarization_device: str = Form(
+        DEFAULT_DIARIZATION_DEVICE,
+        description="Device for diarization (cpu, cuda, or gpu)",
+    ),
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),  # noqa: B008
     file_handler: FileHandler = Depends(get_file_handler),  # noqa: B008
 ) -> str | dict:
@@ -97,6 +189,12 @@ async def create_transcription(
         demucs: Enable Demucs noise reduction if True.
         vad: Enable Voice Activity Detection if True.
         vad_threshold: VAD sensitivity threshold (0.0 - 1.0).
+        diarize: Enable speaker diarization if True.
+        num_speakers: Exact number of speakers (auto-detect if None).
+        min_speakers: Minimum number of speakers for diarization.
+        max_speakers: Maximum number of speakers for diarization.
+        diarization_device: Device for diarization ("cpu", "cuda", or
+            "gpu"; "gpu" is an alias for "cuda").
         asr_pipeline: Injected ASR pipeline instance
         file_handler: Injected file handler instance
 
@@ -150,14 +248,21 @@ async def create_transcription(
                 raise
             raise HTTPException(status_code=500, detail=str(e)) from e
 
-        # Optional stabilization (post-process) applied here for API
-        if stabilize:
-            try:
-                result = stabilize_timestamps(
-                    result, demucs=demucs, vad=vad, vad_threshold=vad_threshold
-                )
-            except Exception as stab_exc:  # noqa: BLE001
-                logger.error("Stabilization failed: %s", stab_exc, exc_info=True)
+        # Optional post-processing (stabilization + diarization)
+        result = _apply_post_processing(
+            result,
+            stabilize=stabilize,
+            demucs=demucs,
+            vad=vad,
+            vad_threshold=vad_threshold,
+            diarize=diarize,
+            diarization_device=diarization_device,
+            num_speakers=num_speakers,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+            audio_path=temp_filepath,
+        )
+
         logger.info("Transcription completed successfully")
 
         # Validate response_format
@@ -214,6 +319,14 @@ async def create_translation(
     vad_threshold: float = Form(
         DEFAULT_VAD_THRESHOLD, description="VAD threshold for speech detection"
     ),
+    diarize: bool = Form(DEFAULT_DIARIZE, description="Enable speaker diarization"),
+    num_speakers: int | None = Form(None, description="Exact number of speakers"),
+    min_speakers: int | None = Form(None, description="Minimum number of speakers"),
+    max_speakers: int | None = Form(None, description="Maximum number of speakers"),
+    diarization_device: str = Form(
+        DEFAULT_DIARIZATION_DEVICE,
+        description="Device for diarization (cpu, cuda, or gpu)",
+    ),
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),  # noqa: B008
     file_handler: FileHandler = Depends(get_file_handler),  # noqa: B008
 ) -> str | dict:
@@ -232,6 +345,12 @@ async def create_translation(
         demucs: Enable Demucs noise reduction if True.
         vad: Enable Voice Activity Detection if True.
         vad_threshold: VAD sensitivity threshold (0.0 - 1.0).
+        diarize: Enable speaker diarization if True.
+        num_speakers: Exact number of speakers (auto-detect if None).
+        min_speakers: Minimum number of speakers for diarization.
+        max_speakers: Maximum number of speakers for diarization.
+        diarization_device: Device for diarization ("cpu", "cuda", or
+            "gpu"; "gpu" is an alias for "cuda").
         asr_pipeline: Injected ASR pipeline instance
         file_handler: Injected file handler instance
 
@@ -277,14 +396,21 @@ async def create_translation(
                 raise
             raise HTTPException(status_code=500, detail=str(e)) from e
 
-        # Optional stabilization (post-process) applied here for API
-        if stabilize:
-            try:
-                result = stabilize_timestamps(
-                    result, demucs=demucs, vad=vad, vad_threshold=vad_threshold
-                )
-            except Exception as stab_exc:  # noqa: BLE001
-                logger.error("Stabilization failed: %s", stab_exc, exc_info=True)
+        # Optional post-processing (stabilization + diarization)
+        result = _apply_post_processing(
+            result,
+            stabilize=stabilize,
+            demucs=demucs,
+            vad=vad,
+            vad_threshold=vad_threshold,
+            diarize=diarize,
+            diarization_device=diarization_device,
+            num_speakers=num_speakers,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+            audio_path=temp_filepath,
+        )
+
         logger.info("Translation completed successfully")
         logger.debug("Translation result: %s", result)
 

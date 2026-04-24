@@ -48,7 +48,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - **Word-level Timestamp Stabilization (CLI, API & WebUI)**: Optional `--stabilize` flag (powered by [stable-ts](https://github.com/jianfch/stable-ts)) greatly refines chunk timestamps, producing accurate word-aligned SRT/VTT output
 - **Noise Reduction & Voice Activity Detection (CLI, API & WebUI)**: Optional `--demucs` and `--vad` flags provide Demucs-based denoising and intelligent speech-region detection (adjustable `--vad-threshold`) for cleaner, more accurate transcripts
 
----
+______________________________________________________________________
 
 ## Additional Features
 
@@ -81,24 +81,26 @@ The recommended way to run the application is using Docker Compose:
 
 1. Clone the repository:
 
-    ```bash
-    git clone https://github.com/beecave-homelab/insanely-fast-whisper-rocm.git
-    cd insanely-fast-whisper-rocm
-    ```
+   ```bash
+   git clone https://github.com/beecave-homelab/insanely-fast-whisper-rocm.git
+   cd insanely-fast-whisper-rocm
+   ```
 
 2. Set up configuration (see [Configuration](#configuration)) for more details:
 
-    ```bash
-    # Create your user configuration file and guides you which settings to adjust
-    # This generates `~/.config/insanely-fast-whisper-rocm/.env` with sensible defaults
-    python scripts/setup_config.py
-    # or run `cp .env.example ~/.config/insanely-fast-whisper-rocm/.env`
+   ```bash
+   # Create your user configuration file and guides you which settings to adjust
+   # This generates `~/.config/insanely-fast-whisper-rocm/.env` with sensible defaults
+   python scripts/setup_config.py
+   # or run `cp .env.example ~/.config/insanely-fast-whisper-rocm/.env`
+
+   ```
 
 3. Start the application:
 
-    ```bash
-    docker compose up --build -d
-    ```
+   ```bash
+   docker compose up --build -d
+   ```
 
 ### Alternative: Local Development with PDM
 
@@ -106,29 +108,29 @@ For local development, PDM (Python Development Master) is used to manage depende
 
 1. Clone the repository:
 
-    ```bash
-    git clone https://github.com/beecave-homelab/insanely-fast-whisper-rocm.git
-    cd insanely-fast-whisper-rocm
-    ```
+   ```bash
+   git clone https://github.com/beecave-homelab/insanely-fast-whisper-rocm.git
+   cd insanely-fast-whisper-rocm
+   ```
 
 2. Install PDM (if you haven't already):
 
-    ```bash
-    curl -sSL https://pdm-project.org/install-pdm.py | python3 -
-    ```
+   ```bash
+   curl -sSL https://pdm-project.org/install-pdm.py | python3 -
+   ```
 
-    Refer to the [official PDM documentation](https://pdm-project.org/latest/installation/) for other installation methods.
+   Refer to the [official PDM documentation](https://pdm-project.org/latest/installation/) for other installation methods.
 
 3. Install project dependencies using PDM:
 
-    ```bash
-    # To install ROCm support
-    pdm install -G rocm-6-4-1
-    # or swap `rocm-6-4-1` for `rocm-7-0` if you want to use a different ROCm version
+   ```bash
+   # To install ROCm support
+   pdm install -G rocm-6-4-1
+   # or swap `rocm-6-4-1` for `rocm-7-0` if you want to use a different ROCm version
 
-    # To include development tools and ROCm support
-    pdm install -G dev -G rocm-6-4-1 -G bench
-    ```
+   # To include development tools and ROCm support
+   pdm install -G dev -G rocm-6-4-1 -G bench
+   ```
 
 ### Model Download
 
@@ -178,49 +180,49 @@ To create or update your user-specific configuration file (`~/.config/insanely-f
 
 1. **Run the setup script:**
 
-    This script helps you create the `~/.config/insanely-fast-whisper-rocm/.env` file.
+   This script helps you create the `~/.config/insanely-fast-whisper-rocm/.env` file.
 
-    If you are using PDM (recommended for managing dependencies and scripts):
+   If you are using PDM (recommended for managing dependencies and scripts):
 
-    ```bash
-    pdm run setup-config
-    ```
+   ```bash
+   pdm run setup-config
+   ```
 
-    Alternatively, you can run the script directly from the project root:
+   Alternatively, you can run the script directly from the project root:
 
-    ```bash
-    python scripts/setup_config.py
-    ```
+   ```bash
+   python scripts/setup_config.py
+   ```
 
 2. **Edit your configuration file:**
 
-    After running the script, open `~/.config/insanely-fast-whisper-rocm/.env` with your preferred text editor and customize the settings. Pay special attention to `HF_TOKEN` if using gated models. Refer to [`.env.example`](./.env.example) in the project root for a full list of available options and their descriptions.
+   After running the script, open `~/.config/insanely-fast-whisper-rocm/.env` with your preferred text editor and customize the settings. Pay special attention to `HF_TOKEN` if using gated models. Refer to [`.env.example`](./.env.example) in the project root for a full list of available options and their descriptions.
 
-    > [!IMPORTANT]
-    > **ROCm / AMD GPU compatibility (check your `gfx` target):**
-    >
-    > Some AMD GPUs are not officially supported by a given ROCm release (for example, an RX 6600 is `gfx1032`, while many ROCm builds only ship kernels for `gfx1030`). If ROCm can’t find a matching code object for your card, GPU inference may fail.
-    >
-    > In that case, you can often work around this by **uncommenting** `HSA_OVERRIDE_GFX_VERSION` in your `.env` file and setting it to a supported target.
-    >
-    > To discover your GPU target:
-    >
-    > ```bash
-    > rocm_agent_enumerator -name
-    > rocminfo  # look for a GPU agent line like: Name: gfxXXXX
-    > ```
-    >
-    > To choose a supported target for your ROCm version:
-    >
-    > - [ROCm compatibility matrix](https://rocm.docs.amd.com/en/latest/compatibility/compatibility-matrix.html)
-    >
-    > GPU-to-`gfx` reference table:
-    >
-    > - [GPU hardware specifications (gfx targets)](https://rocm.docs.amd.com/en/latest/reference/gpu-arch-specs.html)
-    >
-    > Example: forcing `gfx1030` corresponds to `HSA_OVERRIDE_GFX_VERSION=10.3.0`.
+   > [!IMPORTANT]
+   > **ROCm / AMD GPU compatibility (check your `gfx` target):**
+   >
+   > Some AMD GPUs are not officially supported by a given ROCm release (for example, an RX 6600 is `gfx1032`, while many ROCm builds only ship kernels for `gfx1030`). If ROCm can’t find a matching code object for your card, GPU inference may fail.
+   >
+   > In that case, you can often work around this by **uncommenting** `HSA_OVERRIDE_GFX_VERSION` in your `.env` file and setting it to a supported target.
+   >
+   > To discover your GPU target:
+   >
+   > ```bash
+   > rocm_agent_enumerator -name
+   > rocminfo  # look for a GPU agent line like: Name: gfxXXXX
+   > ```
+   >
+   > To choose a supported target for your ROCm version:
+   >
+   > - [ROCm compatibility matrix](https://rocm.docs.amd.com/en/latest/compatibility/compatibility-matrix.html)
+   >
+   > GPU-to-`gfx` reference table:
+   >
+   > - [GPU hardware specifications (gfx targets)](https://rocm.docs.amd.com/en/latest/reference/gpu-arch-specs.html)
+   >
+   > Example: forcing `gfx1030` corresponds to `HSA_OVERRIDE_GFX_VERSION=10.3.0`.
 
-    If no configuration file exists, the API will use these default values. The configuration file will be automatically created with default values on first run.
+   If no configuration file exists, the API will use these default values. The configuration file will be automatically created with default values on first run.
 
 ## Usage
 
@@ -349,19 +351,19 @@ For code reviewers or contributors who need to run tests without a GPU or heavy 
 
 1. **Install lightweight dependencies:**
 
-    ```bash
-    pip install -r requirements-reviewer.txt
-    ```
+   ```bash
+   pip install -r requirements-reviewer.txt
+   ```
 
 2. **Run the CPU-safe test suite:**
 
-    The following command runs tests that do not require `torch` or a GPU. It excludes tests for CUDA, the full ASR backend, and server integration tests.
+   The following command runs tests that do not require `torch` or a GPU. It excludes tests for CUDA, the full ASR backend, and server integration tests.
 
-    ```bash
-    pytest -q -k "not (cuda or webui or api_integration or asr_backend_generation_config or asr_backend_timestamp or api)"
-    ```
+   ```bash
+   pytest -q -k "not (cuda or webui or api_integration or asr_backend_generation_config or asr_backend_timestamp or api)"
+   ```
 
-    This ensures that core logic, utilities, and the dummy pipeline can be validated quickly in any environment.
+   This ensures that core logic, utilities, and the dummy pipeline can be validated quickly in any environment.
 
 ## Development
 

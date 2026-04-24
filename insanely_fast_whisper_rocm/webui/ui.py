@@ -10,13 +10,21 @@ import gradio as gr
 
 from insanely_fast_whisper_rocm.utils.constants import (
     DEFAULT_BATCH_SIZE,
+    DEFAULT_DEMUCS,
     DEFAULT_DEVICE,
+    DEFAULT_DIARIZATION_DEVICE,
+    DEFAULT_DIARIZE,
     DEFAULT_LANGUAGE,
     DEFAULT_MODEL,
+    DEFAULT_STABILIZE,
     DEFAULT_TIMESTAMP_TYPE,
     DEFAULT_TRANSCRIPTS_DIR,
+    DEFAULT_VAD,
+    DEFAULT_VAD_THRESHOLD,
     MAX_BATCH_SIZE,
+    MAX_SPEAKERS,
     MIN_BATCH_SIZE,
+    MIN_SPEAKERS,
     SUPPORTED_UPLOAD_FORMATS,
 )
 from insanely_fast_whisper_rocm.webui.handlers import (
@@ -80,10 +88,10 @@ def _create_processing_options_ui() -> tuple[gr.Dropdown, gr.Slider]:
 
 def _create_stabilization_ui(
     *,
-    default_stabilize: bool = False,
-    default_demucs: bool = False,
-    default_vad: bool = False,
-    default_vad_threshold: float = 0.35,
+    default_stabilize: bool = DEFAULT_STABILIZE,
+    default_demucs: bool = DEFAULT_DEMUCS,
+    default_vad: bool = DEFAULT_VAD,
+    default_vad_threshold: float = DEFAULT_VAD_THRESHOLD,
 ) -> tuple[gr.Checkbox, gr.Checkbox, gr.Checkbox, gr.Slider]:
     """Helper function to create timestamp stabilization UI components.
 
@@ -108,6 +116,53 @@ def _create_stabilization_ui(
             label="VAD Threshold (--vad-threshold)",
         )
     return stabilize, demucs, vad, vad_threshold
+
+
+def _create_diarization_ui(
+    *,
+    default_diarize: bool = DEFAULT_DIARIZE,
+    default_min_speakers: int = MIN_SPEAKERS,
+    default_max_speakers: int = MAX_SPEAKERS,
+) -> tuple[gr.Checkbox, gr.Slider, gr.Slider, gr.Slider, gr.Radio]:
+    """Helper function to create speaker diarization UI components.
+
+    Returns:
+        tuple[gr.Checkbox, gr.Slider, gr.Slider, gr.Slider, gr.Radio]:
+        Diarize toggle, num-speakers, min-speakers, max-speakers sliders,
+        and diarization device radio.
+    """
+    with gr.Accordion("Speaker Diarization", open=False):
+        diarize = gr.Checkbox(
+            value=default_diarize,
+            label="Enable speaker diarization (--diarize)",
+        )
+        num_speakers = gr.Slider(
+            minimum=0,
+            maximum=MAX_SPEAKERS,
+            step=1,
+            value=0,
+            label="Number of speakers (0 = auto-detect)",
+        )
+        min_speakers = gr.Slider(
+            minimum=MIN_SPEAKERS,
+            maximum=MAX_SPEAKERS,
+            step=1,
+            value=default_min_speakers,
+            label="Min speakers",
+        )
+        max_speakers = gr.Slider(
+            minimum=MIN_SPEAKERS,
+            maximum=MAX_SPEAKERS,
+            step=1,
+            value=default_max_speakers,
+            label="Max speakers",
+        )
+        diarization_device = gr.Radio(
+            choices=["cpu", "cuda"],
+            value=DEFAULT_DIARIZATION_DEVICE,
+            label="Diarization device",
+        )
+    return diarize, num_speakers, min_speakers, max_speakers, diarization_device
 
 
 def _create_task_config_ui() -> tuple[gr.Radio, gr.Textbox, gr.Radio]:
@@ -170,6 +225,12 @@ def _process_transcription_request_wrapper(
     demucs: bool,
     vad: bool,
     vad_threshold: float,
+    # Diarization params
+    diarize: bool,
+    num_speakers: int,
+    min_speakers: int,
+    max_speakers: int,
+    diarization_device: str,
     save_transcriptions: bool,
     temp_uploads_dir: str,
     progress: gr.Progress | None = None,
@@ -202,6 +263,16 @@ def _process_transcription_request_wrapper(
     transcription_cfg.demucs = demucs
     transcription_cfg.vad = vad
     transcription_cfg.vad_threshold = vad_threshold
+    # Inject diarization options
+    transcription_cfg.diarize = diarize
+    transcription_cfg.num_speakers = num_speakers if num_speakers > 0 else None
+    transcription_cfg.min_speakers = (
+        None if min_speakers == MIN_SPEAKERS else min_speakers
+    )
+    transcription_cfg.max_speakers = (
+        None if max_speakers == MAX_SPEAKERS else max_speakers
+    )
+    transcription_cfg.diarization_device = diarization_device
     return process_transcription_request(
         audio_paths=audio_paths,
         transcription_config=transcription_cfg,
@@ -213,10 +284,11 @@ def _process_transcription_request_wrapper(
 def create_ui_components(
     *,
     default_model: str = DEFAULT_MODEL,
-    default_stabilize: bool = False,
-    default_demucs: bool = False,
-    default_vad: bool = False,
-    default_vad_threshold: float = 0.35,
+    default_stabilize: bool = DEFAULT_STABILIZE,
+    default_demucs: bool = DEFAULT_DEMUCS,
+    default_vad: bool = DEFAULT_VAD,
+    default_vad_threshold: float = DEFAULT_VAD_THRESHOLD,
+    default_diarize: bool = DEFAULT_DIARIZE,
 ) -> gr.Blocks:  # pylint: disable=too-many-locals
     """Create and return Gradio UI components with all parameters.
 
@@ -255,6 +327,15 @@ def create_ui_components(
                         default_vad_threshold=default_vad_threshold,
                     )
                 )
+
+                # Speaker diarization options
+                (
+                    diarize_opt,
+                    num_speakers_opt,
+                    min_speakers_opt,
+                    max_speakers_opt,
+                    diarization_device_opt,
+                ) = _create_diarization_ui(default_diarize=default_diarize)
 
                 # Task configuration
                 timestamp_type, language, task = _create_task_config_ui()
@@ -312,6 +393,12 @@ def create_ui_components(
                 demucs_opt,
                 vad_opt,
                 vad_threshold_opt,
+                # Diarization options (match wrapper order)
+                diarize_opt,
+                num_speakers_opt,
+                min_speakers_opt,
+                max_speakers_opt,
+                diarization_device_opt,
                 save_transcriptions,
                 temp_uploads_dir,
             ],

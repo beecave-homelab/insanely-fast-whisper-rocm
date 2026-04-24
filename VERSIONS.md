@@ -6,7 +6,7 @@
 
 [![Version](https://img.shields.io/badge/Version-v2.1.5-informational)](#release-timeline)
 
----
+______________________________________________________________________
 
 ## 📑 Table of Contents
 
@@ -39,7 +39,7 @@
 - [`v0.1.1` - *19-01-2025*](#v011---19-01-2025)
 - [`v0.1.0` - *18-01-2025*](#v010---18-01-2025)
 
----
+______________________________________________________________________
 
 ## 🔄 Semantic Versioning (SemVer)
 
@@ -49,7 +49,7 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 - **MINOR**: New features and enhancements (backward compatible)
 - **PATCH**: Bug fixes and small improvements
 
----
+______________________________________________________________________
 
 ## Release Timeline
 
@@ -81,7 +81,7 @@ ensures torch/torchaudio pins match ROCm-specific builds.
 
 `918506e`, `c02e635`, `6f5caea`, `4de3494`, `6ee9c71`
 
----
+______________________________________________________________________
 
 ### `v2.1.4` - *31-01-2026*
 
@@ -92,20 +92,24 @@ This release aligns ROCm 7.0 wheel guidance and documentation, updates test layo
 #### 🐛 **Bug Fixes in v2.1.4**
 
 - **Fixed**: HuggingFace backend now checks CUDA availability and reports device details.
+
   - **Issue**: CUDA device information could be queried when CUDA was unavailable, causing confusing diagnostics.
   - **Solution**: Added explicit availability checks before reporting device information.
 
 - **Fixed**: HuggingFace backend enforces dtype selection for model loading.
+
   - **Issue**: Model initialization did not consistently respect the configured dtype.
   - **Solution**: Explicitly map the configured dtype to the corresponding torch dtype.
 
 #### � **Improvements in v2.1.4**
 
 - **Improved**: ROCm 7.0 requirements documentation and release notes.
+
   - **Issue**: Release notes referenced an outdated ROCm 7.1 requirements file.
   - **Solution**: Updated documentation to reflect ROCm 7.0 wheel pins and removed the obsolete export.
 
 - **Improved**: Testing guidelines to reflect current test layout.
+
   - Clarified unit test locations for API, audio, and CLI tests.
 
 #### 📦 **Maintenance in v2.1.4**
@@ -117,7 +121,7 @@ This release aligns ROCm 7.0 wheel guidance and documentation, updates test layo
 
 `812c9e7`, `d9556f2`, `dc34a91`, `27e37f7`, `b9275f0`
 
----
+______________________________________________________________________
 
 ### `v2.1.3` - *13-01-2026*
 
@@ -128,26 +132,31 @@ This release addresses WebUI frontend freezing issues through payload optimizati
 #### 🐛 **Bug Fixes in v2.1.3**
 
 - **Fixed**: WebUI frontend hangs caused by large JSON payloads.
+
   - **Issue**: The WebUI could hard-freeze after rendering large transcription results in the browser.
   - **Root Cause**: Full transcription payload (especially chunks/segments) was too large for Gradio's JSON rendering.
   - **Solution**: Added `_build_ui_json_summary()` to create compact JSON summaries for UI display, replacing full raw_result with summary containing counts.
 
 - **Fixed**: PyTorch version detection exception handling.
+
   - **Issue**: Insufficient exception handling when detecting PyTorch version for allocator configuration.
   - **Root Cause**: Exception handling was too narrow and didn't cover all edge cases.
   - **Solution**: Expanded exception handling to gracefully handle version detection failures.
 
 - **Fixed**: Type hints and exception handling in pipeline and constants.
+
   - **Issue**: Inconsistent type hints and exception handling patterns.
   - **Root Cause**: Code quality improvements were needed for better maintainability.
   - **Solution**: Improved type hints and standardized exception handling across affected modules.
 
 - **Fixed**: Unnecessary noqa comments in WebUI exception handlers.
+
   - **Issue**: Redundant noqa comments cluttering the code.
   - **Root Cause**: Noqa comments were added but not actually needed.
   - **Solution**: Removed unnecessary noqa comments from exception handlers.
 
 - **Fixed**: Lambda parameter naming convention.
+
   - **Issue**: Unused lambda parameter not following naming conventions.
   - **Root Cause**: Lambda parameter was not properly named according to project standards.
   - **Solution**: Renamed unused lambda parameter to follow naming convention.
@@ -155,14 +164,17 @@ This release addresses WebUI frontend freezing issues through payload optimizati
 #### 🔧 **Improvements in v2.1.3**
 
 - **Improved**: Dockerfile.dev by consolidating requirements files.
+
   - Simplified Dockerfile.dev by consolidating multiple requirements files into a single reference.
   - Reduces complexity and improves maintainability of the development Docker configuration.
 
 - **Improved**: Requirements file organization.
+
   - Reorganized and updated requirements files for better dependency management.
   - Added coverage package to dev dependencies for better test coverage tracking.
 
 - **Improved**: Dependency management with gradio version pinning.
+
   - Pinned gradio version to 5.50.0 for stability.
   - Ensures stability of the WebUI interface.
 
@@ -178,7 +190,7 @@ This release addresses WebUI frontend freezing issues through payload optimizati
 
 `09dd896`, `c484fbd`, `fced039`, `3b55e46`, `52120f0`, `c5dfc12`, `25a4f0a`, `4536724`, `71ea801`, `b618c96`, `b2ff6e4`, `5af4cd3`, `734c701`, `25fbdc9`, `f7f4bbd`
 
----
+______________________________________________________________________
 
 ### `v2.1.2` - *10-01-2026*
 
@@ -189,7 +201,7 @@ This release adds automatic PyTorch allocator configuration with version detecti
 #### ✨ **New Features in v2.1.2**
 
 - **Added**: Automatic PyTorch allocator configuration with version detection.
-  - Automatically detects the installed PyTorch version and sets the correct allocator environment variable (`PYTORCH_ALLOC_CONF` for >=2.9.0; `PYTORCH_HIP_ALLOC_CONF` for <2.9.0), which is especially relevant when ROCm images ship different torch versions (e.g., `rocm-6-4-1` vs `rocm-7-1`).
+  - Automatically detects the installed PyTorch version and sets the correct allocator environment variable (`PYTORCH_ALLOC_CONF` for >=2.9.0; `PYTORCH_HIP_ALLOC_CONF` for \<2.9.0), which is especially relevant when ROCm images ship different torch versions (e.g., `rocm-6-4-1` vs `rocm-7-1`).
   - Eliminates deprecation warnings in PyTorch 2.9.0+.
   - Backward compatible with older PyTorch versions.
   - Users don't need to manually adjust .env files when upgrading PyTorch.
@@ -197,21 +209,25 @@ This release adds automatic PyTorch allocator configuration with version detecti
 #### 🐛 **Bug Fixes in v2.1.2**
 
 - **Fixed**: Timestamp handling with backward compatibility for bool True.
+
   - **Issue**: Pipeline did not accept boolean True as a legacy timestamp flag.
   - **Root Cause**: Type signature only accepted Literal['chunk', 'word'].
   - **Solution**: Updated type signature to accept bool | Literal['chunk', 'word'] and treat True as chunk timestamps for backward compatibility.
 
 - **Fixed**: WebUI freezing regression caused by Gradio 6.x frontend behavior.
+
   - **Issue**: The WebUI could hard-freeze after rendering results in the browser.
   - **Root Cause**: Unbounded `gradio>=...` dependency resolution allowed Gradio 6.x to be installed in Docker images, triggering a frontend regression.
   - **Solution**: Pinned Gradio to `>=5.38.0,<6.0.0` in the project dependencies and Docker requirements.
 
 - **Fixed**: Distil-whisper version detection to handle decimal versions.
+
   - **Issue**: Version parsing failed for decimal versions like 'v3.5'.
   - **Root Cause**: Code tried to parse entire version string as an integer.
   - **Solution**: Extract only the major version number by splitting on '.' before parsing.
 
 - **Fixed**: None chunks handling in merge_chunk_results().
+
   - **Issue**: Code would crash when result['chunks'] was None.
   - **Root Cause**: Only checked for key existence, not None value.
   - **Solution**: Added None check before iterating over chunks.
@@ -219,34 +235,41 @@ This release adds automatic PyTorch allocator configuration with version detecti
 #### 🔧 **Improvements in v2.1.2**
 
 - **Improved**: Reduced segmentation log verbosity from INFO to DEBUG.
+
   - Detailed branching logic and clause processing now at DEBUG level.
   - Reduces noise in normal operation while preserving debugging capability.
 
 - **Improved**: Reduced orchestrator status log verbosity.
+
   - Status messages starting with 'Attempt ' now logged at DEBUG level.
   - Actual recovery actions still logged at WARNING level.
 
 - **Improved**: Performance optimization for format export.
+
   - Added caching for formatted output to avoid duplicate computation.
   - Each format is only computed once when multiple export formats are requested.
 
 - **Improved**: Reduced WebUI payload size to avoid browser-side rendering slowdowns.
+
   - WebUI now returns a compact JSON summary for display instead of the full raw transcription payload.
   - Download buttons continue to provide access to full-fidelity outputs via files.
 
 #### 📦 **Maintenance in v2.1.2**
 
 - **Updated**: Dependency management with ROCm version-specific requirements.
+
   - Split rocm optional dependency into rocm-6-4-1 and rocm-7-1 groups.
   - Added triton to rocm-wheels sources for proper dependency resolution.
-  - Added nvidia-* packages to pypi exclude list to prevent conflicts.
+  - Added nvidia-\* packages to pypi exclude list to prevent conflicts.
   - Updated torch version ranges for each ROCm version.
 
 - **Added**: New requirement files for ROCm versions.
+
   - requirements-rocm-v6-4-1.txt: For ROCm 6.4.1 with torch 2.5.0-2.8.0.
   - requirements-rocm-v7-0.txt: For ROCm 7.0 with torch 2.8.0
 
 - **Updated**: Docker configuration.
+
   - Changed to use requirements-rocm-v6-4-1.txt instead of requirements-all.txt.
   - Changed API port from 8888 to 8889.
   - Changed WebUI port from 7860 to 7862.
@@ -255,7 +278,7 @@ This release adds automatic PyTorch allocator configuration with version detecti
 
 `5a40d13`, `720478d`, `1c9264f`, `f4ac651`, `9989525`, `0cd06ba`, `08f45dd`
 
----
+______________________________________________________________________
 
 ### `v2.1.1` - *02-01-2026*
 
@@ -273,14 +296,14 @@ This release fixes a critical bug in the CLIFacade orchestrator factory method b
 #### 📦 **Maintenance in v2.1.1**
 
 - **Updated**: Accelerate dependency to version 1.12.0.
-- **Updated**: ROCm dependencies to versions 2.5.1 and 2.5.0 with <2.8.0 range.
+- **Updated**: ROCm dependencies to versions 2.5.1 and 2.5.0 with \<2.8.0 range.
 - **Updated**: Documentation to reflect ROCm v6.4.1 & v7.1 support with PyTorch 2.7.1+rocm7.1.0 and torchaudio 2.7.1+rocm7.1.0.
 
 #### 📝 **Key Commits in v2.1.1**
 
 `9fd896f`, `8dd95ac`, `9089c56`, `374f789`, `4d907b1`
 
----
+______________________________________________________________________
 
 ### `v2.1.0` - *31-12-2025*
 
@@ -306,7 +329,7 @@ This release introduces OOM-aware transcription orchestration with automatic GPU
 
 `64b901a`, `6bfbaad`, `3bf7bcc`, `c93a256`, `b027e33`
 
----
+______________________________________________________________________
 
 ### `v2.0.1` - *08-12-2025*
 
@@ -317,46 +340,56 @@ This release addresses multiple bug fixes identified during PR #27 code review, 
 #### 🐛 **Bug Fixes in v2.0.1**
 
 - **Fixed**: Audio conversion now uses fallback to pure-Python (pydub) when FFmpeg is unavailable.
+
   - **Issue**: `ensure_wav()` failed on systems without FFmpeg installed.
   - **Root Cause**: No fallback path when `ffmpeg-python` subprocess failed.
   - **Solution**: Added try/except with pydub-based conversion as fallback.
 
 - **Fixed**: `merge_short_segments()` no longer mutates the input segment list.
+
   - **Issue**: Original segments were modified in place, causing side effects.
   - **Root Cause**: Direct mutation of input list during merge operations.
   - **Solution**: Work on a copy of the segments list.
 
 - **Fixed**: SRT segment counting now uses extended regex for accurate numbering.
+
   - **Issue**: Segment count was incorrect for certain SRT formats.
   - **Root Cause**: Regex pattern did not account for all valid SRT index formats.
   - **Solution**: Updated regex pattern in `db10b44`.
 
 - **Fixed**: Task function parameters and error handling improvements.
+
   - **Issue**: Incorrect parameter passing in transcribe/translate task functions.
   - **Root Cause**: Kwargs object handling was inconsistent.
   - **Solution**: Updated functions to use object for kwargs (`7796883`, `e730f45`).
 
 - **Fixed**: Natural split points refactored in segmentation module.
+
   - **Issue**: Segmentation logic had edge cases causing poor splits.
   - **Solution**: Refactored split point detection in `9134d1b`.
 
 - **Fixed**: Character limit check simplified in segmentation.
+
   - **Issue**: Overly complex character limit validation.
   - **Solution**: Simplified logic in `3ad4e8e`.
 
 - **Fixed**: Pipeline failure no longer signals completion incorrectly.
+
   - **Issue**: Completion was signaled even when pipeline failed.
   - **Solution**: Fixed in `79a021e`.
 
 - **Fixed**: API startup model download and error handling hardened.
+
   - **Issue**: Model download failures could leave API in bad state.
   - **Solution**: Improved error handling in `9c4b380`.
 
 - **Fixed**: Logging config search path corrected.
+
   - **Issue**: Logging configuration file was not found in expected location.
   - **Solution**: Fixed path resolution in `e87b8b5`.
 
 - **Fixed**: Benchmark comparison hardened against bad JSON data.
+
   - **Issue**: Malformed JSON in benchmark files caused crashes.
   - **Solution**: Added validation in `9b0cf21`.
 
@@ -371,7 +404,7 @@ This release addresses multiple bug fixes identified during PR #27 code review, 
 
 `e29f566`, `f3170a2`, `f645736`, `961cfd0`, `2253f47`
 
----
+______________________________________________________________________
 
 ### `v2.0.0` - *05-12-2025*
 
@@ -404,7 +437,7 @@ This release introduces a modular package layout, renames the distribution and P
 
 `30210f9`, `3c50c27`, `3bb65c5`, `5c11b97`, `a9b7cde`
 
----
+______________________________________________________________________
 
 ### `v1.0.2` - *05-12-2025*
 
@@ -415,11 +448,13 @@ This release focuses on code correctness and maintainability through TDD-driven 
 #### 🐛 Bug Fixes in v1.0.2
 
 - **Fixed**: API routes passed invalid parameters (`stabilize`, `demucs`, `vad`, `vad_threshold`) to `WhisperPipeline.process()`.
+
   - **Issue**: These parameters are not part of the `process()` method signature.
   - **Root Cause**: Parameters were incorrectly forwarded; stabilization is handled separately by `stabilize_timestamps()` post-processing.
   - **Solution**: Removed invalid parameters from `asr_pipeline.process()` calls in both `create_transcription` and `create_translation` routes.
 
 - **Fixed**: Dead code in `SrtFormatter.format()` (lines 427-550) was unreachable.
+
   - **Issue**: ~124 lines of fallback formatting code appeared after a `return` statement.
   - **Solution**: Removed the unreachable code block, reducing complexity and improving maintainability.
 
@@ -432,7 +467,7 @@ This release focuses on code correctness and maintainability through TDD-driven 
 
 `9563a34`, `2eafe64`, `8ca2c8f`, `e13005e`
 
----
+______________________________________________________________________
 
 ### `v1.0.1` - *04-12-2025*
 
@@ -457,7 +492,7 @@ This release delivers a set of safe, backward-compatible improvements focused on
 
 `4220ebd`, `80fc087`, `4e02cd1`, `9565c66`, `c837998`, `2ded632`, `cb1f571`, `28b4405`
 
----
+______________________________________________________________________
 
 ### `v1.0.0` - *18-09-2025*
 
@@ -501,7 +536,7 @@ These functions are part of the public API (re-exported from `insanely_fast_whis
 
 `<populate-on-release>`
 
----
+______________________________________________________________________
 
 ### `v0.10.1` - *16-09-2025*
 
@@ -525,7 +560,7 @@ This patch addresses an issue with Docker image tags in `docker-compose` files a
 
 `fc61fb2`, `b68d199`, `3064745`
 
----
+______________________________________________________________________
 
 ### `v0.10.0` - *23-07-2025*
 
@@ -547,7 +582,7 @@ This release introduces support for `.m4a` audio files and integrates `stable-ts
 
 `2e132f1`, `aede396`, `44492cd`, `5e48f44`, `2fc9fa0`
 
----
+______________________________________________________________________
 
 ### `v0.9.1` - *19-07-2025*
 
@@ -570,7 +605,7 @@ This patch fixes translation to English across all Whisper models and ensures CL
 
 `70d744d`
 
----
+______________________________________________________________________
 
 ### `v0.9.0` - *06-07-2025*
 
@@ -600,7 +635,7 @@ This release introduces CLI benchmarking and performance monitoring, export form
 
 `32c6d73`
 
----
+______________________________________________________________________
 
 ### `v0.8.0` - *06-07-2025*
 
@@ -628,7 +663,7 @@ This release focuses on standardizing application entrypoints, enhancing the CLI
 
 `537e788`
 
----
+______________________________________________________________________
 
 ### `v0.7.0` - *06-07-2025*
 
@@ -649,7 +684,7 @@ This release focuses on standardizing application entrypoints, enhancing the CLI
 
 `f09d3ce`
 
----
+______________________________________________________________________
 
 ### `v0.6.0` - *05-07-2025*
 
@@ -670,7 +705,7 @@ This release focuses on standardizing application entrypoints, enhancing the CLI
 
 `496f49a`, `bbd78e4`, `e16511b`, `3e78fe4`, `ec08c5e`
 
----
+______________________________________________________________________
 
 ### `v0.5.0` - *07-06-2025*
 
@@ -690,16 +725,18 @@ This release marks a significant architectural overhaul:
 #### ♻️ Refactoring & Improvements in v0.5.0
 
 - **Project Restructure**: Major refactoring of the entire codebase into a modular structure (`api`, `core`, `cli`, `webui`, `utils`). (Commits `6ad709c`, `056e0e2`, `517abca`, `914724c`)
+
 - **Dependency Management**: Migrated to `pdm` and refined `pyproject.toml` with optional dependency groups (`rocm`, `dev`). (Commits `d999f8d`, `8af2858`)
 
 - **Audio Processing**: Enhanced audio utilities and improved error handling. (Commit `5d7b306`)
+
 - **Docker Configuration**: Updated `Dockerfile` and `docker-compose.yaml` to align with the new project structure and remove `pipx` dependency. (Commit `6ad709c`)
 
 #### 📝 Key Commits in v0.5.0
 
 `2154bdf`
 
----
+______________________________________________________________________
 
 ### `v0.4.1` - *06-06-2025*
 
@@ -727,7 +764,7 @@ This release marks a significant architectural overhaul:
 
 `76252e4`
 
----
+______________________________________________________________________
 
 ### `v0.4.0` - *06-06-2025*
 
@@ -742,7 +779,7 @@ This release marks a significant architectural overhaul:
 
 `6ad709c`
 
----
+______________________________________________________________________
 
 ### `v0.3.1` - *04-06-2025*
 
@@ -777,7 +814,7 @@ This release marks a significant architectural overhaul:
 
 `a4bbe37`
 
----
+______________________________________________________________________
 
 ### `v0.3.0` - *27-05-2025*
 
@@ -812,7 +849,7 @@ This release marks a significant architectural overhaul:
 
 `3e78875`
 
----
+______________________________________________________________________
 
 ### `v0.2.1` - *29-05-2025*
 
@@ -825,7 +862,7 @@ This release marks a significant architectural overhaul:
   ```python
   # ✅ New absolute imports
   from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
-  
+
   # ❌ Deprecated relative imports
   # from .core.pipeline import WhisperPipeline
   ```
@@ -848,7 +885,7 @@ This release marks a significant architectural overhaul:
 
 `2d3fef9`, `5429378`, `36ddcf5`, `0142a23`, `94e69c9`, `8a7fbe5`
 
----
+______________________________________________________________________
 
 ### `v0.2.0` - *20-05-2025*
 
@@ -879,7 +916,7 @@ This release marks a significant architectural overhaul:
 
 `9dfb30f`
 
----
+______________________________________________________________________
 
 ### `v0.1.2` - *08-03-2025*
 
@@ -902,7 +939,7 @@ This release marks a significant architectural overhaul:
 
 `3cd8552`
 
----
+______________________________________________________________________
 
 ### `v0.1.1` - *19-01-2025*
 
@@ -929,7 +966,7 @@ This release marks a significant architectural overhaul:
 
 `6e41010`
 
----
+______________________________________________________________________
 
 ### `v0.1.0` - *18-01-2025*
 
@@ -959,4 +996,4 @@ This release marks a significant architectural overhaul:
 
 `67667cd`
 
----
+______________________________________________________________________

@@ -45,7 +45,7 @@ def test_transcription_chunk_serialization() -> None:
 
     # Test dict conversion
     chunk_dict = chunk.model_dump()
-    expected = {"text": "Hello", "timestamp": (0.5, 1.5)}
+    expected = {"text": "Hello", "timestamp": (0.5, 1.5), "speaker": None}
     assert chunk_dict == expected
 
     # Test JSON serialization
@@ -138,6 +138,7 @@ def test_transcription_response_serialization() -> None:
         "segments": None,
         "language": "en",
         "runtime_seconds": 1.23,
+        "diarized": False,
     }
     assert response_dict == expected
 

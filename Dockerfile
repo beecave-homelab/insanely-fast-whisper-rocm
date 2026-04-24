@@ -26,6 +26,7 @@ COPY .python-version .
 
 # Install project dependencies using pip
 RUN pip install --no-cache-dir -r requirements-rocm-v7-0.txt
+RUN pip uninstall -y torchcodec
 
 # Copy the OpenAPI spec file
 COPY openapi.yaml /app/
@@ -37,8 +38,10 @@ COPY openapi.yaml /app/
 COPY pyproject.toml /app/
 COPY ./insanely_fast_whisper_rocm /app/insanely_fast_whisper_rocm/
 
-# Install the local package itself
-RUN pip install --no-cache-dir .
+# Install the local package itself (no-deps: all dependencies are already
+# installed from the PDM-generated requirements file which excludes torchcodec
+# and other ROCm-incompatible packages).
+RUN pip install --no-cache-dir --no-deps .
 
 # After `pip install .`, the package `insanely_fast_whisper_rocm` and its CLI/modules
 # should be available in the Python environment.
