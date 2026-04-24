@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from collections.abc import Iterator
 from unittest.mock import patch
 
 import pytest
@@ -13,7 +14,7 @@ from insanely_fast_whisper_rocm.core.errors import DiarizationError
 
 
 @pytest.fixture()
-def _mock_diarize_ok() -> None:
+def _mock_diarize_ok() -> Iterator[None]:
     """Mock diarize to return a successful diarized result.
 
     Yields:
@@ -39,7 +40,7 @@ def _mock_diarize_ok() -> None:
 
 
 @pytest.fixture()
-def _mock_diarize_error() -> None:
+def _mock_diarize_error() -> Iterator[None]:
     """Mock diarize to raise DiarizationError.
 
     Yields:

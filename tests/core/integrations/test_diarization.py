@@ -42,15 +42,15 @@ def _sample_result() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def test_diarize_returns_unchanged_when_pyannote_not_installed() -> None:
-    """diarize() returns result unchanged when Pipeline is None."""
+def test_diarize_raises_when_pyannote_not_installed() -> None:
+    """diarize() raises DiarizationError when Pipeline is None."""
     result = _sample_result()
     with patch(
         "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
         None,
     ):
-        out = diarize(result, audio_path="/fake.wav", hf_token="tok")
-    assert out is result
+        with pytest.raises(DiarizationError, match="pyannote.audio is not installed"):
+            diarize(result, audio_path="/fake.wav", hf_token="tok")
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +89,7 @@ def test_diarize_raises_on_403_license_not_accepted() -> None:
         "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
         mock_pipeline_cls,
     ):
-        with pytest.raises(DiarizationError, match="huggingface.co"):
+        with pytest.raises(DiarizationError, match=r"huggingface\.co"):
             diarize(result, audio_path="/fake.wav", hf_token="tok")
 
 

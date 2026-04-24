@@ -1226,6 +1226,41 @@ class TestCLIDiarizationOptions:
         finally:
             tmp_path.unlink(missing_ok=True)
 
+    @patch("insanely_fast_whisper_rocm.cli.commands.cli_facade.process_audio")
+    def test_num_speakers_autodetect_omitted(self, mock_process: Mock) -> None:
+        """Test that omitting --num-speakers passes None (auto-detect)."""
+        mock_process.return_value = {
+            "text": "Test",
+            "chunks": [],
+            "runtime_seconds": 1.0,
+        }
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            with patch(
+                "insanely_fast_whisper_rocm.core.integrations.diarization.diarize"
+            ) as mock_diarize:
+                mock_diarize.return_value = {
+                    "text": "Test",
+                    "chunks": [],
+                    "diarized": True,
+                }
+                result = self.runner.invoke(
+                    cli,
+                    [
+                        "transcribe",
+                        str(tmp_path),
+                        "--diarize",
+                    ],
+                )
+            assert result.exit_code == 0
+            call_kwargs = mock_diarize.call_args[1]
+            assert call_kwargs["num_speakers"] is None
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
     def test_diarization_device_option_rejects_invalid(self) -> None:
         """Test that --diarization-device rejects invalid values."""
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
