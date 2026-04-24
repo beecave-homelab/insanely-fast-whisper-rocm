@@ -115,7 +115,7 @@ def _get_or_create_pipeline(
                     "Duplicate pipeline created for key=%s; orphan freed", key
                 )
             except Exception:  # pragma: no cover
-                pass
+                logger.debug("Failed to clean up orphaned pipeline", exc_info=True)
         return _CACHE[key]
 
 
@@ -244,16 +244,19 @@ def diarize(
 
     Returns:
         The result dict with ``speaker`` added to each chunk and
-        ``diarized`` set to ``True``.  If pyannote is not installed, the
-        original result is returned unchanged.
+        ``diarized`` set to ``True``.
 
     Raises:
-        DiarizationError: If the HuggingFace token is missing or the model
-            cannot be loaded.
+        DiarizationError: If pyannote is not installed, the HuggingFace
+            token is missing, or the model cannot be loaded.
     """
     if Pipeline is None:
-        logger.warning("pyannote.audio is not installed – returning result unchanged")
-        return result
+        raise DiarizationError(
+            "Speaker diarization was requested but pyannote.audio is not installed. "
+            "Install the diarization extras to enable --diarize support.",
+            model=DEFAULT_DIARIZATION_MODEL,
+            reason="pyannote_not_installed",
+        )
 
     if not hf_token:
         raise DiarizationError(
@@ -327,7 +330,7 @@ def diarize(
     # Align speakers to chunks.
     chunks = result.get("chunks", [])
     if not chunks:
-        logger.warning("No chunks in result – nothing to diarize")
+        logger.warning("No chunks in result - nothing to diarize")
         return result
 
     aligned_chunks = _align_speakers_to_segments(chunks, speaker_turns)
