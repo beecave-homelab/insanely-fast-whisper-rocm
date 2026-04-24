@@ -1226,6 +1226,29 @@ class TestCLIDiarizationOptions:
         finally:
             tmp_path.unlink(missing_ok=True)
 
+    def test_diarization_device_option_rejects_invalid(self) -> None:
+        """Test that --diarization-device rejects invalid values."""
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        try:
+            result = self.runner.invoke(
+                cli,
+                [
+                    "transcribe",
+                    str(tmp_path),
+                    "--diarize",
+                    "--diarization-device",
+                    "invalid-device",
+                ],
+            )
+            assert result.exit_code != 0
+            assert (
+                "invalid-device" in result.output.lower() or "Invalid" in result.output
+            )
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

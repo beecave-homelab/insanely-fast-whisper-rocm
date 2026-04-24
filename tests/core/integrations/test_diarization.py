@@ -250,6 +250,30 @@ def test_pipeline_cache_different_config() -> None:
         assert p1 is not p2
 
 
+def test_pipeline_cache_different_token_creates_separate_entry() -> None:
+    """Different HF tokens produce separate cache entries."""
+    mock_a = MagicMock()
+    mock_a.to.return_value = mock_a
+    mock_b = MagicMock()
+    mock_b.to.return_value = mock_b
+
+    mock_pipeline_cls = MagicMock()
+    mock_pipeline_cls.from_pretrained.side_effect = [mock_a, mock_b]
+
+    with patch(
+        "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
+        mock_pipeline_cls,
+    ):
+        from insanely_fast_whisper_rocm.core.integrations.diarization import (
+            _get_or_create_pipeline,
+        )
+
+        p1 = _get_or_create_pipeline("model-a", "cpu", "token-1")
+        p2 = _get_or_create_pipeline("model-a", "cpu", "token-2")
+        assert p1 is not p2
+        assert mock_pipeline_cls.from_pretrained.call_count == 2
+
+
 def test_clear_diarization_cache_invalidates() -> None:
     """clear_diarization_cache() empties the cache."""
     mock_pipeline_instance = MagicMock()
