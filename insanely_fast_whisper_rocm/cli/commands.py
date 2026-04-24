@@ -401,12 +401,12 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
         # Optional diarization post-processing
         if diarize:
             _ensure_not_cancelled()
-            try:
-                from insanely_fast_whisper_rocm.core.integrations.diarization import (
-                    diarize as diarize_result,
-                )
+            from insanely_fast_whisper_rocm.core.integrations.diarization import (
+                diarize as diarize_result,
+            )
 
-                reporter.on_postprocess_started("diarization")
+            reporter.on_postprocess_started("diarization")
+            try:
                 result = diarize_result(
                     result,
                     audio_path=str(audio_file),
@@ -416,7 +416,6 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
                     device=diarization_device,
                     hf_token=constants.HF_TOKEN,
                 )
-                reporter.on_postprocess_finished("diarization")
             except DiarizationError as exc:
                 if not quiet:
                     click.secho(
@@ -429,6 +428,8 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
                         f"\u26a0\ufe0f  Diarization failed: {exc}",
                         fg="yellow",
                     )
+            finally:
+                reporter.on_postprocess_finished("diarization")
 
         _ensure_not_cancelled()
 
