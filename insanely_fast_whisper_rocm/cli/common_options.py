@@ -165,7 +165,7 @@ def audio_options(func: Callable[..., None]) -> Callable[..., None]:
         ),
         click.option(
             "--diarization-device",
-            type=str,
+            type=click.Choice(["cpu", "cuda", "gpu"], case_sensitive=False),
             default=constants.DEFAULT_DIARIZATION_DEVICE,
             help="Device for diarization pipeline (cpu, cuda, or gpu)",
             show_default=True,

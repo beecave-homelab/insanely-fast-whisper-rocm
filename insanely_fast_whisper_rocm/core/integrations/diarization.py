@@ -8,6 +8,7 @@ degradation when the optional dependency is absent.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import threading
 import warnings
@@ -47,7 +48,8 @@ with warnings.catch_warnings():
         Pipeline = None  # type: ignore[assignment, misc]
 
 # Pipeline cache (simple dict + RLock, no refcounting)
-_CACHE: dict[tuple[str, str], Pipeline] = {}  # type: ignore[type-arg]
+# Key includes a hash of hf_token so different tokens get separate entries.
+_CACHE: dict[tuple[str, str, str], Pipeline] = {}  # type: ignore[type-arg]
 _LOCK = threading.RLock()
 
 
@@ -71,7 +73,8 @@ def _get_or_create_pipeline(
     if device.lower() == "gpu":
         device = "cuda"
 
-    key = (model_name, device)
+    token_hash = hashlib.sha256(hf_token.encode()).hexdigest()[:16]
+    key = (model_name, device, token_hash)
     with _LOCK:
         cached = _CACHE.get(key)
         if cached is not None:
