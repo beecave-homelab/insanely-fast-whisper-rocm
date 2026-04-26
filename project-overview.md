@@ -1,7 +1,7 @@
 ---
 repo: https://github.com/beecave-homelab/insanely-fast-whisper-rocm
-commit: 02ce442e8864435a1d0f4b48e76ba2c415041137
-updated: 2026-01-10T12:06:00+00:00
+commit: aca7ee04e29a7f65fb82b27b474df47050494910
+updated: 2026-04-25T20:13:41Z
 ---
 
 <!-- SECTIONS:API,CLI,WEBUI,CI,DOCKER,TESTS -->
@@ -14,7 +14,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 > This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v2.1.5-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v2.2.0-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -83,18 +83,24 @@ pdm run webui-debug        # WebUI Interface (debug)
 pdm run cli transcribe audio.mp3  # CLI
 ```
 
+> **CI note:** The repository currently includes security-focused workflows in
+> [`.github/workflows/codeql.yml`](.github/workflows/codeql.yml) and
+> [`.github/workflows/osv-scanner.yml`](.github/workflows/osv-scanner.yml).
+> A full lint/test CI workflow is not defined under `.github/workflows/`.
+
 ______________________________________________________________________
 
 ## Version Summary
 
-### 🏷️ **Current Version: v2.1.5** *(19-02-2026)*
+### 🏷️ **Current Version: v2.2.0** *(26-04-2026)*
 
-**Latest improvements**: ROCm 7.0 Docker requirements alignment, explicit ROCm torch/torchaudio pins, and refreshed ROCm requirements guidance.
+**Latest improvements**: End-to-end speaker diarization across API/CLI/WebUI with follow-up reliability hardening, validation fixes, and regression tests.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
 | -- | -- | -- | -- |
+| **v2.2.0** | 26-04-2026 | ✨ Minor | End-to-end speaker diarization across API/CLI/WebUI, plus robustness fixes and new test coverage |
 | **v2.1.5** | 19-02-2026 | 🐛 Patch | ROCm 7.0 Docker requirements alignment, ROCm torch/torchaudio pins |
 | **v2.1.4** | 31-01-2026 | 🐛 Patch | ROCm 7.0 wheel guidance, test layout clarification, requirements cleanup |
 | **v2.1.3** | 13-01-2026 | 🐛 Patch | WebUI payload optimization, type hints, logging, Dockerfile simplification |
@@ -466,32 +472,39 @@ The FastAPI server provides a robust and scalable way to integrate the speech re
 You can start the API server with various options to customize its behavior:
 
 ```bash
-# Launch with default settings (http://0.0.0.0:8000, port: 8000, workers: 1, log-level: info)
-python -m insanely_fast_whisper_rocm.api
+# Launch with default settings (host/port from constants/env)
+pdm run api
+
+# Equivalent module entrypoint
+python -m insanely_fast_whisper_rocm
 
 # See all available options and help
-python -m insanely_fast_whisper_rocm.api --help
+pdm run api --help
 
 # Launch with a custom port
-python -m insanely_fast_whisper_rocm.api --port 8001
+pdm run api --port 8001
 
 # Launch with a custom host and port
-python -m insanely_fast_whisper_rocm.api --host 127.0.0.1 --port 9000
+pdm run api --host 127.0.0.1 --port 9000
 
 # Launch with multiple workers (disables reload)
-python -m insanely_fast_whisper_rocm.api --workers 4 --no-reload
+pdm run api --workers 4 --no-reload
 
 # Launch with auto-reload enabled (for development)
-python -m insanely_fast_whisper_rocm.api --reload
+pdm run api --reload
 
 # Launch with a specific log level (e.g., debug)
-python -m insanely_fast_whisper_rocm.api --log-level debug
+pdm run api --log-level debug
 
 # Launch in debug mode (enables debug logging for app and Uvicorn)
-python -m insanely_fast_whisper_rocm.api --debug
+pdm run api --debug
 
 # Launch with SSL (ensure dummy.key and dummy.crt exist or provide paths)
-# python -m insanely_fast_whisper_rocm.api --ssl-keyfile dummy.key --ssl-certfile dummy.crt
+# pdm run api --ssl-keyfile dummy.key --ssl-certfile dummy.crt
+
+# Note: `python -m insanely_fast_whisper_rocm.api` starts the API with
+# defaults from `insanely_fast_whisper_rocm/api/__main__.py` and does not
+# expose the Click options shown above.
 
 > **Note:** Docker Compose defaults map the API to port **8888** (production) and
 > **8889** (dev). The application itself defaults to **8000**, so ensure your
@@ -1251,21 +1264,21 @@ Notes for ROCm users:
   - **`dependencies`**: Lists core runtime dependencies required for the application to function.
   - **`optional-dependencies`**: Defines groups of dependencies that are not required for the core functionality but can be installed for specific purposes. Key groups include:
     - `dev`: Tools for development, such as linters (`ruff`), testing frameworks (`pytest`, `pytest-cov`), and other utilities.
-    - `rocm-6-4-1`: Dependencies for AMD ROCm v6.4.1 GPU support, including PyTorch 2.5.0-2.8.0, torchaudio 2.5.0-2.8.0, onnxruntime-rocm, and pytorch-triton-rocm.
-    - `rocm-7-0`: Dependencies for AMD ROCm v7.0 GPU support, including PyTorch 2.8.0, torchaudio 2.8.0, onnxruntime-rocm, and pytorch-triton-rocm.
+    - `rocm-6-4-1`: Dependencies for AMD ROCm v6.4.1 GPU support with pinned torch/torchaudio and runtime versions.
+    - `rocm-7-0`: Dependencies for AMD ROCm v7.0 GPU support with pinned torch/torchaudio and runtime versions.
     - `bench`: Benchmarking utilities including `pyamdgpuinfo` for GPU metrics.
 
 #### ROCm Version-Specific Dependency Groups
 
 The project provides separate dependency groups for different ROCm versions to ensure compatibility:
 
-- **`rocm-6-4-1`**: For ROCm 6.4.1 with PyTorch 2.5.0-2.8.0
+- **`rocm-6-4-1`**: For ROCm 6.4.1 with pinned PyTorch/torchaudio/runtime versions.
 
-  - Includes: `torch>=2.5.0,<2.8.0`, `torchaudio>=2.5.0,<2.8.0`, `onnxruntime-rocm`, `pytorch-triton-rocm>=3.2.0,<=3.3.1`
+  - Includes pinned versions: `torch==2.6.0+rocm6.4.1.git1ded221d`, `torchaudio==2.6.0+rocm6.4.1.gitd8831425`, `onnxruntime-rocm==1.22.2.post1`, `pytorch-triton-rocm==3.3.1`.
 
-- **`rocm-7-0`**: For ROCm 7.0 with PyTorch 2.8.0
+- **`rocm-7-0`**: For ROCm 7.0 with pinned PyTorch/torchaudio/runtime versions.
 
-  - Includes: `torch==2.8.0`, `torchaudio==2.8.0`, `onnxruntime-rocm==1.22.1`, `pytorch-triton-rocm==3.4.0`
+  - Includes pinned versions: `torch==2.8.0+rocm7.0.0.git64359f59`, `torchaudio==2.8.0+rocm7.0.0.git6e1c7fe9`, `onnxruntime-rocm==1.22.1`, `pytorch-triton-rocm==3.4.0`.
 
 **Install ROCm dependencies:**
 
@@ -1400,22 +1413,17 @@ pdm run pytest --maxfail=1 -q
 These tests target the Gradio WebUI using `gradio_client`.
 
 ```bash
-# Only run WebUI tests (marked `webui`)
-pytest -m webui
+# Run WebUI integration tests (explicit opt-in)
+RUN_WEBUI_TESTS=1 pdm run pytest tests/webui -q
 ```
 
 Details:
 
-- Requires `gradio-client>=0.7.0` (already part of the core deps).
+- Requires `gradio_client` (provided by the `gradio` dependency used by this project).
 - Session-scoped fixture `webui_server` (see `tests/conftest.py`) launches the WebUI once on port 7861 with the tiny Whisper model for speed.
 - Tests auto-skip when the sample media files are absent.
-- Custom marker `webui` is registered via `pytest.ini`:
 
-```ini
-[pytest]
-markers =
-    webui: integration tests that spin up the Gradio WebUI
-```
+- WebUI server tests are guarded by `RUN_WEBUI_TESTS=1` in `tests/conftest.py`.
 
 Average runtime < 10 s on a laptop-class GPU.
 
@@ -1477,7 +1485,7 @@ from insanely_fast_whisper_rocm.utils.constants import WHISPER_MODEL
 - Improved code maintainability
 - Consistent import patterns across the codebase
 
-*See [v0.2.1 changelog in VERSIONS.md](VERSIONS.md#v021---may-29-30-2025) for implementation details.*
+*See [v0.2.1 changelog in VERSIONS.md](VERSIONS.md#v021---29-05-2025) for implementation details.*
 
 ______________________________________________________________________
 
