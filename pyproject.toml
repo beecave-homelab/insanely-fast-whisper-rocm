@@ -1,7 +1,10 @@
+####################
+# Project Metadata #
+####################
 [project]
 name = "insanely-fast-whisper-rocm"
-version = "2.1.5"
-description = "A FastAPI wrapper around a custom Whisper-based ASR pipeline (ROCM version)"
+version = "2.2.0"
+description = "A ROCm-optimized Whisper toolkit with API, CLI, and WebUI interfaces for transcription, translation, and speaker diarization"
 requires-python = "~=3.10"
 authors = [
     {name = "elvee"},
@@ -29,68 +32,17 @@ dependencies = [
 ]
 
 
+########################
+# Project Entry Points #
+########################
 [project.scripts]
 insanely-fast-whisper-cli = "insanely_fast_whisper_rocm.cli.cli:main"
 insanely-fast-whisper-webui = "insanely_fast_whisper_rocm.webui.app:launch_webui"
 insanely-fast-whisper-rocm = "insanely_fast_whisper_rocm.__main__:main"
 
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-
-[tool.hatch.metadata]
-allow-direct-references = true
-
-
-[tool.pdm]
-distribution = true
-
-
-[tool.pdm.scripts]
-webui = "insanely-fast-whisper-webui"
-webui-debug = "insanely-fast-whisper-webui --debug"
-api = "insanely-fast-whisper-rocm"
-api-debug = "insanely-fast-whisper-rocm -v"
-cli = "insanely-fast-whisper-cli"
-
-setup-config = {call = "scripts.setup_config:main"}
-hf-models = {call = "scripts.hf_models:_main"}
-
-lint = "ruff check ."
-format = "ruff format ."
-fix = "ruff check --fix ."
-test = "pytest -q"
-test-cov = "pytest --cov=insanely_fast_whisper_rocm --cov-report=term-missing:skip-covered --cov-report=xml"
-
-local-ci = "scripts/local-ci.sh"
-
-
-[[tool.pdm.source]]
-name = "pypi"
-url = "https://pypi.org/simple/"
-verify_ssl = true
-type = "index"
-exclude_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton", "nvidia-*", "torchcodec"]
-include_packages = ["*"]
-
-
-[[tool.pdm.source]]
-name = "rocm-wheels-6.4.1"
-url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/"
-verify_ssl = true
-type = "find_links"
-include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton"]
-
-[[tool.pdm.source]]
-name = "rocm-wheels-7.0"
-url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.0/"
-verify_ssl = true
-type = "find_links"
-include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton"]
-
-
+##############################
+# Optional Dependency Groups #
+##############################
 [project.optional-dependencies]
 dev = [
     "pytest>=9.0.2",
@@ -159,12 +111,77 @@ diarization = [
 # ]
 
 
+#####################
+# Build & Packaging #
+#####################
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+
+###############################
+# Dependency Management (PDM) #
+###############################
+[tool.pdm]
+distribution = true
+
+
+[tool.pdm.scripts]
+webui = "insanely-fast-whisper-webui"
+webui-debug = "insanely-fast-whisper-webui --debug"
+api = "insanely-fast-whisper-rocm"
+api-debug = "insanely-fast-whisper-rocm -v"
+cli = "insanely-fast-whisper-cli"
+
+setup-config = {call = "scripts.setup_config:main"}
+hf-models = {call = "scripts.hf_models:_main"}
+
+lint = "ruff check ."
+format = "ruff format ."
+fix = "ruff check --fix ."
+test = "pytest -q"
+test-cov = "pytest --cov=insanely_fast_whisper_rocm --cov-report=term-missing:skip-covered --cov-report=xml"
+
+local-ci = "scripts/local-ci.sh"
+
+#######################################
+# PDM package indexes / wheel sources #
+#######################################
+[[tool.pdm.source]]
+name = "pypi"
+url = "https://pypi.org/simple/"
+verify_ssl = true
+type = "index"
+exclude_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton", "nvidia-*", "torchcodec"]
+include_packages = ["*"]
+
+
+[[tool.pdm.source]]
+name = "rocm-wheels-6.4.1"
+url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/"
+verify_ssl = true
+type = "find_links"
+include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton"]
+
+[[tool.pdm.source]]
+name = "rocm-wheels-7.0"
+url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.0/"
+verify_ssl = true
+type = "find_links"
+include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton"]
+
+
+# PDM resolution constraints
 [tool.pdm.resolution]
 excludes = ["torch==2.0.1", "torch==2.3.0", "torch==2.4.1", "torch==2.7.1", "torchcodec"]
 
-# ------------------------------
-#   Ruff (linter + formatter)
-# ------------------------------
+#############################
+# Ruff (linter + formatter) #
+#############################
 [tool.ruff]
 line-length = 88
 target-version = "py310"                # adjust if you target 3.9/3.12
@@ -209,9 +226,9 @@ known-first-party = ["insanely_fast_whisper_rocm"]
 # Temporarily ignore long-line checks in tests
 "tests/**/*.py" = ["E501"]
 
-# ------------------------------
-#       Pytest & Coverage
-# ------------------------------
+#####################
+# Pytest & Coverage #
+#####################
 [tool.pytest.ini_options]
 # addopts = "-q --cov=insanely_fast_whisper_rocm --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=html --cov-fail-under=85"
 testpaths = ["tests"]

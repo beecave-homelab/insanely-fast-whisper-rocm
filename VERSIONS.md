@@ -4,13 +4,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v2.1.5-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v2.2.0-informational)](#release-timeline)
 
 ______________________________________________________________________
 
 ## 📑 Table of Contents
 
-- [`v2.1.5` (Current) - *19-02-2026*](#v215-current---19-02-2026)
+- [`v2.2.0` (Current) - *26-04-2026*](#v220-current---26-04-2026)
+- [`v2.1.5` - *19-02-2026*](#v215---19-02-2026)
 - [`v2.1.4` - *31-01-2026*](#v214---31-01-2026)
 - [`v2.1.3` - *13-01-2026*](#v213---13-01-2026)
 - [`v2.1.2` - *10-01-2026*](#v212---10-01-2026)
@@ -53,7 +54,51 @@ ______________________________________________________________________
 
 ## Release Timeline
 
-### `v2.1.5` (Current) - *19-02-2026*
+### `v2.2.0` (Current) - *26-04-2026*
+
+#### ✨ Feature Release: End-to-End Speaker Diarization
+
+This release introduces end-to-end speaker diarization across API, CLI, and WebUI,
+with follow-up hardening for cache behavior, error handling, and test coverage.
+
+#### ✨ **New Features in v2.2.0**
+
+- **Added**: End-to-end diarization flow across API, CLI, and WebUI.
+  - **Enhanced**: Added `core/integrations/diarization.py` with speaker/chunk
+    alignment, cache management, and integration hooks for all user interfaces.
+
+#### 🐛 **Bug Fixes in v2.2.0**
+
+- **Fixed**: Silent no-op behavior when diarization was requested but
+  `pyannote.audio` was unavailable.
+  - **Issue**: Requests could appear successful without diarization being applied.
+  - **Root Cause**: Missing dependency paths returned unchanged results.
+  - **Solution**: Raise `DiarizationError` with clear remediation guidance.
+- **Fixed**: Incomplete diarization lifecycle reporting in CLI post-processing.
+  - **Issue**: Completion hook could be skipped when diarization failed.
+  - **Root Cause**: `on_postprocess_finished` was not guaranteed on all paths.
+  - **Solution**: Use `try/finally` around diarization post-processing hooks.
+- **Fixed**: Diarization cache collisions across Hugging Face token contexts.
+  - **Issue**: Different auth contexts could share stale pipeline state.
+  - **Root Cause**: Cache keying did not isolate token-sensitive state.
+  - **Solution**: Isolate cache by token and strengthen cache validation.
+
+#### 🔧 **Improvements in v2.2.0**
+
+- **Improved**: Device option validation and parity for diarization across API,
+  CLI, and WebUI.
+- **Improved**: Regression coverage for diarization integration paths,
+  token-isolated caching, and CLI/WebUI behavior.
+- **Updated**: Documentation and project references to reflect diarization
+  runtime behavior and configuration.
+
+#### 📝 **Key Commits in v2.2.0**
+
+`b93a714`, `44a881e`, `603b6b5`, `563e95b`, `d3f1cd7`
+
+______________________________________________________________________
+
+### `v2.1.5` - *19-02-2026*
 
 #### 🐛 Patch Release: ROCm 7.0 Docker Requirements Alignment
 
