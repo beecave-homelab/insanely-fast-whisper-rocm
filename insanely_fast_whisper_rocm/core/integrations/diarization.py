@@ -109,6 +109,7 @@ def _get_or_create_pipeline(
                 import torch
 
                 pipeline.to(torch.device("cpu"))
+                del pipeline
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                 logger.warning(

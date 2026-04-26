@@ -5,7 +5,7 @@ injection for ASR pipeline instances and file handling.
 """
 
 import logging
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
@@ -44,7 +44,7 @@ VALID_DIARIZATION_DEVICES = {"cpu", "cuda", "gpu"}
 
 
 def _apply_post_processing(
-    result: dict,
+    result: dict[str, Any],
     *,
     stabilize: bool,
     demucs: bool,
@@ -56,7 +56,7 @@ def _apply_post_processing(
     min_speakers: int | None,
     max_speakers: int | None,
     audio_path: str,
-) -> dict:
+) -> dict[str, Any]:
     """Apply optional stabilization and diarization post-processing.
 
     Args:
