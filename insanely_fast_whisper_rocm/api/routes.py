@@ -98,6 +98,10 @@ def _apply_post_processing(
                 ),
             )
 
+        normalized_device = (
+            "cuda" if diarization_device == "gpu" else diarization_device
+        )
+
         try:
             from insanely_fast_whisper_rocm.core.integrations.diarization import (
                 diarize as diarize_result,
@@ -109,7 +113,7 @@ def _apply_post_processing(
                 num_speakers=num_speakers,
                 min_speakers=min_speakers,
                 max_speakers=max_speakers,
-                device=diarization_device,
+                device=normalized_device,
                 hf_token=HF_TOKEN,
             )
         except DiarizationError as e:

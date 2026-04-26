@@ -335,14 +335,11 @@ def diarize(
 
     aligned_chunks = _align_speakers_to_segments(chunks, speaker_turns)
 
-    segments = result.get("segments", [])
-    aligned_segments = aligned_chunks
-    if segments and segments is not chunks:
-        aligned_segments = _align_speakers_to_segments(segments, speaker_turns)
-
-    return {
-        **result,
-        "chunks": aligned_chunks,
-        "segments": aligned_segments,
-        "diarized": True,
-    }
+    out: dict[str, Any] = {**result, "chunks": aligned_chunks, "diarized": True}
+    if "segments" in result:
+        segments = result["segments"]
+        if segments and segments is not chunks:
+            out["segments"] = _align_speakers_to_segments(segments, speaker_turns)
+        else:
+            out["segments"] = aligned_chunks
+    return out

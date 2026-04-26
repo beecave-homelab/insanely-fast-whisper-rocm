@@ -266,7 +266,12 @@ class TxtFormatter(BaseFormatter):
         try:
             if result.get("diarized"):
                 chunks = result.get("chunks") or result.get("segments") or []
-                if isinstance(chunks, list) and chunks and isinstance(chunks[0], dict):
+                if (
+                    isinstance(chunks, list)
+                    and chunks
+                    and isinstance(chunks[0], dict)
+                    and any(c.get("speaker") for c in chunks if isinstance(c, dict))
+                ):
                     lines: list[str] = []
                     prev_speaker: str | None = None
                     for chunk in chunks:

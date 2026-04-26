@@ -940,10 +940,19 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
             max_chars_per_chunk = int(
                 constants.MAX_CPS * constants.MAX_SEGMENT_DURATION_SEC
             )
+            # Build a parallel list mapping each token to its original
+            # word's speaker so synthetic chunks preserve per-word speaker
+            # labels instead of collapsing to the segment-level majority.
+            token_speakers: list[str | None] = []
+            for w in words:
+                for _ in w.text.split():
+                    token_speakers.append(w.speaker)
+
             tokens = seg_text.split()
             cur_tokens: list[str] = []
+            cur_start_idx = 0
             current_time = words[0].start
-            for tok in tokens:
+            for tok_idx, tok in enumerate(tokens):
                 tentative = (" ".join(cur_tokens + [tok])).strip()
                 if cur_tokens and len(tentative) > max_chars_per_chunk:
                     chunk_text = " ".join(cur_tokens)
@@ -954,6 +963,20 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                     # Cap duration to not exceed maximum segment duration
                     dur = min(dur, constants.MAX_SEGMENT_DURATION_SEC)
                     end_time = current_time + dur
+
+                    # Derive chunk speaker from contributing original words.
+                    spk_slice = token_speakers[
+                        cur_start_idx : cur_start_idx + len(cur_tokens)
+                    ]
+                    chunk_speaker: str | None = None
+                    if spk_slice:
+                        # Pick the most common non-None speaker; fall back
+                        # to seg.speaker if all are None.
+                        non_none = [s for s in spk_slice if s is not None]
+                        if non_none:
+                            chunk_speaker = max(set(non_none), key=non_none.count)
+                        else:
+                            chunk_speaker = seg.speaker
 
                     # Build synthetic words with evenly split timing.
                     chunk_tokens = chunk_text.split()
@@ -966,7 +989,7 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                                 text=ct,
                                 start=t0,
                                 end=t0 + per,
-                                speaker=seg.speaker,
+                                speaker=chunk_speaker,
                             )
                         )
                         t0 += per
@@ -977,11 +1000,12 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                             start=current_time,
                             end=end_time,
                             words=chunk_words,
-                            speaker=seg.speaker,
+                            speaker=chunk_speaker,
                         )
                     )
                     current_time = end_time
                     cur_tokens = [tok]
+                    cur_start_idx = tok_idx
                 else:
                     cur_tokens.append(tok)
 
@@ -994,6 +1018,19 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                 # Cap duration to not exceed maximum segment duration
                 dur = min(dur, constants.MAX_SEGMENT_DURATION_SEC)
                 end_time = current_time + dur
+
+                # Derive chunk speaker from contributing original words.
+                spk_slice = token_speakers[
+                    cur_start_idx : cur_start_idx + len(cur_tokens)
+                ]
+                chunk_speaker: str | None = None
+                if spk_slice:
+                    non_none = [s for s in spk_slice if s is not None]
+                    if non_none:
+                        chunk_speaker = max(set(non_none), key=non_none.count)
+                    else:
+                        chunk_speaker = seg.speaker
+
                 chunk_tokens = chunk_text.split()
                 per = (end_time - current_time) / max(len(chunk_tokens), 1)
                 chunk_words = []
@@ -1004,7 +1041,7 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                             text=ct,
                             start=t0,
                             end=t0 + per,
-                            speaker=seg.speaker,
+                            speaker=chunk_speaker,
                         )
                     )
                     t0 += per
@@ -1015,7 +1052,7 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                         start=current_time,
                         end=end_time,
                         words=chunk_words,
-                        speaker=seg.speaker,
+                        speaker=chunk_speaker,
                     )
                 )
 

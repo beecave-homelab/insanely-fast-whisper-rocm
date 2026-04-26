@@ -180,9 +180,11 @@ def _stub_cli_facade(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
             task: str = "transcribe",
             return_timestamps_value: bool | str = True,
             progress_cb: ProgressCallback | None = None,
+            cancellation_token: object = None,
         ) -> dict[str, Any]:
             del device, dtype, batch_size, chunk_length, progress_group_size
             del language, task, return_timestamps_value, progress_cb
+            del cancellation_token
 
             return {
                 "text": "stub transcription",

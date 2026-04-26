@@ -192,9 +192,8 @@ class ResponseFormatter:
             verbose_payload: dict[str, Any] = {
                 "text": result.get("text", ""),
                 "segments": segments,
+                "diarized": bool(result.get("diarized", False)),
             }
-            if result.get("diarized", False):
-                verbose_payload["diarized"] = True
 
             # Attempt to include detected language if available
             language = result.get("language") or result.get("config_used", {}).get(
@@ -272,9 +271,8 @@ class ResponseFormatter:
             verbose_payload = {
                 "text": transcription_output.get("text", ""),
                 "segments": segments,
+                "diarized": bool(transcription_output.get("diarized", False)),
             }
-            if transcription_output.get("diarized", False):
-                verbose_payload["diarized"] = True
             language = transcription_output.get("language") or transcription_output.get(
                 "config_used", {}
             ).get("language")
