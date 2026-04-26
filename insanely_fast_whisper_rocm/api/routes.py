@@ -74,7 +74,8 @@ def _apply_post_processing(
 
     Returns:
         The result dict, potentially enriched with stabilization and/or
-        speaker labels.
+        speaker labels.  When ``stabilize=True``, a ``"stabilized"`` key
+        is added (``True`` on success, ``False`` if stabilization failed).
 
     Raises:
         HTTPException: If diarization_device is invalid or diarization fails.
@@ -84,8 +85,10 @@ def _apply_post_processing(
             result = stabilize_timestamps(
                 result, demucs=demucs, vad=vad, vad_threshold=vad_threshold
             )
+            result["stabilized"] = True
         except Exception as stab_exc:  # noqa: BLE001
             logger.error("Stabilization failed: %s", stab_exc, exc_info=True)
+            result["stabilized"] = False
 
     if diarize:
         if diarization_device not in VALID_DIARIZATION_DEVICES:

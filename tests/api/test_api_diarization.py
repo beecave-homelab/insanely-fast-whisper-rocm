@@ -152,3 +152,68 @@ def test_invalid_diarization_device_returns_400(
     )
     assert response.status_code == 400
     assert "Invalid diarization_device" in response.json()["detail"]
+
+
+def test_stabilized_flag_on_success(
+    client: TestClient,
+    mock_orchestrator: pytest.MonkeyPatch,
+) -> None:
+    """verbose_json includes stabilized: true when stabilization succeeds."""
+    with patch(
+        "insanely_fast_whisper_rocm.api.routes.stabilize_timestamps",
+        return_value={"text": "Hello", "chunks": []},
+    ):
+        audio_file = io.BytesIO(DUMMY_WAV_HEADER)
+        response = client.post(
+            "/v1/audio/transcriptions",
+            files={"file": ("test.wav", audio_file, "audio/wav")},
+            data={
+                "stabilize": "true",
+                "response_format": "verbose_json",
+            },
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body.get("stabilized") is True
+
+
+def test_stabilized_flag_on_failure(
+    client: TestClient,
+    mock_orchestrator: pytest.MonkeyPatch,
+) -> None:
+    """verbose_json includes stabilized: false when stabilization fails."""
+    with patch(
+        "insanely_fast_whisper_rocm.api.routes.stabilize_timestamps",
+        side_effect=RuntimeError("stabilization crashed"),
+    ):
+        audio_file = io.BytesIO(DUMMY_WAV_HEADER)
+        response = client.post(
+            "/v1/audio/transcriptions",
+            files={"file": ("test.wav", audio_file, "audio/wav")},
+            data={
+                "stabilize": "true",
+                "response_format": "verbose_json",
+            },
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body.get("stabilized") is False
+
+
+def test_stabilized_flag_absent_when_not_requested(
+    client: TestClient,
+    mock_orchestrator: pytest.MonkeyPatch,
+) -> None:
+    """verbose_json omits stabilized key when stabilize is not requested."""
+    audio_file = io.BytesIO(DUMMY_WAV_HEADER)
+    response = client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("test.wav", audio_file, "audio/wav")},
+        data={
+            "stabilize": "false",
+            "response_format": "verbose_json",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "stabilized" not in body

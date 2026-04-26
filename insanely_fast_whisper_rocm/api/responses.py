@@ -195,6 +195,11 @@ class ResponseFormatter:
                 "diarized": bool(result.get("diarized", False)),
             }
 
+            # Include stabilization status when present
+            stabilized = result.get("stabilized")
+            if stabilized is not None:
+                verbose_payload["stabilized"] = bool(stabilized)
+
             # Attempt to include detected language if available
             language = result.get("language") or result.get("config_used", {}).get(
                 "language"
@@ -273,6 +278,9 @@ class ResponseFormatter:
                 "segments": segments,
                 "diarized": bool(transcription_output.get("diarized", False)),
             }
+            stabilized = transcription_output.get("stabilized")
+            if stabilized is not None:
+                verbose_payload["stabilized"] = bool(stabilized)
             language = transcription_output.get("language") or transcription_output.get(
                 "config_used", {}
             ).get("language")
