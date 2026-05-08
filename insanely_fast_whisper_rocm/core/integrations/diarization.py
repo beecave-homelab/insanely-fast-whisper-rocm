@@ -10,8 +10,11 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import subprocess
+import tempfile
 import threading
 import warnings
+from pathlib import Path
 from typing import Any
 
 from insanely_fast_whisper_rocm.core.errors import DiarizationError
@@ -216,6 +219,90 @@ def _align_speakers_to_segments(
     return aligned
 
 
+def _preload_audio_as_waveform(audio_path: str) -> str | dict[str, Any]:
+    """Load audio as a waveform dict for pyannote when torchcodec is absent.
+
+    Tries ``torchaudio.load`` first (fast path for WAV/FLAC).  When that
+    fails because the format is unsupported by the soundfile backend (e.g.
+    ``.m4a``, ``.mp3``), converts to WAV via ``ffmpeg`` and retries.
+
+    Args:
+        audio_path: Path to the audio file on disk.
+
+    Returns:
+        The original ``audio_path`` string if loading fails, or a dict
+        ``{"waveform": Tensor, "sample_rate": int}`` suitable for pyannote.
+    """
+    # Fast path: torchaudio can read it directly (WAV, FLAC, etc.)
+    try:
+        import torchaudio
+
+        waveform, sample_rate = torchaudio.load(audio_path)
+        # Ensure mono — pyannote expects single-channel audio.
+        if waveform.shape[0] > 1:
+            waveform = waveform.mean(dim=0, keepdim=True)
+        logger.debug(
+            "Preloaded audio via torchaudio: shape=%s, sr=%d",
+            waveform.shape,
+            sample_rate,
+        )
+        return {"waveform": waveform, "sample_rate": sample_rate}
+    except Exception as direct_exc:
+        logger.debug(
+            "torchaudio.load failed for %s: %s – trying ffmpeg conversion",
+            audio_path,
+            direct_exc,
+        )
+
+    # Slow path: convert to WAV via ffmpeg, then load.
+    suffix = Path(audio_path).suffix.lower()
+    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False, prefix="diarize_")
+    tmp_path = tmp.name
+    tmp.close()
+    try:
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            audio_path,
+            "-ar",
+            "16000",
+            "-ac",
+            "1",
+            tmp_path,
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if result.returncode != 0:
+            logger.warning(
+                "ffmpeg conversion failed for %s: %s. "
+                "Falling back to file-path input (may fail without torchcodec).",
+                audio_path,
+                result.stderr[:300],
+            )
+            return audio_path
+
+        waveform, sample_rate = torchaudio.load(tmp_path)
+        logger.debug(
+            "Preloaded audio via ffmpeg→torchaudio: shape=%s, sr=%d, src=%s",
+            waveform.shape,
+            sample_rate,
+            suffix,
+        )
+        return {"waveform": waveform, "sample_rate": sample_rate}
+    except Exception as exc:
+        logger.warning(
+            "Failed to preload audio (ffmpeg fallback): %s. "
+            "Falling back to file-path input (may fail without torchcodec).",
+            exc,
+        )
+        return audio_path
+    finally:
+        try:
+            Path(tmp_path).unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 # --- Public API --------------------------------------------------------------
 
 
@@ -276,22 +363,7 @@ def diarize(
     # audio decoding fails.  We preload the audio as a tensor dict instead.
     audio_input: str | dict[str, Any] = audio_path
     if not _TORCHCODEC_AVAILABLE:
-        try:
-            import torchaudio
-
-            waveform, sample_rate = torchaudio.load(audio_path)
-            audio_input = {"waveform": waveform, "sample_rate": sample_rate}
-            logger.debug(
-                "Preloaded audio via torchaudio: shape=%s, sr=%d",
-                waveform.shape,
-                sample_rate,
-            )
-        except Exception as exc:
-            logger.warning(
-                "Failed to preload audio via torchaudio: %s. "
-                "Falling back to file-path input (may fail without torchcodec).",
-                exc,
-            )
+        audio_input = _preload_audio_as_waveform(audio_path)
 
     # Run diarization.
     try:

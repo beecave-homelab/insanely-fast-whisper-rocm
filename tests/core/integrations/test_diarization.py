@@ -11,6 +11,7 @@ import torch
 from insanely_fast_whisper_rocm.core.errors import DiarizationError
 from insanely_fast_whisper_rocm.core.integrations.diarization import (
     _align_speakers_to_segments,
+    _preload_audio_as_waveform,
     clear_diarization_cache,
     diarize,
 )
@@ -538,3 +539,68 @@ def test_diarize_preserves_stabilized_segments_structure() -> None:
     assert out["segments"][0]["start"] == 0.0
     assert out["segments"][0]["end"] == 2.0
     assert out["segments"][0]["speaker"] == "SPEAKER_00"
+
+
+# ---------------------------------------------------------------------------
+# _preload_audio_as_waveform — audio preloading for torchcodec-less envs
+# ---------------------------------------------------------------------------
+
+
+def test_preload_audio_direct_load() -> None:
+    """torchaudio.load succeeds on first try for WAV files."""
+    fake_waveform = MagicMock(shape=torch.Size([1, 48000]))
+    with patch("torchaudio.load", return_value=(fake_waveform, 16000)):
+        result = _preload_audio_as_waveform("/audio.wav")
+
+    assert isinstance(result, dict)
+    assert result["sample_rate"] == 16000
+    assert result["waveform"] is fake_waveform
+
+
+def test_preload_audio_ffmpeg_fallback() -> None:
+    """Falls back to ffmpeg conversion when torchaudio.load fails (e.g. m4a)."""
+    fake_waveform = MagicMock(shape=torch.Size([1, 48000]))
+    mock_completed = MagicMock()
+    mock_completed.returncode = 0
+
+    with (
+        patch(
+            "torchaudio.load",
+            side_effect=[RuntimeError("Format not recognised"), (fake_waveform, 16000)],
+        ),
+        patch("subprocess.run", return_value=mock_completed),
+        patch("tempfile.NamedTemporaryFile") as mock_tmp,
+    ):
+        mock_file = MagicMock()
+        mock_file.name = "/tmp/diarize_test.wav"
+        mock_file.__enter__ = MagicMock(return_value=mock_file)
+        mock_file.__exit__ = MagicMock(return_value=False)
+        mock_tmp.return_value = mock_file
+
+        result = _preload_audio_as_waveform("/audio.m4a")
+
+    assert isinstance(result, dict)
+    assert result["sample_rate"] == 16000
+    assert result["waveform"] is fake_waveform
+
+
+def test_preload_audio_ffmpeg_fails_returns_path() -> None:
+    """Returns the original path string when both torchaudio and ffmpeg fail."""
+    mock_completed = MagicMock()
+    mock_completed.returncode = 1
+    mock_completed.stderr = "Conversion failed"
+
+    with (
+        patch("torchaudio.load", side_effect=RuntimeError("Format not recognised")),
+        patch("subprocess.run", return_value=mock_completed),
+        patch("tempfile.NamedTemporaryFile") as mock_tmp,
+    ):
+        mock_file = MagicMock()
+        mock_file.name = "/tmp/diarize_test.wav"
+        mock_file.__enter__ = MagicMock(return_value=mock_file)
+        mock_file.__exit__ = MagicMock(return_value=False)
+        mock_tmp.return_value = mock_file
+
+        result = _preload_audio_as_waveform("/audio.m4a")
+
+    assert result == "/audio.m4a"
