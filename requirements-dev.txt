@@ -9,5 +9,4 @@ ruff==0.14.11
 types-PyYAML==6.0.12.20250915
 typing-extensions==4.15.0
 --index-url https://pypi.org/simple/
---find-links https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/
 --find-links https://repo.radeon.com/rocm/manylinux/rocm-rel-7.0/

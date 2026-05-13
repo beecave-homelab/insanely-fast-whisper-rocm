@@ -174,5 +174,4 @@ xxhash==3.6.0; python_version >= "3.10" and python_version < "3.14"
 yarl==1.23.0; python_version >= "3.10" and python_version < "3.14"
 zipp==3.23.1; python_version >= "3.10" and python_version < "3.14"
 --index-url https://pypi.org/simple/
---find-links https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/
 --find-links https://repo.radeon.com/rocm/manylinux/rocm-rel-7.0/

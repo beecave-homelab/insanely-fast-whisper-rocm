@@ -27,4 +27,3 @@ transformers==4.57.3
 uvicorn==0.40.0
 --index-url https://pypi.org/simple/
 --find-links https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/
---find-links https://repo.radeon.com/rocm/manylinux/rocm-rel-7.0/
