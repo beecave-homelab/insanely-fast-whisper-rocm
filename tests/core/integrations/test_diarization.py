@@ -331,6 +331,54 @@ def test_diarize_raises_on_inference_error() -> None:
             diarize(result, audio_path="/fake.wav", hf_token="tok")
 
 
+def test_diarize_retries_cpu_on_rocm_miopen_error() -> None:
+    """diarize() retries on CPU for known ROCm/MIOpen GPU inference failures."""
+    result = _sample_result()
+
+    mock_annotation = MagicMock()
+    mock_annotation.itertracks.return_value = [
+        (MagicMock(start=0.0, end=2.5), None, "SPEAKER_00"),
+    ]
+
+    mock_output = MagicMock(spec=[])
+    mock_output.speaker_diarization = mock_annotation
+
+    gpu_pipeline = MagicMock()
+    gpu_pipeline.to.return_value = gpu_pipeline
+    gpu_pipeline.side_effect = RuntimeError("miopenStatusUnknownError")
+
+    cpu_pipeline = MagicMock()
+    cpu_pipeline.to.return_value = cpu_pipeline
+    cpu_pipeline.return_value = mock_output
+
+    mock_pipeline_cls = MagicMock()
+    mock_pipeline_cls.from_pretrained.side_effect = [gpu_pipeline, cpu_pipeline]
+
+    with (
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
+            mock_pipeline_cls,
+        ),
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
+            False,
+        ),
+        patch("torchaudio.load") as mock_load,
+    ):
+        mock_load.return_value = (MagicMock(shape=torch.Size([1, 48000])), 16000)
+        out = diarize(
+            result,
+            audio_path="/fake.wav",
+            hf_token="tok",
+            device="cuda",
+        )
+
+    assert out["diarized"] is True
+    assert out["chunks"][0]["speaker"] == "SPEAKER_00"
+    assert gpu_pipeline.call_count == 1
+    assert cpu_pipeline.call_count == 1
+
+
 def test_diarize_no_chunks_returns_unchanged() -> None:
     """diarize() returns result unchanged when there are no chunks."""
     result: dict[str, Any] = {"text": "Hello", "chunks": []}

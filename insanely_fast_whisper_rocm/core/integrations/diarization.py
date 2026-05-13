@@ -158,6 +158,23 @@ def _raise_load_error(model_name: str, exc: Exception) -> None:
     ) from exc
 
 
+def _is_rocm_miopen_runtime_error(exc: Exception) -> bool:
+    """Return whether an exception is a ROCm/MIOpen inference failure.
+
+    Args:
+        exc: Runtime exception raised by pyannote/PyTorch.
+
+    Returns:
+        True when the error matches a known ROCm/MIOpen runtime failure.
+    """
+    message = str(exc).lower()
+    return (
+        "miopenstatusunknownerror" in message
+        or "miopen" in message
+        and "rocrand" in message
+    )
+
+
 def clear_diarization_cache() -> None:
     """Invalidate all cached diarization pipelines.
 
@@ -375,7 +392,21 @@ def diarize(
         if max_speakers is not None:
             kwargs["max_speakers"] = max_speakers
 
-        diarization_result = pipeline(audio_input, **kwargs)
+        try:
+            diarization_result = pipeline(audio_input, **kwargs)
+        except Exception as exc:
+            is_gpu_device = device.lower() in {"cuda", "gpu"}
+            if not is_gpu_device or not _is_rocm_miopen_runtime_error(exc):
+                raise
+
+            logger.warning(
+                "Diarization failed on ROCm GPU with %s; retrying on CPU",
+                exc,
+            )
+            cpu_pipeline = _get_or_create_pipeline(
+                DEFAULT_DIARIZATION_MODEL, "cpu", hf_token
+            )
+            diarization_result = cpu_pipeline(audio_input, **kwargs)
     except Exception as exc:
         logger.error("Diarization inference failed: %s", exc, exc_info=True)
         raise DiarizationError(
