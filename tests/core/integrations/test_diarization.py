@@ -43,7 +43,7 @@ def _sample_result() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def test_diarize_raises_when_pyannote_not_installed() -> None:
+def test_diarize__raises_when_pyannote_not_installed() -> None:
     """diarize() raises DiarizationError when Pipeline is None."""
     result = _sample_result()
     with patch(
@@ -59,7 +59,7 @@ def test_diarize_raises_when_pyannote_not_installed() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_diarize_raises_when_hf_token_missing() -> None:
+def test_diarize__raises_when_hf_token_missing() -> None:
     """diarize() raises DiarizationError when hf_token is None/empty."""
     result = _sample_result()
     with patch(
@@ -78,7 +78,7 @@ def test_diarize_raises_when_hf_token_missing() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_diarize_raises_on_403_license_not_accepted() -> None:
+def test_diarize__raises_on_403_license_not_accepted() -> None:
     """diarize() raises DiarizationError with license link on HTTP 403."""
     result = _sample_result()
     mock_pipeline_cls = MagicMock()
@@ -99,7 +99,7 @@ def test_diarize_raises_on_403_license_not_accepted() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_diarize_assigns_speakers_to_chunks() -> None:
+def test_diarize__assigns_speakers_to_chunks() -> None:
     """diarize() adds speaker labels to chunks and sets diarized=True."""
     result = _sample_result()
 
@@ -150,7 +150,7 @@ def test_diarize_assigns_speakers_to_chunks() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_align_full_overlap() -> None:
+def test_align_speakers_to_segments__assigns_speaker_with_largest_overlap() -> None:
     """Chunk fully inside a speaker turn gets that speaker."""
     chunks = [{"start": 1.0, "end": 2.0, "text": "hi"}]
     turns = [(0.0, 3.0, "A")]
@@ -158,7 +158,7 @@ def test_align_full_overlap() -> None:
     assert aligned[0]["speaker"] == "A"
 
 
-def test_align_partial_overlap_dominant() -> None:
+def test_align_speakers_to_segments__prefers_dominant_overlap_on_tie() -> None:
     """Chunk overlapping two speakers gets the one with most overlap."""
     chunks = [{"start": 1.0, "end": 3.0, "text": "hi"}]
     turns = [
@@ -170,7 +170,7 @@ def test_align_partial_overlap_dominant() -> None:
     assert aligned[0]["speaker"] == "A"
 
 
-def test_align_no_overlap() -> None:
+def test_align_speakers_to_segments__returns_none_when_no_overlap() -> None:
     """Chunk with no overlap gets speaker=None."""
     chunks = [{"start": 10.0, "end": 12.0, "text": "hi"}]
     turns = [(0.0, 3.0, "A")]
@@ -178,7 +178,7 @@ def test_align_no_overlap() -> None:
     assert aligned[0]["speaker"] is None
 
 
-def test_align_multiple_speakers_dominant() -> None:
+def test_align_speakers_to_segments__selects_speaker_with_longest_overlap() -> None:
     """Chunk gets the speaker with the longest overlap duration."""
     chunks = [{"start": 0.0, "end": 5.0, "text": "hi"}]
     turns = [
@@ -190,7 +190,7 @@ def test_align_multiple_speakers_dominant() -> None:
     assert aligned[0]["speaker"] == "B"
 
 
-def test_align_handles_none_timestamp_end() -> None:
+def test_align_speakers_to_segments__handles_none_timestamp_end() -> None:
     """Chunk with ``timestamp=(start, None)`` does not crash alignment."""
     chunks = [{"timestamp": (2.0, None), "text": "tail"}]
     turns = [(1.0, 3.0, "A")]
@@ -205,7 +205,7 @@ def test_align_handles_none_timestamp_end() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_pipeline_cache_reuses_same_config() -> None:
+def test_get_or_create_pipeline__reuses_cached_instance_for_same_config() -> None:
     """Same (model, device) returns the same cached pipeline object."""
     mock_pipeline_instance = MagicMock()
     mock_pipeline_instance.to.return_value = mock_pipeline_instance
@@ -228,7 +228,9 @@ def test_pipeline_cache_reuses_same_config() -> None:
         assert mock_pipeline_cls.from_pretrained.call_count == 1
 
 
-def test_pipeline_cache_different_config() -> None:
+def test_get_or_create_pipeline__creates_separate_instance_for_different_config() -> (
+    None
+):
     """Different (model, device) creates different pipeline objects."""
     mock_a = MagicMock()
     mock_a.to.return_value = mock_a
@@ -251,7 +253,7 @@ def test_pipeline_cache_different_config() -> None:
         assert p1 is not p2
 
 
-def test_pipeline_cache_different_token_creates_separate_entry() -> None:
+def test_get_or_create_pipeline__creates_separate_entry_for_different_token() -> None:
     """Different HF tokens produce separate cache entries."""
     mock_a = MagicMock()
     mock_a.to.return_value = mock_a
@@ -275,7 +277,7 @@ def test_pipeline_cache_different_token_creates_separate_entry() -> None:
         assert mock_pipeline_cls.from_pretrained.call_count == 2
 
 
-def test_clear_diarization_cache_invalidates() -> None:
+def test_clear_diarization_cache__empties_cache() -> None:
     """clear_diarization_cache() empties the cache."""
     mock_pipeline_instance = MagicMock()
     mock_pipeline_instance.to.return_value = mock_pipeline_instance
@@ -304,7 +306,7 @@ def test_clear_diarization_cache_invalidates() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_diarize_raises_on_inference_error() -> None:
+def test_diarize__raises_on_inference_error() -> None:
     """diarize() raises DiarizationError when pipeline inference fails."""
     result = _sample_result()
 
@@ -331,7 +333,18 @@ def test_diarize_raises_on_inference_error() -> None:
             diarize(result, audio_path="/fake.wav", hf_token="tok")
 
 
-def test_diarize_retries_cpu_on_rocm_miopen_error() -> None:
+@pytest.mark.parametrize(
+    "gpu_error_message",
+    [
+        "miopenStatusUnknownError",
+        "miopenStatusInvalidValue: bad param",
+        "rocrand/rocrand_xorwow.h: not found",
+    ],
+    ids=["miopenstatusunknownerror", "miopen-generic", "rocrand"],
+)
+def test_diarize__retries_cpu_on_rocm_miopen_error(
+    gpu_error_message: str,
+) -> None:
     """diarize() retries on CPU for known ROCm/MIOpen GPU inference failures."""
     result = _sample_result()
 
@@ -345,7 +358,7 @@ def test_diarize_retries_cpu_on_rocm_miopen_error() -> None:
 
     gpu_pipeline = MagicMock()
     gpu_pipeline.to.return_value = gpu_pipeline
-    gpu_pipeline.side_effect = RuntimeError("miopenStatusUnknownError")
+    gpu_pipeline.side_effect = RuntimeError(gpu_error_message)
 
     cpu_pipeline = MagicMock()
     cpu_pipeline.to.return_value = cpu_pipeline
@@ -379,7 +392,7 @@ def test_diarize_retries_cpu_on_rocm_miopen_error() -> None:
     assert cpu_pipeline.call_count == 1
 
 
-def test_diarize_no_chunks_returns_unchanged() -> None:
+def test_diarize__returns_unchanged_when_no_chunks() -> None:
     """diarize() returns result unchanged when there are no chunks."""
     result: dict[str, Any] = {"text": "Hello", "chunks": []}
 
@@ -417,7 +430,7 @@ def test_diarize_no_chunks_returns_unchanged() -> None:
     assert "diarized" not in out
 
 
-def test_diarize_no_speaker_turns_returns_unchanged() -> None:
+def test_diarize__returns_unchanged_when_no_speaker_turns() -> None:
     """diarize() returns result unchanged when pyannote finds no turns."""
     result = _sample_result()
 
@@ -457,7 +470,7 @@ def test_diarize_no_speaker_turns_returns_unchanged() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_diarize_preloads_audio_when_torchcodec_unavailable() -> None:
+def test_diarize__preloads_audio_when_torchcodec_unavailable() -> None:
     """diarize() preloads audio via torchaudio when torchcodec is missing."""
     result = _sample_result()
 
@@ -501,7 +514,7 @@ def test_diarize_preloads_audio_when_torchcodec_unavailable() -> None:
     assert out["diarized"] is True
 
 
-def test_diarize_passes_file_path_when_torchcodec_available() -> None:
+def test_diarize__passes_file_path_when_torchcodec_available() -> None:
     """diarize() passes file path directly when torchcodec is available."""
     result = _sample_result()
 
@@ -538,7 +551,7 @@ def test_diarize_passes_file_path_when_torchcodec_available() -> None:
     assert out["diarized"] is True
 
 
-def test_diarize_preserves_stabilized_segments_structure() -> None:
+def test_diarize__preserves_stabilized_segments_structure() -> None:
     """Diarization keeps existing ``segments`` shape while adding speakers."""
     result = {
         "text": "Hello world. Goodbye world.",
@@ -594,7 +607,7 @@ def test_diarize_preserves_stabilized_segments_structure() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_preload_audio_direct_load() -> None:
+def test_preload_audio_as_waveform__loads_wav_directly() -> None:
     """torchaudio.load succeeds on first try for WAV files."""
     fake_waveform = MagicMock(shape=torch.Size([1, 48000]))
     with patch("torchaudio.load", return_value=(fake_waveform, 16000)):
@@ -605,7 +618,7 @@ def test_preload_audio_direct_load() -> None:
     assert result["waveform"] is fake_waveform
 
 
-def test_preload_audio_ffmpeg_fallback() -> None:
+def test_preload_audio_as_waveform__falls_back_to_ffmpeg_for_m4a() -> None:
     """Falls back to ffmpeg conversion when torchaudio.load fails (e.g. m4a)."""
     fake_waveform = MagicMock(shape=torch.Size([1, 48000]))
     mock_completed = MagicMock()
@@ -632,7 +645,7 @@ def test_preload_audio_ffmpeg_fallback() -> None:
     assert result["waveform"] is fake_waveform
 
 
-def test_preload_audio_ffmpeg_fails_returns_path() -> None:
+def test_preload_audio_as_waveform__returns_path_when_ffmpeg_fails() -> None:
     """Returns the original path string when both torchaudio and ffmpeg fail."""
     mock_completed = MagicMock()
     mock_completed.returncode = 1

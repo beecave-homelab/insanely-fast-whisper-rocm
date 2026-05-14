@@ -171,7 +171,7 @@ def _is_rocm_miopen_runtime_error(exc: Exception) -> bool:
     return (
         "miopenstatusunknownerror" in message
         or "miopen" in message
-        and "rocrand" in message
+        or "rocrand" in message
     )
 
 

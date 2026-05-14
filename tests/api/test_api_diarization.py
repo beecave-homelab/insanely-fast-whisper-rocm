@@ -116,12 +116,12 @@ def test_diarized_flag_in_response(
     assert body.get("diarized") is True
 
 
-def test_error_response_when_hf_token_missing(
+def test_post_transcriptions__maps_diarization_error_to_400(
     client: TestClient,
     mock_orchestrator: pytest.MonkeyPatch,
     _mock_diarize_error: None,
 ) -> None:
-    """400 error when diarize=True but HF_TOKEN not set."""
+    """Any DiarizationError from the route is mapped to HTTP 400."""
     audio_file = io.BytesIO(DUMMY_WAV_HEADER)
     response = client.post(
         "/v1/audio/transcriptions",
