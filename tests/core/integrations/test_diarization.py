@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -22,7 +23,7 @@ from insanely_fast_whisper_rocm.core.integrations.diarization import (
 
 
 @pytest.fixture(autouse=True)
-def _clean_cache() -> None:
+def _clean_cache() -> None:  # pyright: ignore[reportUnusedFunction]
     """Ensure the pipeline cache is empty before each test."""
     clear_diarization_cache()
 
@@ -392,9 +393,9 @@ def test_diarize__retries_cpu_on_rocm_miopen_error(
     assert cpu_pipeline.call_count == 1
 
 
-def test_diarize__returns_unchanged_when_no_chunks() -> None:
-    """diarize() returns result unchanged when there are no chunks."""
-    result: dict[str, Any] = {"text": "Hello", "chunks": []}
+def test_diarize__returns_unchanged_when_no_chunks_and_no_segments() -> None:
+    """diarize() returns result unchanged when there are no chunks or segments."""
+    result: dict[str, Any] = {"text": "Hello", "chunks": [], "segments": []}
 
     mock_annotation = MagicMock()
     mock_annotation.itertracks.return_value = [
@@ -426,7 +427,7 @@ def test_diarize__returns_unchanged_when_no_chunks() -> None:
         mock_load.return_value = (MagicMock(shape=torch.Size([1, 48000])), 16000)
         out = diarize(result, audio_path="/fake.wav", hf_token="tok")
 
-    # No chunks → no alignment, returns original
+    # No chunks and no segments → no alignment, returns original
     assert "diarized" not in out
 
 
@@ -551,6 +552,64 @@ def test_diarize__passes_file_path_when_torchcodec_available() -> None:
     assert out["diarized"] is True
 
 
+def test_diarize__falls_back_to_segments_when_chunks_removed_by_stabilization() -> (  # noqa: E501
+    None
+):
+    """diarize() aligns speakers via segments when chunks are absent.
+
+    Regression test: after stabilization removes the ``chunks`` key,
+    diarization must still process the ``segments`` key instead of
+    silently returning the result unchanged.
+    """
+    # Simulate a result after stabilization: chunks removed, segments present
+    result: dict[str, Any] = {
+        "text": "Hello world. Goodbye world.",
+        "segments": [
+            {"start": 0.0, "end": 2.0, "text": "Hello world."},
+            {"start": 2.5, "end": 5.0, "text": "Goodbye world."},
+        ],
+        "stabilized": True,
+    }
+
+    mock_annotation = MagicMock()
+    mock_annotation.itertracks.return_value = [
+        (MagicMock(start=0.0, end=2.5), None, "SPEAKER_00"),
+        (MagicMock(start=2.5, end=5.0), None, "SPEAKER_01"),
+    ]
+
+    mock_output = MagicMock(spec=[])
+    mock_output.speaker_diarization = mock_annotation
+
+    mock_pipeline_instance = MagicMock()
+    mock_pipeline_instance.return_value = mock_output
+    mock_pipeline_instance.to.return_value = mock_pipeline_instance
+
+    mock_pipeline_cls = MagicMock()
+    mock_pipeline_cls.from_pretrained.return_value = mock_pipeline_instance
+
+    with (
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization.Pipeline",
+            mock_pipeline_cls,
+        ),
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization._TORCHCODEC_AVAILABLE",
+            False,
+        ),
+        patch("torchaudio.load") as mock_load,
+    ):
+        mock_load.return_value = (MagicMock(shape=torch.Size([1, 48000])), 16000)
+        out = diarize(result, audio_path="/fake.wav", hf_token="tok")
+
+    assert out["diarized"] is True
+    # Segments should have speaker labels
+    assert out["segments"][0]["speaker"] == "SPEAKER_00"
+    assert out["segments"][1]["speaker"] == "SPEAKER_01"
+    # Chunks should also be populated from the aligned segments
+    assert out["chunks"][0]["speaker"] == "SPEAKER_00"
+    assert out["chunks"][1]["speaker"] == "SPEAKER_01"
+
+
 def test_diarize__preserves_stabilized_segments_structure() -> None:
     """Diarization keeps existing ``segments`` shape while adding speakers."""
     result = {
@@ -654,6 +713,27 @@ def test_preload_audio_as_waveform__returns_path_when_ffmpeg_fails() -> None:
     with (
         patch("torchaudio.load", side_effect=RuntimeError("Format not recognised")),
         patch("subprocess.run", return_value=mock_completed),
+        patch("tempfile.NamedTemporaryFile") as mock_tmp,
+    ):
+        mock_file = MagicMock()
+        mock_file.name = "/tmp/diarize_test.wav"
+        mock_file.__enter__ = MagicMock(return_value=mock_file)
+        mock_file.__exit__ = MagicMock(return_value=False)
+        mock_tmp.return_value = mock_file
+
+        result = _preload_audio_as_waveform("/audio.m4a")
+
+    assert result == "/audio.m4a"
+
+
+def test_preload_audio_as_waveform__falls_back_on_ffmpeg_timeout() -> None:
+    """Returns the original path string when ffmpeg conversion times out."""
+    with (
+        patch("torchaudio.load", side_effect=RuntimeError("Format not recognised")),
+        patch(
+            "subprocess.run",
+            side_effect=subprocess.TimeoutExpired(cmd=["ffmpeg"], timeout=30),
+        ),
         patch("tempfile.NamedTemporaryFile") as mock_tmp,
     ):
         mock_file = MagicMock()

@@ -22,6 +22,51 @@ class TestOutputAndBenchmarks:
         self.total_time = 2.0
 
     @patch("insanely_fast_whisper_rocm.cli.commands.FORMATTERS")
+    def test_export_txt_preserves_diarized_metadata(
+        self, mock_formatters: Mock
+    ) -> None:
+        """TXT export should pass diarization metadata through to the formatter."""
+        diarized_result = {
+            "text": "Hello there",
+            "chunks": [
+                {
+                    "text": "Hello there",
+                    "timestamp": [0.0, 1.0],
+                    "speaker": "SPEAKER_00",
+                }
+            ],
+            "diarized": True,
+            "runtime_seconds": 1.0,
+            "config_used": {"model": "test"},
+        }
+        mock_formatter = Mock()
+        mock_formatter.format.return_value = "[SPEAKER_00] Hello there"
+        mock_formatter.get_file_extension.return_value = "txt"
+        mock_formatters.__getitem__.return_value = mock_formatter
+
+        with patch("pathlib.Path.mkdir"), patch("pathlib.Path.write_text"):
+            _handle_output_and_benchmarks(
+                task="transcribe",
+                audio_file=self.audio_file,
+                result=diarized_result,
+                total_time=self.total_time,
+                output=None,
+                export_format="txt",
+                export_format_explicit=False,
+                benchmark_enabled=False,
+                benchmark_extra=(),
+                benchmark_flags=None,
+                benchmark_gpu_stats=None,
+                temp_files=[],
+                progress_cb=None,
+                quiet=False,
+            )
+
+        formatter_payload = mock_formatter.format.call_args.args[0]
+        assert formatter_payload["diarized"] is True
+        assert formatter_payload["chunks"][0]["speaker"] == "SPEAKER_00"
+
+    @patch("insanely_fast_whisper_rocm.cli.commands.FORMATTERS")
     def test_export_json_default(self, mock_formatters: Mock) -> None:
         """Test default JSON export to transcripts directory."""
         mock_formatter = Mock()
@@ -266,7 +311,7 @@ class TestOutputAndBenchmarks:
                 )
 
                 # Verify temp file cleanup was called
-                mock_cleanup.assert_called_once_with(temp_files)
+                mock_cleanup.assert_called_once_with([str(f) for f in temp_files])
 
     @patch("insanely_fast_whisper_rocm.benchmarks.collector.BenchmarkCollector")
     @patch("insanely_fast_whisper_rocm.cli.commands.FORMATTERS")
@@ -378,5 +423,5 @@ class TestOutputAndBenchmarks:
 
         # secho should have been called to print the benchmark path even when quiet
         assert mock_secho.called
-        args, kwargs = mock_secho.call_args
+        args, _kwargs = mock_secho.call_args
         assert "Benchmark saved to" in args[0]

@@ -13,7 +13,7 @@ import os
 import signal
 import sys
 import time
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from pathlib import Path
 from typing import Any
 
@@ -54,7 +54,8 @@ except ModuleNotFoundError:  # pragma: no cover
         *,
         demucs: bool = False,
         vad: bool = False,
-        vad_threshold: float | None = None,
+        vad_threshold: float = 0.35,
+        progress_cb: Callable[[str], None] | None = None,
     ) -> dict[str, Any]:
         """Raise a helpful error when stable-ts integration is unavailable.
 
@@ -63,8 +64,8 @@ except ModuleNotFoundError:  # pragma: no cover
                 is missing from the current installation.
         """
         raise RuntimeError(
-            "stable-ts integration is not installed; reinstall with the extra"
-            " dependencies to enable --stabilize support."
+            "stable-ts integration is not installed; reinstall with the "
+            + "extra dependencies to enable --stabilize support."
         )
 
 
@@ -134,7 +135,7 @@ def translate(audio_file: Path, **kwargs: object) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def _is_stabilization_corrupt(segments: list[dict]) -> bool:
+def _is_stabilization_corrupt(segments: list[dict[str, Any]]) -> bool:
     """Check if the stabilized segments appear to be corrupt.
 
     Returns:
@@ -295,7 +296,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
     if audio_file.suffix.lower() in constants.SUPPORTED_VIDEO_FORMATS:
         try:
             reporter.on_postprocess_started("extract-audio")
-            audio_file = extract_audio_from_video(video_path=audio_file)
+            audio_file = Path(extract_audio_from_video(video_path=str(audio_file)))
             temp_files.append(audio_file)
         finally:
             reporter.on_postprocess_finished("extract-audio")
@@ -370,8 +371,8 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
                 ):
                     if not quiet:
                         click.secho(
-                            "⚠️  Stabilization produced corrupted timestamps. "
-                            "Falling back to original.",
+                            "⚠️  Stabilization produced corrupted timestamps."
+                            + " Falling back to original.",
                             fg="yellow",
                         )
                     result = original_result
@@ -595,8 +596,8 @@ def _handle_output_and_benchmarks(
         formats_to_export = (export_format,)
 
     logger.debug(
-        "_handle_output_and_benchmarks: task=%s, export_format=%s, "
-        "formats_to_export=%s, benchmark_enabled=%s",
+        "_handle_output_and_benchmarks: task=%s, export_format=%s,"
+        + " formats_to_export=%s, benchmark_enabled=%s",
         task,
         export_format,
         formats_to_export,
@@ -610,6 +611,9 @@ def _handle_output_and_benchmarks(
         # Prefer the stable-ts key name
         "segments": result.get("segments") or result.get("chunks", []),
         "chunks": result.get("chunks", []),
+        "diarized": bool(result.get("diarized", False)),
+        "diarization_error": result.get("diarization_error"),
+        "stabilized": result.get("stabilized"),
         "metadata": {
             "audio_file": str(audio_file.resolve()),
             "total_time_seconds": round(total_time, 2),
@@ -752,4 +756,4 @@ def _handle_output_and_benchmarks(
     # Cleanup                                                            #
     # ------------------------------------------------------------------ #
     if temp_files:
-        cleanup_temp_files(temp_files)
+        cleanup_temp_files([str(f) for f in temp_files])

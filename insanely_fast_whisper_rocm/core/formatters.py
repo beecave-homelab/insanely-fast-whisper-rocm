@@ -88,17 +88,26 @@ def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
             # Nested structure: segments contain words arrays
             for segment in segments:
                 words = segment.get("words")
+                segment_speaker = segment.get("speaker")
                 if isinstance(words, list) and words and isinstance(words[0], dict):
                     for word_data in words:
                         text = word_data.get("word", "").strip()
                         start = word_data.get("start")
                         end = word_data.get("end")
+                        speaker = word_data.get("speaker", segment_speaker)
                         if (
                             text
                             and isinstance(start, (int, float))
                             and isinstance(end, (int, float))
                         ):
-                            words_list.append(Word(text=text, start=start, end=end))
+                            words_list.append(
+                                Word(
+                                    text=text,
+                                    start=start,
+                                    end=end,
+                                    speaker=speaker,
+                                )
+                            )
         elif "start" in first_segment and "end" in first_segment:
             # Flat structure: each segment IS a word (from stable-ts)
             # Check if these look like word-level segments (short duration)
@@ -198,7 +207,7 @@ def build_quality_segments(result: dict[str, Any]) -> list[dict[str, Any]]:
 
     logger.info(
         "[build_quality_segments] No words found, using fallback from raw "
-        "chunks/segments"
+        + "chunks/segments"
     )
     fallback_segments: list[dict[str, Any]] = []
     for chunk in result.get("segments") or result.get("chunks") or []:
@@ -360,14 +369,14 @@ class SrtFormatter(BaseFormatter):
                 if has_timing_bug:
                     logger.warning(
                         "[SrtFormatter] Detected word-level timestamp bug "
-                        "(all words have same timestamp). "
-                        "Using fallback chunk-based formatting to avoid gaps."
+                        + "(all words have same timestamp). "
+                        + "Using fallback chunk-based formatting to avoid gaps."
                     )
                 else:
                     segments = segment_words(words)
                     logger.info(
                         "[SrtFormatter] segment_words() produced %d segments "
-                        "from %d words.",
+                        + "from %d words.",
                         len(segments),
                         len(words),
                     )

@@ -24,7 +24,7 @@ from insanely_fast_whisper_rocm.utils.constants import DEFAULT_DIARIZATION_MODEL
 # built-in audio decoding).  On ROCm, torchcodec is incompatible with
 # the custom PyTorch build, so we preload audio via torchaudio instead.
 try:
-    import torchcodec  # noqa: F401
+    import torchcodec as _torchcodec  # noqa: F401  # type: ignore[import-untyped]
 
     _TORCHCODEC_AVAILABLE = True
 except (ImportError, OSError):
@@ -84,8 +84,9 @@ def _get_or_create_pipeline(
             return cached
 
     # Create outside the lock to avoid blocking other callers during download.
+    pipeline: Pipeline | None = None  # type: ignore[type-arg]
     try:
-        pipeline = Pipeline.from_pretrained(
+        pipeline = Pipeline.from_pretrained(  # type: ignore[union-attr]
             model_name,
             token=hf_token,
             revision="main",
@@ -111,8 +112,9 @@ def _get_or_create_pipeline(
             try:
                 import torch
 
-                pipeline.to(torch.device("cpu"))
-                del pipeline
+                if pipeline is not None:
+                    pipeline.to(torch.device("cpu"))
+                    del pipeline
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                 logger.warning(
@@ -144,9 +146,9 @@ def _raise_load_error(model_name: str, exc: Exception) -> None:
     if status_code == 403:
         raise DiarizationError(
             f"Access denied for model '{model_name}'. You must visit "
-            f"https://huggingface.co/{model_name} and accept the license "
-            "terms before using it. Then ensure HF_TOKEN is set to a valid "
-            "HuggingFace access token.",
+            + f"https://huggingface.co/{model_name} and accept the license "
+            + "terms before using it. Then ensure HF_TOKEN is set to a valid "
+            + "HuggingFace access token.",
             model=model_name,
             reason="license_not_accepted",
         ) from exc
@@ -252,7 +254,7 @@ def _preload_audio_as_waveform(audio_path: str) -> str | dict[str, Any]:
     """
     # Fast path: torchaudio can read it directly (WAV, FLAC, etc.)
     try:
-        import torchaudio
+        import torchaudio  # pyright: ignore[reportMissingTypeStubs]
 
         waveform, sample_rate = torchaudio.load(audio_path)
         # Ensure mono — pyannote expects single-channel audio.
@@ -288,17 +290,28 @@ def _preload_audio_as_waveform(audio_path: str) -> str | dict[str, Any]:
             "1",
             tmp_path,
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, check=False, timeout=30
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning(
+                "ffmpeg conversion timed out for %s (30s). "
+                + "Falling back to file-path input (may fail without torchcodec).",
+                audio_path,
+            )
+            return audio_path
+
         if result.returncode != 0:
             logger.warning(
                 "ffmpeg conversion failed for %s: %s. "
-                "Falling back to file-path input (may fail without torchcodec).",
+                + "Falling back to file-path input (may fail without torchcodec).",
                 audio_path,
                 result.stderr[:300],
             )
             return audio_path
 
-        waveform, sample_rate = torchaudio.load(tmp_path)
+        waveform, sample_rate = torchaudio.load(tmp_path)  # type: ignore[possibly-undefined]
         logger.debug(
             "Preloaded audio via ffmpeg→torchaudio: shape=%s, sr=%d, src=%s",
             waveform.shape,
@@ -309,7 +322,7 @@ def _preload_audio_as_waveform(audio_path: str) -> str | dict[str, Any]:
     except Exception as exc:
         logger.warning(
             "Failed to preload audio (ffmpeg fallback): %s. "
-            "Falling back to file-path input (may fail without torchcodec).",
+            + "Falling back to file-path input (may fail without torchcodec).",
             exc,
         )
         return audio_path
@@ -358,7 +371,7 @@ def diarize(
     if Pipeline is None:
         raise DiarizationError(
             "Speaker diarization was requested but pyannote.audio is not installed. "
-            "Install the diarization extras to enable --diarize support.",
+            + "Install the diarization extras to enable --diarize support.",
             model=DEFAULT_DIARIZATION_MODEL,
             reason="pyannote_not_installed",
         )
@@ -366,8 +379,8 @@ def diarize(
     if not hf_token:
         raise DiarizationError(
             "A HuggingFace access token (HF_TOKEN) is required for speaker "
-            "diarization. Set the HF_TOKEN environment variable or pass "
-            "hf_token explicitly.",
+            + "diarization. Set the HF_TOKEN environment variable or pass "
+            + "hf_token explicitly.",
             model=DEFAULT_DIARIZATION_MODEL,
             reason="missing_token",
         )
@@ -431,19 +444,29 @@ def diarize(
         logger.warning("Diarization produced no speaker turns")
         return result
 
-    # Align speakers to chunks.
-    chunks = result.get("chunks", [])
-    if not chunks:
-        logger.warning("No chunks in result - nothing to diarize")
+    # Align speakers to chunks, falling back to segments when chunks are
+    # absent (e.g. after stabilization removes the ``chunks`` key).
+    chunks = result.get("chunks") or []
+    segments = result.get("segments") or []
+
+    if not chunks and not segments:
+        logger.warning("No chunks or segments in result - nothing to diarize")
         return result
 
-    aligned_chunks = _align_speakers_to_segments(chunks, speaker_turns)
+    # Use chunks as the primary alignment target; fall back to segments.
+    primary = chunks if chunks else segments
+    aligned_primary = _align_speakers_to_segments(primary, speaker_turns)
 
-    out: dict[str, Any] = {**result, "chunks": aligned_chunks, "diarized": True}
-    if "segments" in result:
-        segments = result["segments"]
+    out: dict[str, Any] = {**result, "chunks": aligned_primary, "diarized": True}
+
+    if chunks:
+        # Also align segments if they exist and differ from chunks.
         if segments and segments is not chunks:
             out["segments"] = _align_speakers_to_segments(segments, speaker_turns)
         else:
-            out["segments"] = aligned_chunks
+            out["segments"] = aligned_primary
+    else:
+        # No original chunks — segments were the primary target.
+        out["segments"] = aligned_primary
+
     return out
