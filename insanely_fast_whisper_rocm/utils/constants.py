@@ -115,9 +115,9 @@ if USER_ENV_EXISTS:
 # --- Log final environment state ---
 debug_print(
     f"Config loaded from .env: model={os.getenv('WHISPER_MODEL')}, "
-    f"batch_size={os.getenv('WHISPER_BATCH_SIZE')}, "
-    f"log_level={os.getenv('LOG_LEVEL', 'INFO')} "
-    f"(CLI flags will override when specified)"
+    + f"batch_size={os.getenv('WHISPER_BATCH_SIZE')}, "
+    + f"log_level={os.getenv('LOG_LEVEL', 'INFO')} "
+    + "(CLI flags will override when specified)"
 )
 
 # --- Test/CI awareness and optional FS-check skipping ---
@@ -174,6 +174,9 @@ HF_TOKEN = (
 )
 MIN_SPEAKERS = 1  # Minimum number of speakers for diarization
 MAX_SPEAKERS = 10  # Maximum number of speakers for diarization
+DIARIZATION_FFMPEG_TIMEOUT_SECONDS = int(
+    os.getenv("DIARIZATION_FFMPEG_TIMEOUT_SECONDS", "30")
+)  # Timeout for ffmpeg audio conversion during diarization
 
 # File handling
 UPLOAD_DIR = os.getenv("WHISPER_UPLOAD_DIR", "temp_uploads")
@@ -269,9 +272,9 @@ if _pytorch_alloc_conf is None:
     _pytorch_alloc_conf = "garbage_collection_threshold:0.7,max_split_size_mb:128"
     logger.info(
         "Applying default PyTorch allocator configuration to reduce "
-        "fragmentation: %s. "
-        "You can customize this via the PYTORCH_ALLOC_CONF or PYTORCH_HIP_ALLOC_CONF "
-        "environment variable or your .env file.",
+        + "fragmentation: %s. "
+        + "You can customize this via the PYTORCH_ALLOC_CONF or PYTORCH_HIP_ALLOC_CONF "
+        + "environment variable or your .env file.",
         _pytorch_alloc_conf,
     )
 else:
@@ -313,7 +316,7 @@ else:
     os.environ["PYTORCH_ALLOC_CONF"] = _pytorch_alloc_conf
     logger.debug(
         "PyTorch not yet installed, defaulting to PYTORCH_ALLOC_CONF "
-        "(will be auto-adjusted on first import)"
+        + "(will be auto-adjusted on first import)"
     )
     # Also set the old variable for backward compatibility during setup
     os.environ["PYTORCH_HIP_ALLOC_CONF"] = _pytorch_alloc_conf

@@ -22,7 +22,7 @@ class TestOutputAndBenchmarks:
         self.total_time = 2.0
 
     @patch("insanely_fast_whisper_rocm.cli.commands.FORMATTERS")
-    def test_export_txt_preserves_diarized_metadata(
+    def test_export_txt__preserves_diarized_metadata(
         self, mock_formatters: Mock
     ) -> None:
         """TXT export should pass diarization metadata through to the formatter."""

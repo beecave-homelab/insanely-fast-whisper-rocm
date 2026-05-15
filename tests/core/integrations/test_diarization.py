@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -159,8 +160,8 @@ def test_align_speakers_to_segments__assigns_speaker_with_largest_overlap() -> N
     assert aligned[0]["speaker"] == "A"
 
 
-def test_align_speakers_to_segments__prefers_dominant_overlap_on_tie() -> None:
-    """Chunk overlapping two speakers gets the one with most overlap."""
+def test_align_speakers_to_segments__prefers_first_on_tie() -> None:
+    """Chunk overlapping two speakers equally gets the first turn (strict > tie-break)."""
     chunks = [{"start": 1.0, "end": 3.0, "text": "hi"}]
     turns = [
         (0.0, 2.0, "A"),  # 1s overlap
@@ -677,7 +678,9 @@ def test_preload_audio_as_waveform__loads_wav_directly() -> None:
     assert result["waveform"] is fake_waveform
 
 
-def test_preload_audio_as_waveform__falls_back_to_ffmpeg_for_m4a() -> None:
+def test_preload_audio_as_waveform__falls_back_to_ffmpeg_for_m4a(
+    tmp_path: Path,
+) -> None:
     """Falls back to ffmpeg conversion when torchaudio.load fails (e.g. m4a)."""
     fake_waveform = MagicMock(shape=torch.Size([1, 48000]))
     mock_completed = MagicMock()
@@ -692,7 +695,7 @@ def test_preload_audio_as_waveform__falls_back_to_ffmpeg_for_m4a() -> None:
         patch("tempfile.NamedTemporaryFile") as mock_tmp,
     ):
         mock_file = MagicMock()
-        mock_file.name = "/tmp/diarize_test.wav"
+        mock_file.name = str(tmp_path / "diarize_test.wav")
         mock_file.__enter__ = MagicMock(return_value=mock_file)
         mock_file.__exit__ = MagicMock(return_value=False)
         mock_tmp.return_value = mock_file
@@ -704,8 +707,10 @@ def test_preload_audio_as_waveform__falls_back_to_ffmpeg_for_m4a() -> None:
     assert result["waveform"] is fake_waveform
 
 
-def test_preload_audio_as_waveform__returns_path_when_ffmpeg_fails() -> None:
-    """Returns the original path string when both torchaudio and ffmpeg fail."""
+def test_preload_audio_as_waveform__raises_on_ffmpeg_failure(
+    tmp_path: Path,
+) -> None:
+    """Raises DiarizationError when both torchaudio and ffmpeg fail."""
     mock_completed = MagicMock()
     mock_completed.returncode = 1
     mock_completed.stderr = "Conversion failed"
@@ -716,18 +721,20 @@ def test_preload_audio_as_waveform__returns_path_when_ffmpeg_fails() -> None:
         patch("tempfile.NamedTemporaryFile") as mock_tmp,
     ):
         mock_file = MagicMock()
-        mock_file.name = "/tmp/diarize_test.wav"
+        mock_file.name = str(tmp_path / "diarize_test.wav")
         mock_file.__enter__ = MagicMock(return_value=mock_file)
         mock_file.__exit__ = MagicMock(return_value=False)
         mock_tmp.return_value = mock_file
 
-        result = _preload_audio_as_waveform("/audio.m4a")
+        with pytest.raises(DiarizationError) as exc_info:
+            _preload_audio_as_waveform("/audio.m4a")
+        assert exc_info.value.reason == "audio_decode_unavailable"
 
-    assert result == "/audio.m4a"
 
-
-def test_preload_audio_as_waveform__falls_back_on_ffmpeg_timeout() -> None:
-    """Returns the original path string when ffmpeg conversion times out."""
+def test_preload_audio_as_waveform__raises_on_ffmpeg_timeout(
+    tmp_path: Path,
+) -> None:
+    """Raises DiarizationError when ffmpeg conversion times out."""
     with (
         patch("torchaudio.load", side_effect=RuntimeError("Format not recognised")),
         patch(
@@ -737,11 +744,11 @@ def test_preload_audio_as_waveform__falls_back_on_ffmpeg_timeout() -> None:
         patch("tempfile.NamedTemporaryFile") as mock_tmp,
     ):
         mock_file = MagicMock()
-        mock_file.name = "/tmp/diarize_test.wav"
+        mock_file.name = str(tmp_path / "diarize_test.wav")
         mock_file.__enter__ = MagicMock(return_value=mock_file)
         mock_file.__exit__ = MagicMock(return_value=False)
         mock_tmp.return_value = mock_file
 
-        result = _preload_audio_as_waveform("/audio.m4a")
-
-    assert result == "/audio.m4a"
+        with pytest.raises(DiarizationError) as exc_info:
+            _preload_audio_as_waveform("/audio.m4a")
+        assert exc_info.value.reason == "audio_decode_unavailable"

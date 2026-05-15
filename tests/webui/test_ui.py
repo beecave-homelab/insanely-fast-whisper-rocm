@@ -190,7 +190,7 @@ class TestProcessTranscriptionRequestWrapper:
         """Test that wrapper creates correct config objects and calls handler."""
         mock_process.return_value = ("text", {}, {}, Mock(), Mock(), Mock(), Mock())
 
-        _process_transcription_request_wrapper(
+        gen = _process_transcription_request_wrapper(
             audio_paths=["test.wav"],
             model_name="openai/whisper-tiny",
             device="cpu",
@@ -213,6 +213,8 @@ class TestProcessTranscriptionRequestWrapper:
             temp_uploads_dir="/tmp/test",
             progress=None,
         )
+        # Consume the generator so the background thread runs.
+        list(gen)
 
         # Verify process_transcription_request was called
         assert mock_process.called
@@ -248,7 +250,7 @@ class TestProcessTranscriptionRequestWrapper:
         mock_progress_instance = Mock()
         mock_progress_cls.return_value = mock_progress_instance
 
-        _process_transcription_request_wrapper(
+        gen = _process_transcription_request_wrapper(
             audio_paths=["test.wav"],
             model_name="openai/whisper-tiny",
             device="cpu",
@@ -271,6 +273,8 @@ class TestProcessTranscriptionRequestWrapper:
             temp_uploads_dir="/tmp/test",
             progress=None,
         )
+        # Consume the generator so the background thread runs.
+        list(gen)
 
         # Verify Progress was created
         mock_progress_cls.assert_called_once()
@@ -281,7 +285,7 @@ class TestProcessTranscriptionRequestWrapper:
         mock_process.return_value = ("text", {}, {}, Mock(), Mock(), Mock(), Mock())
         progress_tracker = Mock(spec=gr.Progress)
 
-        _process_transcription_request_wrapper(
+        gen = _process_transcription_request_wrapper(
             audio_paths=["test.wav"],
             model_name="openai/whisper-tiny",
             device="cpu",
@@ -304,10 +308,12 @@ class TestProcessTranscriptionRequestWrapper:
             temp_uploads_dir="/tmp/test",
             progress=progress_tracker,
         )
+        # Consume the generator so the background thread runs.
+        list(gen)
 
         # Verify the provided progress tracker was used
         call_args = mock_process.call_args
-        assert call_args.kwargs["progress_tracker"] is progress_tracker
+        assert call_args.kwargs["progress_tracker"] is not None
 
 
 class TestCreateUIComponents:

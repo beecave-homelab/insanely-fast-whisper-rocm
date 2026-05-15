@@ -267,6 +267,11 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
             "vad_threshold": vad_threshold,
             "debug": debug,
             "quiet": quiet,
+            "diarize": diarize,
+            "num_speakers": num_speakers,
+            "min_speakers": min_speakers,
+            "max_speakers": max_speakers,
+            "diarization_device": diarization_device,
             "progress": progress_enabled,
             "no_timestamps": no_timestamps,
             "export_format": export_format,
@@ -408,6 +413,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
 
             reporter.on_postprocess_started("diarization")
             try:
+                _ensure_not_cancelled()
                 result = diarize_result(
                     result,
                     audio_path=str(audio_file),
@@ -418,12 +424,14 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
                     hf_token=constants.HF_TOKEN,
                 )
             except DiarizationError as exc:
+                result["diarization_error"] = str(exc)
                 if not quiet:
                     click.secho(
                         f"\u26a0\ufe0f  Diarization failed: {exc}",
                         fg="yellow",
                     )
             except Exception as exc:  # pragma: no cover — defensive
+                result["diarization_error"] = str(exc)
                 if not quiet:
                     click.secho(
                         f"\u26a0\ufe0f  Diarization failed: {exc}",

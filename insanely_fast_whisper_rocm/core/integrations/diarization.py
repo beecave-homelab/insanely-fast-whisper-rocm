@@ -18,7 +18,10 @@ from pathlib import Path
 from typing import Any
 
 from insanely_fast_whisper_rocm.core.errors import DiarizationError
-from insanely_fast_whisper_rocm.utils.constants import DEFAULT_DIARIZATION_MODEL
+from insanely_fast_whisper_rocm.utils.constants import (
+    DEFAULT_DIARIZATION_MODEL,
+    DIARIZATION_FFMPEG_TIMEOUT_SECONDS,
+)
 
 # Check if torchcodec is available (required by pyannote.audio v4 for
 # built-in audio decoding).  On ROCm, torchcodec is incompatible with
@@ -76,7 +79,12 @@ def _get_or_create_pipeline(
     if device.lower() == "gpu":
         device = "cuda"
 
-    token_hash = hashlib.sha256(hf_token.encode()).hexdigest()[:16]
+    # Normalize hf_token to bytes before hashing; handle None/bytes gracefully.
+    if isinstance(hf_token, bytes):
+        token_bytes = hf_token
+    else:
+        token_bytes = str(hf_token).encode()
+    token_hash = hashlib.sha256(token_bytes).hexdigest()[:16]
     key = (model_name, device, token_hash)
     with _LOCK:
         cached = _CACHE.get(key)
@@ -114,14 +122,18 @@ def _get_or_create_pipeline(
 
                 if pipeline is not None:
                     pipeline.to(torch.device("cpu"))
-                    del pipeline
+                    pipeline = None
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                 logger.warning(
                     "Duplicate pipeline created for key=%s; orphan freed", key
                 )
-            except Exception:  # pragma: no cover
-                logger.debug("Failed to clean up orphaned pipeline", exc_info=True)
+            except Exception as exc:  # pragma: no cover
+                logger.warning(
+                    "Failed to clean up orphaned pipeline for key=%s",
+                    key,
+                    exc_info=exc,
+                )
         return _CACHE[key]
 
 
@@ -238,7 +250,7 @@ def _align_speakers_to_segments(
     return aligned
 
 
-def _preload_audio_as_waveform(audio_path: str) -> str | dict[str, Any]:
+def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
     """Load audio as a waveform dict for pyannote when torchcodec is absent.
 
     Tries ``torchaudio.load`` first (fast path for WAV/FLAC).  When that
@@ -249,8 +261,12 @@ def _preload_audio_as_waveform(audio_path: str) -> str | dict[str, Any]:
         audio_path: Path to the audio file on disk.
 
     Returns:
-        The original ``audio_path`` string if loading fails, or a dict
-        ``{"waveform": Tensor, "sample_rate": int}`` suitable for pyannote.
+        A dict ``{"waveform": Tensor, "sample_rate": int}`` suitable for
+        pyannote.
+
+    Raises:
+        DiarizationError: If neither torchaudio nor ffmpeg can decode the
+            audio (reason ``audio_decode_unavailable``).
     """
     # Fast path: torchaudio can read it directly (WAV, FLAC, etc.)
     try:
@@ -268,7 +284,7 @@ def _preload_audio_as_waveform(audio_path: str) -> str | dict[str, Any]:
         return {"waveform": waveform, "sample_rate": sample_rate}
     except Exception as direct_exc:
         logger.debug(
-            "torchaudio.load failed for %s: %s – trying ffmpeg conversion",
+            "torchaudio.load failed for %s: %s - trying ffmpeg conversion",
             audio_path,
             direct_exc,
         )
@@ -292,24 +308,28 @@ def _preload_audio_as_waveform(audio_path: str) -> str | dict[str, Any]:
         ]
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True, check=False, timeout=30
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=DIARIZATION_FFMPEG_TIMEOUT_SECONDS or None,
             )
         except subprocess.TimeoutExpired:
-            logger.warning(
-                "ffmpeg conversion timed out for %s (30s). "
-                + "Falling back to file-path input (may fail without torchcodec).",
-                audio_path,
+            raise DiarizationError(
+                f"Audio decode unavailable; ffmpeg conversion timed out for"
+                f" {audio_path}. Install torchcodec or provide WAV/FLAC input.",
+                model=DEFAULT_DIARIZATION_MODEL,
+                reason="audio_decode_unavailable",
             )
-            return audio_path
 
         if result.returncode != 0:
-            logger.warning(
-                "ffmpeg conversion failed for %s: %s. "
-                + "Falling back to file-path input (may fail without torchcodec).",
-                audio_path,
-                result.stderr[:300],
+            raise DiarizationError(
+                f"Audio decode unavailable; ffmpeg conversion failed for"
+                f" {audio_path}: {result.stderr[:300]}."
+                f" Install torchcodec or provide WAV/FLAC input.",
+                model=DEFAULT_DIARIZATION_MODEL,
+                reason="audio_decode_unavailable",
             )
-            return audio_path
 
         waveform, sample_rate = torchaudio.load(tmp_path)  # type: ignore[possibly-undefined]
         logger.debug(
@@ -319,13 +339,15 @@ def _preload_audio_as_waveform(audio_path: str) -> str | dict[str, Any]:
             suffix,
         )
         return {"waveform": waveform, "sample_rate": sample_rate}
+    except DiarizationError:
+        raise
     except Exception as exc:
-        logger.warning(
-            "Failed to preload audio (ffmpeg fallback): %s. "
-            + "Falling back to file-path input (may fail without torchcodec).",
-            exc,
-        )
-        return audio_path
+        raise DiarizationError(
+            f"Audio decode unavailable; failed to preload audio: {exc}."
+            f" Install torchcodec or provide WAV/FLAC input.",
+            model=DEFAULT_DIARIZATION_MODEL,
+            reason="audio_decode_unavailable",
+        ) from exc
     finally:
         try:
             Path(tmp_path).unlink(missing_ok=True)
