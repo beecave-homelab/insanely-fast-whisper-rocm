@@ -155,13 +155,31 @@ def _prepare_temp_downloadable_file(
     try:
         with open(temp_file_path, "w", encoding="utf-8") as f:
             f.write(content)
-        logger.info("Created temporary download file: %s", temp_file_path)
-        return str(temp_file_path)
+        abs_path = str(temp_file_path.resolve())
+        logger.info("Created temporary download file: %s", abs_path)
+        return abs_path
     except OSError as e:
         logger.error(
             "Failed to create temporary download file %s: %s", temp_file_path, e
         )
         raise
+
+
+def _to_gradio_file_value(path: str | Path | None) -> str | None:
+    """Convert a filesystem path to a Gradio-safe absolute file path.
+
+    Gradio's File component copies files by absolute path.
+    Relative paths cause the copy step to hang silently.
+
+    Args:
+        path: Path returned by the pipeline or export builder.
+
+    Returns:
+        Absolute string path for Gradio file/download components, or None.
+    """
+    if not path:
+        return None
+    return str(Path(path).resolve())
 
 
 def _is_stabilization_corrupt(segments: list[dict]) -> bool:
@@ -183,49 +201,28 @@ def _is_stabilization_corrupt(segments: list[dict]) -> bool:
     return (identical_count / len(segments)) > 0.5
 
 
-def _build_ui_json_summary(
+def _build_ui_json_preview(
     raw_result: dict[str, Any],
     *,
     json_file_path: str | None,
-    max_text_preview_chars: int = 2_000,
-) -> dict[str, Any]:
-    """Build a small JSON-safe summary for display in the WebUI.
-
-    The full transcription payload (especially ``chunks`` / ``segments``) can be
-    large enough to freeze the Gradio frontend when rendered via ``gr.JSON``.
-    This helper returns a compact summary suitable for UI display while keeping
-    full fidelity data accessible via download.
+) -> str:
+    """Build a JSON preview string for the WebUI export tab.
 
     Args:
         raw_result: Raw transcription result from the pipeline.
         json_file_path: Path to the saved JSON file on disk.
-        max_text_preview_chars: Max number of characters to include in
-            ``text_preview``.
 
     Returns:
-        A compact dict for UI display.
+        Pretty-formatted JSON text for UI display.
     """
-    text = raw_result.get("text")
-    chunks = raw_result.get("chunks")
-    segments = raw_result.get("segments")
+    if json_file_path:
+        json_path = Path(json_file_path)
+        try:
+            return json_path.read_text(encoding="utf-8")
+        except OSError:
+            logger.warning("Failed to read JSON export preview from %s", json_path)
 
-    text_preview: str | None
-    if isinstance(text, str):
-        text_preview = text[:max_text_preview_chars]
-    else:
-        text_preview = None
-
-    return {
-        "output_file_path": json_file_path,
-        "text_len": len(text) if isinstance(text, str) else None,
-        "text_preview": text_preview,
-        "chunks": len(chunks) if isinstance(chunks, list) else None,
-        "segments": len(segments) if isinstance(segments, list) else None,
-        "task_type": raw_result.get("task_type"),
-        "runtime_seconds": raw_result.get("runtime_seconds"),
-        "pipeline_runtime_seconds": raw_result.get("pipeline_runtime_seconds"),
-        "processed_at": raw_result.get("processed_at"),
-    }
+    return json.dumps(raw_result, indent=2, ensure_ascii=False)
 
 
 def transcribe(
@@ -552,8 +549,8 @@ def transcribe(
                     chunk_length = cfg.get("chunk_length")
                     attempt_no = attempt.get("attempt")
                     summary_parts.append(
-                        f"{attempt_no}) {device}/{dtype} bs={batch_size} "
-                        f"cl={chunk_length}"
+                        f"{attempt_no}) {device}/{dtype} "
+                        + f"bs={batch_size} cl={chunk_length}"
                     )
 
                 if summary_parts:
@@ -652,8 +649,8 @@ def transcribe(
 
             if _is_stabilization_corrupt(stabilized_result.get("segments", [])):
                 logger.warning(
-                    "Stabilization produced corrupted timestamps. "
-                    "Falling back to original transcription."
+                    "Stabilization produced corrupted timestamps. Falling back "
+                    + "to original transcription."
                 )
                 result = original_result
             else:
@@ -752,7 +749,14 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
     file_handling_config: FileHandlingConfig,
     progress_tracker: gr.Progress | None = None,
 ) -> tuple[
-    str, Any, Any, dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]
+    str,
+    str,
+    str | dict[str, Any],
+    Any,
+    Any,
+    Any,
+    Any,
+    Any,
 ]:
     """Process one or more files and prepare WebUI outputs.
 
@@ -766,8 +770,8 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         progress_tracker: Optional progress tracker for real-time progress updates.
 
     Returns:
-        Tuple of Gradio UI component updates for transcription output, JSON output,
-        raw result, and download buttons.
+        Tuple of Gradio UI component updates for status, transcription output,
+        JSON output, raw result, and download widgets.
 
     Raises:
         TranscriptionCancelledError: If a user-triggered cancellation stops processing.
@@ -778,7 +782,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
 
     # Initialize default Gradio button updates (hidden) early so error paths can
     # safely reference them.
-    dl_btn_hidden_update = gr.update(visible=False, value=None, interactive=False)
+    dl_btn_hidden_update = gr.File(visible=False, value=None)
 
     # output_base_dir is where pipeline saves JSON and where our ZIPs will go.
     output_base_dir = Path(file_handling_config.temp_uploads_dir)
@@ -883,10 +887,12 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 )
             if num_files > 1:
                 continue
+            status_output_val = f"Error processing {file_name_for_log}."
             transcription_output_val = f"Error processing {file_name_for_log}: {e}"
             json_output_val = {"error": str(e), "file": file_name_for_log}
             raw_result_state_val = None
             return (
+                status_output_val,
                 transcription_output_val,
                 json_output_val,
                 raw_result_state_val,
@@ -926,6 +932,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 )
             if num_files > 1:
                 continue
+            status_output_val = (
+                f"Unexpected error while processing {file_name_for_log}."
+            )
             transcription_output_val = f"Unexpected error with {file_name_for_log}: {e}"
             json_output_val = {
                 "error": str(e),
@@ -933,10 +942,8 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 "details": "Check logs.",
             }
             raw_result_state_val = None
-            dl_btn_hidden_update = gr.update(
-                visible=False, value=None, interactive=False
-            )
             return (
+                status_output_val,
                 transcription_output_val,
                 json_output_val,
                 raw_result_state_val,
@@ -948,6 +955,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
 
     if not all_results_data:
         return (
+            "No files processed.",
             "No files processed.",
             {},
             {},
@@ -975,6 +983,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         }
         raw_result_state_val = None
         return (
+            f"All {num_files} files failed.",
             transcription_output_val,
             json_output_val,
             raw_result_state_val,
@@ -989,6 +998,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
 
     if num_files == 1:
         first_success = successful_results[0]
+        status_output_val = (
+            f"Completed file 1/1: {Path(first_success['audio_original_path']).name}"
+        )
         # Use FORMATTERS for display text
         display_txt_formatter = FORMATTERS.get("txt")
         transcription_output_val = (
@@ -996,7 +1008,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             if display_txt_formatter
             else "Could not format text output."
         )
-        json_output_val = _build_ui_json_summary(
+        json_output_val = _build_ui_json_preview(
             first_success["raw_result"],
             json_file_path=first_success.get("json_file_path"),
         )
@@ -1004,7 +1016,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
 
         # Individual file downloads - wrap each in try/except to prevent hangs
         try:
-            txt_btn_update = gr.update(
+            txt_btn_update = gr.File(
                 value=_prepare_temp_downloadable_file(
                     first_success["raw_result"],
                     "txt",
@@ -1013,14 +1025,13 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     current_task_type,
                 ),
                 visible=True,
-                interactive=True,
             )
         except Exception as txt_e:
             logger.error("Failed to prepare TXT download: %s", txt_e, exc_info=True)
             txt_btn_update = dl_btn_hidden_update
 
         try:
-            srt_btn_update = gr.update(
+            srt_btn_update = gr.File(
                 value=_prepare_temp_downloadable_file(
                     first_success["raw_result"],
                     "srt",
@@ -1029,7 +1040,6 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                     current_task_type,
                 ),
                 visible=True,
-                interactive=True,
             )
         except Exception as srt_e:
             logger.error("Failed to prepare SRT download: %s", srt_e, exc_info=True)
@@ -1037,10 +1047,12 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
 
         try:
             # JSON button points to the already saved pipeline JSON
-            json_btn_update = gr.update(
-                value=first_success["json_file_path"],
+            json_btn_update = gr.File(
+                value=(
+                    _to_gradio_file_value(first_success["json_file_path"])
+                    or first_success["json_file_path"]
+                ),
                 visible=True,
-                interactive=True,
             )
         except Exception as json_e:
             logger.error("Failed to prepare JSON download: %s", json_e, exc_info=True)
@@ -1077,10 +1089,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             )
             single_all_zip_path, _ = single_zip_builder.build()
 
-            zip_btn_update = gr.update(
-                value=single_all_zip_path,  # Use the returned path
+            zip_btn_update = gr.File(
+                value=_to_gradio_file_value(single_all_zip_path),
                 visible=True,
-                interactive=True,
             )
             logger.info(
                 "Prepared single file downloads and ALL_ZIP=%s", single_all_zip_path
@@ -1116,20 +1127,32 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
 
         # Summary message
         if successful_transcriptions == num_files:
+            status_output_val = (
+                f"Completed {successful_transcriptions}/{num_files} files."
+            )
             transcription_output_val = (
                 f"Successfully processed {num_files} files. Results packaged."
             )
         else:
-            transcription_output_val = (
-                f"Processed {num_files} files. {successful_transcriptions} successful, "
-                f"{num_files - successful_transcriptions} failed.\n"
-                f"Successful results packaged.\n"
-                f"Summary:\n" + "\n".join(processed_files_summary)
+            status_output_val = (
+                f"Completed {successful_transcriptions}/{num_files} files "
+                f"with {num_files - successful_transcriptions} failures."
             )
-        json_output_val = {
-            "summary": processed_files_summary,
-            "output_directory": str(output_base_dir),
-        }
+            transcription_output_val = (
+                f"Processed {num_files} files. "
+                + f"{successful_transcriptions} successful, "
+                + f"{num_files - successful_transcriptions} failed.\n"
+                + "Successful results packaged.\nSummary:\n"
+                + "\n".join(processed_files_summary)
+            )
+        json_output_val = json.dumps(
+            {
+                "summary": processed_files_summary,
+                "output_directory": str(output_base_dir),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
         raw_result_state_val = None
 
         # Log the content of the first successful result for debugging
@@ -1140,8 +1163,8 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 chunks = first_raw.get("chunks")
                 segments = first_raw.get("segments")
                 logger.debug(
-                    "First successful raw_result for multi-file: "
-                    "keys=%s text_len=%s chunks=%s segments=%s",
+                    "First successful raw_result for multi-file: keys=%s "
+                    + "text_len=%s chunks=%s segments=%s",
                     sorted(first_raw.keys()),
                     len(text) if isinstance(text, str) else None,
                     len(chunks) if isinstance(chunks, list) else None,
@@ -1173,15 +1196,22 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
 
             all_zip_path, _ = all_zip_builder.build()  # build() adds summary
 
-            zip_btn_update = gr.update(
-                value=all_zip_path,  # Use the returned path
+            zip_btn_update = gr.File(
+                value=_to_gradio_file_value(all_zip_path),
                 visible=True,
-                interactive=True,
             )
             logger.info(
                 "Prepared ALL ZIP: %s, Files: %s", all_zip_path, len(successful_results)
             )
-            json_output_val["zip_archive_all"] = Path(all_zip_path).name
+            json_output_val = json.dumps(
+                {
+                    "summary": processed_files_summary,
+                    "output_directory": str(output_base_dir),
+                    "zip_archive_all": Path(all_zip_path).name,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
         except (
             OSError,
             ValueError,
@@ -1217,10 +1247,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 )
 
                 txt_zip_path, _ = txt_zip_builder.build()  # build() adds summary
-                txt_btn_update = gr.update(
-                    value=txt_zip_path,
+                txt_btn_update = gr.File(
+                    value=_to_gradio_file_value(txt_zip_path),
                     visible=True,
-                    interactive=True,
                 )
                 logger.info(
                     "Prepared TXT ZIP: %s, Files: %s",
@@ -1261,10 +1290,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 )
 
                 srt_zip_path, _ = srt_zip_builder.build()  # build() adds summary
-                srt_btn_update = gr.update(
-                    value=srt_zip_path,
+                srt_btn_update = gr.File(
+                    value=_to_gradio_file_value(srt_zip_path),
                     visible=True,
-                    interactive=True,
                 )
                 logger.info(
                     "Prepared SRT ZIP: %s, Files: %s",
@@ -1308,10 +1336,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 )
 
                 json_zip_path, _ = json_zip_builder.build()  # build() adds summary
-                json_btn_update = gr.update(
-                    value=json_zip_path,
+                json_btn_update = gr.File(
+                    value=_to_gradio_file_value(json_zip_path),
                     visible=True,
-                    interactive=True,
                 )
                 logger.info(
                     "Prepared JSON ZIP: %s, Files: %s",
@@ -1334,6 +1361,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
     # This `else` case for num_files == 0 should be caught by `if not all_results_data:`
     # or `if not successful_results:`. Adding defensively.
     else:
+        status_output_val = "No valid results to process."
         transcription_output_val = "No valid results to process."
         json_output_val = {"error": "No results"}
         raw_result_state_val = None
@@ -1355,6 +1383,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
     )
 
     return (
+        status_output_val,
         transcription_output_val,
         json_output_val,
         None,

@@ -152,7 +152,7 @@ class TestCLIFacade:
 
 
 @pytest.fixture(autouse=True)
-def _stub_cli_facade(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+def _stub_cli_facade(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:  # pyright: ignore[reportUnusedFunction]
     """Install a lightweight CLI facade for tests.
 
     Args:
@@ -810,7 +810,7 @@ class TestVideoProcessing:
             assert result.exit_code == 0
 
             # Verify video extraction was called
-            mock_extract.assert_called_once_with(video_path=tmp_path)
+            mock_extract.assert_called_once_with(video_path=str(tmp_path))
 
             # Verify audio processing was called with extracted audio
             mock_process.assert_called_once()

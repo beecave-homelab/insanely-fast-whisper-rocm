@@ -5,6 +5,10 @@ including file upload, processing controls, and result display components.
 """
 
 import logging
+import threading
+from collections.abc import Generator
+from queue import Empty, Queue
+from typing import Any, Literal, cast
 
 import gradio as gr
 
@@ -35,6 +39,52 @@ from insanely_fast_whisper_rocm.webui.handlers import (
 
 # Configure logger
 logger = logging.getLogger("insanely_fast_whisper_rocm.webui.ui")
+
+_STATUS_STREAM_DONE = object()
+
+
+class _StatusStreamingProgressProxy:
+    """Forward progress updates and stream status descriptions.
+
+    This proxy keeps Gradio's progress behavior intact while forwarding textual
+    progress descriptions into a queue so the status textbox can be updated in
+    real-time.
+    """
+
+    def __init__(
+        self,
+        progress: gr.Progress,
+        status_queue: Queue[object],
+    ) -> None:
+        """Initialize the status-streaming proxy.
+
+        Args:
+            progress: Gradio progress instance used by backend processing.
+            status_queue: Queue where status description strings are published.
+        """
+        self._progress = progress
+        self._status_queue = status_queue
+
+    @property
+    def cancelled(self) -> bool:
+        """Return whether the underlying Gradio progress was cancelled."""
+        return bool(getattr(self._progress, "cancelled", False))
+
+    def __call__(
+        self,
+        progress_value: float | None = None,
+        *,
+        desc: str | None = None,
+    ) -> None:
+        """Forward progress updates and queue status text.
+
+        Args:
+            progress_value: Fractional progress in [0, 1] or None.
+            desc: Human-readable progress description.
+        """
+        self._progress(progress_value, desc=desc)
+        if desc:
+            self._status_queue.put(desc)
 
 
 def _create_model_config_ui(
@@ -234,22 +284,29 @@ def _process_transcription_request_wrapper(
     save_transcriptions: bool,
     temp_uploads_dir: str,
     progress: gr.Progress | None = None,
-) -> tuple[object, ...]:
+) -> Generator[tuple[object, ...], None, None]:
     """Wrapper to adapt Gradio inputs to process_transcription_request.
 
-    Returns:
-        tuple: The outputs expected by the Gradio click handler (text,
-        JSON, state, and download button updates).
+    Yields:
+        Intermediate and final UI output tuples expected by the Gradio click
+        handler.
+
+    Raises:
+        RuntimeError: If transcription completes without returning UI outputs.
     """
     if progress is None:
         progress = gr.Progress()
+
+    status_queue: Queue[object] = Queue()
+    progress_proxy = _StatusStreamingProgressProxy(progress, status_queue)
+
     transcription_cfg = TranscriptionConfig(
         model=model_name,
         device=device,
         batch_size=batch_size,
-        timestamp_type=timestamp_type,
+        timestamp_type=cast("Literal['chunk', 'word']", timestamp_type),
         language=language,
-        task=task,
+        task=cast("Literal['transcribe', 'translate']", task),
         dtype=dtype,
         chunk_length=whisper_chunk_length,
         chunk_duration=None,
@@ -273,11 +330,103 @@ def _process_transcription_request_wrapper(
         None if max_speakers == MAX_SPEAKERS else max_speakers
     )
     transcription_cfg.diarization_device = diarization_device
-    return process_transcription_request(
-        audio_paths=audio_paths,
-        transcription_config=transcription_cfg,
-        file_handling_config=file_handling_cfg,
-        progress_tracker=progress,
+
+    final_result: tuple[object, ...] | None = None
+    final_error: Exception | None = None
+
+    def _run_transcription() -> None:
+        """Run transcription in background and signal stream completion."""
+        nonlocal final_result, final_error
+        try:
+            final_result = process_transcription_request(
+                audio_paths=audio_paths,
+                transcription_config=transcription_cfg,
+                file_handling_config=file_handling_cfg,
+                progress_tracker=cast(Any, progress_proxy),
+            )
+        except Exception as exc:  # pragma: no cover - defensive passthrough
+            final_error = exc
+        finally:
+            status_queue.put(_STATUS_STREAM_DONE)
+
+    worker = threading.Thread(target=_run_transcription, daemon=True)
+    worker.start()
+
+    while True:
+        try:
+            queued_status = status_queue.get(timeout=0.1)
+        except Empty:
+            if final_result is not None or final_error is not None:
+                break
+            continue
+
+        if queued_status is _STATUS_STREAM_DONE:
+            break
+
+        if isinstance(queued_status, str):
+            yield (
+                queued_status,
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+            )
+
+    worker.join(timeout=1)
+
+    if final_error is not None:
+        raise final_error
+
+    if final_result is None:
+        raise RuntimeError("Transcription finished without returning UI outputs.")
+
+    yield final_result
+
+
+def _build_transcription_start_status(audio_paths: list[str]) -> tuple[object, ...]:
+    """Build immediate UI updates shown right after button click.
+
+    Args:
+        audio_paths: Selected input paths from the upload widget.
+
+    Returns:
+        A tuple of UI updates that resets monitor outputs and hides downloads.
+    """
+    hidden_download_update = gr.update(value=None, visible=False)
+
+    if not audio_paths:
+        return (
+            "No files selected. Upload at least one file to start transcription.",
+            "",
+            "",
+            None,
+            hidden_download_update,
+            hidden_download_update,
+            hidden_download_update,
+            hidden_download_update,
+        )
+
+    first_name = audio_paths[0].split("/")[-1]
+    start_status: str
+    if len(audio_paths) == 1:
+        start_status = f"Starting transcription for: {first_name}"
+    else:
+        start_status = (
+            f"Starting transcription for {len(audio_paths)} files (first: {first_name})"
+        )
+
+    return (
+        start_status,
+        "",
+        "",
+        None,
+        hidden_download_update,
+        hidden_download_update,
+        hidden_download_update,
+        hidden_download_update,
     )
 
 
@@ -295,14 +444,61 @@ def create_ui_components(
     Returns:
         gr.Blocks: The configured Gradio Blocks interface instance.
     """
-    with gr.Blocks(title="Insanely Fast Whisper - Local WebUI") as demo:
+    with gr.Blocks(
+        title="Insanely Fast Whisper - Local WebUI",
+        css="""
+        .ifw-shell {
+            background: linear-gradient(180deg, #171717 0%, #101010 100%);
+        }
+        .ifw-monitor {
+            border: 1px solid #2b2b2b;
+            border-radius: 18px;
+            background: linear-gradient(180deg, #181818 0%, #121212 100%);
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+            overflow: hidden;
+        }
+        .ifw-monitor-body {
+            padding: 14px 14px 0 14px;
+        }
+        .ifw-monitor-title {
+            margin: 0;
+            padding: 14px 14px 0 14px;
+            font-size: 0.78rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #ff7a1a;
+            opacity: 0.9;
+        }
+        .ifw-status textarea {
+            font-size: 0.82rem;
+            line-height: 1.35;
+            color: #f3c9a6;
+        }
+        .ifw-downloads {
+            border-top: 1px solid #262626;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 12px 14px 14px 14px;
+        }
+        .ifw-downloads .gradio-file {
+            min-height: 74px;
+        }
+        .ifw-monitor .tab-nav {
+            padding: 0 2px;
+        }
+        .ifw-json textarea,
+        .ifw-transcript textarea {
+            font-size: 0.94rem;
+            line-height: 1.55;
+        }
+        """,
+    ) as demo:
         gr.Markdown("# 🎙️ Insanely Fast Whisper - Local WebUI")
         gr.Markdown(
-            "Transcribe or translate audio and video files using Whisper "
-            "models directly in your browser."
+            "Transcribe or translate audio and video files using Whisper models "
+            + "directly in your browser."
         )
 
-        with gr.Row():
+        with gr.Row(elem_classes=["ifw-shell"]):
             with gr.Column(scale=2):
                 # Audio input
                 audio_input = gr.File(
@@ -345,38 +541,87 @@ def create_ui_components(
 
                 submit_btn = gr.Button("Transcribe", variant="primary")
 
-            with gr.Column(scale=3):
+            with gr.Column(scale=3, elem_classes=["ifw-monitor"]):
                 # Outputs
-                with gr.Tabs():
-                    with gr.TabItem("Transcription / Summary"):
-                        transcription_output = gr.Textbox(
-                            label="Transcription Result / Processing Summary",
-                            lines=15,
-                            interactive=False,
-                        )
-                    with gr.TabItem("Raw JSON / Details"):
-                        json_output = gr.JSON(
-                            label="Raw JSON Output / Detailed Results", visible=True
-                        )
+                gr.Markdown("Result Monitor", elem_classes=["ifw-monitor-title"])
+                with gr.Column(elem_classes=["ifw-monitor-body"]):
+                    status_output = gr.Textbox(
+                        label="Status",
+                        value="Ready for transcription.",
+                        lines=2,
+                        max_lines=3,
+                        interactive=False,
+                        elem_classes=["ifw-status"],
+                    )
+                    with gr.Tabs():
+                        with gr.TabItem("Transcript"):
+                            transcription_output = gr.Textbox(
+                                label="Transcript Output",
+                                lines=13,
+                                interactive=False,
+                                elem_classes=["ifw-transcript"],
+                            )
+                        with gr.TabItem("Export JSON"):
+                            json_output = gr.Code(
+                                label="Saved JSON Export Preview",
+                                language="json",
+                                lines=16,
+                                interactive=False,
+                                elem_classes=["ifw-json"],
+                            )
 
                 raw_result_state = gr.State()
 
-                with gr.Row():
-                    download_txt_btn = gr.DownloadButton(
-                        "Download TXT", visible=False, interactive=False
-                    )
-                    download_srt_btn = gr.DownloadButton(
-                        "Download SRT", visible=False, interactive=False
-                    )
-                    download_json_btn = gr.DownloadButton(
-                        "Download JSON", visible=False, interactive=False
-                    )
-                download_zip_btn = gr.DownloadButton(
-                    "Download All as ZIP", visible=False, interactive=False
-                )
+                with gr.Group(elem_classes=["ifw-downloads"]):
+                    with gr.Row(equal_height=True):
+                        download_txt_btn = gr.File(
+                            label="Download TXT",
+                            visible=False,
+                            interactive=False,
+                            scale=1,
+                            min_width=180,
+                        )
+                        download_srt_btn = gr.File(
+                            label="Download SRT",
+                            visible=False,
+                            interactive=False,
+                            scale=1,
+                            min_width=180,
+                        )
+                        download_json_btn = gr.File(
+                            label="Download JSON",
+                            visible=False,
+                            interactive=False,
+                            scale=1,
+                            min_width=180,
+                        )
+                    with gr.Row():
+                        download_zip_btn = gr.File(
+                            label="Download All as ZIP",
+                            visible=False,
+                            interactive=False,
+                            scale=1,
+                        )
 
         # Event handling
-        submit_btn.click(
+        submit_event = submit_btn.click(
+            fn=_build_transcription_start_status,
+            inputs=[audio_input],
+            outputs=[
+                status_output,
+                transcription_output,
+                json_output,
+                raw_result_state,
+                download_zip_btn,
+                download_txt_btn,
+                download_srt_btn,
+                download_json_btn,
+            ],
+            queue=False,
+            show_progress="hidden",
+        )
+
+        submit_event.then(
             fn=_process_transcription_request_wrapper,
             inputs=[
                 audio_input,
@@ -403,6 +648,7 @@ def create_ui_components(
                 temp_uploads_dir,
             ],
             outputs=[
+                status_output,
                 transcription_output,
                 json_output,
                 raw_result_state,
@@ -412,6 +658,8 @@ def create_ui_components(
                 download_json_btn,
             ],
             api_name="transcribe_audio_v2",
+            show_progress="minimal",
+            show_progress_on=[transcription_output],
         )
 
     return demo

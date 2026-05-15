@@ -383,11 +383,13 @@ def test_process_transcription_request_single_file() -> None:
                 file_config,
             )
 
-            # Should return a tuple with 7 elements
-            assert len(result) == 7
-            # First element is transcription output text
+            # Should return a tuple with 8 elements (status + 7 others)
+            assert len(result) == 8
+            # First element is status text
             assert isinstance(result[0], str)
-            assert "Test transcription" in result[0]
+            # Second element is transcription output text
+            assert isinstance(result[1], str)
+            assert "Test transcription" in result[1]
 
 
 def test_process_transcription_request_multiple_files() -> None:
@@ -420,10 +422,10 @@ def test_process_transcription_request_multiple_files() -> None:
                 file_config,
             )
 
-            assert len(result) == 7
+            assert len(result) == 8
             # For multiple files, should show summary message
-            assert "Successfully processed 2 files" in str(result[0]) or "2" in str(
-                result[0]
+            assert "Successfully processed 2 files" in str(result[1]) or "2" in str(
+                result[1]
             )
 
 
