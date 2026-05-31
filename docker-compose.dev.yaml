@@ -55,7 +55,7 @@ services:
     ##############################################
     #
     # Gradio WebUI with debug logging:
-    command: ["python", "-m", "insanely_fast_whisper_rocm.webui",  "--debug"]
+    command: ["python", "-m", "insanely_fast_whisper_rocm.webui", "--model", "openai/whisper-large-v3-turbo", "--debug"]
     #
     # API only:
     # command: ["python", "-m", "insanely_fast_whisper_rocm"]

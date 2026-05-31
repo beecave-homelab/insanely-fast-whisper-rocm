@@ -9,6 +9,9 @@ ENV PIP_NO_CACHE_DIR=off
 ENV TZ=Europe/Amsterdam
 ENV ROCM_PATH=/opt/rocm
 ENV HSA_OVERRIDE_GFX_VERSION=10.3.0
+# Skip MIOpen JIT kernel compilation — the slim image lacks rocrand headers
+# needed by MIOpenDropoutHIP.cpp.  Mode 2 = database-only (no JIT).
+ENV MIOPEN_FIND_MODE=2
 
 # Install specific packages using pip
 RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \ 
