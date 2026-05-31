@@ -107,3 +107,14 @@ pdm.lock.bak
 
 # PR comments
 pr-27-comments.md
+
+# Test container run outputs
+test-results/
+scripts/entrypoint-test-rocm-diagnostics.sh
+scripts/entrypoint-test.sh
+# scripts/run_rocm_route_comparison.sh
+docker-compose.test.rocm-routes.yaml
+docker-compose.test.yaml
+Dockerfile.test.rocm-pytorch
+Dockerfile.test.slim-rocm-apt
+Dockerfile.test
