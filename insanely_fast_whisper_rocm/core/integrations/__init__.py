@@ -6,6 +6,12 @@ optional dependencies (like pyannote.audio) at module load time.
 
 from .stable_ts import stabilize_timestamps  # noqa: F401
 
+__all__ = [  # noqa: F822  # diarize/clear_diarization_cache via __getattr__
+    "stabilize_timestamps",
+    "diarize",
+    "clear_diarization_cache",
+]
+
 
 def __getattr__(name: str) -> object:
     """Lazy re-export for diarization symbols.

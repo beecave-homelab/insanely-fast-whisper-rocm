@@ -4,7 +4,9 @@ This module contains clean, focused route definitions that use dependency
 injection for ASR pipeline instances and file handling.
 """
 
+import json
 import logging
+from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -41,6 +43,60 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 VALID_DIARIZATION_DEVICES = {"cpu", "cuda", "gpu"}
+
+
+def _json_default(value: object) -> object:
+    """Convert non-standard JSON scalar values for persisted API results.
+
+    Args:
+        value: Value passed by ``json.dumps`` when default encoding fails.
+
+    Returns:
+        JSON-compatible scalar or container value.
+
+    Raises:
+        TypeError: If the value cannot be converted.
+    """
+    if hasattr(value, "item"):
+        return value.item()
+    if hasattr(value, "tolist"):
+        return value.tolist()
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
+
+def _persist_post_processed_result(result: dict[str, Any]) -> None:
+    """Persist the final API result when the pipeline already created a JSON file.
+
+    The pipeline saves before API-level stabilization and diarization run. Rewrite
+    that file after post-processing so disk artifacts match the response.
+
+    Args:
+        result: Final post-processed transcription or translation result.
+    """
+    output_file_path = result.get("output_file_path")
+    if not isinstance(output_file_path, str) or not output_file_path:
+        return
+
+    output_path = Path(output_file_path)
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(
+            json.dumps(
+                result,
+                ensure_ascii=False,
+                indent=2,
+                default=_json_default,
+            ),
+            encoding="utf-8",
+        )
+        logger.info("Post-processed API result saved to %s", output_path)
+    except (OSError, TypeError, ValueError) as exc:
+        logger.warning(
+            "Failed to update post-processed API result at %s: %s",
+            output_path,
+            exc,
+            exc_info=True,
+        )
 
 
 def _apply_post_processing(
@@ -269,6 +325,7 @@ async def create_transcription(
             max_speakers=max_speakers,
             audio_path=temp_filepath,
         )
+        _persist_post_processed_result(result)
 
         logger.info("Transcription completed successfully")
 
@@ -417,6 +474,7 @@ async def create_translation(
             max_speakers=max_speakers,
             audio_path=temp_filepath,
         )
+        _persist_post_processed_result(result)
 
         logger.info("Translation completed successfully")
         logger.debug("Translation result: %s", result)

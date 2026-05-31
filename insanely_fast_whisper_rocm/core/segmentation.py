@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+from collections import Counter
 
 from insanely_fast_whisper_rocm.utils import constants
 
@@ -12,7 +13,14 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class Word:
-    """Represents a single word with timing information."""
+    """Represents a single word with timing information.
+
+    Attributes:
+        text: Word text content.
+        start: Word start time in seconds.
+        end: Word end time in seconds.
+        speaker: Optional speaker label assigned to this word.
+    """
 
     text: str
     start: float
@@ -22,7 +30,15 @@ class Word:
 
 @dataclasses.dataclass
 class Segment:
-    """Represents a subtitle segment with formatted text and timing."""
+    """Represents a subtitle segment with formatted text and timing.
+
+    Attributes:
+        text: Formatted segment text.
+        start: Segment start time in seconds.
+        end: Segment end time in seconds.
+        words: List of Word objects with per-word timestamps.
+        speaker: Optional speaker label (majority speaker from words).
+    """
 
     text: str
     start: float
@@ -98,9 +114,14 @@ def _sanitize_words_timing(words: list[Word]) -> list[Word]:
 
 
 def _majority_speaker(words: list[Word]) -> str | None:
-    """Return the most common speaker label among *words*, or ``None``."""
-    from collections import Counter
+    """Return the most common speaker label among *words*, or ``None``.
 
+    Args:
+        words: List of Word objects to analyse for speaker labels.
+
+    Returns:
+        The most common speaker label, or ``None`` if no speakers are present.
+    """
     speakers = [w.speaker for w in words if w.speaker is not None]
     if not speakers:
         return None

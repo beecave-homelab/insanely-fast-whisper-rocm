@@ -129,4 +129,5 @@ def launch_webui(
         server_name=host,
         server_port=port,
         share=share,
+        allowed_paths=["temp_uploads", "transcripts"],
     )

@@ -106,19 +106,19 @@ class FileHandlingConfig:
 
 def _prepare_temp_downloadable_file(
     raw_data: dict[str, Any],
-    format_type: str,  # "txt" or "srt"
+    format_type: str,
     original_audio_stem: str,
     temp_dir: Path,
     task: TaskType,
 ) -> str:
     """Generate and persist a temporary downloadable file for the WebUI.
 
-    Generates content for TXT or SRT, saves it to a temporary file, and
+    Generates content for TXT, SRT, or JSON, saves it to a temporary file, and
     returns the file path.
 
     Args:
         raw_data: The raw transcription result data.
-        format_type: Target output format, e.g. "txt" or "srt".
+        format_type: Target output format, e.g. "txt", "srt", or "json".
         original_audio_stem: Stem of the original audio file name.
         temp_dir: Directory to write the temporary file to.
         task: The task used for filename generation.
@@ -1010,7 +1010,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         )
         json_output_val = _build_ui_json_preview(
             first_success["raw_result"],
-            json_file_path=first_success.get("json_file_path"),
+            json_file_path=None,
         )
         raw_result_state_val = None
 
@@ -1046,11 +1046,13 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             srt_btn_update = dl_btn_hidden_update
 
         try:
-            # JSON button points to the already saved pipeline JSON
             json_btn_update = gr.File(
-                value=(
-                    _to_gradio_file_value(first_success["json_file_path"])
-                    or first_success["json_file_path"]
+                value=_prepare_temp_downloadable_file(
+                    first_success["raw_result"],
+                    "json",
+                    first_success["audio_original_stem"],
+                    output_base_dir,
+                    current_task_type,
                 ),
                 visible=True,
             )

@@ -408,16 +408,31 @@ def diarize(
         )
 
     # Load pipeline (cached).
+    logger.info(
+        "Loading diarization pipeline (model=%s, device=%s)",
+        DEFAULT_DIARIZATION_MODEL,
+        device,
+    )
     pipeline = _get_or_create_pipeline(DEFAULT_DIARIZATION_MODEL, device, hf_token)
+    logger.info("Diarization pipeline ready")
 
     # Prepare audio input for the pipeline.
     # When torchcodec is unavailable (common on ROCm), pyannote's built-in
     # audio decoding fails.  We preload the audio as a tensor dict instead.
     audio_input: str | dict[str, Any] = audio_path
     if not _TORCHCODEC_AVAILABLE:
+        logger.info("Preloading audio for diarization (torchcodec unavailable)")
         audio_input = _preload_audio_as_waveform(audio_path)
+        logger.info("Audio preloaded for diarization")
 
     # Run diarization.
+    logger.info(
+        "Starting diarization inference (device=%s, num_speakers=%s, min=%s, max=%s)",
+        device,
+        num_speakers,
+        min_speakers,
+        max_speakers,
+    )
     try:
         kwargs: dict[str, Any] = {}
         if num_speakers is not None:

@@ -446,51 +446,6 @@ def create_ui_components(
     """
     with gr.Blocks(
         title="Insanely Fast Whisper - Local WebUI",
-        css="""
-        .ifw-shell {
-            background: linear-gradient(180deg, #171717 0%, #101010 100%);
-        }
-        .ifw-monitor {
-            border: 1px solid #2b2b2b;
-            border-radius: 18px;
-            background: linear-gradient(180deg, #181818 0%, #121212 100%);
-            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
-            overflow: hidden;
-        }
-        .ifw-monitor-body {
-            padding: 14px 14px 0 14px;
-        }
-        .ifw-monitor-title {
-            margin: 0;
-            padding: 14px 14px 0 14px;
-            font-size: 0.78rem;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            color: #ff7a1a;
-            opacity: 0.9;
-        }
-        .ifw-status textarea {
-            font-size: 0.82rem;
-            line-height: 1.35;
-            color: #f3c9a6;
-        }
-        .ifw-downloads {
-            border-top: 1px solid #262626;
-            background: rgba(255, 255, 255, 0.02);
-            padding: 12px 14px 14px 14px;
-        }
-        .ifw-downloads .gradio-file {
-            min-height: 74px;
-        }
-        .ifw-monitor .tab-nav {
-            padding: 0 2px;
-        }
-        .ifw-json textarea,
-        .ifw-transcript textarea {
-            font-size: 0.94rem;
-            line-height: 1.55;
-        }
-        """,
     ) as demo:
         gr.Markdown("# 🎙️ Insanely Fast Whisper - Local WebUI")
         gr.Markdown(
@@ -662,4 +617,49 @@ def create_ui_components(
             show_progress_on=[transcription_output],
         )
 
+    demo.css = """
+        .ifw-shell {
+            background: linear-gradient(180deg, #171717 0%, #101010 100%);
+        }
+        .ifw-monitor {
+            border: 1px solid #2b2b2b;
+            border-radius: 18px;
+            background: linear-gradient(180deg, #181818 0%, #121212 100%);
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+            overflow: hidden;
+        }
+        .ifw-monitor-body {
+            padding: 14px 14px 0 14px;
+        }
+        .ifw-monitor-title {
+            margin: 0;
+            padding: 14px 14px 0 14px;
+            font-size: 0.78rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #ff7a1a;
+            opacity: 0.9;
+        }
+        .ifw-status textarea {
+            font-size: 0.82rem;
+            line-height: 1.35;
+            color: #f3c9a6;
+        }
+        .ifw-downloads {
+            border-top: 1px solid #262626;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 12px 14px 14px 14px;
+        }
+        .ifw-downloads .gradio-file {
+            min-height: 74px;
+        }
+        .ifw-monitor .tab-nav {
+            padding: 0 2px;
+        }
+        .ifw-json textarea,
+        .ifw-transcript textarea {
+            font-size: 0.94rem;
+            line-height: 1.55;
+        }
+        """
     return demo

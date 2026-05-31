@@ -128,7 +128,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             )
             cuda_available = torch.cuda.is_available()
             device_count = torch.cuda.device_count() if cuda_available else 0
-            hip_version = getattr(torch.version, "hip", None)
+            hip_version = getattr(torch.version, "hip", None)  # type: ignore[attr-defined]
             logger.info(
                 "Torch backend status: cuda_available=%s, device_count=%d, hip=%s",
                 cuda_available,
@@ -136,7 +136,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 hip_version,
             )
 
-            model_load_kwargs = {
+            model_load_kwargs: dict[str, Any] = {
                 "dtype": (
                     torch.float16 if self.config.dtype == "float16" else torch.float32
                 ),
@@ -147,7 +147,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             # runtime on certain stacks; per user preference, try SDPA first and
             # fallback to 'eager' only if needed. Keep SDPA on CUDA.
             if self.effective_device != "cpu":
-                is_rocm = getattr(torch.version, "hip", None) is not None
+                is_rocm = getattr(torch.version, "hip", None) is not None  # type: ignore[attr-defined]
                 if is_rocm:
                     model_load_kwargs["attn_implementation"] = "sdpa"
                     logger.info(
@@ -178,7 +178,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
 
                     # On ROCm, fallback to 'eager' if SDPA attempt fails at load.
                     if (
-                        getattr(torch.version, "hip", None) is not None
+                        getattr(torch.version, "hip", None) is not None  # type: ignore[attr-defined]
                         and model_load_kwargs.get("attn_implementation") == "sdpa"
                     ):
                         logger.warning(
@@ -212,18 +212,35 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 # check below is accurate and the pipeline doesn't
                 # need to do it later.
                 if self.effective_device != "cpu":
-                    model = model.to(self.effective_device)
+                    try:
+                        model = model.to(self.effective_device)
+                    except RuntimeError as e_to:
+                        oom_error = classify_oom_error(e_to)
+                        if oom_error:
+                            logger.error(
+                                "OOM moving model to %s: %s",
+                                self.effective_device,
+                                str(e_to),
+                            )
+                            raise ModelLoadingOOMError(
+                                f"OOM moving model to "
+                                f"{self.effective_device}: {str(e_to)}",
+                                device=self.effective_device,
+                                config={"model": self.config.model_name},
+                            ) from e_to
+                        raise
 
                 model_device = getattr(model, "device", None)
                 if model_device is None:
                     model_parameters = getattr(model, "parameters", None)
                     if callable(model_parameters):
                         try:
-                            first_param = next(iter(model_parameters()))
+                            first_param = next(iter(model_parameters()))  # type: ignore[arg-type]
                         except (TypeError, StopIteration):
                             first_param = None
                         if first_param is not None:
                             model_device = getattr(first_param, "device", None)
+                self.model_device = model_device
                 if model_device is not None:
                     logger.info("ASR model loaded on device: %s", model_device)
                     if self.effective_device != "cpu" and str(model_device) == "cpu":
@@ -444,7 +461,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 "Transformers internal chunking conflict"
             )
 
-        pipeline_kwargs = {
+        pipeline_kwargs: dict[str, Any] = {
             "chunk_length_s": chunk_length_value,
             "batch_size": self.config.batch_size,
             "return_timestamps": _return_timestamps_value,
@@ -517,7 +534,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             if cancellation_token is not None:
                 cancellation_token.raise_if_cancelled()
             try:
-                outputs = self.asr_pipe(str(audio_file_path), **pipeline_kwargs)
+                outputs: Any = self.asr_pipe(str(audio_file_path), **pipeline_kwargs)  # type: ignore[assignment]
             except RuntimeError as e:
                 oom_error = classify_oom_error(e)
                 if oom_error:
