@@ -63,6 +63,7 @@ class TestLaunchWebUI:
             server_name="0.0.0.0",
             server_port=8080,
             share=False,
+            allowed_paths=["temp_uploads", "transcripts"],
         )
 
     @patch("insanely_fast_whisper_rocm.webui.app.download_model_if_needed")

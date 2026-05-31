@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import io
+import json
 from collections.abc import Iterator
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -114,6 +116,60 @@ def test_diarized_flag_in_response(
     assert response.status_code == 200
     body = response.json()
     assert body.get("diarized") is True
+
+
+def test_post_processed_result_updates_saved_json(
+    client: TestClient,
+    mock_orchestrator: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Post-processed diarization data is persisted to the saved API JSON file."""
+    output_path = tmp_path / "saved-result.json"
+    mock_orchestrator.run_transcription.return_value = {
+        "text": "Hello world.",
+        "chunks": [
+            {
+                "start": 0.0,
+                "end": 2.0,
+                "text": "Hello world.",
+            },
+        ],
+        "output_file_path": str(output_path),
+    }
+    output_path.write_text(
+        json.dumps({"text": "Hello world.", "diarized": False}),
+        encoding="utf-8",
+    )
+
+    audio_file = io.BytesIO(DUMMY_WAV_HEADER)
+    with patch(
+        "insanely_fast_whisper_rocm.core.integrations.diarization.diarize",
+        side_effect=lambda result, **_: {
+            **result,
+            "chunks": [
+                {
+                    "start": 0.0,
+                    "end": 2.0,
+                    "text": "Hello world.",
+                    "speaker": "SPEAKER_00",
+                },
+            ],
+            "diarized": True,
+        },
+    ):
+        response = client.post(
+            "/v1/audio/transcriptions",
+            files={"file": ("test.wav", audio_file, "audio/wav")},
+            data={
+                "diarize": "true",
+                "response_format": "verbose_json",
+            },
+        )
+
+    assert response.status_code == 200
+    saved = json.loads(output_path.read_text(encoding="utf-8"))
+    assert saved["diarized"] is True
+    assert saved["chunks"][0]["speaker"] == "SPEAKER_00"
 
 
 def test_post_transcriptions__maps_diarization_error_to_400(
