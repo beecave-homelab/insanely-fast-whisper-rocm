@@ -782,7 +782,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
 
     # Initialize default Gradio button updates (hidden) early so error paths can
     # safely reference them.
-    dl_btn_hidden_update = gr.File(visible=False, value=None)
+    dl_btn_hidden_update = gr.update(visible=False, value=None)
 
     # output_base_dir is where pipeline saves JSON and where our ZIPs will go.
     output_base_dir = Path(file_handling_config.temp_uploads_dir)
@@ -1016,7 +1016,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
 
         # Individual file downloads - wrap each in try/except to prevent hangs
         try:
-            txt_btn_update = gr.File(
+            txt_btn_update = gr.update(
                 value=_prepare_temp_downloadable_file(
                     first_success["raw_result"],
                     "txt",
@@ -1031,7 +1031,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             txt_btn_update = dl_btn_hidden_update
 
         try:
-            srt_btn_update = gr.File(
+            srt_btn_update = gr.update(
                 value=_prepare_temp_downloadable_file(
                     first_success["raw_result"],
                     "srt",
@@ -1046,7 +1046,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             srt_btn_update = dl_btn_hidden_update
 
         try:
-            json_btn_update = gr.File(
+            json_btn_update = gr.update(
                 value=_prepare_temp_downloadable_file(
                     first_success["raw_result"],
                     "json",
@@ -1091,7 +1091,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             )
             single_all_zip_path, _ = single_zip_builder.build()
 
-            zip_btn_update = gr.File(
+            zip_btn_update = gr.update(
                 value=_to_gradio_file_value(single_all_zip_path),
                 visible=True,
             )
@@ -1198,7 +1198,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
 
             all_zip_path, _ = all_zip_builder.build()  # build() adds summary
 
-            zip_btn_update = gr.File(
+            zip_btn_update = gr.update(
                 value=_to_gradio_file_value(all_zip_path),
                 visible=True,
             )
@@ -1249,7 +1249,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 )
 
                 txt_zip_path, _ = txt_zip_builder.build()  # build() adds summary
-                txt_btn_update = gr.File(
+                txt_btn_update = gr.update(
                     value=_to_gradio_file_value(txt_zip_path),
                     visible=True,
                 )
@@ -1292,7 +1292,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 )
 
                 srt_zip_path, _ = srt_zip_builder.build()  # build() adds summary
-                srt_btn_update = gr.File(
+                srt_btn_update = gr.update(
                     value=_to_gradio_file_value(srt_zip_path),
                     visible=True,
                 )
@@ -1338,7 +1338,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 )
 
                 json_zip_path, _ = json_zip_builder.build()  # build() adds summary
-                json_btn_update = gr.File(
+                json_btn_update = gr.update(
                     value=_to_gradio_file_value(json_zip_path),
                     visible=True,
                 )
