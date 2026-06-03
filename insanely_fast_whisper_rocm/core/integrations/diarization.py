@@ -13,6 +13,7 @@ import logging
 import subprocess
 import tempfile
 import threading
+import time
 import warnings
 from pathlib import Path
 from typing import Any
@@ -20,7 +21,9 @@ from typing import Any
 from insanely_fast_whisper_rocm.core.errors import DiarizationError
 from insanely_fast_whisper_rocm.utils.constants import (
     DEFAULT_DIARIZATION_MODEL,
+    DIARIZATION_ALLOW_CPU_FALLBACK,
     DIARIZATION_FFMPEG_TIMEOUT_SECONDS,
+    DIARIZATION_PRELOAD_AUDIO,
 )
 
 # Check if torchcodec is available (required by pyannote.audio v4 for
@@ -45,7 +48,7 @@ logger = logging.getLogger(__name__)
 with warnings.catch_warnings():
     warnings.filterwarnings(
         "ignore",
-        message="torchcodec is not installed correctly",
+        message=r"\s*torchcodec is not installed correctly.*",
         category=UserWarning,
     )
     try:
@@ -75,9 +78,7 @@ def _get_or_create_pipeline(
     Returns:
         A ``pyannote.audio.Pipeline`` instance.
     """
-    # Normalize device string: PyTorch uses "cuda" even for ROCm AMD GPUs.
-    if device.lower() == "gpu":
-        device = "cuda"
+    device = _normalize_diarization_device(device)
 
     # Normalize hf_token to bytes before hashing; handle None/bytes gracefully.
     if isinstance(hf_token, bytes):
@@ -89,10 +90,16 @@ def _get_or_create_pipeline(
     with _LOCK:
         cached = _CACHE.get(key)
         if cached is not None:
+            logger.info(
+                "Diarization timing: pipeline_cache_hit model=%s device=%s",
+                model_name,
+                device,
+            )
             return cached
 
     # Create outside the lock to avoid blocking other callers during download.
     pipeline: Pipeline | None = None  # type: ignore[type-arg]
+    started_at = time.perf_counter()
     try:
         pipeline = Pipeline.from_pretrained(  # type: ignore[union-attr]
             model_name,
@@ -109,6 +116,13 @@ def _get_or_create_pipeline(
         pipeline = pipeline.to(torch.device(device))  # type: ignore[union-attr]
     except Exception as exc:  # pragma: no cover — defensive
         _raise_load_error(model_name, exc)
+    load_elapsed = time.perf_counter() - started_at
+    logger.info(
+        "Diarization timing: pipeline_load_seconds=%.3f model=%s device=%s",
+        load_elapsed,
+        model_name,
+        device,
+    )
 
     with _LOCK:
         # Another thread may have created the same entry meanwhile.
@@ -135,6 +149,37 @@ def _get_or_create_pipeline(
                     exc_info=exc,
                 )
         return _CACHE[key]
+
+
+def _normalize_diarization_device(device: str) -> str:
+    """Return a torch-compatible diarization device string.
+
+    Args:
+        device: User-facing device string.
+
+    Returns:
+        Torch device string for pyannote inference.
+    """
+    normalized = device.strip().lower()
+    if normalized in {"gpu", "0"}:
+        return "cuda"
+    return normalized
+
+
+def _log_timing(label: str, started_at: float, **fields: object) -> None:
+    """Log a concise diarization timing event.
+
+    Args:
+        label: Event label.
+        started_at: ``time.perf_counter()`` value captured before the work.
+        **fields: Additional structured fields to append to the log line.
+    """
+    elapsed = time.perf_counter() - started_at
+    details = " ".join(f"{key}={value}" for key, value in fields.items())
+    if details:
+        logger.info("Diarization timing: %s_seconds=%.3f %s", label, elapsed, details)
+    else:
+        logger.info("Diarization timing: %s_seconds=%.3f", label, elapsed)
 
 
 def _raise_load_error(model_name: str, exc: Exception) -> None:
@@ -221,26 +266,15 @@ def _align_speakers_to_segments(
         A new list of chunk dicts with an added ``speaker`` key.
     """
     aligned: list[dict[str, Any]] = []
+    normalized_turns = _normalize_speaker_turns(speaker_turns)
     for chunk in chunks:
-        # Whisper chunks may use "timestamp" (tuple) or "start"/"end" keys.
-        ts = chunk.get("timestamp")
-        if ts is not None:
-            chunk_start = ts[0]
-            chunk_end = ts[1] if len(ts) > 1 and ts[1] is not None else chunk_start
-        else:
-            chunk_start = chunk.get("start", 0.0)
-            chunk_end = chunk.get("end", 0.0)
-
-        if chunk_end is None:
-            chunk_end = chunk_start
+        chunk_start, chunk_end = _chunk_time_bounds(chunk)
 
         best_speaker: str | None = None
         best_overlap = 0.0
 
-        for turn_start, turn_end, speaker in speaker_turns:
-            overlap_start = max(chunk_start, turn_start)
-            overlap_end = min(chunk_end, turn_end)
-            overlap = max(0.0, overlap_end - overlap_start)
+        for turn_start, turn_end, speaker in normalized_turns:
+            overlap = _time_overlap(chunk_start, chunk_end, turn_start, turn_end)
 
             if overlap > best_overlap:
                 best_overlap = overlap
@@ -248,6 +282,94 @@ def _align_speakers_to_segments(
 
         aligned.append({**chunk, "speaker": best_speaker})
     return aligned
+
+
+def _chunk_time_bounds(chunk: dict[str, Any]) -> tuple[float, float]:
+    """Return stable start and end times for an ASR chunk or segment.
+
+    Args:
+        chunk: Whisper chunk or segment dictionary.
+
+    Returns:
+        Normalized ``(start, end)`` seconds.
+    """
+    ts = chunk.get("timestamp")
+    if ts is not None:
+        chunk_start = ts[0]
+        chunk_end = ts[1] if len(ts) > 1 and ts[1] is not None else chunk_start
+    else:
+        chunk_start = chunk.get("start", 0.0)
+        chunk_end = chunk.get("end", chunk_start)
+
+    start = _coerce_time(chunk_start)
+    end = _coerce_time(chunk_end, default=start)
+    if end < start:
+        return end, start
+    return start, end
+
+
+def _coerce_time(value: object, *, default: float = 0.0) -> float:
+    """Return ``value`` as a finite float timestamp.
+
+    Args:
+        value: Timestamp-like value.
+        default: Fallback when ``value`` is missing or invalid.
+
+    Returns:
+        Finite float timestamp.
+    """
+    try:
+        coerced = float(value)
+    except (TypeError, ValueError):
+        return default
+    if coerced != coerced:
+        return default
+    return coerced
+
+
+def _normalize_speaker_turns(
+    speaker_turns: list[tuple[float, float, str]],
+) -> list[tuple[float, float, str]]:
+    """Return valid speaker turns sorted by start time.
+
+    Args:
+        speaker_turns: Raw pyannote speaker turns.
+
+    Returns:
+        Sorted ``(start, end, speaker)`` tuples with invalid spans removed.
+    """
+    normalized: list[tuple[float, float, str]] = []
+    for start, end, speaker in speaker_turns:
+        turn_start = _coerce_time(start)
+        turn_end = _coerce_time(end, default=turn_start)
+        if turn_end <= turn_start:
+            continue
+        normalized.append((turn_start, turn_end, speaker))
+    return sorted(normalized, key=lambda item: (item[0], item[1], item[2]))
+
+
+def _time_overlap(
+    chunk_start: float,
+    chunk_end: float,
+    turn_start: float,
+    turn_end: float,
+) -> float:
+    """Return overlap seconds, including point-in-turn timestamp matches.
+
+    Args:
+        chunk_start: Chunk start time in seconds.
+        chunk_end: Chunk end time in seconds.
+        turn_start: Speaker turn start time in seconds.
+        turn_end: Speaker turn end time in seconds.
+
+    Returns:
+        Positive overlap weight for speaker selection.
+    """
+    if chunk_end == chunk_start and turn_start <= chunk_start < turn_end:
+        return 1e-6
+    overlap_start = max(chunk_start, turn_start)
+    overlap_end = min(chunk_end, turn_end)
+    return max(0.0, overlap_end - overlap_start)
 
 
 def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
@@ -272,6 +394,7 @@ def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
     try:
         import torchaudio  # pyright: ignore[reportMissingTypeStubs]
 
+        started_at = time.perf_counter()
         waveform, sample_rate = torchaudio.load(audio_path)
         # Ensure mono — pyannote expects single-channel audio.
         if waveform.shape[0] > 1:
@@ -281,6 +404,7 @@ def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
             waveform.shape,
             sample_rate,
         )
+        _log_timing("audio_preload", started_at, route="torchaudio")
         return {"waveform": waveform, "sample_rate": sample_rate}
     except Exception as direct_exc:
         logger.debug(
@@ -291,6 +415,7 @@ def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
 
     # Slow path: convert to WAV via ffmpeg, then load.
     suffix = Path(audio_path).suffix.lower()
+    started_at = time.perf_counter()
     tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False, prefix="diarize_")
     tmp_path = tmp.name
     tmp.close()
@@ -338,6 +463,7 @@ def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
             sample_rate,
             suffix,
         )
+        _log_timing("audio_preload", started_at, route="ffmpeg_torchaudio")
         return {"waveform": waveform, "sample_rate": sample_rate}
     except DiarizationError:
         raise
@@ -380,7 +506,8 @@ def diarize(
         min_speakers: Minimum number of speakers.
         max_speakers: Maximum number of speakers.
         hf_token: HuggingFace access token for gated models.
-        device: Device for diarization inference (``"cpu"`` or ``"cuda"``).
+        device: Device for diarization inference (``"cpu"``, ``"cuda"``, or
+            ``"gpu"``).
 
     Returns:
         The result dict with ``speaker`` added to each chunk and
@@ -407,21 +534,29 @@ def diarize(
             reason="missing_token",
         )
 
+    device = _normalize_diarization_device(device)
+
     # Load pipeline (cached).
     logger.info(
         "Loading diarization pipeline (model=%s, device=%s)",
         DEFAULT_DIARIZATION_MODEL,
         device,
     )
+    started_at = time.perf_counter()
     pipeline = _get_or_create_pipeline(DEFAULT_DIARIZATION_MODEL, device, hf_token)
+    _log_timing("pipeline_ready", started_at, device=device)
     logger.info("Diarization pipeline ready")
 
     # Prepare audio input for the pipeline.
     # When torchcodec is unavailable (common on ROCm), pyannote's built-in
     # audio decoding fails.  We preload the audio as a tensor dict instead.
     audio_input: str | dict[str, Any] = audio_path
-    if not _TORCHCODEC_AVAILABLE:
-        logger.info("Preloading audio for diarization (torchcodec unavailable)")
+    if DIARIZATION_PRELOAD_AUDIO or not _TORCHCODEC_AVAILABLE:
+        logger.info(
+            "Preloading audio for diarization (preload=%s, torchcodec_available=%s)",
+            DIARIZATION_PRELOAD_AUDIO,
+            _TORCHCODEC_AVAILABLE,
+        )
         audio_input = _preload_audio_as_waveform(audio_path)
         logger.info("Audio preloaded for diarization")
 
@@ -443,10 +578,17 @@ def diarize(
             kwargs["max_speakers"] = max_speakers
 
         try:
+            started_at = time.perf_counter()
             diarization_result = pipeline(audio_input, **kwargs)
+            _log_timing("inference", started_at, device=device)
         except Exception as exc:
             is_gpu_device = device.lower() in {"cuda", "gpu"}
-            if not is_gpu_device or not _is_rocm_miopen_runtime_error(exc):
+            can_retry_cpu = (
+                DIARIZATION_ALLOW_CPU_FALLBACK
+                and is_gpu_device
+                and _is_rocm_miopen_runtime_error(exc)
+            )
+            if not can_retry_cpu:
                 raise
 
             logger.warning(
@@ -456,7 +598,9 @@ def diarize(
             cpu_pipeline = _get_or_create_pipeline(
                 DEFAULT_DIARIZATION_MODEL, "cpu", hf_token
             )
+            started_at = time.perf_counter()
             diarization_result = cpu_pipeline(audio_input, **kwargs)
+            _log_timing("inference", started_at, device="cpu", fallback=True)
     except Exception as exc:
         logger.error("Diarization inference failed: %s", exc, exc_info=True)
         raise DiarizationError(
@@ -474,8 +618,10 @@ def diarize(
         annotation = diarization_result.speaker_diarization  # type: ignore[union-attr]
 
     speaker_turns: list[tuple[float, float, str]] = []
+    started_at = time.perf_counter()
     for turn, _, speaker in annotation.itertracks(yield_label=True):
         speaker_turns.append((turn.start, turn.end, speaker))
+    _log_timing("speaker_turn_extraction", started_at, turns=len(speaker_turns))
 
     if not speaker_turns:
         logger.warning("Diarization produced no speaker turns")
@@ -492,7 +638,9 @@ def diarize(
 
     # Use chunks as the primary alignment target; fall back to segments.
     primary = chunks if chunks else segments
+    started_at = time.perf_counter()
     aligned_primary = _align_speakers_to_segments(primary, speaker_turns)
+    _log_timing("speaker_alignment", started_at, items=len(primary))
 
     out: dict[str, Any] = {**result, "chunks": aligned_primary, "diarized": True}
 
