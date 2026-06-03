@@ -141,9 +141,6 @@ DEFAULT_TIMESTAMP_TYPE: Literal["chunk", "word"] = _TIMESTAMP_TYPE_ENV
 
 DEFAULT_LANGUAGE = os.getenv("WHISPER_LANGUAGE", "None")  # None means auto-detect
 DEFAULT_DTYPE = os.getenv("WHISPER_DTYPE", "float16")  # Data type for model inference
-DEFAULT_BETTER_TRANSFORMER = (
-    os.getenv("WHISPER_BETTER_TRANSFORMER", "false").lower() == "true"
-)  # Use BetterTransformer
 DEFAULT_CHUNK_LENGTH = int(
     os.getenv("WHISPER_CHUNK_LENGTH", "30")
 )  # Audio chunk length in seconds
@@ -177,6 +174,12 @@ MAX_SPEAKERS = 10  # Maximum number of speakers for diarization
 DIARIZATION_FFMPEG_TIMEOUT_SECONDS = int(
     os.getenv("DIARIZATION_FFMPEG_TIMEOUT_SECONDS", "30")
 )  # Timeout for ffmpeg audio conversion during diarization
+DIARIZATION_PRELOAD_AUDIO = (
+    os.getenv("DIARIZATION_PRELOAD_AUDIO", "true").lower() == "true"
+)  # Preload audio tensors instead of relying on pyannote/TorchCodec decoding
+DIARIZATION_ALLOW_CPU_FALLBACK = (
+    os.getenv("DIARIZATION_ALLOW_CPU_FALLBACK", "true").lower() == "true"
+)  # Retry CPU diarization for known ROCm GPU compatibility failures
 
 # File handling
 UPLOAD_DIR = os.getenv("WHISPER_UPLOAD_DIR", "temp_uploads")
