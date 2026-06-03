@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile.dev
       args:
         ROCM_PYTORCH_BASE: "${ROCM_PYTORCH_BASE:-rocm/pytorch:rocm7.0_ubuntu22.04_py3.10_pytorch_release_2.8.0}"
+        HSA_OVERRIDE_GFX_VERSION: "${HSA_OVERRIDE_GFX_VERSION:-}"
 
     container_name: insanely-fast-whisper-rocm-dev
     restart: unless-stopped
@@ -34,6 +35,8 @@ services:
       # the values here for the application to read at runtime.
       API_PORT: "${DEV_API_PORT:-8889}"
       WEBUI_PORT: "${DEV_WEBUI_PORT:-7862}"
+      HSA_OVERRIDE_GFX_VERSION: "${HSA_OVERRIDE_GFX_VERSION:-}"
+      MIOPEN_FIND_MODE: "${MIOPEN_FIND_MODE:-2}"
 
     ports:
       - "${DEV_API_PORT:-8889}:${DEV_API_PORT:-8889}"  # API port (dev)
