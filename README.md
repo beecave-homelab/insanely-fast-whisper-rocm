@@ -161,6 +161,9 @@ Key configuration options include:
 - `WHISPER_MODEL`: The Whisper model to use (e.g., `openai/whisper-large-v3`).
 - `WHISPER_DEVICE`: The device to run on (`0` for CUDA, `mps` for Apple Silicon, `cpu`).
 - `USE_READABLE_SUBTITLES`: `true` or `false`. Enables the new readable subtitle segmentation pipeline. Defaults to `true`.
+- `DIARIZATION_DEVICE`: The pyannote diarization device. Keep `cpu` for maximum compatibility, or set `cuda` for faster ROCm GPU diarization after validating your GPU stack.
+- `DIARIZATION_PRELOAD_AUDIO`: Keep `true` on ROCm. The app preloads audio with torchaudio/ffmpeg and passes a waveform to pyannote instead of relying on TorchCodec.
+- `DIARIZATION_ALLOW_CPU_FALLBACK`: Keep `true` unless benchmarking strict GPU-only behavior. Known ROCm/MIOpen GPU failures retry diarization on CPU.
 
 > [!NOTE]
 > **PyTorch Allocator Configuration:**
@@ -221,6 +224,19 @@ To create or update your user-specific configuration file (`~/.config/insanely-f
    > - [GPU hardware specifications (gfx targets)](https://rocm.docs.amd.com/en/latest/reference/gpu-arch-specs.html)
    >
    > Example: forcing `gfx1030` corresponds to `HSA_OVERRIDE_GFX_VERSION=10.3.0`.
+   >
+   > [!TIP]
+   > **Fast ROCm diarization path:**
+   >
+   > For performance testing, set `DIARIZATION_DEVICE=cuda` and pass `--num-speakers` when the speaker count is known. If only a range is known, prefer `--min-speakers` and `--max-speakers` over fully unconstrained auto-detection. TorchCodec remains intentionally excluded from the ROCm dependency path; use the default audio preload path instead.
+   >
+   > The maintained reliable route is the `rocm/pytorch` image with
+   > `MIOPEN_FIND_MODE=2`. On the RX 6600 test host, this route completed
+   > CLI/API/WebUI chunk and word diarization with six GPU pyannote inference
+   > starts, zero CPU fallbacks, no MIOpen warnings, and TorchCodec absent. The
+   > matching JIT route also stayed on GPU but was slower on cold diarization
+   > (`56.457s` vs `24.838s`) and emitted MIOpen workspace warnings, so it stays
+   > a comparison experiment rather than the recommended path.
 
    If no configuration file exists, the API will use these default values. The configuration file will be automatically created with default values on first run.
 
