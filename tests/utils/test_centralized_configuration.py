@@ -34,6 +34,9 @@ class TestCentralizedConfiguration:
             assert constants_module.DEFAULT_MODEL == "distil-whisper/distil-large-v3"
             assert constants_module.FILENAME_TIMEZONE == "UTC"
             assert constants_module.HF_TOKEN is None
+            assert constants_module.DEFAULT_DIARIZATION_DEVICE == "cpu"
+            assert constants_module.DIARIZATION_PRELOAD_AUDIO is True
+            assert constants_module.DIARIZATION_ALLOW_CPU_FALLBACK is True
 
     def test_environment_variable_overrides(self) -> None:
         """Test that environment variables properly override defaults."""
@@ -72,27 +75,27 @@ class TestCentralizedConfiguration:
         ) as mock_getenv:
             # Test true values
             mock_getenv.side_effect = lambda key, default=None: {
-                "WHISPER_BETTER_TRANSFORMER": "true",
                 "SAVE_TRANSCRIPTIONS": "TRUE",
                 "HIP_LAUNCH_BLOCKING": "True",
+                "DIARIZATION_PRELOAD_AUDIO": "false",
+                "DIARIZATION_ALLOW_CPU_FALLBACK": "false",
             }.get(key, default)
 
             reload(constants_module)
 
-            assert constants_module.DEFAULT_BETTER_TRANSFORMER is True
             assert constants_module.SAVE_TRANSCRIPTIONS is True
             assert constants_module.HIP_LAUNCH_BLOCKING is True
+            assert constants_module.DIARIZATION_PRELOAD_AUDIO is False
+            assert constants_module.DIARIZATION_ALLOW_CPU_FALLBACK is False
 
             # Test false values
             mock_getenv.side_effect = lambda key, default=None: {
-                "WHISPER_BETTER_TRANSFORMER": "false",
                 "SAVE_TRANSCRIPTIONS": "FALSE",
                 "HIP_LAUNCH_BLOCKING": "False",
             }.get(key, default)
 
             reload(constants_module)
 
-            assert constants_module.DEFAULT_BETTER_TRANSFORMER is False
             assert constants_module.SAVE_TRANSCRIPTIONS is False
             assert constants_module.HIP_LAUNCH_BLOCKING is False
 

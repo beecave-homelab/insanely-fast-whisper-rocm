@@ -32,6 +32,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--output-file", required=True, help="Path for result JSON.")
     parser.add_argument("--device", default="cuda", help="Whisper device.")
     parser.add_argument("--diarization-device", default="cuda")
+    parser.add_argument("--num-speakers", type=int, default=2)
+    parser.add_argument("--min-speakers", type=int, default=1)
+    parser.add_argument("--max-speakers", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--language", default="")
     parser.add_argument(
@@ -202,9 +205,9 @@ def _run_prediction(client: Client, args: argparse.Namespace, api_name: str) -> 
         True,
         args.vad_threshold,
         True,
-        0,
-        1,
-        10,
+        args.num_speakers,
+        args.min_speakers,
+        args.max_speakers,
         args.diarization_device,
         True,
         args.save_dir,
