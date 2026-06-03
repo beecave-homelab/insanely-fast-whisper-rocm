@@ -118,4 +118,3 @@ docker-compose.test.yaml
 Dockerfile.test.rocm-pytorch
 Dockerfile.test.slim-rocm-apt
 Dockerfile.test
-requirements-container.txt
