@@ -164,6 +164,7 @@ Key configuration options include:
 - `DIARIZATION_DEVICE`: The pyannote diarization device. Keep `cpu` for maximum compatibility, or set `cuda` for faster ROCm GPU diarization after validating your GPU stack.
 - `DIARIZATION_PRELOAD_AUDIO`: Keep `true` on ROCm. The app preloads audio with torchaudio/ffmpeg and passes a waveform to pyannote instead of relying on TorchCodec.
 - `DIARIZATION_ALLOW_CPU_FALLBACK`: Keep `true` unless benchmarking strict GPU-only behavior. Known ROCm/MIOpen GPU failures retry diarization on CPU.
+- `DIARIZATION_FFMPEG_TIMEOUT_SECONDS`: Timeout for ffmpeg audio decode during diarization preload. Defaults to `30`.
 
 > [!NOTE]
 > **PyTorch Allocator Configuration:**

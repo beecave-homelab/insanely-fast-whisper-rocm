@@ -59,7 +59,7 @@ def _mock_diarize_error() -> Iterator[None]:
         yield
 
 
-def test_diarize_form_param_accepted(
+def test_post_transcriptions__accepts_diarize_form_param(
     client: TestClient,
     mock_orchestrator: pytest.MonkeyPatch,
     _mock_diarize_ok: None,
@@ -77,7 +77,7 @@ def test_diarize_form_param_accepted(
     assert response.status_code == 200
 
 
-def test_speaker_field_in_verbose_json(
+def test_post_transcriptions__includes_speaker_field_in_verbose_json(
     client: TestClient,
     mock_orchestrator: pytest.MonkeyPatch,
     _mock_diarize_ok: None,
@@ -98,7 +98,7 @@ def test_speaker_field_in_verbose_json(
     assert any("speaker" in seg for seg in body["segments"])
 
 
-def test_diarized_flag_in_response(
+def test_post_transcriptions__includes_diarized_flag_in_response(
     client: TestClient,
     mock_orchestrator: pytest.MonkeyPatch,
     _mock_diarize_ok: None,
@@ -118,7 +118,7 @@ def test_diarized_flag_in_response(
     assert body.get("diarized") is True
 
 
-def test_post_processed_result_updates_saved_json(
+def test_post_transcriptions__updates_saved_json_after_post_processing(
     client: TestClient,
     mock_orchestrator: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -191,7 +191,38 @@ def test_post_transcriptions__maps_diarization_error_to_400(
     assert "HF_TOKEN" in response.json()["detail"]
 
 
-def test_invalid_diarization_device_returns_400(
+def test_post_transcriptions__records_diarization_error_in_saved_json(
+    client: TestClient,
+    mock_orchestrator: pytest.MonkeyPatch,
+    tmp_path: Path,
+    _mock_diarize_error: None,
+) -> None:
+    """Diarization failures are recorded on persisted result dicts."""
+    output_path = tmp_path / "saved-result.json"
+    mock_orchestrator.run_transcription.return_value = {
+        "text": "Hello world.",
+        "chunks": [{"start": 0.0, "end": 2.0, "text": "Hello world."}],
+        "output_file_path": str(output_path),
+    }
+    output_path.write_text(json.dumps({"text": "Hello world."}), encoding="utf-8")
+
+    audio_file = io.BytesIO(DUMMY_WAV_HEADER)
+    response = client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("test.wav", audio_file, "audio/wav")},
+        data={
+            "diarize": "true",
+            "response_format": "json",
+        },
+    )
+
+    assert response.status_code == 400
+    saved = json.loads(output_path.read_text(encoding="utf-8"))
+    assert saved["diarized"] is False
+    assert "HF_TOKEN" in saved["diarization_error"]
+
+
+def test_post_transcriptions__returns_400_for_invalid_diarization_device(
     client: TestClient,
     mock_orchestrator: pytest.MonkeyPatch,
 ) -> None:
@@ -210,7 +241,7 @@ def test_invalid_diarization_device_returns_400(
     assert "Invalid diarization_device" in response.json()["detail"]
 
 
-def test_stabilized_flag_on_success(
+def test_post_transcriptions__sets_stabilized_flag_on_success(
     client: TestClient,
     mock_orchestrator: pytest.MonkeyPatch,
 ) -> None:

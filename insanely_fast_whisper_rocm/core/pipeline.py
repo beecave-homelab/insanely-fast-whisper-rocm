@@ -12,8 +12,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal, TypeVar, cast
 
-import torch
-
 from insanely_fast_whisper_rocm.audio import conversion as audio_conversion
 from insanely_fast_whisper_rocm.audio import processing as audio_processing
 from insanely_fast_whisper_rocm.audio import results as audio_results
@@ -28,6 +26,11 @@ from insanely_fast_whisper_rocm.utils.filename_generator import (
     StandardFilenameStrategy,
     TaskType,
 )
+
+try:
+    import torch
+except ModuleNotFoundError:  # pragma: no cover - exercised in minimal envs
+    torch = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -553,9 +556,13 @@ class WhisperPipeline(BasePipeline):
                 # that causes memory access faults on long audio files (>20 minutes).
                 # See: to-do/fix-backend-cache-resource-cleanup.md
                 try:
-                    if torch.cuda.is_available():
+                    if torch is not None and torch.cuda.is_available():
                         torch.cuda.empty_cache()
-                    if hasattr(torch, "mps") and torch.backends.mps.is_available():
+                    if (
+                        torch is not None
+                        and hasattr(torch, "mps")
+                        and torch.backends.mps.is_available()
+                    ):
                         torch.mps.empty_cache()  # type: ignore[attr-defined]
                 except Exception:  # pragma: no cover - defensive cleanup
                     pass

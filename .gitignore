@@ -67,6 +67,7 @@ target/
 
 .cursorrules
 .cursor/*/*.mdc
+.codex/
 #.windsurf/*/*.md
 .windsurfrules
 

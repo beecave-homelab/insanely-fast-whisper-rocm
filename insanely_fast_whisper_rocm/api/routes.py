@@ -135,6 +135,7 @@ def _apply_post_processing(
 
     Raises:
         HTTPException: If diarization_device is invalid or diarization fails.
+            Diarization failures are recorded on ``result`` before raising.
     """
     if stabilize:
         try:
@@ -176,6 +177,9 @@ def _apply_post_processing(
                 hf_token=HF_TOKEN,
             )
         except DiarizationError as e:
+            result["diarized"] = False
+            result["diarization_error"] = str(e)
+            _persist_post_processed_result(result)
             raise HTTPException(status_code=400, detail=str(e)) from e
 
     return result

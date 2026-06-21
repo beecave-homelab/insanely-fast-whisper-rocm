@@ -14,7 +14,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
-import torch
 from transformers import (
     AutoFeatureExtractor,
     AutoModelForSpeechSeq2Seq,
@@ -34,6 +33,11 @@ from insanely_fast_whisper_rocm.core.errors import (
 from insanely_fast_whisper_rocm.core.oom_utils import classify_oom_error
 from insanely_fast_whisper_rocm.core.progress import NoOpProgress, ProgressCallback
 from insanely_fast_whisper_rocm.core.utils import convert_device_string
+
+try:
+    import torch
+except ModuleNotFoundError:  # pragma: no cover - exercised in minimal envs
+    torch = None  # type: ignore[assignment]
 
 # Placeholder for logger, will be configured properly later
 logger = logging.getLogger(__name__)
@@ -90,7 +94,13 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         Raises:
             DeviceNotFoundError: If the requested CUDA or MPS device is not
                 available on the system.
+            TranscriptionError: If PyTorch is not installed.
         """
+        if torch is None:
+            raise TranscriptionError(
+                "PyTorch is required for transcription. Install the appropriate "
+                "ROCm dependency group before running ASR inference."
+            )
         if "cuda" in self.effective_device and not torch.cuda.is_available():
             raise DeviceNotFoundError(
                 f"CUDA device {self.effective_device} requested but CUDA is not "
@@ -117,6 +127,11 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             RuntimeError: Propagated for low-level framework errors that may
                 occur prior to wrapping.
         """
+        if torch is None:
+            raise TranscriptionError(
+                "PyTorch is required for transcription. Install the appropriate "
+                "ROCm dependency group before running ASR inference."
+            )
         if self.asr_pipe is None:
             cb = progress_cb or NoOpProgress()
             cb.on_model_load_started()

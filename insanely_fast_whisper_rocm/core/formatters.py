@@ -273,30 +273,33 @@ class TxtFormatter(BaseFormatter):
         """
         logger.debug(f"[TxtFormatter] Formatting result: keys={list(result.keys())}")
         try:
-            if result.get("diarized"):
-                chunks = result.get("chunks") or result.get("segments") or []
-                if (
-                    isinstance(chunks, list)
-                    and chunks
-                    and isinstance(chunks[0], dict)
-                    and any(c.get("speaker") for c in chunks if isinstance(c, dict))
-                ):
-                    lines: list[str] = []
-                    prev_speaker: str | None = None
-                    for chunk in chunks:
-                        speaker = chunk.get("speaker")
-                        text = chunk.get("text", "").strip()
-                        if not text:
-                            continue
-                        if speaker != prev_speaker:
-                            if lines:
-                                lines.append("")
-                            lines.append(f"[{speaker}] {text}" if speaker else text)
-                            prev_speaker = speaker
-                        else:
-                            lines.append(text)
-                    if lines:
-                        return "\n".join(lines)
+            chunks = result.get("chunks") or result.get("segments") or []
+            if (
+                isinstance(chunks, list)
+                and chunks
+                and isinstance(chunks[0], dict)
+                and any(
+                    c.get("speaker") or c.get("speaker_display")
+                    for c in chunks
+                    if isinstance(c, dict)
+                )
+            ):
+                lines: list[str] = []
+                prev_speaker: str | None = None
+                for chunk in chunks:
+                    speaker = chunk.get("speaker_display") or chunk.get("speaker")
+                    text = chunk.get("text", "").strip()
+                    if not text:
+                        continue
+                    if speaker != prev_speaker:
+                        if lines:
+                            lines.append("")
+                        lines.append(f"[{speaker}] {text}" if speaker else text)
+                        prev_speaker = speaker
+                    else:
+                        lines.append(text)
+                if lines:
+                    return "\n".join(lines)
 
             text = result.get("text", "")
             if not isinstance(text, str):
@@ -460,7 +463,7 @@ class SrtFormatter(BaseFormatter):
                     start = format_srt_time(start_sec)
                     end = format_srt_time(end_sec)
                     text = chunk.get("text", "").strip()
-                    speaker = chunk.get("speaker")
+                    speaker = chunk.get("speaker_display") or chunk.get("speaker")
 
                     # Apply line splitting for readability
                     formatted_text = split_lines(text)
@@ -651,7 +654,7 @@ class VttFormatter(BaseFormatter):
                     start = format_vtt_time(start_sec)
                     end = format_vtt_time(end_sec)
                     text = chunk.get("text", "").strip()
-                    speaker = chunk.get("speaker")
+                    speaker = chunk.get("speaker_display") or chunk.get("speaker")
 
                     # Apply line splitting for readability
                     formatted_text = split_lines(text)

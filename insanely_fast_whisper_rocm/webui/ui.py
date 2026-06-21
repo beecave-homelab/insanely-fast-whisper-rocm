@@ -34,7 +34,14 @@ from insanely_fast_whisper_rocm.utils.constants import (
 from insanely_fast_whisper_rocm.webui.handlers import (
     FileHandlingConfig,
     TranscriptionConfig,
+    apply_speaker_rename,
+    build_speaker_review_state,
+    build_speaker_review_summary,
+    merge_review_speakers,
     process_transcription_request,
+    refresh_review_downloads,
+    retag_transcript_segment,
+    split_review_segment_speaker,
 )
 
 # Configure logger
@@ -173,25 +180,30 @@ def _create_diarization_ui(
     default_diarize: bool = DEFAULT_DIARIZE,
     default_min_speakers: int = MIN_SPEAKERS,
     default_max_speakers: int = MAX_SPEAKERS,
-) -> tuple[gr.Checkbox, gr.Slider, gr.Slider, gr.Slider, gr.Radio]:
+) -> tuple[gr.Checkbox, gr.Radio, gr.Slider, gr.Slider, gr.Slider, gr.Radio]:
     """Helper function to create speaker diarization UI components.
 
     Returns:
-        tuple[gr.Checkbox, gr.Slider, gr.Slider, gr.Slider, gr.Radio]:
-        Diarize toggle, num-speakers, min-speakers, max-speakers sliders,
-        and diarization device radio.
+        tuple[gr.Checkbox, gr.Radio, gr.Slider, gr.Slider, gr.Slider, gr.Radio]:
+        Diarize toggle, speaker-count mode, exact/min/max speaker sliders,
+        and advanced diarization device radio.
     """
     with gr.Accordion("Speaker Diarization", open=False):
         diarize = gr.Checkbox(
             value=default_diarize,
             label="Enable speaker diarization (--diarize)",
         )
+        speaker_count_mode = gr.Radio(
+            choices=["Auto", "Exact", "Range"],
+            value="Auto",
+            label="Speaker count",
+        )
         num_speakers = gr.Slider(
             minimum=0,
             maximum=MAX_SPEAKERS,
             step=1,
             value=0,
-            label="Number of speakers (0 = auto-detect)",
+            label="Exact speakers",
         )
         min_speakers = gr.Slider(
             minimum=MIN_SPEAKERS,
@@ -207,12 +219,20 @@ def _create_diarization_ui(
             value=default_max_speakers,
             label="Max speakers",
         )
-        diarization_device = gr.Radio(
-            choices=["cpu", "cuda"],
-            value=DEFAULT_DIARIZATION_DEVICE,
-            label="Diarization device",
-        )
-    return diarize, num_speakers, min_speakers, max_speakers, diarization_device
+        with gr.Accordion("Advanced diarization runtime", open=False):
+            diarization_device = gr.Radio(
+                choices=["cpu", "cuda"],
+                value=DEFAULT_DIARIZATION_DEVICE,
+                label="Diarization device",
+            )
+    return (
+        diarize,
+        speaker_count_mode,
+        num_speakers,
+        min_speakers,
+        max_speakers,
+        diarization_device,
+    )
 
 
 def _create_task_config_ui() -> tuple[gr.Radio, gr.Textbox, gr.Radio]:
@@ -277,6 +297,7 @@ def _process_transcription_request_wrapper(
     vad_threshold: float,
     # Diarization params
     diarize: bool,
+    speaker_count_mode: str,
     num_speakers: int,
     min_speakers: int,
     max_speakers: int,
@@ -322,13 +343,18 @@ def _process_transcription_request_wrapper(
     transcription_cfg.vad_threshold = vad_threshold
     # Inject diarization options
     transcription_cfg.diarize = diarize
-    transcription_cfg.num_speakers = num_speakers if num_speakers > 0 else None
-    transcription_cfg.min_speakers = (
-        None if min_speakers == MIN_SPEAKERS else min_speakers
-    )
-    transcription_cfg.max_speakers = (
-        None if max_speakers == MAX_SPEAKERS else max_speakers
-    )
+    if speaker_count_mode == "Exact":
+        transcription_cfg.num_speakers = num_speakers if num_speakers > 0 else None
+        transcription_cfg.min_speakers = None
+        transcription_cfg.max_speakers = None
+    elif speaker_count_mode == "Range":
+        transcription_cfg.num_speakers = None
+        transcription_cfg.min_speakers = min_speakers
+        transcription_cfg.max_speakers = max_speakers
+    else:
+        transcription_cfg.num_speakers = None
+        transcription_cfg.min_speakers = None
+        transcription_cfg.max_speakers = None
     transcription_cfg.diarization_device = diarization_device
 
     final_result: tuple[object, ...] | None = None
@@ -430,6 +456,37 @@ def _build_transcription_start_status(audio_paths: list[str]) -> tuple[object, .
     )
 
 
+def _refresh_speaker_review_controls(
+    raw_result: dict[str, Any] | None,
+) -> tuple[object, object, object, str]:
+    """Refresh speaker review selectors after transcription or edits.
+
+    Args:
+        raw_result: Raw transcription state.
+
+    Returns:
+        Gradio updates for segment/speaker controls and summary text.
+    """
+    state = build_speaker_review_state(raw_result)
+    speaker_choices = list(state["speaker_map"])
+    segment_choices = state["segment_choices"]
+    return (
+        gr.update(
+            choices=segment_choices,
+            value=segment_choices[0] if segment_choices else None,
+        ),
+        gr.update(
+            choices=speaker_choices,
+            value=speaker_choices[0] if speaker_choices else None,
+        ),
+        gr.update(
+            choices=speaker_choices,
+            value=speaker_choices[1] if len(speaker_choices) > 1 else None,
+        ),
+        build_speaker_review_summary(raw_result),
+    )
+
+
 def create_ui_components(
     *,
     default_model: str = DEFAULT_MODEL,
@@ -482,6 +539,7 @@ def create_ui_components(
                 # Speaker diarization options
                 (
                     diarize_opt,
+                    speaker_count_mode_opt,
                     num_speakers_opt,
                     min_speakers_opt,
                     max_speakers_opt,
@@ -524,6 +582,39 @@ def create_ui_components(
                                 interactive=False,
                                 elem_classes=["ifw-json"],
                             )
+                        with gr.TabItem("Speaker Review"):
+                            speaker_review_summary = gr.Textbox(
+                                label="Speaker map",
+                                value="No diarized speaker labels available yet.",
+                                lines=5,
+                                interactive=False,
+                            )
+                            review_segment = gr.Dropdown(
+                                choices=[],
+                                label="Transcript segment",
+                                interactive=True,
+                            )
+                            with gr.Row():
+                                review_speaker = gr.Dropdown(
+                                    choices=[],
+                                    label="Speaker",
+                                    interactive=True,
+                                )
+                                speaker_name = gr.Textbox(
+                                    label="Readable name",
+                                    placeholder="Host, Guest, Support agent",
+                                )
+                            with gr.Row():
+                                rename_speaker_btn = gr.Button("Rename all")
+                                retag_segment_btn = gr.Button("Retag segment")
+                                split_segment_btn = gr.Button("Split as new")
+                            with gr.Row():
+                                merge_source_speaker = gr.Dropdown(
+                                    choices=[],
+                                    label="Merge from",
+                                    interactive=True,
+                                )
+                                merge_speaker_btn = gr.Button("Merge into selected")
 
                 raw_result_state = gr.State()
 
@@ -595,6 +686,7 @@ def create_ui_components(
                 vad_threshold_opt,
                 # Diarization options (match wrapper order)
                 diarize_opt,
+                speaker_count_mode_opt,
                 num_speakers_opt,
                 min_speakers_opt,
                 max_speakers_opt,
@@ -615,6 +707,134 @@ def create_ui_components(
             api_name="transcribe_audio_v2",
             show_progress="minimal",
             show_progress_on=[transcription_output],
+        ).then(
+            fn=_refresh_speaker_review_controls,
+            inputs=[raw_result_state],
+            outputs=[
+                review_segment,
+                review_speaker,
+                merge_source_speaker,
+                speaker_review_summary,
+            ],
+            queue=False,
+        ).then(
+            fn=refresh_review_downloads,
+            inputs=[raw_result_state, temp_uploads_dir, task],
+            outputs=[
+                download_zip_btn,
+                download_txt_btn,
+                download_srt_btn,
+                download_json_btn,
+            ],
+            queue=False,
+        )
+
+        rename_speaker_btn.click(
+            fn=apply_speaker_rename,
+            inputs=[raw_result_state, review_speaker, speaker_name],
+            outputs=[transcription_output, json_output, raw_result_state],
+            queue=False,
+        ).then(
+            fn=_refresh_speaker_review_controls,
+            inputs=[raw_result_state],
+            outputs=[
+                review_segment,
+                review_speaker,
+                merge_source_speaker,
+                speaker_review_summary,
+            ],
+            queue=False,
+        ).then(
+            fn=refresh_review_downloads,
+            inputs=[raw_result_state, temp_uploads_dir, task],
+            outputs=[
+                download_zip_btn,
+                download_txt_btn,
+                download_srt_btn,
+                download_json_btn,
+            ],
+            queue=False,
+        )
+
+        retag_segment_btn.click(
+            fn=retag_transcript_segment,
+            inputs=[raw_result_state, review_segment, review_speaker],
+            outputs=[transcription_output, json_output, raw_result_state],
+            queue=False,
+        ).then(
+            fn=_refresh_speaker_review_controls,
+            inputs=[raw_result_state],
+            outputs=[
+                review_segment,
+                review_speaker,
+                merge_source_speaker,
+                speaker_review_summary,
+            ],
+            queue=False,
+        ).then(
+            fn=refresh_review_downloads,
+            inputs=[raw_result_state, temp_uploads_dir, task],
+            outputs=[
+                download_zip_btn,
+                download_txt_btn,
+                download_srt_btn,
+                download_json_btn,
+            ],
+            queue=False,
+        )
+
+        split_segment_btn.click(
+            fn=split_review_segment_speaker,
+            inputs=[raw_result_state, review_segment, speaker_name],
+            outputs=[transcription_output, json_output, raw_result_state],
+            queue=False,
+        ).then(
+            fn=_refresh_speaker_review_controls,
+            inputs=[raw_result_state],
+            outputs=[
+                review_segment,
+                review_speaker,
+                merge_source_speaker,
+                speaker_review_summary,
+            ],
+            queue=False,
+        ).then(
+            fn=refresh_review_downloads,
+            inputs=[raw_result_state, temp_uploads_dir, task],
+            outputs=[
+                download_zip_btn,
+                download_txt_btn,
+                download_srt_btn,
+                download_json_btn,
+            ],
+            queue=False,
+        )
+
+        merge_speaker_btn.click(
+            fn=merge_review_speakers,
+            inputs=[raw_result_state, merge_source_speaker, review_speaker],
+            outputs=[transcription_output, json_output, raw_result_state],
+            queue=False,
+        ).then(
+            fn=_refresh_speaker_review_controls,
+            inputs=[raw_result_state],
+            outputs=[
+                review_segment,
+                review_speaker,
+                merge_source_speaker,
+                speaker_review_summary,
+            ],
+            queue=False,
+        ).then(
+            fn=refresh_review_downloads,
+            inputs=[raw_result_state, temp_uploads_dir, task],
+            outputs=[
+                download_zip_btn,
+                download_txt_btn,
+                download_srt_btn,
+                download_json_btn,
+            ],
+            queue=False,
         )
 
     demo.css = """

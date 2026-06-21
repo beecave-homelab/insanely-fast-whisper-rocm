@@ -801,7 +801,7 @@ def test_preload_audio_as_waveform__loads_wav_directly() -> None:
     assert result["waveform"] is fake_waveform
 
 
-def test_preload_audio_as_waveform__falls_back_to_ffmpeg_for_m4a(
+def test_preload_audio_as_waveform__uses_ffmpeg_decode_for_m4a(
     tmp_path: Path,
 ) -> None:
     """Falls back to ffmpeg conversion when torchaudio.load fails (e.g. m4a)."""
@@ -814,8 +814,13 @@ def test_preload_audio_as_waveform__falls_back_to_ffmpeg_for_m4a(
             "torchaudio.load",
             side_effect=[RuntimeError("Format not recognised"), (fake_waveform, 16000)],
         ),
-        patch("subprocess.run", return_value=mock_completed),
+        patch("subprocess.run", return_value=mock_completed) as mock_run,
         patch("tempfile.NamedTemporaryFile") as mock_tmp,
+        patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization."
+            "DIARIZATION_FFMPEG_TIMEOUT_SECONDS",
+            12,
+        ),
     ):
         mock_file = MagicMock()
         mock_file.name = str(tmp_path / "diarize_test.wav")
@@ -828,9 +833,11 @@ def test_preload_audio_as_waveform__falls_back_to_ffmpeg_for_m4a(
     assert isinstance(result, dict)
     assert result["sample_rate"] == 16000
     assert result["waveform"] is fake_waveform
+    mock_run.assert_called_once()
+    assert mock_run.call_args.kwargs["timeout"] == 12
 
 
-def test_preload_audio_as_waveform__raises_on_ffmpeg_failure(
+def test_preload_audio_as_waveform__raises_error_on_ffmpeg_failure(
     tmp_path: Path,
 ) -> None:
     """Raises DiarizationError when both torchaudio and ffmpeg fail."""
@@ -854,7 +861,7 @@ def test_preload_audio_as_waveform__raises_on_ffmpeg_failure(
         assert exc_info.value.reason == "audio_decode_unavailable"
 
 
-def test_preload_audio_as_waveform__raises_on_ffmpeg_timeout(
+def test_preload_audio_as_waveform__raises_error_on_ffmpeg_timeout(
     tmp_path: Path,
 ) -> None:
     """Raises DiarizationError when ffmpeg conversion times out."""

@@ -20,6 +20,13 @@ from insanely_fast_whisper_rocm.webui.handlers import (
     TranscriptionConfig,
     _is_stabilization_corrupt,
     _prepare_temp_downloadable_file,
+    apply_speaker_rename,
+    build_speaker_review_state,
+    build_speaker_review_summary,
+    merge_review_speakers,
+    refresh_review_downloads,
+    retag_transcript_segment,
+    split_review_segment_speaker,
 )
 from insanely_fast_whisper_rocm.webui.zip_creator import (
     BatchZipBuilder,
@@ -390,6 +397,174 @@ def test_process_transcription_request_single_file() -> None:
             # Second element is transcription output text
             assert isinstance(result[1], str)
             assert "Test transcription" in result[1]
+            assert result[3] == mock_result
+
+
+def test_build_speaker_review_summary__shows_map_and_review_markers() -> None:
+    """Speaker review summary lists readable map and ambiguous turns."""
+    raw_result = {
+        "diarized": True,
+        "segments": [
+            {
+                "start": 0.0,
+                "end": 1.0,
+                "text": "Hello",
+                "speaker": "SPEAKER_00",
+                "speaker_confidence": 0.4,
+                "overlap": True,
+            },
+            {
+                "start": 1.0,
+                "end": 2.0,
+                "text": "World",
+                "speaker": "SPEAKER_01",
+            },
+        ],
+    }
+
+    summary = build_speaker_review_summary(raw_result)
+
+    assert "SPEAKER_00 -> SPEAKER_00" in summary
+    assert "SPEAKER_01 -> SPEAKER_01" in summary
+    assert "1 low-confidence turn(s)" in summary
+    assert "1 overlapping turn(s)" in summary
+
+
+def test_build_speaker_review_state__marks_ambiguous_segment_choices() -> None:
+    """Review segment labels flag low-confidence and overlapping turns."""
+    raw_result = {
+        "segments": [
+            {
+                "start": 0.0,
+                "end": 1.0,
+                "text": "Hello",
+                "speaker": "SPEAKER_00",
+                "speaker_confidence": 0.4,
+                "overlap": True,
+            }
+        ],
+    }
+
+    state = build_speaker_review_state(raw_result)
+
+    assert "low confidence" in state["segment_choices"][0]
+    assert "overlap" in state["segment_choices"][0]
+
+
+def test_apply_speaker_rename__preserves_internal_id_and_adds_display_name() -> None:
+    """Speaker rename keeps raw speaker IDs while adding readable labels."""
+    raw_result = {
+        "text": "Hello",
+        "segments": [
+            {"start": 0.0, "end": 1.0, "text": "Hello", "speaker": "SPEAKER_00"}
+        ],
+    }
+
+    transcript_preview, json_preview, updated = apply_speaker_rename(
+        raw_result,
+        "SPEAKER_00",
+        "Host",
+    )
+
+    assert updated is not None
+    assert "[Host] Hello" in transcript_preview
+    assert updated["speaker_names"] == {"SPEAKER_00": "Host"}
+    assert updated["segments"][0]["speaker"] == "SPEAKER_00"
+    assert updated["segments"][0]["speaker_display"] == "Host"
+    assert '"speaker": "SPEAKER_00"' in json_preview
+    assert '"speaker_display": "Host"' in json_preview
+
+
+def test_retag_transcript_segment__updates_selected_segment_speaker() -> None:
+    """Retagging a segment changes the selected turn speaker."""
+    raw_result = {
+        "text": "Hello Bye",
+        "segments": [
+            {"start": 0.0, "end": 1.0, "text": "Hello", "speaker": "SPEAKER_00"},
+            {"start": 1.0, "end": 2.0, "text": "Bye", "speaker": "SPEAKER_01"},
+        ],
+    }
+
+    _, _, updated = retag_transcript_segment(raw_result, "1: [1.0-2.0]", "SPEAKER_00")
+
+    assert updated is not None
+    assert updated["segments"][1]["speaker"] == "SPEAKER_00"
+
+
+def test_split_review_segment_speaker__creates_new_speaker_label() -> None:
+    """Splitting a segment creates a new speaker ID for one selected turn."""
+    raw_result = {
+        "text": "Hello Bye",
+        "segments": [
+            {"start": 0.0, "end": 1.0, "text": "Hello", "speaker": "SPEAKER_00"},
+            {"start": 1.0, "end": 2.0, "text": "Bye", "speaker": "SPEAKER_00"},
+        ],
+    }
+
+    transcript_preview, _, updated = split_review_segment_speaker(
+        raw_result,
+        "1: [1.0-2.0]",
+        "Guest",
+    )
+
+    assert updated is not None
+    assert updated["segments"][0]["speaker"] == "SPEAKER_00"
+    assert updated["segments"][1]["speaker"] == "SPEAKER_01"
+    assert updated["speaker_names"]["SPEAKER_01"] == "Guest"
+    assert "[Guest] Bye" in transcript_preview
+
+
+def test_merge_review_speakers__replaces_source_speaker() -> None:
+    """Merging speakers replaces duplicated speaker labels across segments."""
+    raw_result = {
+        "text": "Hello Bye",
+        "speaker_names": {"SPEAKER_00": "Host", "SPEAKER_01": "Guest"},
+        "segments": [
+            {"start": 0.0, "end": 1.0, "text": "Hello", "speaker": "SPEAKER_00"},
+            {"start": 1.0, "end": 2.0, "text": "Bye", "speaker": "SPEAKER_01"},
+        ],
+    }
+
+    _, _, updated = merge_review_speakers(raw_result, "SPEAKER_01", "SPEAKER_00")
+
+    assert updated is not None
+    assert [segment["speaker"] for segment in updated["segments"]] == [
+        "SPEAKER_00",
+        "SPEAKER_00",
+    ]
+    assert "SPEAKER_01" not in updated["speaker_names"]
+
+
+def test_refresh_review_downloads__exports_readable_speaker_labels() -> None:
+    """Reviewed downloads are regenerated from speaker-display labels."""
+    raw_result = {
+        "text": "Hello",
+        "diarized": True,
+        "audio_file_path": "/tmp/interview.wav",
+        "segments": [
+            {
+                "start": 0.0,
+                "end": 1.0,
+                "text": "Hello",
+                "speaker": "SPEAKER_00",
+                "speaker_display": "Host",
+            }
+        ],
+    }
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        _, txt_update, srt_update, json_update = refresh_review_downloads(
+            raw_result,
+            temp_dir,
+            "transcribe",
+        )
+
+        txt_path = Path(txt_update["value"])
+        srt_path = Path(srt_update["value"])
+        json_path = Path(json_update["value"])
+        assert "[Host] Hello" in txt_path.read_text(encoding="utf-8")
+        assert "[Host] Hello" in srt_path.read_text(encoding="utf-8")
+        assert '"speaker": "SPEAKER_00"' in json_path.read_text(encoding="utf-8")
 
 
 def test_process_transcription_request_multiple_files() -> None:
