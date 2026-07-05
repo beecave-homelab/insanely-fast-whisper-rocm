@@ -21,7 +21,6 @@ def test_asr_pipeline_custom_params() -> None:
         model="openai/whisper-large-v3",
         device="cuda:0",
         dtype="float16",
-        better_transformer=True,
     )
     assert asr.model_name == "openai/whisper-large-v3"
     assert asr.device == "cuda:0"
