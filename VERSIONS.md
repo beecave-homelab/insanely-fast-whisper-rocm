@@ -54,6 +54,30 @@ This project follows [Semantic Versioning](https://semver.org/) format: `MAJOR.M
 
 ## Release Timeline
 
+### `v2.1.6` (Current) - *05-07-2026*
+
+#### 🐛 Patch Release: Remove obsolete `WHISPER_BETTER_TRANSFORMER` configuration
+
+This release removes the dead `WHISPER_BETTER_TRANSFORMER` / `better_transformer`
+configuration option.
+
+#### 🐛 **Bug Fixes in v2.1.6**
+
+- **Fixed**: Removed the misleading public `better_transformer` option that had no
+  runtime effect. The codebase already used `attn_implementation="sdpa"` directly,
+  making `BetterTransformer` redundant.
+
+#### 🔧 **Improvements in v2.1.6**
+
+- **Refactored**: Cleaned up `.env.example`, `openapi.yaml`, constants, and tests so
+  that attention acceleration is documented consistently as native SDPA only.
+
+#### 📝 **Key Commits in v2.1.6**
+
+`a5f80bd3`
+
+---
+
 ### `v2.1.5` - *19-02-2026*
 
 #### 🐛 Patch Release: ROCm 7.0 Docker Requirements Alignment
@@ -84,31 +108,7 @@ ensures torch/torchaudio pins match ROCm-specific builds.
 
 ---
 
-### `v2.1.6` (Current) - *05-07-2026*
-
-#### 🐛 Patch Release: Remove obsolete `WHISPER_BETTER_TRANSFORMER` configuration
-
-This release removes the dead `WHISPER_BETTER_TRANSFORMER` / `better_transformer`
-configuration option.
-
-#### 🐛 **Bug Fixes in v2.1.6**
-
-- **Fixed**: Removed the misleading public `better_transformer` option that had no
-  runtime effect. The codebase already used `attn_implementation="sdpa"` directly,
-  making `BetterTransformer` redundant.
-
-#### 🔧 **Improvements in v2.1.6**
-
-- **Refactored**: Cleaned up `.env.example`, `openapi.yaml`, constants, and tests so
-  that attention acceleration is documented consistently as native SDPA only.
-
-#### 📝 **Key Commits in v2.1.6**
-
-`TBD`
-
----
-
-### `v2.1.5` - *19-02-2026*
+### `v2.1.4` - *31-01-2026*
 
 #### 🐛 Patch Release: ROCm 7.0 Wheels & Requirements Alignment
 
@@ -124,7 +124,7 @@ This release aligns ROCm 7.0 wheel guidance and documentation, updates test layo
   - **Issue**: Model initialization did not consistently respect the configured dtype.
   - **Solution**: Explicitly map the configured dtype to the corresponding torch dtype.
 
-#### � **Improvements in v2.1.4**
+#### 🔧 **Improvements in v2.1.4**
 
 - **Improved**: ROCm 7.0 requirements documentation and release notes.
   - **Issue**: Release notes referenced an outdated ROCm 7.1 requirements file.
