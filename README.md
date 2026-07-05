@@ -3,7 +3,7 @@
 A comprehensive Whisper-based speech recognition toolkit designed specifically to provide **AMD GPU (ROCm) support** for high-performance (video to) audio transcription and translation. This package extends the capabilities of the original [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) by providing multiple interfaces and ROCm compatibility.
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v2.1.5-informational)](#insanely-fast-whisper-rocm)
+[![Version](https://img.shields.io/badge/Version-v2.1.6-informational)](#insanely-fast-whisper-rocm)
 [![ROCm Version](https://img.shields.io/badge/ROCm-v6.4%20%7C%20v7.0-informational)](https://repo.radeon.com/rocm/)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface)
@@ -159,6 +159,11 @@ Key configuration options include:
 - `WHISPER_MODEL`: The Whisper model to use (e.g., `openai/whisper-large-v3`).
 - `WHISPER_DEVICE`: The device to run on (`0` for CUDA, `mps` for Apple Silicon, `cpu`).
 - `USE_READABLE_SUBTITLES`: `true` or `false`. Enables the new readable subtitle segmentation pipeline. Defaults to `true`.
+
+> [!NOTE]
+> **Attention implementation:**
+>
+> The application uses native PyTorch Scaled Dot Product Attention (`sdpa`) automatically for GPU inference. The historical `WHISPER_BETTER_TRANSFORMER` option has been removed; it had no runtime effect because SDPA was already the default.
 
 > [!NOTE]
 > **PyTorch Allocator Configuration:**

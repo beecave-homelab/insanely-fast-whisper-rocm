@@ -72,27 +72,23 @@ class TestCentralizedConfiguration:
         ) as mock_getenv:
             # Test true values
             mock_getenv.side_effect = lambda key, default=None: {
-                "WHISPER_BETTER_TRANSFORMER": "true",
                 "SAVE_TRANSCRIPTIONS": "TRUE",
                 "HIP_LAUNCH_BLOCKING": "True",
             }.get(key, default)
 
             reload(constants_module)
 
-            assert constants_module.DEFAULT_BETTER_TRANSFORMER is True
             assert constants_module.SAVE_TRANSCRIPTIONS is True
             assert constants_module.HIP_LAUNCH_BLOCKING is True
 
             # Test false values
             mock_getenv.side_effect = lambda key, default=None: {
-                "WHISPER_BETTER_TRANSFORMER": "false",
                 "SAVE_TRANSCRIPTIONS": "FALSE",
                 "HIP_LAUNCH_BLOCKING": "False",
             }.get(key, default)
 
             reload(constants_module)
 
-            assert constants_module.DEFAULT_BETTER_TRANSFORMER is False
             assert constants_module.SAVE_TRANSCRIPTIONS is False
             assert constants_module.HIP_LAUNCH_BLOCKING is False
 

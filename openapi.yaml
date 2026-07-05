@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Insanely Fast Whisper API (ROCm)
   description: A FastAPI wrapper around a custom Whisper-based ASR pipeline.
-  version: 2.1.4
+  version: 2.1.6
 paths:
   /v1/audio/transcriptions:
     post:
@@ -37,9 +37,6 @@ paths:
                 batch_size:
                   type: integer
                   default: 8
-                better_transformer:
-                  type: boolean
-                  default: false
                 chunk_length:
                   type: integer
                   default: 30
@@ -89,9 +86,6 @@ paths:
                 batch_size:
                   type: integer
                   default: 8
-                better_transformer:
-                  type: boolean
-                  default: false
                 chunk_length:
                   type: integer
                   default: 30
