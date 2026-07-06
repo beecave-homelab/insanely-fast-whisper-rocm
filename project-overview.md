@@ -280,7 +280,7 @@ This project uses the native Scaled Dot Product Attention (SDPA) available in Py
 - **Performance**: It provides significant speed improvements for attention-heavy models like Whisper, often matching or exceeding the performance of `BetterTransformer`.
 - **Simplicity**: As a native feature, it doesn't require an extra dependency like `optimum` or manual model patching (`BetterTransformer.transform(model)`). Integration is cleaner and more robust.
 
-The codebase automatically enables `sdpa` for any GPU-based device (`cuda`, `mps`) and disables it for CPU, ensuring optimal performance where available without manual configuration. `sdpa` is the current and recommended acceleration method.
+The codebase automatically enables `sdpa` for any GPU-based device (`cuda`, `mps`) and disables it for CPU, ensuring optimal performance where available without manual configuration. `sdpa` is the current and recommended acceleration method. The historical `WHISPER_BETTER_TRANSFORMER` / `better_transformer` option has been removed; it had no runtime effect because SDPA was already the default.
 
 ### OOM Recovery Orchestration (GPU -> CPU fallback)
 

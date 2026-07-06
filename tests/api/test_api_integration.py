@@ -126,7 +126,6 @@ class TestTranscriptionEndpoint:
                 "language": "en",
                 "task": "transcribe",
                 "dtype": "float32",
-                "better_transformer": "false",
                 "model_chunk_length": "30",
             },
         )
@@ -216,7 +215,6 @@ class TestTranscriptionEndpoint:
                 "device": "cuda:0",
                 "batch_size": "8",
                 "dtype": "float16",
-                "better_transformer": "true",
                 "model_chunk_length": "15",
             },
         )
@@ -452,7 +450,6 @@ class TestBackwardsCompatibility:
                 "language": "en",
                 "task": "transcribe",
                 "dtype": "float32",
-                "better_transformer": "false",
                 "model_chunk_length": "30",
             },
         )

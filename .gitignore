@@ -105,6 +105,12 @@ to-do/*.md
 # PDM lock backup
 pdm.lock.bak
 
+# PDM local interpreter pin
+.pdm-python
+
+# PDM local package directory (used when python.use_venv = false)
+__pypackages__/
+
 # PR comments
 pr-27-comments.md
 

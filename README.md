@@ -167,6 +167,11 @@ Key configuration options include:
 - `DIARIZATION_FFMPEG_TIMEOUT_SECONDS`: Timeout for ffmpeg audio decode during diarization preload. Defaults to `30`.
 
 > [!NOTE]
+> **Attention implementation:**
+>
+> The application uses native PyTorch Scaled Dot Product Attention (`sdpa`) automatically for GPU inference. The historical `WHISPER_BETTER_TRANSFORMER` option has been removed; it had no runtime effect because SDPA was already the default.
+
+> [!NOTE]
 > **PyTorch Allocator Configuration:**
 >
 > The application automatically detects your PyTorch version and sets the correct allocator configuration:
