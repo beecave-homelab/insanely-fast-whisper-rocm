@@ -18,6 +18,7 @@ from insanely_fast_whisper_rocm.core.backend_cache import (
     clear_cache,
     release_pipeline,
 )
+from insanely_fast_whisper_rocm.utils import constants
 
 
 class TestBackendCache:
@@ -139,6 +140,7 @@ class TestBackendCache:
 
             from insanely_fast_whisper_rocm import core
 
+            importlib.reload(constants)
             importlib.reload(core.backend_cache)
             from insanely_fast_whisper_rocm.core.backend_cache import (
                 acquire_pipeline as acquire_eager,
@@ -168,6 +170,7 @@ class TestBackendCache:
                     assert key not in backend_cache._CACHE
 
             # Reload back to normal mode
+            importlib.reload(constants)
             importlib.reload(core.backend_cache)
 
     def test_warm_cache_mode_keeps_backend(self) -> None:
@@ -188,6 +191,7 @@ class TestBackendCache:
 
             from insanely_fast_whisper_rocm import core
 
+            importlib.reload(constants)
             importlib.reload(core.backend_cache)
             from insanely_fast_whisper_rocm.core.backend_cache import (
                 acquire_pipeline as acquire_warm,
@@ -218,6 +222,7 @@ class TestBackendCache:
                     assert backend_cache._CACHE[key].ref_count == 0
 
             # Reload back to normal
+            importlib.reload(constants)
             importlib.reload(core.backend_cache)
 
     def test_borrow_pipeline_context_manager(self) -> None:

@@ -79,6 +79,7 @@ import importlib.util
 import logging
 import os
 import sys
+import time
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
 from typing import Literal
@@ -183,6 +184,39 @@ APP_TIMEZONE = os.getenv(
     "APP_TIMEZONE",
     os.getenv("FILENAME_TIMEZONE", os.getenv("TZ", "UTC")),
 )
+
+
+def set_app_timezone() -> None:
+    """Set the process timezone from centralized application configuration."""
+    try:
+        os.environ.__setitem__("TZ", APP_TIMEZONE)
+        time.tzset()
+        logging.info(
+            "Timezone set to: %s (%s) using APP_TIMEZONE='%s'",
+            time.tzname[0],
+            time.tzname[1],
+            APP_TIMEZONE,
+        )
+    except (TypeError, OSError, IndexError) as exc:
+        logging.warning(
+            "Could not set timezone using APP_TIMEZONE='%s': %s. Using system default.",
+            APP_TIMEZONE,
+            str(exc),
+        )
+
+
+def set_tokenizers_parallelism() -> None:
+    """Disable tokenizer parallelism warnings for CLI startup."""
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+
+# Eager model release mode for backend cache teardown after each borrower.
+EAGER_MODEL_RELEASE = os.getenv("IFW_EAGER_MODEL_RELEASE", "0") in (
+    "1",
+    "true",
+    "True",
+)
+
 SAVE_TRANSCRIPTIONS = (
     os.getenv("SAVE_TRANSCRIPTIONS", "true").lower() == "true"
 )  # Whether to save transcriptions to disk

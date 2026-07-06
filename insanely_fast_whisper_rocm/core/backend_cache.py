@@ -23,6 +23,7 @@ from insanely_fast_whisper_rocm.core.asr_backend import (
     HuggingFaceBackendConfig,
 )
 from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
+from insanely_fast_whisper_rocm.utils import constants
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class _CacheEntry:
 # Global cache keyed by an immutable config tuple
 _CACHE: dict[tuple[Hashable, ...], _CacheEntry] = {}
 _LOCK = threading.RLock()
-_EAGER_RELEASE = os.getenv("IFW_EAGER_MODEL_RELEASE", "0") in ("1", "true", "True")
+_EAGER_RELEASE = constants.EAGER_MODEL_RELEASE
 
 
 def _make_key(

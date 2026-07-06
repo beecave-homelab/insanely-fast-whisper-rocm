@@ -6,8 +6,6 @@ python -m insanely_fast_whisper_rocm
 
 import logging
 import logging.config
-import os
-import time
 from pathlib import Path
 
 import click
@@ -26,21 +24,7 @@ except ImportError:
 
 def setup_timezone() -> None:
     """Set the timezone for the application based on constants.APP_TIMEZONE."""
-    try:
-        os.environ.__setitem__("TZ", constants.APP_TIMEZONE)
-        time.tzset()
-        logging.info(
-            "Timezone set to: %s (%s) using APP_TIMEZONE='%s'",
-            time.tzname[0],
-            time.tzname[1],
-            constants.APP_TIMEZONE,
-        )
-    except (TypeError, OSError, IndexError) as exc:
-        logging.warning(
-            "Could not set timezone using APP_TIMEZONE='%s': %s. Using system default.",
-            constants.APP_TIMEZONE,
-            str(exc),
-        )
+    constants.set_app_timezone()
 
 
 def load_logging_config(debug: bool = False) -> dict:
