@@ -82,11 +82,33 @@ import sys
 import time
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
+from pathlib import Path
 from typing import Literal
 
 from dotenv import load_dotenv
 
-from insanely_fast_whisper_rocm.utils.env_loader import (
+# --- Early environment bootstrap for env_loader ---
+# env_loader is imported below for PROJECT_ROOT, USER_ENV_*, and debug_print.
+# While it is being imported it needs the effective LOG_LEVEL to decide whether
+# to enable debug printing during .env loading. Load the same .env files here
+# first and expose LOG_LEVEL before the env_loader import so env_loader can read
+# it from this module instead of accessing the environment directly.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_USER_CONFIG_DIR = Path.home() / ".config" / "insanely-fast-whisper-rocm"
+_USER_ENV_FILE = _USER_CONFIG_DIR / ".env"
+if (_PROJECT_ROOT / ".env").exists():
+    load_dotenv(_PROJECT_ROOT / ".env", override=True)
+if not _USER_CONFIG_DIR.exists():
+    _USER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+if _USER_ENV_FILE.exists():
+    load_dotenv(_USER_ENV_FILE, override=True)
+
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+# env_loader is imported after the bootstrap above because env_loader itself needs
+# LOG_LEVEL (defined just above) while it initializes. Keeping this import below the
+# bootstrap avoids a circular import. noqa: E402
+from insanely_fast_whisper_rocm.utils.env_loader import (  # noqa: E402
     PROJECT_ROOT,
     USER_CONFIG_DIR,
     USER_ENV_EXISTS,
@@ -117,7 +139,7 @@ if USER_ENV_EXISTS:
 debug_print(
     f"Config loaded from .env: model={os.getenv('WHISPER_MODEL')}, "
     f"batch_size={os.getenv('WHISPER_BATCH_SIZE')}, "
-    f"log_level={os.getenv('LOG_LEVEL', 'INFO')} "
+    f"log_level={LOG_LEVEL} "
     f"(CLI flags will override when specified)"
 )
 
@@ -386,8 +408,11 @@ FILENAME_TIMEZONE = APP_TIMEZONE  # Backwards-compatible alias
 CONFIG_DIR = USER_CONFIG_DIR
 ENV_FILE = USER_ENV_FILE
 
-# Logging configuration
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")  # Logging level
+# The canonical LOG_LEVEL is defined earlier in this module (before env_loader is
+# imported) so env_loader can read it without directly accessing the environment.
+# The line below simply re-reads it after the final user .env load to ensure the
+# constant reflects any overrides applied above.
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 
 # Response formats
