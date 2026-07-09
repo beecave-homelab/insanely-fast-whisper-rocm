@@ -288,7 +288,7 @@ class TestBackendCache:
                 mock_backend_class.return_value = mock_backend
 
                 # Acquire a pipeline
-                _pipeline, key = acquire_pipeline(cfg)
+                _pipeline, _key = acquire_pipeline(cfg)
 
                 # Clear the cache with force_close
                 clear_cache(force_close=True)
@@ -320,7 +320,7 @@ class TestBackendCache:
                 mock_backend_class.return_value = mock_backend
 
                 # Acquire a pipeline
-                _pipeline, key = acquire_pipeline(cfg)
+                _pipeline, _key = acquire_pipeline(cfg)
 
                 # Clear the cache with force_close (should not crash)
                 with patch(
