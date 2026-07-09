@@ -211,16 +211,16 @@ APP_TIMEZONE = os.getenv(
 def set_app_timezone() -> None:
     """Set the process timezone from centralized application configuration."""
     try:
-        os.environ.__setitem__("TZ", APP_TIMEZONE)
+        os.environ["TZ"] = APP_TIMEZONE
         time.tzset()
-        logging.info(
+        logger.info(
             "Timezone set to: %s (%s) using APP_TIMEZONE='%s'",
             time.tzname[0],
             time.tzname[1],
             APP_TIMEZONE,
         )
     except (TypeError, OSError, IndexError) as exc:
-        logging.warning(
+        logger.warning(
             "Could not set timezone using APP_TIMEZONE='%s': %s. Using system default.",
             APP_TIMEZONE,
             str(exc),

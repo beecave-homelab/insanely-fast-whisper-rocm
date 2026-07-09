@@ -6,7 +6,6 @@ thread safety, and resource cleanup to prevent GPU memory leaks.
 
 from __future__ import annotations
 
-import os
 import threading
 from unittest.mock import MagicMock, Mock, patch
 
@@ -18,7 +17,6 @@ from insanely_fast_whisper_rocm.core.backend_cache import (
     clear_cache,
     release_pipeline,
 )
-from insanely_fast_whisper_rocm.utils import constants
 
 
 class TestBackendCache:
@@ -133,22 +131,10 @@ class TestBackendCache:
             progress_group_size=5,
         )
 
-        # Enable eager release mode
-        with patch.dict(os.environ, {"IFW_EAGER_MODEL_RELEASE": "1"}):
-            # Re-import to pick up the environment variable
-            import importlib
-
-            from insanely_fast_whisper_rocm import core
-
-            importlib.reload(constants)
-            importlib.reload(core.backend_cache)
-            from insanely_fast_whisper_rocm.core.backend_cache import (
-                acquire_pipeline as acquire_eager,
-            )
-            from insanely_fast_whisper_rocm.core.backend_cache import (
-                release_pipeline as release_eager,
-            )
-
+        # Save the original eager-release flag and enable eager release directly.
+        original_eager_release = backend_cache._EAGER_RELEASE
+        backend_cache._EAGER_RELEASE = True
+        try:
             with patch(
                 "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
             ) as mock_backend_class:
@@ -160,18 +146,16 @@ class TestBackendCache:
                     mock_backend_class.return_value = mock_backend
 
                     # Acquire and release
-                    pipeline, key = acquire_eager(cfg)
-                    release_eager(key)
+                    pipeline, key = acquire_pipeline(cfg)
+                    release_pipeline(key)
 
                     # Backend should have been closed
                     mock_backend.close.assert_called_once()
 
                     # Entry should be removed from cache
                     assert key not in backend_cache._CACHE
-
-            # Reload back to normal mode
-            importlib.reload(constants)
-            importlib.reload(core.backend_cache)
+        finally:
+            backend_cache._EAGER_RELEASE = original_eager_release
 
     def test_warm_cache_mode_keeps_backend(self) -> None:
         """Verify that default warm cache behavior keeps backend alive at ref_count=0."""
@@ -184,22 +168,10 @@ class TestBackendCache:
             progress_group_size=5,
         )
 
-        # Ensure eager release is off for this test
-        with patch.dict(os.environ, {"IFW_EAGER_MODEL_RELEASE": "0"}):
-            # Re-import to pick up the environment variable
-            import importlib
-
-            from insanely_fast_whisper_rocm import core
-
-            importlib.reload(constants)
-            importlib.reload(core.backend_cache)
-            from insanely_fast_whisper_rocm.core.backend_cache import (
-                acquire_pipeline as acquire_warm,
-            )
-            from insanely_fast_whisper_rocm.core.backend_cache import (
-                release_pipeline as release_warm,
-            )
-
+        # Save the original eager-release flag and disable eager release directly.
+        original_eager_release = backend_cache._EAGER_RELEASE
+        backend_cache._EAGER_RELEASE = False
+        try:
             with patch(
                 "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
             ) as mock_backend_class:
@@ -211,8 +183,8 @@ class TestBackendCache:
                     mock_backend_class.return_value = mock_backend
 
                     # Acquire and release
-                    pipeline, key = acquire_warm(cfg)
-                    release_warm(key)
+                    pipeline, key = acquire_pipeline(cfg)
+                    release_pipeline(key)
 
                     # Backend should NOT have been closed (warm cache mode)
                     mock_backend.close.assert_not_called()
@@ -220,10 +192,8 @@ class TestBackendCache:
                     # Entry should still exist in cache
                     assert key in backend_cache._CACHE
                     assert backend_cache._CACHE[key].ref_count == 0
-
-            # Reload back to normal
-            importlib.reload(constants)
-            importlib.reload(core.backend_cache)
+        finally:
+            backend_cache._EAGER_RELEASE = original_eager_release
 
     def test_borrow_pipeline_context_manager(self) -> None:
         """Verify that borrow_pipeline context manager properly acquires and releases."""
