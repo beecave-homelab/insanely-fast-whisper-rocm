@@ -4,7 +4,6 @@ This module provides the main CLI group and coordinates all CLI functionality.
 """
 
 import logging
-import os
 import sys
 import warnings
 
@@ -25,7 +24,7 @@ logging.basicConfig(
 transformers_logging.set_verbosity_error()
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
-os.environ["TOKENIZERS_PARALLELISM"] = "false"  # Suppress parallelism warning
+constants.set_tokenizers_parallelism()  # Suppress parallelism warning
 
 
 @click.group()
