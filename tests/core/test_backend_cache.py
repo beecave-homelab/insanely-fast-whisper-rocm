@@ -146,7 +146,7 @@ class TestBackendCache:
                     mock_backend_class.return_value = mock_backend
 
                     # Acquire and release
-                    pipeline, key = acquire_pipeline(cfg)
+                    _pipeline, key = acquire_pipeline(cfg)
                     release_pipeline(key)
 
                     # Backend should have been closed
@@ -183,7 +183,7 @@ class TestBackendCache:
                     mock_backend_class.return_value = mock_backend
 
                     # Acquire and release
-                    pipeline, key = acquire_pipeline(cfg)
+                    _pipeline, key = acquire_pipeline(cfg)
                     release_pipeline(key)
 
                     # Backend should NOT have been closed (warm cache mode)
@@ -288,7 +288,7 @@ class TestBackendCache:
                 mock_backend_class.return_value = mock_backend
 
                 # Acquire a pipeline
-                pipeline, key = acquire_pipeline(cfg)
+                _pipeline, key = acquire_pipeline(cfg)
 
                 # Clear the cache with force_close
                 clear_cache(force_close=True)
@@ -320,7 +320,7 @@ class TestBackendCache:
                 mock_backend_class.return_value = mock_backend
 
                 # Acquire a pipeline
-                pipeline, key = acquire_pipeline(cfg)
+                _pipeline, key = acquire_pipeline(cfg)
 
                 # Clear the cache with force_close (should not crash)
                 with patch(
@@ -355,7 +355,7 @@ class TestBackendCache:
                 def worker() -> None:
                     try:
                         for _ in range(10):
-                            pipeline, key = acquire_pipeline(cfg)
+                            _pipeline, key = acquire_pipeline(cfg)
                             release_pipeline(key)
                     except Exception as e:
                         errors.append(e)

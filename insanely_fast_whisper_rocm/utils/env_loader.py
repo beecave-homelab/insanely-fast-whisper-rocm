@@ -35,8 +35,6 @@ _project_root_env_exists_temp = PROJECT_ROOT_ENV_FILE.exists()
 if _project_root_env_exists_temp:
     load_dotenv(PROJECT_ROOT_ENV_FILE, override=True)
 
-if not USER_CONFIG_DIR.exists():
-    USER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 _user_env_exists_temp = USER_ENV_FILE.exists()
 if _user_env_exists_temp:
     load_dotenv(

@@ -98,8 +98,6 @@ _USER_CONFIG_DIR = Path.home() / ".config" / "insanely-fast-whisper-rocm"
 _USER_ENV_FILE = _USER_CONFIG_DIR / ".env"
 if (_PROJECT_ROOT / ".env").exists():
     load_dotenv(_PROJECT_ROOT / ".env", override=True)
-if not _USER_CONFIG_DIR.exists():
-    _USER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 if _USER_ENV_FILE.exists():
     load_dotenv(_USER_ENV_FILE, override=True)
 
