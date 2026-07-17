@@ -14,7 +14,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 > This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v2.2.0-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v2.3.0-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
@@ -92,14 +92,15 @@ ______________________________________________________________________
 
 ## Version Summary
 
-### 🏷️ **Current Version: v2.2.0** *(26-04-2026)*
+### 🏷️ **Current Version: v2.3.0** *(17-07-2026)*
 
-**Latest improvements**: End-to-end speaker diarization across API/CLI/WebUI with follow-up reliability hardening, validation fixes, and regression tests.
+**Latest improvements**: Diarization hardening with ROCm/MIOpen GPU→CPU fallback, centralized environment variable access, configurable HSA override, BetterTransformer removal, and local CI reviewer tooling.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
 | -- | -- | -- | -- |
+| **v2.3.0** | 17-07-2026 | ✨ Minor | Diarization hardening, ROCm/MIOpen fallback, env centralization, BetterTransformer removal, configurable HSA override |
 | **v2.2.0** | 26-04-2026 | ✨ Minor | End-to-end speaker diarization across API/CLI/WebUI, plus robustness fixes and new test coverage |
 | **v2.1.5** | 19-02-2026 | 🐛 Patch | ROCm 7.0 Docker requirements alignment, ROCm torch/torchaudio pins |
 | **v2.1.4** | 31-01-2026 | 🐛 Patch | ROCm 7.0 wheel guidance, test layout clarification, requirements cleanup |

@@ -4,13 +4,14 @@
 
 **Insanely Fast Whisper API** - Complete version history and feature evolution tracking.
 
-[![Version](https://img.shields.io/badge/Version-v2.2.0-informational)](#release-timeline)
+[![Version](https://img.shields.io/badge/Version-v2.3.0-informational)](#release-timeline)
 
 ______________________________________________________________________
 
 ## 📑 Table of Contents
 
-- [`v2.2.0` (Current) - *26-04-2026*](#v220-current---26-04-2026)
+- [`v2.3.0` (Current) - *17-07-2026*](#v230-current---17-07-2026)
+- [`v2.2.0` - *26-04-2026*](#v220---26-04-2026)
 - [`v2.1.6` - *05-07-2026*](#v216---05-07-2026)
 - [`v2.1.5` - *19-02-2026*](#v215---19-02-2026)
 - [`v2.1.4` - *31-01-2026*](#v214---31-01-2026)
@@ -55,7 +56,75 @@ ______________________________________________________________________
 
 ## Release Timeline
 
-### `v2.2.0` (Current) - *26-04-2026*
+### `v2.3.0` (Current) - *17-07-2026*
+
+#### ✨ Feature Release: Diarization Hardening, ROCm Reliability & Env Centralization
+
+This release hardens the v2.2.0 diarization feature with ROCm/MIOpen GPU→CPU
+fallback, centralized environment variable access, configurable HSA override,
+removal of the obsolete BetterTransformer option, and local CI reviewer tooling.
+
+#### ✨ **New Features in v2.3.0**
+
+- **Added**: Diarization timing and device normalization for consistent
+  reporting across API, CLI, and WebUI.
+- **Added**: Configurable HSA override GFX version for ROCm containers.
+- **Added**: Speaker count configuration (`min_speakers` / `max_speakers`).
+- **Added**: `local-ci-reviewer.sh` script for custom local CI reviews.
+
+#### 🐛 **Bug Fixes in v2.3.0**
+
+- **Fixed**: ROCm/MIOpen GPU errors during pyannote LSTM inference now trigger
+  automatic CPU fallback for diarization.
+  - **Issue**: `miopenStatusUnknownError` / missing `rocrand_xorwow.h` on ROCm GPU.
+  - **Root Cause**: MIOpen dropout JIT kernel compilation failure.
+  - **Solution**: Detect known ROCm/MIOpen runtime errors and retry with cached
+    CPU pipeline.
+- **Fixed**: Boolean operator precedence in ROCm/MIOpen error detection.
+- **Fixed**: Stabilized segments now preserved when chunks are removed by
+  stabilization, falling back to segments for speaker alignment.
+- **Fixed**: Broken WebUI elements caused by Gradio v6.x (`gr.File` → `gr.update`).
+- **Fixed**: Diarization error handling improvements and missing CLI parameters.
+- **Fixed**: API result persistence and user feedback for diarization failures.
+- **Fixed**: ffmpeg fallback for audio preloading when torchaudio fails on
+  unsupported formats.
+- **Fixed**: Stabilization status reporting in verbose JSON responses.
+- **Fixed**: Explicit pipeline deletion and improved type hints in diarization
+  cleanup.
+- **Fixed**: Diarization failures now recorded in persisted result dicts.
+- **Fixed**: Removed obsolete `WHISPER_BETTER_TRANSFORMER` / `better_transformer`
+  configuration option (no runtime effect; SDPA used directly).
+- **Fixed**: Centralized environment variable access — no direct `os.environ`
+  reads outside the constants module (PR #66).
+- **Fixed**: HSA_OVERRIDE_GFX_VERSION and MIOPEN_FIND_MODE added to dev
+  environment variables.
+
+#### 🔧 **Improvements in v2.3.0**
+
+- **Improved**: ROCm PyTorch base image for dev container with configurable
+  `ROCM_PYTORCH_BASE` build arg.
+- **Improved**: MIOPEN_FIND_MODE and default diarization model for dev container.
+- **Improved**: Duplicate ROCm repository links removed from requirements files.
+- **Improved**: CodeRabbit custom check instructions refined.
+- **Improved**: Test coverage for diarization persistence, ASR device transfer,
+  speaker count config, and WebUI integration.
+- **Updated**: Documentation for diarization config, FFMPEG timeout, and
+  project-overview for v2.2.0.
+
+#### 📦 **Maintenance in v2.3.0**
+
+- **Removed**: Windsurf/Devin IDE configuration files.
+- **Added**: `.codex/environments/environment.toml` to `.gitignore`.
+- **Updated**: Reviewer dependencies aligned with PDM groups.
+- **Added**: PDM dependency lock file.
+
+#### 📝 **Key Commits in v2.3.0**
+
+`a271490`, `ca5554a`, `4643425`, `1217713`, `a5f80bd`, `df75b49`, `eea2ecb`, `b7c7419`
+
+______________________________________________________________________
+
+### `v2.2.0` - *26-04-2026*
 
 #### ✨ Feature Release: End-to-End Speaker Diarization
 

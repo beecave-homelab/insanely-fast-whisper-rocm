@@ -3,7 +3,7 @@
 ####################
 [project]
 name = "insanely-fast-whisper-rocm"
-version = "2.2.0"
+version = "2.3.0"
 description = "A ROCm-optimized Whisper toolkit with API, CLI, and WebUI interfaces for transcription, translation, and speaker diarization"
 requires-python = "~=3.10"
 authors = [
