@@ -9,7 +9,6 @@ This module is responsible for:
 """
 
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -36,16 +35,21 @@ _project_root_env_exists_temp = PROJECT_ROOT_ENV_FILE.exists()
 if _project_root_env_exists_temp:
     load_dotenv(PROJECT_ROOT_ENV_FILE, override=True)
 
-if not USER_CONFIG_DIR.exists():
-    USER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 _user_env_exists_temp = USER_ENV_FILE.exists()
 if _user_env_exists_temp:
     load_dotenv(
         USER_ENV_FILE, override=True
     )  # User .env can override project for LOG_LEVEL check
 
-_env_log_level_temp = os.getenv("LOG_LEVEL", "").upper()
-_env_debug_mode_temp = _env_log_level_temp == "DEBUG"
+
+# LOG_LEVEL is owned by constants.py. Import it here (after the pre-load above) so
+# we can decide whether to enable debug printing without directly accessing the
+# process environment. This import is intentionally placed mid-module to avoid a
+# circular import: constants.py imports env_loader first, and env_loader then reads
+# the LOG_LEVEL that constants.py has already defined.
+from insanely_fast_whisper_rocm.utils.constants import LOG_LEVEL  # noqa: E402
+
+_env_debug_mode_temp = LOG_LEVEL.upper() == "DEBUG"
 
 SHOW_DEBUG_PRINTS = _cli_debug_mode or _env_debug_mode_temp
 
