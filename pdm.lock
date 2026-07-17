@@ -1483,24 +1483,25 @@ files = [
 
 [[package]]
 name = "huggingface-hub"
-version = "0.36.0"
-requires_python = ">=3.8.0"
+version = "1.5.0"
+requires_python = ">=3.9.0"
 summary = "Client library to download and publish models, datasets and other repos on the huggingface.co hub"
 groups = ["default", "diarization"]
 marker = "python_version >= \"3.10\" and python_version < \"3.14\""
 dependencies = [
-    "filelock",
+    "filelock>=3.10.0",
     "fsspec>=2023.5.0",
-    "hf-xet<2.0.0,>=1.1.3; platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"arm64\" or platform_machine == \"aarch64\"",
+    "hf-xet<2.0.0,>=1.2.0; platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"arm64\" or platform_machine == \"aarch64\"",
+    "httpx<1,>=0.23.0",
     "packaging>=20.9",
     "pyyaml>=5.1",
-    "requests",
     "tqdm>=4.42.1",
-    "typing-extensions>=3.7.4.3",
+    "typer",
+    "typing-extensions>=4.1.0",
 ]
 files = [
-    {file = "huggingface_hub-0.36.0-py3-none-any.whl", hash = "sha256:7bcc9ad17d5b3f07b57c78e79d527102d08313caa278a641993acddcb894548d"},
-    {file = "huggingface_hub-0.36.0.tar.gz", hash = "sha256:47b3f0e2539c39bf5cde015d63b72ec49baff67b6931c3d97f3f84532e2b8d25"},
+    {file = "huggingface_hub-1.5.0-py3-none-any.whl", hash = "sha256:c9c0b3ab95a777fc91666111f3b3ede71c0cdced3614c553a64e98920585c4ee"},
+    {file = "huggingface_hub-1.5.0.tar.gz", hash = "sha256:f281838db29265880fb543de7a23b0f81d3504675de82044307ea3c6c62f799d"},
 ]
 
 [[package]]
@@ -4191,26 +4192,26 @@ files = [
 
 [[package]]
 name = "transformers"
-version = "4.57.3"
-requires_python = ">=3.9.0"
+version = "5.5.0"
+requires_python = ">=3.10.0"
 summary = "State-of-the-art Machine Learning for JAX, PyTorch and TensorFlow"
 groups = ["default"]
 marker = "python_version >= \"3.10\" and python_version < \"3.14\""
 dependencies = [
     "filelock",
-    "huggingface-hub<1.0,>=0.34.0",
+    "huggingface-hub<2.0,>=1.5.0",
     "numpy>=1.17",
     "packaging>=20.0",
     "pyyaml>=5.1",
-    "regex!=2019.12.17",
-    "requests",
+    "regex>=2025.10.22",
     "safetensors>=0.4.3",
     "tokenizers<=0.23.0,>=0.22.0",
     "tqdm>=4.27",
+    "typer",
 ]
 files = [
-    {file = "transformers-4.57.3-py3-none-any.whl", hash = "sha256:c77d353a4851b1880191603d36acb313411d3577f6e2897814f333841f7003f4"},
-    {file = "transformers-4.57.3.tar.gz", hash = "sha256:df4945029aaddd7c09eec5cad851f30662f8bd1746721b34cc031d70c65afebc"},
+    {file = "transformers-5.5.0-py3-none-any.whl", hash = "sha256:821a9ff0961abbb29eb1eb686d78df1c85929fdf213a3fe49dc6bd94f9efa944"},
+    {file = "transformers-5.5.0.tar.gz", hash = "sha256:c8db656cf51c600cd8c75f06b20ef85c72e8b8ff9abc880c5d3e8bc70e0ddcbd"},
 ]
 
 [[package]]
