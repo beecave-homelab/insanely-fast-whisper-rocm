@@ -18,6 +18,7 @@ import warnings
 from pathlib import Path
 from typing import Any
 
+from insanely_fast_whisper_rocm.core.backend_cache import invalidate_gpu_cache
 from insanely_fast_whisper_rocm.core.errors import DiarizationError
 from insanely_fast_whisper_rocm.utils.constants import (
     DEFAULT_DIARIZATION_MODEL,
@@ -218,19 +219,21 @@ def _raise_load_error(model_name: str, exc: Exception) -> None:
 
 
 def _is_rocm_miopen_runtime_error(exc: Exception) -> bool:
-    """Return whether an exception is a ROCm/MIOpen inference failure.
+    """Return whether an exception is a ROCm/MIOpen or GPU OOM failure.
 
     Args:
         exc: Runtime exception raised by pyannote/PyTorch.
 
     Returns:
-        True when the error matches a known ROCm/MIOpen runtime failure.
+        True when the error matches a known ROCm/MIOpen runtime failure
+        or GPU out-of-memory condition.
     """
     message = str(exc).lower()
     return (
         "miopenstatusunknownerror" in message
         or "miopen" in message
         or "rocrand" in message
+        or "out of memory" in message
     )
 
 
@@ -242,6 +245,40 @@ def clear_diarization_cache() -> None:
     with _LOCK:
         _CACHE.clear()
     logger.info("Diarization pipeline cache cleared")
+
+
+def _clear_gpu_diarization_cache() -> None:
+    """Remove GPU-based diarization pipelines from the cache.
+
+    Moves cached GPU pipelines to CPU and clears the cache entries so
+    VRAM is freed for the ASR backend on the next transcription request.
+    """
+    with _LOCK:
+        keys_to_remove = []
+        for key, cached_pipeline in _CACHE.items():
+            device = key[1]
+            if isinstance(device, str) and device.lower() in {"cuda", "gpu"}:
+                try:
+                    import torch
+
+                    cached_pipeline.to(torch.device("cpu"))
+                except Exception:
+                    pass
+                keys_to_remove.append(key)
+        for key in keys_to_remove:
+            _CACHE.pop(key, None)
+    if keys_to_remove:
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+        logger.info(
+            "Cleared %d GPU diarization pipeline(s) from cache",
+            len(keys_to_remove),
+        )
 
 
 # --- Speaker-to-segment alignment -------------------------------------------
@@ -319,7 +356,7 @@ def _coerce_time(value: object, *, default: float = 0.0) -> float:
         Finite float timestamp.
     """
     try:
-        coerced = float(value)
+        coerced = float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return default
     if coerced != coerced:
@@ -441,17 +478,18 @@ def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
             )
         except subprocess.TimeoutExpired:
             raise DiarizationError(
-                f"Audio decode unavailable; ffmpeg conversion timed out for"
-                f" {audio_path}. Install torchcodec or provide WAV/FLAC input.",
+                "Audio decode unavailable; ffmpeg conversion timed out"
+                + f" for {audio_path}. Install torchcodec or provide"
+                + " WAV/FLAC input.",
                 model=DEFAULT_DIARIZATION_MODEL,
                 reason="audio_decode_unavailable",
             )
 
         if result.returncode != 0:
             raise DiarizationError(
-                f"Audio decode unavailable; ffmpeg conversion failed for"
-                f" {audio_path}: {result.stderr[:300]}."
-                f" Install torchcodec or provide WAV/FLAC input.",
+                "Audio decode unavailable; ffmpeg conversion failed"
+                + f" for {audio_path}: {result.stderr[:300]}."
+                + " Install torchcodec or provide WAV/FLAC input.",
                 model=DEFAULT_DIARIZATION_MODEL,
                 reason="audio_decode_unavailable",
             )
@@ -470,7 +508,7 @@ def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
     except Exception as exc:
         raise DiarizationError(
             f"Audio decode unavailable; failed to preload audio: {exc}."
-            f" Install torchcodec or provide WAV/FLAC input.",
+            + " Install torchcodec or provide WAV/FLAC input.",
             model=DEFAULT_DIARIZATION_MODEL,
             reason="audio_decode_unavailable",
         ) from exc
@@ -561,6 +599,11 @@ def diarize(
         logger.info("Audio preloaded for diarization")
 
     # Run diarization.
+    # Free GPU memory held by the ASR backend cache before inference —
+    # on 8 GB cards the Whisper model and pyannote cannot coexist on GPU.
+    if device.lower() in {"cuda", "gpu"}:
+        invalidate_gpu_cache()
+
     logger.info(
         "Starting diarization inference (device=%s, num_speakers=%s, min=%s, max=%s)",
         device,
@@ -608,6 +651,11 @@ def diarize(
             model=DEFAULT_DIARIZATION_MODEL,
             reason="inference_error",
         ) from exc
+
+    # Free GPU memory held by the diarization pipeline after inference —
+    # the ASR backend will need VRAM for the next transcription request.
+    if device.lower() in {"cuda", "gpu"}:
+        _clear_gpu_diarization_cache()
 
     # Extract speaker turns as (start, end, label) tuples.
     # pyannote.audio v4 returns a DiarizeOutput dataclass; v3 returns
