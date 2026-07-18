@@ -341,13 +341,14 @@ def test_diarize__raises_on_inference_error() -> None:
         "miopenStatusUnknownError",
         "miopenStatusInvalidValue: bad param",
         "rocrand/rocrand_xorwow.h: not found",
+        "HIP out of memory. Tried to allocate 312.00 MiB. GPU 0 has a total capacity of 7.98 GiB",
     ],
-    ids=["miopenstatusunknownerror", "miopen-generic", "rocrand"],
+    ids=["miopenstatusunknownerror", "miopen-generic", "rocrand", "oom"],
 )
 def test_diarize__retries_cpu_on_rocm_miopen_error(
     gpu_error_message: str,
 ) -> None:
-    """diarize() retries on CPU for known ROCm/MIOpen GPU inference failures."""
+    """diarize() retries on CPU for known ROCm/MIOpen or OOM GPU failures."""
     result = _sample_result()
 
     mock_annotation = MagicMock()
@@ -817,8 +818,7 @@ def test_preload_audio_as_waveform__uses_ffmpeg_decode_for_m4a(
         patch("subprocess.run", return_value=mock_completed) as mock_run,
         patch("tempfile.NamedTemporaryFile") as mock_tmp,
         patch(
-            "insanely_fast_whisper_rocm.core.integrations.diarization."
-            "DIARIZATION_FFMPEG_TIMEOUT_SECONDS",
+            "insanely_fast_whisper_rocm.core.integrations.diarization.DIARIZATION_FFMPEG_TIMEOUT_SECONDS",
             12,
         ),
     ):
