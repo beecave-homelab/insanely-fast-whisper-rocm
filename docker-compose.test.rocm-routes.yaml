@@ -1,0 +1,90 @@
+services:
+  insanely-fast-whisper-rocm-test-rocm-pytorch:
+    build:
+      context: .
+      dockerfile: Dockerfile.test.rocm-pytorch
+      args:
+        ROCM_PYTORCH_BASE: "${ROCM_PYTORCH_BASE:-rocm/pytorch:latest}"
+    image: insanely-fast-whisper-rocm-test:rocm-pytorch
+    container_name: insanely-fast-whisper-rocm-test-rocm-pytorch
+    devices:
+      - "/dev/kfd:/dev/kfd"
+      - "/dev/dri:/dev/dri"
+    stdin_open: true
+    tty: true
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    group_add:
+      - video
+    ipc: host
+    shm_size: 8G
+    env_file:
+      - ".env"
+    environment:
+      API_PORT: "${TEST_ROCM_PYTORCH_API_PORT:-8891}"
+      WEBUI_PORT: "${TEST_ROCM_PYTORCH_WEBUI_PORT:-7864}"
+      TEST_CONTAINER_ROUTE: "rocm-pytorch"
+      MIOPEN_FIND_MODE: "${MIOPEN_FIND_MODE:-2}"
+    ports:
+      - "${TEST_ROCM_PYTORCH_API_PORT:-8891}:${TEST_ROCM_PYTORCH_API_PORT:-8891}"
+      - "${TEST_ROCM_PYTORCH_WEBUI_PORT:-7864}:${TEST_ROCM_PYTORCH_WEBUI_PORT:-7864}"
+    volumes:
+      - "./transcripts:/app/transcripts"
+      - "./transcripts-txt:/app/transcripts-txt"
+      - "./transcripts-srt:/app/transcripts-srt"
+      - "./temp_uploads:/app/temp_uploads"
+      - "./insanely_fast_whisper_rocm:/app/insanely_fast_whisper_rocm"
+      - "./scripts/entrypoint-test.sh:/app/entrypoint-test.sh"
+      - "./scripts/entrypoint-test-rocm-diagnostics.sh:/app/entrypoint-test-rocm-diagnostics.sh"
+      - "./scripts/webui_integration_test.py:/app/scripts/webui_integration_test.py"
+      - "./pyproject.toml:/app/pyproject.toml"
+      - "./openapi.yaml:/app/openapi.yaml"
+      - "./requirements-all.txt:/app/requirements-all.txt"
+      - "$HOME/.cache/huggingface/hub:/root/.cache/huggingface/hub"
+      - "./test-results/rocm-pytorch/:/tmp/test-results/"
+
+  insanely-fast-whisper-rocm-test-slim-rocm-apt:
+    build:
+      context: .
+      dockerfile: Dockerfile.test.slim-rocm-apt
+    image: insanely-fast-whisper-rocm-test:slim-rocm-apt
+    container_name: insanely-fast-whisper-rocm-test-slim-rocm-apt
+    devices:
+      - "/dev/kfd:/dev/kfd"
+      - "/dev/dri:/dev/dri"
+    stdin_open: true
+    tty: true
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    group_add:
+      - video
+    ipc: host
+    shm_size: 8G
+    env_file:
+      - ".env"
+    environment:
+      API_PORT: "${TEST_SLIM_ROCM_APT_API_PORT:-8892}"
+      WEBUI_PORT: "${TEST_SLIM_ROCM_APT_WEBUI_PORT:-7865}"
+      TEST_CONTAINER_ROUTE: "slim-rocm-apt"
+      MIOPEN_FIND_MODE: "${MIOPEN_FIND_MODE:-2}"
+    ports:
+      - "${TEST_SLIM_ROCM_APT_API_PORT:-8892}:${TEST_SLIM_ROCM_APT_API_PORT:-8892}"
+      - "${TEST_SLIM_ROCM_APT_WEBUI_PORT:-7865}:${TEST_SLIM_ROCM_APT_WEBUI_PORT:-7865}"
+    volumes:
+      - "./transcripts:/app/transcripts"
+      - "./transcripts-txt:/app/transcripts-txt"
+      - "./transcripts-srt:/app/transcripts-srt"
+      - "./temp_uploads:/app/temp_uploads"
+      - "./insanely_fast_whisper_rocm:/app/insanely_fast_whisper_rocm"
+      - "./scripts/entrypoint-test.sh:/app/entrypoint-test.sh"
+      - "./scripts/entrypoint-test-rocm-diagnostics.sh:/app/entrypoint-test-rocm-diagnostics.sh"
+      - "./scripts/webui_integration_test.py:/app/scripts/webui_integration_test.py"
+      - "./pyproject.toml:/app/pyproject.toml"
+      - "./openapi.yaml:/app/openapi.yaml"
+      - "./requirements-all.txt:/app/requirements-all.txt"
+      - "$HOME/.cache/huggingface/hub:/root/.cache/huggingface/hub"
+      - "./test-results/slim-rocm-apt/:/tmp/test-results/"

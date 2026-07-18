@@ -1,0 +1,74 @@
+# syntax=docker/dockerfile:1
+
+# Pre-PR test container — runs CLI, API, and WebUI transcription tests
+# then drops to an interactive shell for manual inspection.
+#
+# Build:  docker compose -f docker-compose.test.yaml build
+# Run:    docker compose -f docker-compose.test.yaml up
+# Stop:   docker compose -f docker-compose.test.yaml down
+
+FROM python:3.10-slim
+
+LABEL org.opencontainers.image.source https://github.com/beecave-homelab/insanely-fast-whisper-rocm
+LABEL org.opencontainers.image.description "Pre-PR integration test container"
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=off
+ENV TZ=Europe/Amsterdam
+ENV ROCM_PATH=/opt/rocm
+ENV HSA_OVERRIDE_GFX_VERSION=10.3.0
+# Skip MIOpen JIT kernel compilation — the slim image lacks rocrand headers
+# needed by MIOpenDropoutHIP.cpp.  Mode 2 = database-only (no JIT).
+ENV MIOPEN_FIND_MODE=2
+
+# Install OS-level deps needed for audio backends + curl for API tests
+RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    ffmpeg \
+    libsndfile1 \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy requirement files first
+COPY requirements-all.txt /app/
+
+# Install project dependencies from requirements files.
+RUN pip install --no-cache-dir -r requirements-all.txt
+RUN pip uninstall -y torchcodec
+
+# Copy the project definition file to leverage Docker layer caching for dependencies
+COPY pyproject.toml /app/
+COPY openapi.yaml /app/
+
+# Copy the application source code
+# This is needed for `pip install .` to build and install the local package.
+# It assumes your main package source is in the 'insanely_fast_whisper_rocm' directory.
+COPY ./insanely_fast_whisper_rocm /app/insanely_fast_whisper_rocm/
+
+# Now, install the local package itself (no-deps: all dependencies are already
+# installed from the PDM-generated requirements file which excludes torchcodec
+# and other ROCm-incompatible packages).
+RUN pip install -U pip
+RUN pip install --no-cache-dir --no-deps .
+
+# After `pip install .`, the package `insanely_fast_whisper_rocm` and its CLI/modules
+# should be available in the Python environment.
+
+# Added in case Gradio is used and needs to be accessible; remove if not needed.
+ENV GRADIO_SERVER_NAME="0.0.0.0"
+ENV TORCHAUDIO_USE_SOUNDFILE=1
+
+# Expose test-specific ports (API/WebUI). Actual host bindings are controlled by Compose.
+EXPOSE 8891
+EXPOSE 7864
+
+# Copy the pre-PR test entrypoint script
+COPY scripts/entrypoint-test.sh /app/entrypoint-test.sh
+RUN chmod +x /app/entrypoint-test.sh
+
+# Run the test entrypoint (CLI → API → WebUI → interactive bash)
+CMD ["/app/entrypoint-test.sh"]

@@ -1,0 +1,52 @@
+services:
+  insanely-fast-whisper-rocm-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+
+    container_name: insanely-fast-whisper-rocm-test
+
+    # To allow AMD GPU access:
+    devices:
+      - "/dev/kfd:/dev/kfd"
+      - "/dev/dri:/dev/dri"
+    stdin_open: true
+    tty: true
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    group_add:
+      - video
+    ipc: host
+    shm_size: 8G
+
+    env_file:
+      - ".env"
+
+    environment:
+      # Test-specific ports use TEST_* variables to avoid clashing
+      # with production and dev defaults.
+      API_PORT: "${TEST_API_PORT:-8891}"
+      WEBUI_PORT: "${TEST_WEBUI_PORT:-7864}"
+
+    ports:
+      - "${TEST_API_PORT:-8891}:${TEST_API_PORT:-8891}"  # API port (test)
+      - "${TEST_WEBUI_PORT:-7864}:${TEST_WEBUI_PORT:-7864}"  # WebUI port (test)
+
+    volumes:
+      - "./transcripts:/app/transcripts"
+      - "./transcripts-txt:/app/transcripts-txt"
+      - "./transcripts-srt:/app/transcripts-srt"
+      - "./temp_uploads:/app/temp_uploads"
+      - "./insanely_fast_whisper_rocm:/app/insanely_fast_whisper_rocm"
+      - "./scripts/entrypoint-test.sh:/app/entrypoint-test.sh"
+      - "./scripts/webui_integration_test.py:/app/scripts/webui_integration_test.py"
+      - "./pyproject.toml:/app/pyproject.toml"
+      - "./openapi.yaml:/app/openapi.yaml"
+      - "./requirements-all.txt:/app/requirements-all.txt"
+      - "$HOME/.cache/huggingface/hub:/root/.cache/huggingface/hub"
+      - "./test-results/:/tmp/test-results/"
+
+    # CMD is set by Dockerfile.test (runs entrypoint-test.sh).
+    # No command override needed here.
