@@ -244,6 +244,7 @@ def main() -> int:
             {
                 "api_name": api_name,
                 "timestamp_type": args.timestamp_type,
+                "text": data.get("text", transcript or ""),
                 "transcript": transcript or data.get("text", ""),
                 "data": data,
             },
