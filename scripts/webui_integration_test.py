@@ -90,7 +90,7 @@ def _pick_api_name(client: Client) -> str:
     available = ", ".join(sorted(endpoint_names)) or "<none>"
     raise WebUITestError(
         f"WebUI transcription endpoint not found. Expected one of: {expected}. "
-        f"Available endpoints: {available}"
+        + f"Available endpoints: {available}"
     )
 
 
@@ -191,29 +191,29 @@ def _run_prediction(client: Client, args: argparse.Namespace, api_name: str) -> 
         Final Gradio result for the submitted transcription job.
     """
     job = client.submit(
-        [handle_file(args.audio_file)],
-        args.model,
-        args.device,
-        args.batch_size,
-        args.timestamp_type,
-        args.language,
-        args.task,
-        args.dtype,
-        args.chunk_length,
+        [handle_file(getattr(args, "audio_file"))],
+        getattr(args, "model"),
+        getattr(args, "device"),
+        getattr(args, "batch_size"),
+        getattr(args, "timestamp_type"),
+        getattr(args, "language"),
+        getattr(args, "task"),
+        getattr(args, "dtype"),
+        getattr(args, "chunk_length"),
         True,
         True,
         True,
-        args.vad_threshold,
+        getattr(args, "vad_threshold"),
         True,
-        args.num_speakers,
-        args.min_speakers,
-        args.max_speakers,
-        args.diarization_device,
+        getattr(args, "num_speakers"),
+        getattr(args, "min_speakers"),
+        getattr(args, "max_speakers"),
+        getattr(args, "diarization_device"),
         True,
-        args.save_dir,
+        getattr(args, "save_dir"),
         api_name=api_name,
     )
-    return job.result(timeout=args.timeout)
+    return job.result(timeout=getattr(args, "timeout"))
 
 
 def main() -> int:
@@ -226,24 +226,24 @@ def main() -> int:
         WebUITestError: If the audio input or WebUI result is invalid.
     """
     args = _parse_args()
-    audio_path = Path(args.audio_file)
+    audio_path = Path(getattr(args, "audio_file"))
     if not audio_path.is_file():
         raise WebUITestError(f"Audio file not found: {audio_path}")
 
-    client = Client(args.base_url)
+    client = Client(getattr(args, "base_url"))
     api_name = _pick_api_name(client)
     result = _run_prediction(client, args, api_name)
     data = _extract_json_preview(result)
     transcript = _extract_transcript(result)
     _validate_result(data, transcript)
 
-    output_path = Path(args.output_file)
+    output_path = Path(getattr(args, "output_file"))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         json.dumps(
             {
                 "api_name": api_name,
-                "timestamp_type": args.timestamp_type,
+                "timestamp_type": getattr(args, "timestamp_type"),
                 "text": data.get("text", transcript or ""),
                 "transcript": transcript or data.get("text", ""),
                 "data": data,
@@ -255,7 +255,7 @@ def main() -> int:
     )
     print(
         "WebUI transcription passed "
-        f"(timestamp_type={args.timestamp_type}, api_name={api_name})"
+        + f"(timestamp_type={getattr(args, 'timestamp_type')}, api_name={api_name})"
     )
     return 0
 
