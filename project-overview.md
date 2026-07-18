@@ -1421,7 +1421,9 @@ RUN_WEBUI_TESTS=1 pdm run pytest tests/webui -q
 Details:
 
 - Requires `gradio_client` (provided by the `gradio` dependency used by this project).
+
 - Session-scoped fixture `webui_server` (see `tests/conftest.py`) launches the WebUI once on port 7861 with the tiny Whisper model for speed.
+
 - Tests auto-skip when the sample media files are absent.
 
 - WebUI server tests are guarded by `RUN_WEBUI_TESTS=1` in `tests/conftest.py`.
