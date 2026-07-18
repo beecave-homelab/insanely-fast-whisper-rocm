@@ -115,8 +115,8 @@ __pypackages__/
 pr-27-comments.md
 
 # Test container run outputs
-#test-results/*
-#!test-results/.gitkeep
+test-results/*
+!test-results/.gitkeep
 # scripts/entrypoint-test-rocm-diagnostics.sh
 # scripts/entrypoint-test.sh
 # scripts/run-rocm-route-comparison.sh
