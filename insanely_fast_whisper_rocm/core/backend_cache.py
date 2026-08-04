@@ -56,6 +56,7 @@ _CACHE: dict[tuple[Hashable, ...], _CacheEntry] = {}
 _LOCK = threading.RLock()
 _EAGER_RELEASE = constants.EAGER_MODEL_RELEASE
 _RELEASE_TIMEOUT = constants.MODEL_RELEASE_TIMEOUT_SECONDS
+_RELEASE_GENERATION = 0
 
 
 def _make_key(
@@ -93,6 +94,16 @@ def _cancel_release_timer(entry: _CacheEntry) -> None:
         entry._release_timer = None
 
 
+def _next_release_generation() -> int:
+    """Return a unique release generation.
+
+    Callers must hold ``_LOCK``.
+    """
+    global _RELEASE_GENERATION
+    _RELEASE_GENERATION += 1
+    return _RELEASE_GENERATION
+
+
 def _schedule_release(
     key: tuple[Hashable, ...],
     entry: _CacheEntry,
@@ -109,8 +120,8 @@ def _schedule_release(
         timeout: Delay in seconds before the backend is closed.
     """
     _cancel_release_timer(entry)
-    entry._release_generation += 1
-    generation = entry._release_generation
+    generation = _next_release_generation()
+    entry._release_generation = generation
     timer = threading.Timer(timeout, _timed_release, args=(key, generation))
     timer.daemon = True
     entry._release_timer = timer
@@ -184,7 +195,7 @@ def acquire_pipeline(
         else:
             # Cancel any pending delayed release and invalidate stale timers.
             _cancel_release_timer(entry)
-            entry._release_generation += 1
+            entry._release_generation = _next_release_generation()
         entry.ref_count += 1
         return entry.pipeline, key
 

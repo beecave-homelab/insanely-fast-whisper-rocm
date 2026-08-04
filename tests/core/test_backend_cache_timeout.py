@@ -12,6 +12,7 @@ synchronously and deterministically without real wall-clock waits.
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from importlib import reload
 from unittest.mock import MagicMock, Mock, patch
 
@@ -117,6 +118,45 @@ def fake_timer(monkeypatch: pytest.MonkeyPatch) -> type:
     monkeypatch.setattr(backend_cache.threading, "Timer", threading.Timer)
 
 
+@pytest.fixture
+def release_policy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Callable[[bool, float | None], None]:
+    """Configure release globals and restore them after the test.
+
+    Returns:
+        A function that applies eager-release and timeout values.
+    """
+
+    def configure(eager_release: bool, release_timeout: float | None) -> None:
+        """Set the release policy for the current test."""
+        monkeypatch.setattr(backend_cache, "_EAGER_RELEASE", eager_release)
+        monkeypatch.setattr(backend_cache, "_RELEASE_TIMEOUT", release_timeout)
+
+    return configure
+
+
+class TestReleasePolicyIsolation:
+    """Test release-policy overrides used by timeout tests."""
+
+    def test_release_policy__restores_globals_with_monkeypatch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        release_policy: Callable[[bool, float | None], None],
+    ) -> None:
+        """Configured release globals are registered for automatic restoration."""
+        original_eager = backend_cache._EAGER_RELEASE
+        original_timeout = backend_cache._RELEASE_TIMEOUT
+
+        release_policy(True, 30.0)
+
+        assert backend_cache._EAGER_RELEASE is True
+        assert backend_cache._RELEASE_TIMEOUT == 30.0
+        monkeypatch.undo()
+        assert backend_cache._EAGER_RELEASE is original_eager
+        assert backend_cache._RELEASE_TIMEOUT == original_timeout
+
+
 # ---------------------------------------------------------------------------
 # Constants parsing
 # ---------------------------------------------------------------------------
@@ -171,10 +211,11 @@ class TestTimeoutParsing:
 class TestTimeoutRelease:
     """Test idle-timeout release behavior in the backend cache."""
 
-    def test_timeout_zero_releases_immediately(self) -> None:
+    def test_timeout_zero_releases_immediately(
+        self, release_policy: Callable[[bool, float | None], None]
+    ) -> None:
         """Timeout=0 closes the backend immediately on release."""
-        backend_cache._EAGER_RELEASE = False
-        backend_cache._RELEASE_TIMEOUT = 0.0
+        release_policy(False, 0.0)
         with (
             patch(
                 "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
@@ -191,10 +232,11 @@ class TestTimeoutRelease:
             mock_backend.close.assert_called_once()
             assert key not in backend_cache._CACHE
 
-    def test_positive_timeout_schedules_timer(self, fake_timer: type) -> None:
+    def test_positive_timeout_schedules_timer(
+        self, fake_timer: type, release_policy: Callable[[bool, float | None], None]
+    ) -> None:
         """A positive timeout schedules a daemon timer but does not close yet."""
-        backend_cache._EAGER_RELEASE = False
-        backend_cache._RELEASE_TIMEOUT = 300.0
+        release_policy(False, 300.0)
         with (
             patch(
                 "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
@@ -220,10 +262,11 @@ class TestTimeoutRelease:
             assert timer.started
             assert not timer.cancelled
 
-    def test_timer_fires_closes_and_removes(self, fake_timer: type) -> None:
+    def test_timer_fires_closes_and_removes(
+        self, fake_timer: type, release_policy: Callable[[bool, float | None], None]
+    ) -> None:
         """When the timer fires, the backend is closed and entry removed."""
-        backend_cache._EAGER_RELEASE = False
-        backend_cache._RELEASE_TIMEOUT = 60.0
+        release_policy(False, 60.0)
         with (
             patch(
                 "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
@@ -243,10 +286,11 @@ class TestTimeoutRelease:
             mock_backend.close.assert_called_once()
             assert key not in backend_cache._CACHE
 
-    def test_reacquire_cancels_timer(self, fake_timer: type) -> None:
+    def test_reacquire_cancels_timer(
+        self, fake_timer: type, release_policy: Callable[[bool, float | None], None]
+    ) -> None:
         """Reacquiring a pipeline cancels the pending release timer."""
-        backend_cache._EAGER_RELEASE = False
-        backend_cache._RELEASE_TIMEOUT = 120.0
+        release_policy(False, 120.0)
         with (
             patch(
                 "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
@@ -269,10 +313,11 @@ class TestTimeoutRelease:
             assert backend_cache._CACHE[key].ref_count == 1
             mock_backend.close.assert_not_called()
 
-    def test_stale_timer_is_noop(self, fake_timer: type) -> None:
+    def test_stale_timer_is_noop(
+        self, fake_timer: type, release_policy: Callable[[bool, float | None], None]
+    ) -> None:
         """A timer from a previous generation does not close the backend."""
-        backend_cache._EAGER_RELEASE = False
-        backend_cache._RELEASE_TIMEOUT = 10.0
+        release_policy(False, 10.0)
         with (
             patch(
                 "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
@@ -302,10 +347,45 @@ class TestTimeoutRelease:
             assert key in backend_cache._CACHE
             assert backend_cache._CACHE[key].ref_count == 1
 
-    def test_eager_overrides_timeout(self, fake_timer: type) -> None:
+    def test_stale_timer_does_not_close_recreated_entry(
+        self, fake_timer: type, release_policy: Callable[[bool, float | None], None]
+    ) -> None:
+        """A stale timer cannot close a newer idle entry with the same key."""
+        release_policy(False, 10.0)
+        with (
+            patch(
+                "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
+            ) as mb,
+            patch("insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"),
+        ):
+            first_backend = MagicMock()
+            first_backend.close = Mock()
+            recreated_backend = MagicMock()
+            recreated_backend.close = Mock()
+            mb.side_effect = [first_backend, recreated_backend]
+
+            _pipeline, key = acquire_pipeline(_cfg())
+            release_pipeline(key)
+            stale_timer = fake_timer.instances[0]
+
+            clear_cache(force_close=True)
+            _pipeline, recreated_key = acquire_pipeline(_cfg())
+            release_pipeline(recreated_key)
+
+            assert recreated_key == key
+            assert len(fake_timer.instances) == 2
+            assert backend_cache._CACHE[key]._release_generation != stale_timer.args[1]
+
+            stale_timer.fire()
+
+            recreated_backend.close.assert_not_called()
+            assert key in backend_cache._CACHE
+
+    def test_eager_overrides_timeout(
+        self, fake_timer: type, release_policy: Callable[[bool, float | None], None]
+    ) -> None:
         """Eager release takes precedence over a positive timeout."""
-        backend_cache._EAGER_RELEASE = True
-        backend_cache._RELEASE_TIMEOUT = 300.0
+        release_policy(True, 300.0)
         with (
             patch(
                 "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
@@ -324,10 +404,11 @@ class TestTimeoutRelease:
             # No timer should have been scheduled.
             assert len(fake_timer.instances) == 0
 
-    def test_no_timeout_keeps_warm(self, fake_timer: type) -> None:
+    def test_no_timeout_keeps_warm(
+        self, fake_timer: type, release_policy: Callable[[bool, float | None], None]
+    ) -> None:
         """When timeout is None, release keeps the model warm (no timer)."""
-        backend_cache._EAGER_RELEASE = False
-        backend_cache._RELEASE_TIMEOUT = None
+        release_policy(False, None)
         with (
             patch(
                 "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
@@ -346,10 +427,11 @@ class TestTimeoutRelease:
             assert backend_cache._CACHE[key].ref_count == 0
             assert len(fake_timer.instances) == 0
 
-    def test_borrow_pipeline_with_timeout(self, fake_timer: type) -> None:
+    def test_borrow_pipeline_with_timeout(
+        self, fake_timer: type, release_policy: Callable[[bool, float | None], None]
+    ) -> None:
         """borrow_pipeline schedules a timer on exit when timeout is positive."""
-        backend_cache._EAGER_RELEASE = False
-        backend_cache._RELEASE_TIMEOUT = 45.0
+        release_policy(False, 45.0)
         with (
             patch("insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"),
             patch("insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"),
@@ -369,10 +451,11 @@ class TestTimeoutRelease:
 class TestForcefulClearCancelsTimers:
     """Verify that clear_cache and invalidate_gpu_cache cancel pending timers."""
 
-    def test_clear_cache_cancels_timer(self, fake_timer: type) -> None:
+    def test_clear_cache_cancels_timer(
+        self, fake_timer: type, release_policy: Callable[[bool, float | None], None]
+    ) -> None:
         """clear_cache(force_close=True) cancels pending release timers."""
-        backend_cache._EAGER_RELEASE = False
-        backend_cache._RELEASE_TIMEOUT = 90.0
+        release_policy(False, 90.0)
         with (
             patch(
                 "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
@@ -394,10 +477,11 @@ class TestForcefulClearCancelsTimers:
             assert timer.cancelled
             assert len(backend_cache._CACHE) == 0
 
-    def test_invalidate_gpu_cache_cancels_timer(self, fake_timer: type) -> None:
+    def test_invalidate_gpu_cache_cancels_timer(
+        self, fake_timer: type, release_policy: Callable[[bool, float | None], None]
+    ) -> None:
         """invalidate_gpu_cache cancels pending release timers for GPU entries."""
-        backend_cache._EAGER_RELEASE = False
-        backend_cache._RELEASE_TIMEOUT = 90.0
+        release_policy(False, 90.0)
         gpu_cfg = HuggingFaceBackendConfig(
             model_name="openai/whisper-tiny",
             device="cuda:0",
@@ -436,10 +520,11 @@ class TestForcefulClearCancelsTimers:
 class TestTimedReleaseEdgeCases:
     """Edge cases for the timed-release callback."""
 
-    def test_timed_release_missing_entry_is_noop(self, fake_timer: type) -> None:
+    def test_timed_release_missing_entry_is_noop(
+        self, fake_timer: type, release_policy: Callable[[bool, float | None], None]
+    ) -> None:
         """If the entry was already removed, the timer is a no-op."""
-        backend_cache._EAGER_RELEASE = False
-        backend_cache._RELEASE_TIMEOUT = 10.0
+        release_policy(False, 10.0)
         with (
             patch(
                 "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
@@ -463,10 +548,11 @@ class TestTimedReleaseEdgeCases:
             timer.fire()
             mock_backend.close.assert_not_called()
 
-    def test_timed_release_nonzero_refcount_is_noop(self, fake_timer: type) -> None:
+    def test_timed_release_nonzero_refcount_is_noop(
+        self, fake_timer: type, release_policy: Callable[[bool, float | None], None]
+    ) -> None:
         """If refcount is non-zero when the timer fires, it is a no-op."""
-        backend_cache._EAGER_RELEASE = False
-        backend_cache._RELEASE_TIMEOUT = 10.0
+        release_policy(False, 10.0)
         with (
             patch(
                 "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
