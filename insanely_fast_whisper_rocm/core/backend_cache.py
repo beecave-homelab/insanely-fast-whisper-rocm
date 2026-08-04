@@ -7,6 +7,12 @@ time. It exposes acquire/release helpers that manage a reference count.
 By default, entries are kept warm when their refcount drops to zero to maximize
 reuse. Set the environment variable ``IFW_EAGER_MODEL_RELEASE=1`` to eagerly
 close and remove cache entries when their refcount hits zero.
+
+Alternatively, set ``IFW_MODEL_RELEASE_TIMEOUT_SECONDS`` to a positive number
+to release the backend after that many seconds of idleness. ``0`` releases
+immediately. Unset, blank, malformed, negative, or non-finite values disable
+the timeout (the model stays warm indefinitely). Eager release takes precedence
+over the timeout and always releases immediately.
 """
 
 from __future__ import annotations
@@ -41,12 +47,16 @@ class _CacheEntry:
     backend: HuggingFaceBackend
     pipeline: WhisperPipeline
     ref_count: int = 0
+    _release_timer: threading.Timer | None = None
+    _release_generation: int = 0
 
 
 # Global cache keyed by an immutable config tuple
 _CACHE: dict[tuple[Hashable, ...], _CacheEntry] = {}
 _LOCK = threading.RLock()
 _EAGER_RELEASE = constants.EAGER_MODEL_RELEASE
+_RELEASE_TIMEOUT = constants.MODEL_RELEASE_TIMEOUT_SECONDS
+_RELEASE_GENERATION = 0
 
 
 def _make_key(
@@ -75,6 +85,75 @@ def _make_key(
         bool(save_transcriptions),
         os.path.abspath(output_dir),
     )
+
+
+def _cancel_release_timer(entry: _CacheEntry) -> None:
+    """Cancel a pending delayed-release timer on *entry* if one exists."""
+    if entry._release_timer is not None:
+        entry._release_timer.cancel()
+        entry._release_timer = None
+
+
+def _next_release_generation() -> int:
+    """Return a unique release generation.
+
+    Callers must hold ``_LOCK``.
+    """
+    global _RELEASE_GENERATION
+    _RELEASE_GENERATION += 1
+    return _RELEASE_GENERATION
+
+
+def _schedule_release(
+    key: tuple[Hashable, ...],
+    entry: _CacheEntry,
+    timeout: float,
+) -> None:
+    """Schedule a delayed release for a zero-refcount cache entry.
+
+    Bumps the entry's release generation so any previously scheduled timer
+    is invalidated, then starts a daemon timer.
+
+    Args:
+        key: The cache key identifying the entry.
+        entry: The cache entry to release after the timeout.
+        timeout: Delay in seconds before the backend is closed.
+    """
+    _cancel_release_timer(entry)
+    generation = _next_release_generation()
+    entry._release_generation = generation
+    timer = threading.Timer(timeout, _timed_release, args=(key, generation))
+    timer.daemon = True
+    entry._release_timer = timer
+    timer.start()
+
+
+def _timed_release(key: tuple[Hashable, ...], generation: int) -> None:
+    """Timer callback: close and remove a cached backend after idle timeout.
+
+    Validates the entry's identity (generation) and refcount under the lock,
+    detaches it from the cache, then closes the backend outside the lock to
+    avoid blocking other cache operations.
+
+    Args:
+        key: The cache key identifying the entry.
+        generation: The release generation captured when the timer was scheduled.
+    """
+    with _LOCK:
+        entry = _CACHE.get(key)
+        if entry is None:
+            return
+        if entry._release_generation != generation:
+            return
+        if entry.ref_count != 0:
+            return
+        _CACHE.pop(key, None)
+        entry._release_timer = None
+        backend = entry.backend
+    try:
+        backend.close()
+    except Exception as e:  # pragma: no cover - defensive cleanup
+        logger.warning("Failed to close backend during timed release: %s", e)
 
 
 def acquire_pipeline(
@@ -113,6 +192,10 @@ def acquire_pipeline(
             )
             entry = _CacheEntry(backend=backend, pipeline=pipeline, ref_count=0)
             _CACHE[key] = entry
+        else:
+            # Cancel any pending delayed release and invalidate stale timers.
+            _cancel_release_timer(entry)
+            entry._release_generation = _next_release_generation()
         entry.ref_count += 1
         return entry.pipeline, key
 
@@ -120,9 +203,14 @@ def acquire_pipeline(
 def release_pipeline(key: tuple[Hashable, ...]) -> None:
     """Release a previously acquired pipeline.
 
-    Decrements the reference count for the cache entry. If it reaches zero and
-    eager release is enabled (``IFW_EAGER_MODEL_RELEASE=1``), the backend is
-    closed and the entry is removed from the cache.
+    Decrements the reference count for the cache entry. If it reaches zero,
+    the backend is closed and removed according to the release policy:
+
+    - ``IFW_EAGER_MODEL_RELEASE=1``: close immediately (overrides timeout).
+    - ``IFW_MODEL_RELEASE_TIMEOUT_SECONDS`` unset/invalid: keep warm.
+    - ``IFW_MODEL_RELEASE_TIMEOUT_SECONDS=0``: close immediately.
+    - ``IFW_MODEL_RELEASE_TIMEOUT_SECONDS=N`` (positive): close after *N*
+      seconds of idleness via a cancellable background timer.
 
     Args:
         key: The cache key returned by ``acquire_pipeline``.
@@ -132,11 +220,32 @@ def release_pipeline(key: tuple[Hashable, ...]) -> None:
         if entry is None:
             return
         entry.ref_count = max(0, entry.ref_count - 1)
-        if entry.ref_count == 0 and _EAGER_RELEASE:
+        if entry.ref_count > 0:
+            return
+
+        # refcount is zero — decide release policy.
+        if _EAGER_RELEASE:
+            _cancel_release_timer(entry)
             try:
                 entry.backend.close()
             finally:
                 _CACHE.pop(key, None)
+            return
+
+        if _RELEASE_TIMEOUT is None:
+            # No timeout configured — keep the model warm.
+            return
+
+        if _RELEASE_TIMEOUT == 0:
+            _cancel_release_timer(entry)
+            try:
+                entry.backend.close()
+            finally:
+                _CACHE.pop(key, None)
+            return
+
+        # Positive timeout — schedule a delayed, cancellable release.
+        _schedule_release(key, entry, _RELEASE_TIMEOUT)
 
 
 def invalidate_gpu_cache() -> None:
@@ -151,6 +260,7 @@ def invalidate_gpu_cache() -> None:
             # The key's second element is the device string
             device = key[1]
             if isinstance(device, str) and device != "cpu":
+                _cancel_release_timer(entry)
                 try:
                     logger.info("Invalidating GPU cache entry for device: %s", device)
                     entry.backend.close()
@@ -174,6 +284,7 @@ def clear_cache(force_close: bool = False) -> None:
     with _LOCK:
         if force_close:
             for entry in _CACHE.values():
+                _cancel_release_timer(entry)
                 try:
                     entry.backend.close()
                 except Exception as e:  # pragma: no cover - defensive cleanup

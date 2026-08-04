@@ -77,6 +77,7 @@ from __future__ import annotations
 
 import importlib.util
 import logging
+import math
 import os
 import sys
 import time
@@ -236,6 +237,28 @@ EAGER_MODEL_RELEASE = os.getenv("IFW_EAGER_MODEL_RELEASE", "0") in (
     "true",
     "True",
 )
+
+# Idle timeout (seconds) before releasing a cached backend whose refcount
+# dropped to zero.  When the env var is unset, blank, malformed, negative, or
+# non-finite, the timeout is disabled (None) and the model stays warm
+# indefinitely (the existing default behaviour).  ``0`` means immediate
+# release.  A positive value schedules a delayed release via a background
+# timer.  Eager release (``IFW_EAGER_MODEL_RELEASE=1``) takes precedence and
+# always releases immediately, regardless of this timeout.
+_raw_timeout = os.getenv("IFW_MODEL_RELEASE_TIMEOUT_SECONDS")
+MODEL_RELEASE_TIMEOUT_SECONDS: float | None
+if _raw_timeout is None or _raw_timeout.strip() == "":
+    MODEL_RELEASE_TIMEOUT_SECONDS = None
+else:
+    try:
+        _parsed_timeout = float(_raw_timeout)
+    except (ValueError, TypeError):
+        MODEL_RELEASE_TIMEOUT_SECONDS = None
+    else:
+        if _parsed_timeout < 0 or not math.isfinite(_parsed_timeout):
+            MODEL_RELEASE_TIMEOUT_SECONDS = None
+        else:
+            MODEL_RELEASE_TIMEOUT_SECONDS = _parsed_timeout
 
 SAVE_TRANSCRIPTIONS = (
     os.getenv("SAVE_TRANSCRIPTIONS", "true").lower() == "true"
