@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
 
-# Use an official Python runtime as a parent image
-FROM python:3.10-slim
+ARG ROCM_PYTORCH_BASE=rocm/pytorch:rocm7.0_ubuntu22.04_py3.10_pytorch_release_2.8.0
+FROM ${ROCM_PYTORCH_BASE}
+
+ARG HSA_OVERRIDE_GFX_VERSION=
 
 LABEL org.opencontainers.image.source https://github.com/beecave-homelab/insanely-fast-whisper-rocm
 
@@ -10,7 +12,7 @@ ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=off
 ENV TZ=Europe/Amsterdam
 ENV ROCM_PATH=/opt/rocm
-ENV HSA_OVERRIDE_GFX_VERSION=10.3.0
+ENV HSA_OVERRIDE_GFX_VERSION=${HSA_OVERRIDE_GFX_VERSION}
 
 # Install OS-level deps needed for audio backends
 RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -23,10 +25,10 @@ RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive ap
 WORKDIR /app
 
 # Copy requirement files first
-COPY requirements-all.txt /app/
+COPY requirements-container.txt /app/
 
 # Install project dependencies from requirements files.
-RUN pip install --no-cache-dir -r requirements-all.txt
+RUN pip install --no-cache-dir --no-deps -r /app/requirements-container.txt
 
 # Copy the project definition file to leverage Docker layer caching for dependencies
 COPY pyproject.toml /app/
@@ -37,10 +39,11 @@ COPY openapi.yaml /app/
 # It assumes your main package source is in the 'insanely_fast_whisper_rocm' directory.
 COPY ./insanely_fast_whisper_rocm /app/insanely_fast_whisper_rocm/
 
-# Now, install the local package itself
-# This command reads pyproject.toml (already copied) and installs the current project.
+# Now, install the local package itself (no-deps: all dependencies are already
+# installed from the PDM-generated requirements file which excludes torchcodec
+# and other ROCm-incompatible packages).
 RUN pip install -U pip
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir --no-deps .
 
 # After `pip install .`, the package `insanely_fast_whisper_rocm` and its CLI/modules
 # should be available in the Python environment.

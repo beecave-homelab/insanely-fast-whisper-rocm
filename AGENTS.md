@@ -2,6 +2,10 @@
 
 This repository uses **Ruff** as the single source of truth for linting/formatting and **Pytest** (with **pytest-cov**) for tests & coverage. CI fails when these rules are violated.
 
+> Last reviewed: **2026-03-09**
+
+This guide is expected to stay aligned with the current repository structure and tooling.
+
 Run locally before committing:
 
 ```bash
@@ -34,9 +38,15 @@ When in doubt, prefer **correctness → clarity → consistency → brevity** (i
 - [14) CI expectations](#14-ci-expectations)
 - [15) SOLID design principles — Explanation & Integration](#15-solid-design-principles--explanation--integration)
 - [16) Configuration management — environment variables & constants](#16-configuration-management--environment-variables--constants)
+- [17) Setup & Commands (repo-specific)](#17-setup--commands-repo-specific)
+- [18) Project structure quick map](#18-project-structure-quick-map)
+- [19) Architecture & runtime patterns](#19-architecture--runtime-patterns)
+- [20) Boundaries for code changes](#20-boundaries-for-code-changes)
+- [21) Common tasks playbooks](#21-common-tasks-playbooks)
+- [22) Troubleshooting quick guide](#22-troubleshooting-quick-guide)
 - [Final note](#final-note)
 
----
+______________________________________________________________________
 
 ## 1) Correctness (Ruff F - Pyflakes)
 
@@ -54,7 +64,7 @@ When in doubt, prefer **correctness → clarity → consistency → brevity** (i
 - Use local scopes (comprehensions, context managers) where appropriate.
 - Do **not** read configuration from `os.environ` directly outside the dedicated constants module (see section 16).
 
----
+______________________________________________________________________
 
 ## 2) PEP 8 surface rules (Ruff E, W - pycodestyle)
 
@@ -70,7 +80,7 @@ When in doubt, prefer **correctness → clarity → consistency → brevity** (i
 - Break long expressions cleanly (after operators, around commas).
 - End files with exactly one trailing newline.
 
----
+______________________________________________________________________
 
 ## 3) Naming conventions (Ruff N - pep8-naming)
 
@@ -85,7 +95,7 @@ When in doubt, prefer **correctness → clarity → consistency → brevity** (i
 
 - Avoid camelCase unless mirroring a third-party API; if unavoidable, use a targeted pragma for that line only.
 
----
+______________________________________________________________________
 
 ## 4) Imports: order & style (Ruff I - isort rules)
 
@@ -117,7 +127,7 @@ from yourpkg.utils.paths import ensure_dir
 
 *(Replace `yourpkg` with your top-level package. In app-only repos, keep first-party imports minimal.)*
 
----
+______________________________________________________________________
 
 ## 5) Docstrings — content & style (Ruff D + DOC)
 
@@ -166,7 +176,7 @@ class ResourceManager:
     """
 ```
 
----
+______________________________________________________________________
 
 ## 6) Import hygiene (Ruff TID - flake8-tidy-imports)
 
@@ -185,7 +195,7 @@ except ModuleNotFoundError:  # pragma: no cover
     rich = None  # type: ignore[assignment]
 ```
 
----
+______________________________________________________________________
 
 ## 7) Modern Python upgrades (Ruff UP - pyupgrade)
 
@@ -202,7 +212,7 @@ except ModuleNotFoundError:  # pragma: no cover
 - Use assignment expressions (`:=`) sparingly and only when clearer.
 - Prefer `is None`/`is not None`.
 
----
+______________________________________________________________________
 
 ## 8) Future annotations (Ruff FA - flake8-future-annotations)
 
@@ -216,7 +226,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 - Targeting **Python ≥ 3.11**: you may omit it; align the `FA` rule in Ruff config.
 
----
+______________________________________________________________________
 
 ## 9) Local ignores (only when justified)
 
@@ -230,7 +240,7 @@ value = compute()  # noqa: F401  # used by plugin loader via reflection
 
 For docstring mismatches caused by third-party constraints, use a targeted `# noqa: D…, DOC…` with a brief reason.
 
----
+______________________________________________________________________
 
 ## 10) Tests & examples (Pytest + Coverage)
 
@@ -267,7 +277,7 @@ pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml
 - Guideline: **≥ 85%** line coverage, with critical paths covered.
 - Make CI fail below the threshold (see “CI expectations”).
 
----
+______________________________________________________________________
 
 ## 11) Commit discipline
 
@@ -277,7 +287,7 @@ Run Ruff and tests **before** committing. Keep commits small and focused.
 
 Use your project’s conventional commit format.
 
----
+______________________________________________________________________
 
 ## 12) Quick DO / DON’T
 
@@ -296,7 +306,7 @@ Use your project’s conventional commit format.
 - Leave parameters undocumented in public functions.
 - Add broad `noqa`—always keep ignores narrow and justified.
 
----
+______________________________________________________________________
 
 ## 13) Pre-commit (recommended)
 
@@ -306,14 +316,14 @@ Use your project’s conventional commit format.
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9  # keep in sync with your chosen Ruff version
+    rev: v0.14.11  # keep in sync with the project's Ruff version
     hooks:
       - id: ruff
         args: [--fix]
       - id: ruff-format
 ```
 
----
+______________________________________________________________________
 
 ## 14) CI expectations
 
@@ -332,7 +342,7 @@ pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml -
 
 Enforce a minimum coverage threshold (example: 85%). Fail the pipeline if below.
 
----
+______________________________________________________________________
 
 ## 15) SOLID design principles — Explanation & Integration
 
@@ -411,13 +421,16 @@ from __future__ import annotations
 from typing import Protocol
 import pathlib
 
+
 class Storage(Protocol):
     def write(self, path: pathlib.Path, data: bytes) -> None: ...
+
 
 class FileStorage:
     def write(self, path: pathlib.Path, data: bytes) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
+
 
 class Uploader:
     """Upload artifacts using an injected Storage (DIP, OCP, ISP).
@@ -425,12 +438,14 @@ class Uploader:
     Args:
         storage: Minimal interface that supports 'write'.
     """
+
     def __init__(self, storage: Storage) -> None:
         self._storage = storage  # DIP
 
     def publish(self, dest: pathlib.Path, payload: bytes) -> None:
         # SRP: only orchestrates publication; no direct filesystem logic here.
         self._storage.write(dest, payload)
+
 
 # LSP test idea: any Storage conformer can be used transparently (FakeStorage, S3Storage, ...).
 ```
@@ -443,102 +458,237 @@ class Uploader:
 - **ISP**: Prefer small protocols; accept only what you need.
 - **DIP**: Depend on abstractions; inject dependencies (avoid hard-coded singletons/globals).
 
----
+______________________________________________________________________
 
 ## 16) Configuration management — environment variables & constants
 
 These rules standardize how environment variables are loaded and accessed across the codebase. They prevent config sprawl, enable testing, and align with **SRP** and **DIP**.
 
-### 16.1 Single loading point
+### 16.1 Canonical modules (current repo)
 
-- Environment variables are parsed **exactly once** at application start.
-- The loader function is `load_project_env()` located at `<package>/utils/env_loader.py`.
+- `insanely_fast_whisper_rocm/utils/env_loader.py` handles early `.env` discovery/loading and debug bootstrap.
+- `insanely_fast_whisper_rocm/utils/constants.py` is the canonical module for exported configuration constants used by application code.
 
-### 16.2 Central import location
+### 16.2 Access policy
 
-- `load_project_env()` **MUST** be invoked **only** inside `<package>/utils/constant.py`.
-- No other file may import `env_loader` or call `load_project_env()` directly.
+- Application modules should import config values from `insanely_fast_whisper_rocm.utils.constants`.
+- Avoid direct `os.getenv` / `os.environ` usage in feature modules (API, CLI, audio, webui, core, benchmarks).
+- `env_loader.py` is a framework/bootstrapping exception and may read environment values needed to decide logging/bootstrap behavior.
 
-### 16.3 Constant exposure
+### 16.3 Adding new variables
 
-- After loading, `<package>/utils/constant.py` exposes project-wide configuration constants (e.g., `DEFAULT_CHUNK_LEN_SEC`, `DEFAULT_BATCH_SIZE`).
-- All other modules (e.g., `<package>/app.py`, `<package>/transcribe.py`) **must import from** `<package>.utils.constant` instead of reading `os.environ` or `.env`.
-
-### 16.4 Adding new variables
-
-- Define a sensible default in `<package>/utils/constant.py` using `os.getenv("VAR_NAME", "default")` or typed parsing logic.
+- Add new env-backed constants in `insanely_fast_whisper_rocm/utils/constants.py` with typed parsing and safe defaults.
+- If initialization-order or debug-bootstrap concerns apply, add only minimal pre-load logic in `env_loader.py`.
 - Document every variable in `.env.example` with a short description and default.
 
-### 16.5 Enforcement policy
+### 16.4 Enforcement policy
 
-- Pull requests that add direct `os.environ[...]` access or import `env_loader` outside `utils/constant.py` **must be rejected**.
+- Pull requests that introduce scattered env access in non-config modules should be rejected in favor of constants imports.
+
 - Suggested CI guardrail (example grep check):
 
   ```bash
-  # deny direct env reads outside constants module
-  ! git grep -nE 'os\\.environ\\[|os\\.getenv\\(' -- ':!<package>/utils/constant.py' ':!**/tests/**'
+  # deny direct env reads in runtime modules (excluding config bootstrap + tests)
+  ! git grep -nE 'os\.environ\[|os\.getenv\(' -- \
+    'insanely_fast_whisper_rocm/**/*.py' \
+    ':!insanely_fast_whisper_rocm/utils/constants.py' \
+    ':!insanely_fast_whisper_rocm/utils/env_loader.py' \
+    ':!tests/**'
   ```
 
-### 16.6 Example layout (illustrative)
+### 16.5 Testing guidance for configuration
 
-```python
-# <package>/utils/env_loader.py
-from __future__ import annotations
-import os
+- Unit tests may monkeypatch constants module attributes for behavior-driven tests.
+- Integration tests that depend on env values should set env vars **before** importing `insanely_fast_whisper_rocm.utils.constants`; reload only when required in the same process.
+- Cover both default and overridden env paths for new configuration behavior.
 
-def load_project_env() -> dict[str, str]:
-    # Parse once: could expand to load .env, validate, coerce types, etc.
-    return dict(os.environ)  # Keep simple; real code may normalize keys/types
+______________________________________________________________________
+
+## 17) Setup & Commands (repo-specific)
+
+Use these commands as the canonical quickstart for contributors and agents.
+
+### Install
+
+```bash
+# Core + ROCm 7.0 + benchmarks + dev tooling (recommended for active development)
+pdm install -G dev -G rocm-7-0 -G bench
+
+# Alternative ROCm stack
+pdm install -G dev -G rocm-6-4-1 -G bench
 ```
 
-```python
-# <package>/utils/constant.py
-from __future__ import annotations
-import os
-from .env_loader import load_project_env
+### Run / Dev
 
-# Load once (single source of truth)
-_ENV = load_project_env()
+```bash
+# API
+pdm run api
+pdm run api-debug
 
-# Exposed constants (typed, with sensible defaults)
-DEFAULT_CHUNK_LEN_SEC: int = int(_ENV.get("DEFAULT_CHUNK_LEN_SEC", "30"))
-DEFAULT_BATCH_SIZE: int = int(_ENV.get("DEFAULT_BATCH_SIZE", "8"))
-APP_ENV: str = _ENV.get("APP_ENV", "development")
+# WebUI
+pdm run webui
+pdm run webui-debug
+
+# CLI
+pdm run cli transcribe tests/data/conversion-test-file.mp3
+
+# Model pre-download helper
+pdm run hf-models --model distil-whisper/distil-large-v3
 ```
 
-```python
-# <package>/app.py  (or any other module)
-from __future__ import annotations
-from <package>.utils.constant import DEFAULT_BATCH_SIZE
+### Docker
 
-def run() -> None:
-    # Use constants; do not read os.environ here
-    ...
+```bash
+# Production-style compose
+docker compose up --build -d
+
+# Development compose (separate dev ports)
+docker compose -f docker-compose.dev.yaml up --build -d
 ```
 
-### 16.7 Testing guidance for configuration
+### Tests / Lint / Coverage
 
-- Unit tests may override constants via monkeypatching the **constants module attributes**, not the environment loader:
+```bash
+# Fast test run
+pdm run pytest -q
 
-  ```python
-  def test_behavior_with_small_batch(monkeypatch):
-      import <package>.utils.constant as C
-      monkeypatch.setattr(C, "DEFAULT_BATCH_SIZE", 2, raising=True)
-      ...
-  ```
+# Lint/format cycle
+pdm run ruff check --fix .
+pdm run ruff format .
 
-- For integration tests that need environment variations, set env **before** importing the constants module to ensure one-time load semantics:
+# Coverage
+pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml
 
-  ```python
-  import importlib, os
-  os.environ["DEFAULT_BATCH_SIZE"] = "4"
-  import <package>.utils.constant as C
-  importlib.reload(C)  # if necessary in the same process
-  ```
+# Optional all-in-one local CI script
+pdm run local-ci
+```
 
-- Document any new variables in `.env.example` and ensure coverage includes both defaulted and overridden paths.
+______________________________________________________________________
 
----
+## 18) Project structure quick map
+
+High-level layout (keep this in sync when moving modules):
+
+- `insanely_fast_whisper_rocm/api/`: FastAPI app factory, routes, request/response contracts.
+- `insanely_fast_whisper_rocm/cli/`: Click CLI commands, facade, export flow.
+- `insanely_fast_whisper_rocm/webui/`: Gradio UI wiring and event handlers.
+- `insanely_fast_whisper_rocm/core/`: ASR backend, orchestration, formatting, segmentation.
+- `insanely_fast_whisper_rocm/audio/`: conversion/chunking/processing utilities.
+- `insanely_fast_whisper_rocm/utils/`: constants, env loader, filename/file helpers.
+- `tests/`: mirrored test layout by subsystem (`api`, `cli`, `core`, `audio`, `webui`, `utils`).
+- `scripts/`: project automation (`setup_config.py`, `local-ci.sh`, benchmark helpers).
+- `docker-compose*.yaml` + `Dockerfile*`: deployment/runtime definitions.
+
+______________________________________________________________________
+
+## 19) Architecture & runtime patterns
+
+### Interface entrypoints
+
+- API: `python -m insanely_fast_whisper_rocm.api`
+- CLI: `python -m insanely_fast_whisper_rocm.cli`
+- WebUI: `python -m insanely_fast_whisper_rocm.webui`
+
+Prefer these module entrypoints (or equivalent `pdm run` scripts) over ad-hoc script wrappers.
+
+### Runtime flow
+
+- External interface layer (API/CLI/WebUI) validates inputs and delegates orchestration.
+- Core pipeline handles transcription/translation and subtitle formatting.
+- Utilities provide deterministic naming, config constants, and shared file handling.
+
+### ROCm-focused behavior
+
+- ROCm wheel compatibility is managed through dedicated dependency groups.
+- Allocator configuration is normalized in constants (`PYTORCH_ALLOC_CONF` / `PYTORCH_HIP_ALLOC_CONF` handling).
+- Keep GPU/allocator logic centralized; avoid scattering hardware-specific conditionals.
+
+______________________________________________________________________
+
+## 20) Boundaries for code changes
+
+### ✅ Always
+
+- Keep changes minimal, targeted, and covered by tests.
+- Update `.env.example`, docs, and tests when introducing new config variables.
+- Use existing `pdm` scripts and module entrypoints in docs/examples.
+- Preserve separation between interface layers and core processing modules.
+
+### ⚠️ Ask first
+
+- Dependency changes across ROCm groups (`rocm-6-4-1`, `rocm-7-0`) or `requirements-*.txt` exports.
+- API contract or CLI flag behavior changes.
+- Docker port, volume, or runtime privilege changes.
+- Any changes that increase GPU memory defaults or timeout thresholds significantly.
+
+### 🚫 Never
+
+- Hardcode secrets or tokens in code, tests, docs, or examples.
+- Add direct env reads across runtime modules when a constants import is appropriate.
+- Mix unrelated refactors with bug fixes in one PR.
+- Introduce fallback logic that silently changes model output semantics without tests.
+
+______________________________________________________________________
+
+## 21) Common tasks playbooks
+
+### Add a new environment-backed setting
+
+1. Add typed constant in `utils/constants.py` with safe default.
+2. If bootstrap behavior is needed, add minimal logic in `utils/env_loader.py`.
+3. Document in `.env.example`.
+4. Add/adjust tests for default and override behavior.
+5. Run Ruff + pytest + coverage commands.
+
+### Add/modify CLI flag behavior
+
+1. Update command option wiring in `cli/commands.py` / `cli/cli.py`.
+2. Keep facade boundaries stable (`cli/facade.py`).
+3. Add tests under `tests/cli/` for parsing + behavior.
+4. Ensure docs (`README.md` and/or `project-overview.md`) reflect new flags.
+
+### Touch transcription/segmentation logic
+
+1. Modify `core/` logic in smallest possible unit.
+2. Add regression tests under `tests/core/` (and format tests if output changed).
+3. Validate all response/export formats still behave as expected.
+4. Avoid UI/API workarounds for core-pipeline defects; fix root cause in `core/`.
+
+______________________________________________________________________
+
+## 22) Troubleshooting quick guide
+
+### ROCm/PyTorch allocator warnings or stalls
+
+- Check `.env` allocator variables and avoid unsupported modes for your stack.
+- Prefer default allocator values unless you are actively tuning memory behavior.
+
+### Torchaudio backend save errors
+
+Symptom example:
+
+```text
+RuntimeError: Couldn't find appropriate backend to handle uri ...
+```
+
+Actions:
+
+- Ensure `soundfile` + system `libsndfile` are available in runtime environment.
+- Set `TORCHAUDIO_USE_SOUNDFILE=1` where needed.
+
+### Config appears ignored
+
+- Verify user config file path: `~/.config/insanely-fast-whisper-rocm/.env`.
+- Confirm constants are imported from `utils/constants.py` (not direct env reads).
+- For tests, set env before importing constants, or reload constants deliberately.
+
+### Port conflicts in local runs
+
+- Production defaults use `API_PORT` and `WEBUI_PORT`.
+- Dev compose uses `DEV_API_PORT` and `DEV_WEBUI_PORT`.
+- Keep port changes synchronized between `.env`, compose files, and docs.
+
+______________________________________________________________________
 
 ## Final note
 

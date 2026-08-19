@@ -1,7 +1,10 @@
+####################
+# Project Metadata #
+####################
 [project]
 name = "insanely-fast-whisper-rocm"
-version = "2.1.6"
-description = "A FastAPI wrapper around a custom Whisper-based ASR pipeline (ROCM version)"
+version = "2.3.0"
+description = "A ROCm-optimized Whisper toolkit with API, CLI, and WebUI interfaces for transcription, translation, and speaker diarization"
 requires-python = "~=3.10"
 authors = [
     {name = "elvee"},
@@ -10,7 +13,7 @@ dependencies = [
     "fastapi==0.128.0",
     "uvicorn==0.40.0",
     "python-multipart==0.0.22",
-    "transformers==4.57.3",
+    "transformers==5.5.0",
     "python-dotenv==1.2.1",
     "PyYAML==6.0.3",
     "click==8.3.1",
@@ -23,74 +26,23 @@ dependencies = [
     "ffmpeg-python==0.2.0",
     "stable-ts==2.19.1",
     "demucs==4.0.1",
-    "huggingface-hub==0.36.0",
+    "huggingface-hub==1.5.0",
     "soundfile==0.13.1",
     "sniffio==1.3.1",
 ]
 
 
+########################
+# Project Entry Points #
+########################
 [project.scripts]
 insanely-fast-whisper-cli = "insanely_fast_whisper_rocm.cli.cli:main"
 insanely-fast-whisper-webui = "insanely_fast_whisper_rocm.webui.app:launch_webui"
 insanely-fast-whisper-rocm = "insanely_fast_whisper_rocm.__main__:main"
 
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-
-[tool.hatch.metadata]
-allow-direct-references = true
-
-
-[tool.pdm]
-distribution = true
-
-
-[tool.pdm.scripts]
-webui = "insanely-fast-whisper-webui"
-webui-debug = "insanely-fast-whisper-webui --debug"
-api = "insanely-fast-whisper-rocm"
-api-debug = "insanely-fast-whisper-rocm -v"
-cli = "insanely-fast-whisper-cli"
-
-setup-config = {call = "scripts.setup_config:main"}
-hf-models = {call = "scripts.hf_models:_main"}
-
-lint = "ruff check ."
-format = "ruff format ."
-fix = "ruff check --fix ."
-test = "pytest -q"
-test-cov = "pytest --cov=insanely_fast_whisper_rocm --cov-report=term-missing:skip-covered --cov-report=xml"
-
-local-ci = "scripts/local-ci.sh"
-
-
-[[tool.pdm.source]]
-name = "pypi"
-url = "https://pypi.org/simple/"
-verify_ssl = true
-type = "index"
-exclude_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton", "nvidia-*"]
-include_packages = ["*"]
-
-
-[[tool.pdm.source]]
-name = "rocm-wheels-6.4.1"
-url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/"
-verify_ssl = true
-type = "find_links"
-include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton"]
-
-[[tool.pdm.source]]
-name = "rocm-wheels-7.0"
-url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.0/"
-verify_ssl = true
-type = "find_links"
-include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton"]
-
-
+##############################
+# Optional Dependency Groups #
+##############################
 [project.optional-dependencies]
 dev = [
     "pytest>=9.0.2",
@@ -124,6 +76,115 @@ bench = [
     "pyamdgpuinfo==2.1.7",
 ]
 
+diarization = [
+    "pyannote.audio>=3.1",
+]
+
+
+#####################
+# Dependency Groups #
+#####################
+[dependency-groups]
+reviewer = [
+    'aiofiles==24.1.0; python_version >= "3.10" and python_version < "3.14"',
+    'aiohappyeyeballs==2.6.1; python_version >= "3.10" and python_version < "3.14"',
+    'aiohttp==3.13.5; python_version >= "3.10" and python_version < "3.14"',
+    'aiosignal==1.4.0; python_version >= "3.10" and python_version < "3.14"',
+    'annotated-doc==0.0.4; python_version >= "3.10" and python_version < "3.14"',
+    'annotated-types==0.7.0; python_version >= "3.10" and python_version < "3.14"',
+    'anyio==4.13.0; python_version >= "3.10" and python_version < "3.14"',
+    'async-timeout==5.0.1; python_version >= "3.10" and python_version < "3.11"',
+    'attrs==26.1.0; python_version >= "3.10" and python_version < "3.14"',
+    'audioop-lts==0.2.2; python_version >= "3.13" and python_version < "3.14"',
+    'brotli==1.2.0; python_version >= "3.10" and python_version < "3.14"',
+    'certifi==2026.2.25; python_version >= "3.10" and python_version < "3.14"',
+    'cffi==2.0.0; python_version >= "3.10" and python_version < "3.14"',
+    'charset-normalizer==3.4.7; python_version >= "3.10" and python_version < "3.14"',
+    'click==8.3.1; python_version >= "3.10" and python_version < "3.14"',
+    'colorama==0.4.6; python_version >= "3.10" and python_version < "3.14"',
+    'coverage==7.13.5; python_version >= "3.10" and python_version < "3.14"',
+    'datasets==4.4.2; python_version >= "3.10" and python_version < "3.14"',
+    'dill==0.4.0; python_version >= "3.10" and python_version < "3.14"',
+    'exceptiongroup==1.3.1; python_version >= "3.10" and python_version < "3.11"',
+    'fastapi==0.128.0; python_version >= "3.10" and python_version < "3.14"',
+    'ffmpeg-python==0.2.0; python_version >= "3.10" and python_version < "3.14"',
+    'ffmpy==1.0.0; python_version >= "3.10" and python_version < "3.14"',
+    'filelock==3.28.0; python_version >= "3.10" and python_version < "3.14"',
+    'frozenlist==1.8.0; python_version >= "3.10" and python_version < "3.14"',
+    'fsspec==2025.10.0; python_version >= "3.10" and python_version < "3.14"',
+    'gradio==6.7.0; python_version >= "3.10" and python_version < "3.14"',
+    'gradio-client==2.2.0; python_version >= "3.10" and python_version < "3.14"',
+    'groovy==0.1.2; python_version >= "3.10" and python_version < "3.14"',
+    'h11==0.16.0; python_version >= "3.10" and python_version < "3.14"',
+    'hf-xet==1.4.3; python_version >= "3.10" and python_version < "3.14" and (platform_machine == "x86_64" or platform_machine == "amd64" or platform_machine == "arm64" or platform_machine == "aarch64")',
+    'httpcore==1.0.9; python_version >= "3.10" and python_version < "3.14"',
+    'httpx==0.28.1; python_version >= "3.10" and python_version < "3.14"',
+    'huggingface-hub==1.5.0; python_version >= "3.10" and python_version < "3.14"',
+    'idna==3.11; python_version >= "3.10" and python_version < "3.14"',
+    'importlib-metadata==8.7.1; python_version >= "3.10" and python_version < "3.14"',
+    'iniconfig==2.3.0; python_version >= "3.10" and python_version < "3.14"',
+    'jinja2==3.1.6; python_version >= "3.10" and python_version < "3.14"',
+    'joblib==1.5.3; python_version >= "3.10" and python_version < "3.14"',
+    'markdown-it-py==4.0.0; python_version >= "3.10" and python_version < "3.14"',
+    'markupsafe==3.0.3; python_version >= "3.10" and python_version < "3.14"',
+    'mdurl==0.1.2; python_version >= "3.10" and python_version < "3.14"',
+    'multidict==6.7.1; python_version >= "3.10" and python_version < "3.14"',
+    'multiprocess==0.70.18; python_version >= "3.10" and python_version < "3.14"',
+    'numpy==2.2.6; python_version >= "3.10" and python_version < "3.14"',
+    'orjson==3.11.8; python_version >= "3.10" and python_version < "3.14"',
+    'packaging==26.1; python_version >= "3.10" and python_version < "3.14"',
+    'pandas==2.3.3; python_version >= "3.10" and python_version < "3.14"',
+    'pillow==12.2.0; python_version >= "3.10" and python_version < "3.14"',
+    'pluggy==1.6.0; python_version >= "3.10" and python_version < "3.14"',
+    'propcache==0.4.1; python_version >= "3.10" and python_version < "3.14"',
+    'pyarrow==23.0.1; python_version >= "3.10" and python_version < "3.14"',
+    'pycparser==3.0; python_version >= "3.10" and python_version < "3.14" and implementation_name != "PyPy"',
+    'pydantic==2.13.2; python_version >= "3.10" and python_version < "3.14"',
+    'pydantic-core==2.46.2; python_version >= "3.10" and python_version < "3.14"',
+    'pydub==0.25.1; python_version >= "3.10" and python_version < "3.14"',
+    'pygments==2.20.0; python_version >= "3.10" and python_version < "3.14"',
+    'pyreadline3==3.5.4; sys_platform == "win32" and python_version >= "3.10" and python_version < "3.14"',
+    'pytest==9.0.3; python_version >= "3.10" and python_version < "3.14"',
+    'pytest-cov==7.1.0; python_version >= "3.10" and python_version < "3.14"',
+    'python-dateutil==2.9.0.post0; python_version >= "3.10" and python_version < "3.14"',
+    'python-dotenv==1.2.1; python_version >= "3.10" and python_version < "3.14"',
+    'python-multipart==0.0.22; python_version >= "3.10" and python_version < "3.14"',
+    'pytz==2026.1.post1; python_version >= "3.10" and python_version < "3.14"',
+    'pyyaml==6.0.3; python_version >= "3.10" and python_version < "3.14"',
+    'regex==2026.4.4; python_version >= "3.10" and python_version < "3.14"',
+    'requests==2.33.1; python_version >= "3.10" and python_version < "3.14"',
+    'rich==15.0.0; python_version >= "3.10" and python_version < "3.14"',
+    'ruff==0.15.11; python_version >= "3.10" and python_version < "3.14"',
+    'safehttpx==0.1.7; python_version >= "3.10" and python_version < "3.14"',
+    'safetensors==0.7.0; python_version >= "3.10" and python_version < "3.14"',
+    'scikit-learn==1.7.2; python_version >= "3.10" and python_version < "3.14"',
+    'scipy==1.15.3; python_version >= "3.10" and python_version < "3.14"',
+    'semantic-version==2.10.0; python_version >= "3.10" and python_version < "3.14"',
+    'shellingham==1.5.4; python_version >= "3.10" and python_version < "3.14"',
+    'six==1.17.0; python_version >= "3.10" and python_version < "3.14"',
+    'sniffio==1.3.1; python_version >= "3.10" and python_version < "3.14"',
+    'soundfile==0.13.1; python_version >= "3.10" and python_version < "3.14"',
+    'starlette==0.50.0; python_version >= "3.10" and python_version < "3.14"',
+    'tabulate==0.10.0; python_version >= "3.10" and python_version < "3.14"',
+    'threadpoolctl==3.6.0; python_version >= "3.10" and python_version < "3.14"',
+    'tiktoken==0.12.0; python_version >= "3.10" and python_version < "3.14"',
+    'tokenizers==0.22.2; python_version >= "3.10" and python_version < "3.14"',
+    'tomli==2.4.1; python_version >= "3.10" and python_version < "3.11"',
+    'tomlkit==0.13.3; python_version >= "3.10" and python_version < "3.14"',
+    'tqdm==4.67.3; python_version >= "3.10" and python_version < "3.14"',
+    'transformers==5.5.0; python_version >= "3.10" and python_version < "3.14"',
+    'typer==0.24.1; python_version >= "3.10" and python_version < "3.14"',
+    'types-pyyaml==6.0.12.20260408; python_version >= "3.10" and python_version < "3.14"',
+    'typing-extensions==4.15.0; python_version >= "3.10" and python_version < "3.14"',
+    'typing-inspection==0.4.2; python_version >= "3.10" and python_version < "3.14"',
+    'tzdata==2026.1; python_version >= "3.10" and python_version < "3.14"',
+    'urllib3==2.6.3; python_version >= "3.10" and python_version < "3.14"',
+    'uvicorn==0.40.0; python_version >= "3.10" and python_version < "3.14"',
+    'xxhash==3.6.0; python_version >= "3.10" and python_version < "3.14"',
+    'yarl==1.23.0; python_version >= "3.10" and python_version < "3.14"',
+    'zipp==3.23.1; python_version >= "3.10" and python_version < "3.14"',
+]
+
 # Benchmark different torch versions
 # bench-torch-2-0-1 = [
 #     "torch==2.0.1",
@@ -155,12 +216,77 @@ bench = [
 # ]
 
 
-[tool.pdm.resolution]
-excludes = ["torch==2.0.1", "torch==2.3.0", "torch==2.4.1", "torch==2.7.1"]
+#####################
+# Build & Packaging #
+#####################
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-# ------------------------------
-#   Ruff (linter + formatter)
-# ------------------------------
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+
+###############################
+# Dependency Management (PDM) #
+###############################
+[tool.pdm]
+distribution = true
+
+
+[tool.pdm.scripts]
+webui = "insanely-fast-whisper-webui"
+webui-debug = "insanely-fast-whisper-webui --debug"
+api = "insanely-fast-whisper-rocm"
+api-debug = "insanely-fast-whisper-rocm -v"
+cli = "insanely-fast-whisper-cli"
+
+setup-config = {call = "scripts.setup_config:main"}
+hf-models = {call = "scripts.hf_models:_main"}
+
+lint = "ruff check ."
+format = "ruff format ."
+fix = "ruff check --fix ."
+test = "pytest -q"
+test-cov = "pytest --cov=insanely_fast_whisper_rocm --cov-report=term-missing:skip-covered --cov-report=xml"
+
+local-ci = "scripts/local-ci.sh"
+
+#######################################
+# PDM package indexes / wheel sources #
+#######################################
+[[tool.pdm.source]]
+name = "pypi"
+url = "https://pypi.org/simple/"
+verify_ssl = true
+type = "index"
+exclude_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton", "nvidia-*", "torchcodec"]
+include_packages = ["*"]
+
+
+[[tool.pdm.source]]
+name = "rocm-wheels-6.4.1"
+url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/"
+verify_ssl = true
+type = "find_links"
+include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton"]
+
+[[tool.pdm.source]]
+name = "rocm-wheels-7.0"
+url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.0/"
+verify_ssl = true
+type = "find_links"
+include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton"]
+
+
+# PDM resolution constraints
+[tool.pdm.resolution]
+excludes = ["torch==2.0.1", "torch==2.3.0", "torch==2.4.1", "torch==2.7.1", "torchcodec"]
+
+#############################
+# Ruff (linter + formatter) #
+#############################
 [tool.ruff]
 line-length = 88
 target-version = "py310"                # adjust if you target 3.9/3.12
@@ -205,9 +331,9 @@ known-first-party = ["insanely_fast_whisper_rocm"]
 # Temporarily ignore long-line checks in tests
 "tests/**/*.py" = ["E501"]
 
-# ------------------------------
-#       Pytest & Coverage
-# ------------------------------
+#####################
+# Pytest & Coverage #
+#####################
 [tool.pytest.ini_options]
 # addopts = "-q --cov=insanely_fast_whisper_rocm --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=html --cov-fail-under=85"
 testpaths = ["tests"]

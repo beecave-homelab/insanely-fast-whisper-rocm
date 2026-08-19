@@ -3,12 +3,17 @@ FROM python:3.10-slim
 
 LABEL org.opencontainers.image.source https://github.com/beecave-homelab/insanely-fast-whisper-rocm
 
+ARG HSA_OVERRIDE_GFX_VERSION=
+
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=off
 ENV TZ=Europe/Amsterdam
 ENV ROCM_PATH=/opt/rocm
-ENV HSA_OVERRIDE_GFX_VERSION=10.3.0
+ENV HSA_OVERRIDE_GFX_VERSION=${HSA_OVERRIDE_GFX_VERSION}
+# Skip MIOpen JIT kernel compilation — the slim image lacks rocrand headers
+# needed by MIOpenDropoutHIP.cpp.  Mode 2 = database-only (no JIT).
+ENV MIOPEN_FIND_MODE=2
 
 # Install specific packages using pip
 RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \ 
@@ -26,6 +31,7 @@ COPY .python-version .
 
 # Install project dependencies using pip
 RUN pip install --no-cache-dir -r requirements-rocm-v7-0.txt
+RUN pip uninstall -y torchcodec
 
 # Copy the OpenAPI spec file
 COPY openapi.yaml /app/
@@ -37,8 +43,10 @@ COPY openapi.yaml /app/
 COPY pyproject.toml /app/
 COPY ./insanely_fast_whisper_rocm /app/insanely_fast_whisper_rocm/
 
-# Install the local package itself
-RUN pip install --no-cache-dir .
+# Install the local package itself (no-deps: all dependencies are already
+# installed from the PDM-generated requirements file which excludes torchcodec
+# and other ROCm-incompatible packages).
+RUN pip install --no-cache-dir --no-deps .
 
 # After `pip install .`, the package `insanely_fast_whisper_rocm` and its CLI/modules
 # should be available in the Python environment.

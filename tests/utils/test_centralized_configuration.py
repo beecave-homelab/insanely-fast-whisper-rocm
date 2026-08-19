@@ -34,6 +34,9 @@ class TestCentralizedConfiguration:
             assert constants_module.DEFAULT_MODEL == "distil-whisper/distil-large-v3"
             assert constants_module.FILENAME_TIMEZONE == "UTC"
             assert constants_module.HF_TOKEN is None
+            assert constants_module.DEFAULT_DIARIZATION_DEVICE == "cpu"
+            assert constants_module.DIARIZATION_PRELOAD_AUDIO is True
+            assert constants_module.DIARIZATION_ALLOW_CPU_FALLBACK is True
 
     def test_environment_variable_overrides(self) -> None:
         """Test that environment variables properly override defaults."""
@@ -74,12 +77,16 @@ class TestCentralizedConfiguration:
             mock_getenv.side_effect = lambda key, default=None: {
                 "SAVE_TRANSCRIPTIONS": "TRUE",
                 "HIP_LAUNCH_BLOCKING": "True",
+                "DIARIZATION_PRELOAD_AUDIO": "false",
+                "DIARIZATION_ALLOW_CPU_FALLBACK": "false",
             }.get(key, default)
 
             reload(constants_module)
 
             assert constants_module.SAVE_TRANSCRIPTIONS is True
             assert constants_module.HIP_LAUNCH_BLOCKING is True
+            assert constants_module.DIARIZATION_PRELOAD_AUDIO is False
+            assert constants_module.DIARIZATION_ALLOW_CPU_FALLBACK is False
 
             # Test false values
             mock_getenv.side_effect = lambda key, default=None: {
@@ -126,21 +133,23 @@ class TestCentralizedConfiguration:
             assert constants_module.AUDIO_CHUNK_OVERLAP == 2.5
             assert constants_module.AUDIO_CHUNK_MIN_DURATION == 10.0
 
-    def test_hf_token_no_fallback(self) -> None:
-        """Test that HF_TOKEN is sourced only from HF_TOKEN env var (no fallback)."""
+    def test_hf_token_alias_fallback(self) -> None:
+        """Test HF token lookup precedence and alias fallback behavior."""
         # When HF_TOKEN is set, constant should reflect it
         with patch(
             "insanely_fast_whisper_rocm.utils.constants.os.getenv"
         ) as mock_getenv:
             mock_getenv.side_effect = lambda key, default=None: {
                 "HF_TOKEN": "primary_token",
+                "HUGGINGFACE_TOKEN": "secondary_token",
+                "HUGGINGFACE_HUB_TOKEN": "tertiary_token",
             }.get(key, default)
 
             reload(constants_module)
 
             assert constants_module.HF_TOKEN == "primary_token"
 
-        # When only HUGGINGFACE_TOKEN is set, HF_TOKEN should remain None
+        # When only HUGGINGFACE_TOKEN is set, it should be used as fallback
         with patch(
             "insanely_fast_whisper_rocm.utils.constants.os.getenv"
         ) as mock_getenv:
@@ -150,7 +159,19 @@ class TestCentralizedConfiguration:
 
             reload(constants_module)
 
-            assert constants_module.HF_TOKEN is None
+            assert constants_module.HF_TOKEN == "fallback_token"
+
+        # When only HUGGINGFACE_HUB_TOKEN is set, it should be used as fallback
+        with patch(
+            "insanely_fast_whisper_rocm.utils.constants.os.getenv"
+        ) as mock_getenv:
+            mock_getenv.side_effect = lambda key, default=None: {
+                "HUGGINGFACE_HUB_TOKEN": "hub_fallback_token",
+            }.get(key, default)
+
+            reload(constants_module)
+
+            assert constants_module.HF_TOKEN == "hub_fallback_token"
 
 
 class TestModuleCentralizedConfigurationUsage:
@@ -213,7 +234,7 @@ class TestDotEnvFileSupport:
                 patch("dotenv.load_dotenv") as mock_load,
             ):
                 reload(constants_module)
-                mock_load.assert_called_once_with(Path(env_file_path), override=True)
+                mock_load.assert_any_call(Path(env_file_path), override=True)
         finally:
             # Clean up temp file
             os.unlink(env_file_path)

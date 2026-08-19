@@ -1,8 +1,9 @@
 ---
 repo: https://github.com/beecave-homelab/insanely-fast-whisper-rocm
-commit: 02ce442e8864435a1d0f4b48e76ba2c415041137
-updated: 2026-01-10T12:06:00+00:00
+commit: aca7ee04e29a7f65fb82b27b474df47050494910
+updated: 2026-04-25T20:13:41Z
 ---
+
 <!-- SECTIONS:API,CLI,WEBUI,CI,DOCKER,TESTS -->
 
 # Project Overview | Insanely Fast Whisper API (ROCm)
@@ -13,13 +14,13 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 > This overview is the **single source of truth** for developers working on this codebase.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
-[![Version](https://img.shields.io/badge/Version-v2.1.6-informational)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-v2.3.0-informational)](#version-summary)
 [![API](https://img.shields.io/badge/API-FastAPI-green)](#api-server-details)
 [![CLI](https://img.shields.io/badge/CLI-Click-yellow)](#cli-command-line-interface-details)
 [![WebUI](https://img.shields.io/badge/WebUI-Gradio-orange)](#webui-gradio-interface-details)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE.txt)
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
@@ -43,7 +44,7 @@ A comprehensive Whisper-based speech recognition toolkit designed specifically t
 - [Monitoring & Security](#monitoring--security)
 - [Import Standardization](#import-standardization)
 
----
+______________________________________________________________________
 
 ## Quickstart for Developers
 
@@ -82,18 +83,25 @@ pdm run webui-debug        # WebUI Interface (debug)
 pdm run cli transcribe audio.mp3  # CLI
 ```
 
----
+> **CI note:** The repository currently includes security-focused workflows in
+> [`.github/workflows/codeql.yml`](.github/workflows/codeql.yml) and
+> [`.github/workflows/osv-scanner.yml`](.github/workflows/osv-scanner.yml).
+> A full lint/test CI workflow is not defined under `.github/workflows/`.
+
+______________________________________________________________________
 
 ## Version Summary
 
-### 🏷️ **Current Version: v2.1.5** *(19-02-2026)*
+### 🏷️ **Current Version: v2.3.0** *(17-07-2026)*
 
-**Latest improvements**: ROCm 7.0 Docker requirements alignment, explicit ROCm torch/torchaudio pins, and refreshed ROCm requirements guidance.
+**Latest improvements**: Diarization hardening with ROCm/MIOpen GPU→CPU fallback, centralized environment variable access, configurable HSA override, BetterTransformer removal, and local CI reviewer tooling.
 
 ### 📊 **Release Overview**
 
 | Version | Date | Type | Key Features |
-| ------- | ---- | ---- | ------------ |
+| -- | -- | -- | -- |
+| **v2.3.0** | 17-07-2026 | ✨ Minor | Diarization hardening, ROCm/MIOpen fallback, env centralization, BetterTransformer removal, configurable HSA override |
+| **v2.2.0** | 26-04-2026 | ✨ Minor | End-to-end speaker diarization across API/CLI/WebUI, plus robustness fixes and new test coverage |
 | **v2.1.5** | 19-02-2026 | 🐛 Patch | ROCm 7.0 Docker requirements alignment, ROCm torch/torchaudio pins |
 | **v2.1.4** | 31-01-2026 | 🐛 Patch | ROCm 7.0 wheel guidance, test layout clarification, requirements cleanup |
 | **v2.1.3** | 13-01-2026 | 🐛 Patch | WebUI payload optimization, type hints, logging, Dockerfile simplification |
@@ -125,13 +133,13 @@ pdm run cli transcribe audio.mp3  # CLI
 - **3 major architectural refactors**
 - **1 breaking change** (v0.2.0)
 
----
+______________________________________________________________________
 
 > 📖 **For complete version history, changelog, and detailed release notes, see [VERSIONS.md](VERSIONS.md)**
 >
 > **Note:** As of 2025-07-06, all release tags (v0.1.0 ... v0.9.0) have normalized commit mappings. The canonical mapping for each release is now found in VERSIONS.md under the 'Key Commits' section.
 
----
+______________________________________________________________________
 
 ## Project Features
 
@@ -140,6 +148,7 @@ pdm run cli transcribe audio.mp3  # CLI
 - **AMD GPU (ROCm v6.4.1 & v7.0) Support**: First-class AMD GPU acceleration for Whisper models, tested with PyTorch 2.8.0+rocm7.0.0 and torchaudio 2.8.0+rocm7.0.0
 
 - **Extended Original Package**: Builds upon [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) with additional interfaces and ROCm compatibility
+
 - **Production-Ready Architecture**: Beyond CLI-only approach of original package
 
 ### Core Capabilities
@@ -157,12 +166,19 @@ pdm run cli transcribe audio.mp3  # CLI
 - **FastAPI Server**: RESTful API with OpenAI-compatible v1 endpoints (`/v1/audio/transcriptions`, etc.)
 
 - **Gradio WebUI**: Batch file upload, live progress tracking, ZIP downloads
+
 - **CLI Interface**: Command-line tool for single-file processing
+
 - **Model Management**: Automatic Hugging Face model downloading and caching
+
 - **Docker Support**: Full containerization with development and production configurations
+
 - **Direct Hugging Face Integration**: Native `transformers.pipeline` support
+
 - **Configurable Processing**: Batch size, device, model selection
+
 - **ROCm Integration**: Optimized PyTorch and ONNX runtime configurations for AMD GPUs
+
 - **Native Attention Acceleration**: Uses `attn_implementation="sdpa"` for optimized performance without requiring `BetterTransformer`.
 
 ### Architecture
@@ -172,7 +188,7 @@ pdm run cli transcribe audio.mp3  # CLI
 - **Native SDPA Acceleration vs. BetterTransformer**: This project uses the native Scaled Dot Product Attention (SDPA) available in PyTorch 2.0+ and `transformers` as its primary method for accelerating the Whisper model's attention mechanism. This is achieved by setting `attn_implementation="sdpa"` when loading the model.
 - **OOM Recovery Orchestration (GPU -> CPU fallback)**: The core transcription path is wrapped by an OOM-aware orchestrator ([`core/orchestrator.py`](insanely_fast_whisper_rocm/core/orchestrator.py)) that implements deterministic recovery actions:
 
----
+______________________________________________________________________
 
 ## Project Structure
 
@@ -251,7 +267,7 @@ insanely_fast_whisper_rocm
    
 ```
 
----
+______________________________________________________________________
 
 ## Architecture Highlights
 
@@ -277,14 +293,14 @@ The core transcription path is wrapped by an OOM-aware orchestrator ([`core/orch
 
 The OOM signatures are parsed for CUDA/HIP/ROCm in [`core/oom_utils.py`](insanely_fast_whisper_rocm/core/oom_utils.py) and exercised in unit tests under `tests/core/`.
 
----
+______________________________________________________________________
 
 ## Filename Conventions
 
 **Pattern:** `{audio_stem}_{task}_{timestamp}.{extension}`
 
 | Part | Meaning |
-| ---- | ------- |
+| -- | -- |
 | `audio_stem` | Original filename without extension |
 | `task` | `transcribe` or `translate` |
 | `timestamp` | ISO 8601 format. Ends with 'Z' for UTC, or a UTC offset (e.g., `+0200`) for local/specific timezones. Format: `YYYYMMDDTHHMMSS[Z\|+HHMM\|-HHMM]` |
@@ -313,7 +329,7 @@ Environment override for `TZ` (internally `APP_TIMEZONE`):
 TZ=Europe/Amsterdam
 ```
 
----
+______________________________________________________________________
 
 ## Configuration System
 
@@ -380,6 +396,7 @@ The application implements automatic detection and configuration of PyTorch's me
 The automatic detection logic is implemented in [insanely_fast_whisper_rocm/utils/constants.py](insanely_fast_whisper_rocm/utils/constants.py):
 
 - **Version Detection**:
+
   - Uses `importlib.util.find_spec("torch")` to check if torch is installed
   - Retrieves the torch version using `pkg_version("torch")`
   - Parses the version string to extract major and minor version numbers
@@ -394,10 +411,12 @@ else:
 ```
 
 - **Fallback Handling**:
+
   - If torch is not yet installed (e.g., during initial setup), both environment variables are set for backward compatibility
   - If version metadata is unavailable, defaults to the newer `PYTORCH_ALLOC_CONF`
 
 - **Configuration Loading Order**:
+
   - Checks `PYTORCH_ALLOC_CONF` first
   - Falls back to `PYTORCH_HIP_ALLOC_CONF` if the first is not set
   - Applies default configuration if neither is set: `garbage_collection_threshold:0.7,max_split_size_mb:128`
@@ -439,7 +458,7 @@ This provides visibility into the automatic configuration process and helps with
 - **Backward Compatibility**: Works seamlessly with both old and new PyTorch versions
 - **Flexible Override**: Users can still manually set either variable if needed for specific use cases
 
----
+______________________________________________________________________
 
 ## Application Interfaces
 
@@ -454,32 +473,39 @@ The FastAPI server provides a robust and scalable way to integrate the speech re
 You can start the API server with various options to customize its behavior:
 
 ```bash
-# Launch with default settings (http://0.0.0.0:8000, port: 8000, workers: 1, log-level: info)
-python -m insanely_fast_whisper_rocm.api
+# Launch with default settings (host/port from constants/env)
+pdm run api
+
+# Equivalent module entrypoint
+python -m insanely_fast_whisper_rocm
 
 # See all available options and help
-python -m insanely_fast_whisper_rocm.api --help
+pdm run api --help
 
 # Launch with a custom port
-python -m insanely_fast_whisper_rocm.api --port 8001
+pdm run api --port 8001
 
 # Launch with a custom host and port
-python -m insanely_fast_whisper_rocm.api --host 127.0.0.1 --port 9000
+pdm run api --host 127.0.0.1 --port 9000
 
 # Launch with multiple workers (disables reload)
-python -m insanely_fast_whisper_rocm.api --workers 4 --no-reload
+pdm run api --workers 4 --no-reload
 
 # Launch with auto-reload enabled (for development)
-python -m insanely_fast_whisper_rocm.api --reload
+pdm run api --reload
 
 # Launch with a specific log level (e.g., debug)
-python -m insanely_fast_whisper_rocm.api --log-level debug
+pdm run api --log-level debug
 
 # Launch in debug mode (enables debug logging for app and Uvicorn)
-python -m insanely_fast_whisper_rocm.api --debug
+pdm run api --debug
 
 # Launch with SSL (ensure dummy.key and dummy.crt exist or provide paths)
-# python -m insanely_fast_whisper_rocm.api --ssl-keyfile dummy.key --ssl-certfile dummy.crt
+# pdm run api --ssl-keyfile dummy.key --ssl-certfile dummy.crt
+
+# Note: `python -m insanely_fast_whisper_rocm.api` starts the API with
+# defaults from `insanely_fast_whisper_rocm/api/__main__.py` and does not
+# expose the Click options shown above.
 
 > **Note:** Docker Compose defaults map the API to port **8888** (production) and
 > **8889** (dev). The application itself defaults to **8000**, so ensure your
@@ -540,6 +566,7 @@ python -m insanely_fast_whisper_rocm.webui --port 7860 --host 0.0.0.0 --debug
 The CLI codebase was streamlined to eliminate hundreds of lines of duplicated `click` option declarations.
 
 - **`cli/common_options.py`** now exposes an `audio_options` decorator that injects all shared flags (model, device, batch-size, language, export settings, etc.) into any command.
+
 - **`cli/commands.py`** was rewritten so that `transcribe` and `translate` are *thin wrappers*:
 
   ```python
@@ -579,7 +606,7 @@ python -m insanely_fast_whisper_rocm.cli transcribe audio.mp3 --benchmark --benc
 **Key behaviors**:
 
 | Feature | Description |
-| ------- | ----------- |
+| -- | -- |
 | Transcript export behavior | Unchanged by `--benchmark`; exports follow `--export-format` (default: `json`). |
 | Timestamps | Unchanged by `--benchmark`; controlled by `--no-timestamps` and `--timestamp-type`. |
 | Output location | A JSON file is written to `benchmarks/` with name pattern `benchmark_<audio>_<task>_<timestamp>.json`. |
@@ -622,7 +649,7 @@ These diagnostics are consumed by both CLI tests (see
 `tests/core/test_srt_quality.py`, ensuring regressions surface quickly and any
 subtitle-quality issues can be traced back to specific segments.
 
----
+______________________________________________________________________
 
 The Command Line Interface is ideal for single-file processing, scripting, or quick tests. It supports multiple output formats and provides clear feedback on the transcription process.
 
@@ -634,12 +661,12 @@ Use `--stabilize` to refine timestamps with the [stable-ts](https://github.com/j
 
 The `--export-format` option controls the output file type. The following formats are available:
 
-| Format | Description                                       | Output Directory      |
-|--------|---------------------------------------------------|-----------------------|
-| `json` | (Default) Standard JSON output with transcription | `transcripts/`        |
-| `txt`  | Plain text                                        | `transcripts-txt/`    |
-| `srt`  | SubRip subtitle format (requires timestamps)      | `transcripts-srt/`    |
-| `all`  | Exports all three formats simultaneously          | (Respective above)    |
+| Format | Description | Output Directory |
+| -- | -- | -- |
+| `json` | (Default) Standard JSON output with transcription | `transcripts/` |
+| `txt` | Plain text | `transcripts-txt/` |
+| `srt` | SubRip subtitle format (requires timestamps) | `transcripts-srt/` |
+| `all` | Exports all three formats simultaneously | (Respective above) |
 
 #### Command Examples and Options
 
@@ -662,7 +689,7 @@ python -m insanely_fast_whisper_rocm.cli transcribe audio_file.mp3 --debug
 
 Consult `python -m insanely_fast_whisper_rocm.cli --help` for a full list of commands and options.
 
----
+______________________________________________________________________
 
 ## Debug Logging
 
@@ -729,7 +756,7 @@ DEBUG:insanely_fast_whisper_rocm.core.segmentation:After merge_short_segments: 1
 DEBUG:insanely_fast_whisper_rocm.core.segmentation:segment_words returning 10 final segments
 ```
 
----
+______________________________________________________________________
 
 ## SRT Formatting Pipeline Architecture
 
@@ -804,18 +831,21 @@ The entry point for SRT/VTT generation and quality segment building.
 **Key Functions:**
 
 - **`SrtFormatter.format(result)`** / **`VttFormatter.format(result)`**
+
   - Entry point for formatting transcription results
   - Checks `USE_READABLE_SUBTITLES` flag to enable/disable advanced pipeline
   - Routes to word-level or chunk-based processing
   - Applies hyphen normalization for better readability
 
 - **`_result_to_words(result)`**
+
   - Extracts word-level timestamps from various ASR result formats
   - Supports both `chunks` and `segments` keys
   - Heuristic: Uses average duration < 1.5s to distinguish words from sentences
   - Returns `list[Word]` or `None`
 
 - **`build_quality_segments(result)`**
+
   - Creates segments suitable for quality scoring and benchmarking
   - Uses segmentation pipeline when word timestamps available
   - Falls back to raw chunks/segments with validation
@@ -844,11 +874,12 @@ The core segmentation engine that implements readability rules.
 class Word:
     text: str
     start: float  # seconds
-    end: float    # seconds
+    end: float  # seconds
+
 
 @dataclass
 class Segment:
-    text: str        # May contain \n for line breaks
+    text: str  # May contain \n for line breaks
     start: float
     end: float
     words: list[Word]
@@ -857,7 +888,7 @@ class Segment:
 **Key Functions:**
 
 | Function | Purpose | Input | Output |
-| -------- | ------- | ----- | ------ |
+| -- | -- | -- | -- |
 | `segment_words()` | Orchestrates full pipeline | `list[Word]` | `list[Segment]` |
 | `_expand_multi_token_words()` | Splits multi-word tokens | `list[Word]` | `list[Word]` |
 | `_sanitize_words_timing()` | Enforces monotonic timing | `list[Word]` | `list[Word]` |
@@ -899,7 +930,7 @@ Centralized configuration for all segmentation parameters.
 **Subtitle Readability Constants:**
 
 | Constant | Default | Description |
-| -------- | ------- | ----------- |
+| -- | -- | -- |
 | `USE_READABLE_SUBTITLES` | `true` | Master switch for advanced pipeline |
 | `MAX_LINE_CHARS` | `42` | Maximum characters per line |
 | `MAX_LINES_PER_BLOCK` | `2` | Maximum lines per subtitle block |
@@ -941,16 +972,19 @@ Centralized timestamp validation and normalization utilities.
 **Key Functions:**
 
 - **`validate_timestamps(segments)`**
+
   - Sorts segments by start time
   - Fixes overlapping timestamps
   - Removes invalid segments
   - Used in fallback formatting path
 
 - **`normalize_timestamp_format(data)`**
+
   - Converts between chunk/segment formats
   - Normalizes timestamp representations
 
 - **`extract_timestamps(segment)`**
+
   - Extracts start/end from various formats
   - Handles both tuple and field-based timestamps
 
@@ -967,10 +1001,12 @@ Time formatting utilities for subtitle timestamps.
 **Key Functions:**
 
 - **`format_srt_time(seconds: float) -> str`**
+
   - Converts seconds to SRT format: `HH:MM:SS,mmm`
   - Example: `90.5` → `00:01:30,500`
 
 - **`format_vtt_time(seconds: float) -> str`**
+
   - Converts seconds to WebVTT format: `HH:MM:SS.mmm`
   - Example: `90.5` → `00:01:30.500`
 
@@ -1049,8 +1085,8 @@ To change line length limits:
 
 ```python
 # In .env or environment
-MAX_LINE_CHARS=50  # Increase from 42
-MAX_BLOCK_CHARS=100  # Increase proportionally
+MAX_LINE_CHARS = 50  # Increase from 42
+MAX_BLOCK_CHARS = 100  # Increase proportionally
 ```
 
 Or programmatically in tests:
@@ -1087,6 +1123,7 @@ To add custom split points (e.g., semicolons):
    ```
 
 2. Update `_split_at_clause_boundaries()` for custom clause markers
+
 3. Add new boundary words to `SOFT_BOUNDARY_WORDS` in constants
 
 #### Disabling Advanced Pipeline
@@ -1142,7 +1179,7 @@ When modifying segmentation logic:
 ### Common Issues & Solutions
 
 | Issue | Cause | Solution |
-| ----- | ----- | -------- |
+| -- | -- | -- |
 | Segments too long | MAX_SEGMENT_DURATION_SEC too high | Reduce in constants.py |
 | Too many short segments | MIN_SEGMENT_DURATION_SEC too high | Decrease threshold |
 | CPS violations | Unrealistic ASR timing | Enable timestamp stabilization (--stabilize) |
@@ -1156,7 +1193,7 @@ When modifying segmentation logic:
 - **`cli/commands.py`**: CLI flags like `--stabilize` influence upstream word quality
 - **`api/routes.py`**: API endpoints expose `timestamp_type` and stabilization options
 
----
+______________________________________________________________________
 
 ### Quiet Mode (`--quiet`)
 
@@ -1187,7 +1224,7 @@ python -m insanely_fast_whisper_rocm.cli transcribe audio.mp3 \
   --quiet
 ```
 
----
+______________________________________________________________________
 
 ## Dependency Management with PDM
 
@@ -1228,19 +1265,21 @@ Notes for ROCm users:
   - **`dependencies`**: Lists core runtime dependencies required for the application to function.
   - **`optional-dependencies`**: Defines groups of dependencies that are not required for the core functionality but can be installed for specific purposes. Key groups include:
     - `dev`: Tools for development, such as linters (`ruff`), testing frameworks (`pytest`, `pytest-cov`), and other utilities.
-    - `rocm-6-4-1`: Dependencies for AMD ROCm v6.4.1 GPU support, including PyTorch 2.5.0-2.8.0, torchaudio 2.5.0-2.8.0, onnxruntime-rocm, and pytorch-triton-rocm.
-    - `rocm-7-0`: Dependencies for AMD ROCm v7.0 GPU support, including PyTorch 2.8.0, torchaudio 2.8.0, onnxruntime-rocm, and pytorch-triton-rocm.
+    - `rocm-6-4-1`: Dependencies for AMD ROCm v6.4.1 GPU support with pinned torch/torchaudio and runtime versions.
+    - `rocm-7-0`: Dependencies for AMD ROCm v7.0 GPU support with pinned torch/torchaudio and runtime versions.
     - `bench`: Benchmarking utilities including `pyamdgpuinfo` for GPU metrics.
 
 #### ROCm Version-Specific Dependency Groups
 
 The project provides separate dependency groups for different ROCm versions to ensure compatibility:
 
-- **`rocm-6-4-1`**: For ROCm 6.4.1 with PyTorch 2.5.0-2.8.0
-  - Includes: `torch>=2.5.0,<2.8.0`, `torchaudio>=2.5.0,<2.8.0`, `onnxruntime-rocm`, `pytorch-triton-rocm>=3.2.0,<=3.3.1`
+- **`rocm-6-4-1`**: For ROCm 6.4.1 with pinned PyTorch/torchaudio/runtime versions.
 
-- **`rocm-7-0`**: For ROCm 7.0 with PyTorch 2.8.0
-  - Includes: `torch==2.8.0`, `torchaudio==2.8.0`, `onnxruntime-rocm==1.22.1`, `pytorch-triton-rocm==3.4.0`
+  - Includes pinned versions: `torch==2.6.0+rocm6.4.1.git1ded221d`, `torchaudio==2.6.0+rocm6.4.1.gitd8831425`, `onnxruntime-rocm==1.22.2.post1`, `pytorch-triton-rocm==3.3.1`.
+
+- **`rocm-7-0`**: For ROCm 7.0 with pinned PyTorch/torchaudio/runtime versions.
+
+  - Includes pinned versions: `torch==2.8.0+rocm7.0.0.git64359f59`, `torchaudio==2.8.0+rocm7.0.0.git6e1c7fe9`, `onnxruntime-rocm==1.22.1`, `pytorch-triton-rocm==3.4.0`.
 
 **Install ROCm dependencies:**
 
@@ -1263,32 +1302,32 @@ pdm install -G rocm-7-0,bench,dev
 
 1. **Install PDM**: If you don't have PDM, install it globally or per-user. A common method is:
 
-    ```bash
-    curl -sSL https://pdm-project.org/install-pdm.py | python3 -
-    ```
+   ```bash
+   curl -sSL https://pdm-project.org/install-pdm.py | python3 -
+   ```
 
-    Follow the instructions to add PDM to your PATH.
+   Follow the instructions to add PDM to your PATH.
 
 2. **Install Project Dependencies**: Navigate to the project root directory and run:
 
-    ```bash
-    pdm install
-    ```
+   ```bash
+   pdm install
+   ```
 
-    By default, this installs core dependencies. To include optional groups:
+   By default, this installs core dependencies. To include optional groups:
 
-    ```bash
-    # Install core + development tools
-    pdm install -G dev
+   ```bash
+   # Install core + development tools
+   pdm install -G dev
 
-    # Install core + ROCm v6.4.1 support
-    pdm install -G rocm-6-4-1
+   # Install core + ROCm v6.4.1 support
+   pdm install -G rocm-6-4-1
 
-    # Install core + development tools + ROCm v7.0 support
-    pdm install -G dev -G rocm-7-0
-    ```
+   # Install core + development tools + ROCm v7.0 support
+   pdm install -G dev -G rocm-7-0
+   ```
 
-    PDM creates a `.venv` directory for the virtual environment and a `pdm.lock` file to ensure deterministic builds.
+   PDM creates a `.venv` directory for the virtual environment and a `pdm.lock` file to ensure deterministic builds.
 
 ### Common PDM Commands
 
@@ -1314,24 +1353,24 @@ Ideally, these `requirements.txt` files can be generated from `pdm.lock` using `
 # Export default dependencies
 pdm export -o requirements.txt --without-hashes --prod
 
-# Export a specific group (e.g., rocm)
-pdm export -G rocm-7-0,bench -o requirements-rocm-v7-0.txt --without-hashes 
+# Export ROCm v7.0 dependencies used by containers (includes diarization)
+pdm export -G rocm-7-0,bench,diarization -o requirements-rocm-v7-0.txt --without-hashes
 
-# Export a specific group (e.g., rocm)
-pdm export -G rocm-6-4-1,bench -o requirements-rocm-v6-4-1.txt --without-hashes
+# Export ROCm v6.4.1 dependencies used by containers (includes diarization)
+pdm export -G rocm-6-4-1,bench,diarization -o requirements-rocm-v6-4-1.txt --without-hashes
 
 # Export development dependencies
 pdm export -G dev -o requirements-dev.txt --without-hashes --no-default
 
-# Export all dependencies
-pdm export -G rocm-7-0,bench,dev -o requirements-all.txt --without-hashes --no-extras
+# Export all dependencies used by the dev container
+pdm export -G rocm-7-0,bench,dev,diarization -o requirements-all.txt --without-hashes --no-extras
 ```
 
 This practice helps keep them synchronized with the PDM-managed dependencies.
 
 > **PyTorch Note**: Due to PyTorch's specific index URL requirements for different compute platforms (CPU, CUDA, ROCm), its installation is carefully managed within PDM's dependency groups or via the `requirements-*.txt` files to ensure the correct version is fetched. PDM can handle custom source URLs if needed, which should be configured in [`pyproject.toml`](pyproject.toml).
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -1352,7 +1391,7 @@ This practice helps keep them synchronized with the PDM-managed dependencies.
 - CLI → friendly messages
 - WebUI → visual feedback
 
----
+______________________________________________________________________
 
 ## Development Guidelines
 
@@ -1375,26 +1414,23 @@ pdm run pytest --maxfail=1 -q
 These tests target the Gradio WebUI using `gradio_client`.
 
 ```bash
-# Only run WebUI tests (marked `webui`)
-pytest -m webui
+# Run WebUI integration tests (explicit opt-in)
+RUN_WEBUI_TESTS=1 pdm run pytest tests/webui -q
 ```
 
 Details:
 
-- Requires `gradio-client>=0.7.0` (already part of the core deps).
-- Session-scoped fixture `webui_server` (see `tests/conftest.py`) launches the WebUI once on port 7861 with the tiny Whisper model for speed.
-- Tests auto-skip when the sample media files are absent.
-- Custom marker `webui` is registered via `pytest.ini`:
+- Requires `gradio_client` (provided by the `gradio` dependency used by this project).
 
-```ini
-[pytest]
-markers =
-    webui: integration tests that spin up the Gradio WebUI
-```
+- Session-scoped fixture `webui_server` (see `tests/conftest.py`) launches the WebUI once on port 7861 with the tiny Whisper model for speed.
+
+- Tests auto-skip when the sample media files are absent.
+
+- WebUI server tests are guarded by `RUN_WEBUI_TESTS=1` in `tests/conftest.py`.
 
 Average runtime < 10 s on a laptop-class GPU.
 
----
+______________________________________________________________________
 
 ## Deployment Options
 
@@ -1421,7 +1457,7 @@ The project includes Docker configurations for both production and development e
 - WebUI: [http://localhost:7860](http://localhost:7860)
 - API (when enabled): [http://localhost:8888/docs](http://localhost:8888/docs)
 
----
+______________________________________________________________________
 
 ## Monitoring & Security
 
@@ -1430,7 +1466,7 @@ The project includes Docker configurations for both production and development e
 - Logs to stdout or file via YAML config
 - Rate limiting and auth should be implemented in prod
 
----
+______________________________________________________________________
 
 ## Import Standardization
 
@@ -1452,14 +1488,14 @@ from insanely_fast_whisper_rocm.utils.constants import WHISPER_MODEL
 - Improved code maintainability
 - Consistent import patterns across the codebase
 
-*See [v0.2.1 changelog in VERSIONS.md](VERSIONS.md#v021---may-29-30-2025) for implementation details.*
+*See [v0.2.1 changelog in VERSIONS.md](VERSIONS.md#v021---29-05-2025) for implementation details.*
 
----
+______________________________________________________________________
 
 ## 📄 License
 
 MIT License – see `LICENSE` file.
 
----
+______________________________________________________________________
 
 **Always update this file when code or configuration changes.**

@@ -40,5 +40,31 @@ class TranscriptionCancelledError(TranscriptionError):
     """Raised when transcription is cancelled by the caller."""
 
 
+class DiarizationError(TranscriptionError):
+    """Raised when speaker diarization fails.
+
+    Attributes:
+        model: The diarization model name that was requested.
+        reason: Short description of why diarization failed.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        model: str | None = None,
+        reason: str | None = None,
+    ) -> None:
+        """Initialize the DiarizationError.
+
+        Args:
+            message: Error message.
+            model: Optional diarization model identifier.
+            reason: Optional short reason for the failure.
+        """
+        super().__init__(message)
+        self.model = model
+        self.reason = reason
+
+
 class DeviceNotFoundError(TranscriptionError):
     """Custom exception raised when a requested compute device is not available."""

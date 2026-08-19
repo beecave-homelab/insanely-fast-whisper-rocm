@@ -138,6 +138,38 @@ def audio_options(func: Callable[..., None]) -> Callable[..., None]:
             help="VAD probability threshold used when --vad is enabled",
             show_default=True,
         ),
+        # Diarization options
+        click.option(
+            "--diarize/--no-diarize",
+            default=constants.DEFAULT_DIARIZE,
+            help="Enable speaker diarization via pyannote.audio",
+            show_default=True,
+        ),
+        click.option(
+            "--num-speakers",
+            type=click.IntRange(constants.MIN_SPEAKERS, constants.MAX_SPEAKERS),
+            default=None,
+            help="Exact number of speakers (auto-detect if not set)",
+        ),
+        click.option(
+            "--min-speakers",
+            type=click.IntRange(constants.MIN_SPEAKERS, constants.MAX_SPEAKERS),
+            default=None,
+            help="Minimum number of speakers for diarization",
+        ),
+        click.option(
+            "--max-speakers",
+            type=click.IntRange(constants.MIN_SPEAKERS, constants.MAX_SPEAKERS),
+            default=None,
+            help="Maximum number of speakers for diarization",
+        ),
+        click.option(
+            "--diarization-device",
+            type=click.Choice(["cpu", "cuda", "gpu"], case_sensitive=False),
+            default=constants.DEFAULT_DIARIZATION_DEVICE,
+            help="Device for diarization pipeline (cpu, cuda, or gpu)",
+            show_default=True,
+        ),
         click.option(
             "--debug",
             is_flag=True,

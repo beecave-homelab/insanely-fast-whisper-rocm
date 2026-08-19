@@ -13,7 +13,7 @@ import os
 import signal
 import sys
 import time
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +27,7 @@ from insanely_fast_whisper_rocm.cli.progress_tqdm import TqdmProgressReporter
 from insanely_fast_whisper_rocm.core.cancellation import CancellationToken
 from insanely_fast_whisper_rocm.core.errors import (
     DeviceNotFoundError,
+    DiarizationError,
     TranscriptionCancelledError,
     TranscriptionError,
 )
@@ -53,7 +54,8 @@ except ModuleNotFoundError:  # pragma: no cover
         *,
         demucs: bool = False,
         vad: bool = False,
-        vad_threshold: float | None = None,
+        vad_threshold: float = 0.35,
+        progress_cb: Callable[[str], None] | None = None,
     ) -> dict[str, Any]:
         """Raise a helpful error when stable-ts integration is unavailable.
 
@@ -62,8 +64,8 @@ except ModuleNotFoundError:  # pragma: no cover
                 is missing from the current installation.
         """
         raise RuntimeError(
-            "stable-ts integration is not installed; reinstall with the extra"
-            " dependencies to enable --stabilize support."
+            "stable-ts integration is not installed; reinstall with the "
+            + "extra dependencies to enable --stabilize support."
         )
 
 
@@ -133,7 +135,7 @@ def translate(audio_file: Path, **kwargs: object) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def _is_stabilization_corrupt(segments: list[dict]) -> bool:
+def _is_stabilization_corrupt(segments: list[dict[str, Any]]) -> bool:
     """Check if the stabilized segments appear to be corrupt.
 
     Returns:
@@ -180,6 +182,12 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
     demucs: bool = kwargs.pop("demucs")
     vad: bool = kwargs.pop("vad")
     vad_threshold: float = kwargs.pop("vad_threshold")
+    # Diarization options
+    diarize: bool = kwargs.pop("diarize", False)
+    num_speakers: int | None = kwargs.pop("num_speakers", None)
+    min_speakers: int | None = kwargs.pop("min_speakers", None)
+    max_speakers: int | None = kwargs.pop("max_speakers", None)
+    diarization_device: str = kwargs.pop("diarization_device", "cpu")
 
     debug: bool = kwargs.pop("debug", False)
     quiet: bool = kwargs.pop("quiet", False)
@@ -259,6 +267,11 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
             "vad_threshold": vad_threshold,
             "debug": debug,
             "quiet": quiet,
+            "diarize": diarize,
+            "num_speakers": num_speakers,
+            "min_speakers": min_speakers,
+            "max_speakers": max_speakers,
+            "diarization_device": diarization_device,
             "progress": progress_enabled,
             "no_timestamps": no_timestamps,
             "export_format": export_format,
@@ -288,7 +301,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
     if audio_file.suffix.lower() in constants.SUPPORTED_VIDEO_FORMATS:
         try:
             reporter.on_postprocess_started("extract-audio")
-            audio_file = extract_audio_from_video(video_path=audio_file)
+            audio_file = Path(extract_audio_from_video(video_path=str(audio_file)))
             temp_files.append(audio_file)
         finally:
             reporter.on_postprocess_finished("extract-audio")
@@ -363,8 +376,8 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
                 ):
                     if not quiet:
                         click.secho(
-                            "⚠️  Stabilization produced corrupted timestamps. "
-                            "Falling back to original.",
+                            "⚠️  Stabilization produced corrupted timestamps."
+                            + " Falling back to original.",
                             fg="yellow",
                         )
                     result = original_result
@@ -391,13 +404,54 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
 
         _ensure_not_cancelled()
 
+        # Optional diarization post-processing
+        if diarize:
+            _ensure_not_cancelled()
+            from insanely_fast_whisper_rocm.core.integrations.diarization import (
+                diarize as diarize_result,
+            )
+
+            reporter.on_postprocess_started("diarization")
+            try:
+                _ensure_not_cancelled()
+                result = diarize_result(
+                    result,
+                    audio_path=str(audio_file),
+                    num_speakers=num_speakers,
+                    min_speakers=min_speakers,
+                    max_speakers=max_speakers,
+                    device=diarization_device,
+                    hf_token=constants.HF_TOKEN,
+                )
+            except DiarizationError as exc:
+                result["diarized"] = False
+                result["diarization_error"] = str(exc)
+                if not quiet:
+                    click.secho(
+                        f"\u26a0\ufe0f  Diarization failed: {exc}",
+                        fg="yellow",
+                    )
+            except Exception as exc:  # pragma: no cover — defensive
+                result["diarized"] = False
+                result["diarization_error"] = str(exc)
+                if not quiet:
+                    click.secho(
+                        f"\u26a0\ufe0f  Diarization failed: {exc}",
+                        fg="yellow",
+                    )
+            finally:
+                reporter.on_postprocess_finished("diarization")
+
+        _ensure_not_cancelled()
+
         # INFO-level summary (lazy logging) — skip when quiet
         if not quiet:
             logger.info(
-                "Segments: %s | Stabilized: %s (%s)",
+                "Segments: %s | Stabilized: %s (%s) | Diarized: %s",
                 result.get("segments_count"),
                 bool(result.get("stabilized")),
                 result.get("stabilization_path", "n/a"),
+                bool(result.get("diarized")),
             )
 
         total_time = time.time() - start_time
@@ -552,8 +606,8 @@ def _handle_output_and_benchmarks(
         formats_to_export = (export_format,)
 
     logger.debug(
-        "_handle_output_and_benchmarks: task=%s, export_format=%s, "
-        "formats_to_export=%s, benchmark_enabled=%s",
+        "_handle_output_and_benchmarks: task=%s, export_format=%s,"
+        + " formats_to_export=%s, benchmark_enabled=%s",
         task,
         export_format,
         formats_to_export,
@@ -567,6 +621,9 @@ def _handle_output_and_benchmarks(
         # Prefer the stable-ts key name
         "segments": result.get("segments") or result.get("chunks", []),
         "chunks": result.get("chunks", []),
+        "diarized": bool(result.get("diarized", False)),
+        "diarization_error": result.get("diarization_error"),
+        "stabilized": result.get("stabilized"),
         "metadata": {
             "audio_file": str(audio_file.resolve()),
             "total_time_seconds": round(total_time, 2),
@@ -709,4 +766,4 @@ def _handle_output_and_benchmarks(
     # Cleanup                                                            #
     # ------------------------------------------------------------------ #
     if temp_files:
-        cleanup_temp_files(temp_files)
+        cleanup_temp_files([str(f) for f in temp_files])

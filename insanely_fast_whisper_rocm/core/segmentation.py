@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+from collections import Counter
 
 from insanely_fast_whisper_rocm.utils import constants
 
@@ -12,21 +13,38 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class Word:
-    """Represents a single word with timing information."""
+    """Represents a single word with timing information.
+
+    Attributes:
+        text: Word text content.
+        start: Word start time in seconds.
+        end: Word end time in seconds.
+        speaker: Optional speaker label assigned to this word.
+    """
 
     text: str
     start: float
     end: float
+    speaker: str | None = None
 
 
 @dataclasses.dataclass
 class Segment:
-    """Represents a subtitle segment with formatted text and timing."""
+    """Represents a subtitle segment with formatted text and timing.
+
+    Attributes:
+        text: Formatted segment text.
+        start: Segment start time in seconds.
+        end: Segment end time in seconds.
+        words: List of Word objects with per-word timestamps.
+        speaker: Optional speaker label (majority speaker from words).
+    """
 
     text: str
     start: float
     end: float
     words: list[Word]
+    speaker: str | None = None
 
 
 def _expand_multi_token_words(words: list[Word]) -> list[Word]:
@@ -59,7 +77,7 @@ def _expand_multi_token_words(words: list[Word]) -> list[Word]:
                 end = start + dur
             else:
                 end = w.end
-            expanded.append(Word(text=tok, start=start, end=end))
+            expanded.append(Word(text=tok, start=start, end=end, speaker=w.speaker))
             start = end
 
     return expanded
@@ -90,9 +108,24 @@ def _sanitize_words_timing(words: list[Word]) -> list[Word]:
         end = w.end
         if end <= start:
             end = start + eps
-        sanitized.append(Word(text=w.text, start=start, end=end))
+        sanitized.append(Word(text=w.text, start=start, end=end, speaker=w.speaker))
         prev_end = end
     return sanitized
+
+
+def _majority_speaker(words: list[Word]) -> str | None:
+    """Return the most common speaker label among *words*, or ``None``.
+
+    Args:
+        words: List of Word objects to analyse for speaker labels.
+
+    Returns:
+        The most common speaker label, or ``None`` if no speakers are present.
+    """
+    speakers = [w.speaker for w in words if w.speaker is not None]
+    if not speakers:
+        return None
+    return Counter(speakers).most_common(1)[0][0]
 
 
 def segment_words(words: list[Word]) -> list[Segment]:
@@ -124,6 +157,7 @@ def segment_words(words: list[Word]) -> list[Segment]:
         wrapped = split_lines(txt)
         lines = wrapped.split("\n")
         sent_dur = sentence[-1].end - sentence[0].start
+        speaker = _majority_speaker(sentence)
 
         logger.debug(
             "Processing sentence: dur=%.2fs, len=%d chars, text=%r",
@@ -146,6 +180,7 @@ def segment_words(words: list[Word]) -> list[Segment]:
                     start=sentence[0].start,
                     end=sentence[-1].end,
                     words=sentence,
+                    speaker=speaker,
                 )
             )
         elif not _respect_limits(sentence):
@@ -163,6 +198,7 @@ def segment_words(words: list[Word]) -> list[Segment]:
                         start=clause[0].start,
                         end=clause[-1].end,
                         words=clause,
+                        speaker=_majority_speaker(clause),
                     )
                 )
                 logger.debug("  -> Clause: dur=%.2fs", clause_dur)
@@ -174,6 +210,7 @@ def segment_words(words: list[Word]) -> list[Segment]:
                     start=sentence[0].start,
                     end=sentence[-1].end,
                     words=sentence,
+                    speaker=speaker,
                 )
             )
     logger.debug("Before merge_short_segments: %d segments", len(segments))
@@ -674,6 +711,7 @@ def _reapply_character_limits(segments: list[Segment]) -> list[Segment]:
                         start=sub_seg_words[0].start,
                         end=sub_seg_words[-1].end,
                         words=sub_seg_words,
+                        speaker=_majority_speaker(sub_seg_words),
                     )
                 )
 
@@ -830,6 +868,7 @@ def _merge_short_segments(segments: list[Segment]) -> list[Segment]:
             start=seg.start,
             end=seg.end,
             words=list(seg.words),
+            speaker=seg.speaker,
         )
 
     current_segment = _clone_segment(segments[0])
@@ -858,6 +897,7 @@ def _merge_short_segments(segments: list[Segment]) -> list[Segment]:
                     start=current_segment.start,
                     end=next_segment.end,
                     words=combined_words,
+                    speaker=_majority_speaker(combined_words),
                 )
             else:
                 # Merging would exceed duration limit, finalize current and move on
@@ -921,10 +961,19 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
             max_chars_per_chunk = int(
                 constants.MAX_CPS * constants.MAX_SEGMENT_DURATION_SEC
             )
+            # Build a parallel list mapping each token to its original
+            # word's speaker so synthetic chunks preserve per-word speaker
+            # labels instead of collapsing to the segment-level majority.
+            token_speakers: list[str | None] = []
+            for w in words:
+                for _ in w.text.split():
+                    token_speakers.append(w.speaker)
+
             tokens = seg_text.split()
             cur_tokens: list[str] = []
+            cur_start_idx = 0
             current_time = words[0].start
-            for tok in tokens:
+            for tok_idx, tok in enumerate(tokens):
                 tentative = (" ".join(cur_tokens + [tok])).strip()
                 if cur_tokens and len(tentative) > max_chars_per_chunk:
                     chunk_text = " ".join(cur_tokens)
@@ -936,13 +985,34 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                     dur = min(dur, constants.MAX_SEGMENT_DURATION_SEC)
                     end_time = current_time + dur
 
+                    # Derive chunk speaker from contributing original words.
+                    spk_slice = token_speakers[
+                        cur_start_idx : cur_start_idx + len(cur_tokens)
+                    ]
+                    chunk_speaker: str | None = None
+                    if spk_slice:
+                        # Pick the most common non-None speaker; fall back
+                        # to seg.speaker if all are None.
+                        non_none = [s for s in spk_slice if s is not None]
+                        if non_none:
+                            chunk_speaker = max(set(non_none), key=non_none.count)
+                        else:
+                            chunk_speaker = seg.speaker
+
                     # Build synthetic words with evenly split timing.
                     chunk_tokens = chunk_text.split()
                     per = (end_time - current_time) / max(len(chunk_tokens), 1)
                     chunk_words = []
                     t0 = current_time
                     for ct in chunk_tokens:
-                        chunk_words.append(Word(text=ct, start=t0, end=t0 + per))
+                        chunk_words.append(
+                            Word(
+                                text=ct,
+                                start=t0,
+                                end=t0 + per,
+                                speaker=chunk_speaker,
+                            )
+                        )
                         t0 += per
 
                     enforced.append(
@@ -951,10 +1021,12 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                             start=current_time,
                             end=end_time,
                             words=chunk_words,
+                            speaker=chunk_speaker,
                         )
                     )
                     current_time = end_time
                     cur_tokens = [tok]
+                    cur_start_idx = tok_idx
                 else:
                     cur_tokens.append(tok)
 
@@ -967,12 +1039,32 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                 # Cap duration to not exceed maximum segment duration
                 dur = min(dur, constants.MAX_SEGMENT_DURATION_SEC)
                 end_time = current_time + dur
+
+                # Derive chunk speaker from contributing original words.
+                spk_slice = token_speakers[
+                    cur_start_idx : cur_start_idx + len(cur_tokens)
+                ]
+                chunk_speaker: str | None = None
+                if spk_slice:
+                    non_none = [s for s in spk_slice if s is not None]
+                    if non_none:
+                        chunk_speaker = max(set(non_none), key=non_none.count)
+                    else:
+                        chunk_speaker = seg.speaker
+
                 chunk_tokens = chunk_text.split()
                 per = (end_time - current_time) / max(len(chunk_tokens), 1)
                 chunk_words = []
                 t0 = current_time
                 for ct in chunk_tokens:
-                    chunk_words.append(Word(text=ct, start=t0, end=t0 + per))
+                    chunk_words.append(
+                        Word(
+                            text=ct,
+                            start=t0,
+                            end=t0 + per,
+                            speaker=chunk_speaker,
+                        )
+                    )
                     t0 += per
 
                 enforced.append(
@@ -981,6 +1073,7 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                         start=current_time,
                         end=end_time,
                         words=chunk_words,
+                        speaker=chunk_speaker,
                     )
                 )
 
@@ -1033,6 +1126,7 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                     start=chunk[0].start,
                     end=chunk[-1].end,
                     words=chunk,
+                    speaker=_majority_speaker(chunk),
                 )
             )
             start_idx = end_idx + 1
@@ -1077,6 +1171,7 @@ def _enforce_duration_limits(segments: list[Segment]) -> list[Segment]:
                     start=chunk_words[0].start,
                     end=chunk_words[-1].end,
                     words=list(chunk_words),
+                    speaker=_majority_speaker(chunk_words),
                 )
             )
             chunk_words = [word]
@@ -1096,6 +1191,7 @@ def _enforce_duration_limits(segments: list[Segment]) -> list[Segment]:
                         start=combined_words[0].start,
                         end=combined_words[-1].end,
                         words=combined_words,
+                        speaker=_majority_speaker(combined_words),
                     )
                 )
                 continue
@@ -1107,6 +1203,7 @@ def _enforce_duration_limits(segments: list[Segment]) -> list[Segment]:
                 start=chunk_words[0].start,
                 end=chunk_words[-1].end,
                 words=list(chunk_words),
+                speaker=_majority_speaker(chunk_words),
             )
         )
 
@@ -1135,15 +1232,31 @@ def _ensure_monotonic_segments(segments: list[Segment]) -> list[Segment]:
             start += shift
             end += shift
             words = [
-                Word(text=w.text, start=w.start + shift, end=w.end + shift)
+                Word(
+                    text=w.text,
+                    start=w.start + shift,
+                    end=w.end + shift,
+                    speaker=w.speaker,
+                )
                 for w in words
             ]
 
         if end < start:
             end = start
-            words = [Word(text=w.text, start=start, end=start) for w in words]
+            words = [
+                Word(text=w.text, start=start, end=start, speaker=w.speaker)
+                for w in words
+            ]
 
-        adjusted.append(Segment(text=seg.text, start=start, end=end, words=words))
+        adjusted.append(
+            Segment(
+                text=seg.text,
+                start=start,
+                end=end,
+                words=words,
+                speaker=seg.speaker,
+            )
+        )
         prev_end = end
 
     return adjusted
@@ -1180,7 +1293,7 @@ def _maybe_expand_single_word(seg: Segment) -> Segment:
             end = start + dur
         else:
             end = w.end
-        new_words.append(Word(text=tok, start=start, end=end))
+        new_words.append(Word(text=tok, start=start, end=end, speaker=w.speaker))
         start = end
 
     return Segment(
@@ -1188,4 +1301,5 @@ def _maybe_expand_single_word(seg: Segment) -> Segment:
         start=new_words[0].start,
         end=new_words[-1].end,
         words=new_words,
+        speaker=seg.speaker,
     )

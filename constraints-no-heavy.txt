@@ -3,18 +3,23 @@
 # Usage:
 #   pip install -r requirements-reviewer.txt -c constraints-no-heavy.txt
 # or with PDM:
-#   pdm sync -G reviewer --no-editable --no-self -v -c constraints-no-heavy.txt
-# (Adjust command to your workflow; key is passing this constraints file.)
+#   pdm install -d -G reviewer --no-default --no-self \
+#     --override constraints-no-heavy.txt -L pdm-reviewer.lock
 
 # Torch ecosystem
 torch==0
 torchvision==0
 torchaudio==0
+torch-audiomentations==0
+torch-pitch-shift==0
+torchcodec==0
+torchmetrics==0
 
 # ONNX runtimes
 onnx==0
 onnxruntime==0
 onnxruntime-gpu==0
+onnxruntime-rocm==0
 
 # CTranslate2 (can be heavy or GPU)
 ctranslate2==0
@@ -30,6 +35,16 @@ flax==0
 # Other potential heavy backends/accelerators
 xgboost==0
 lightgbm==0
+accelerate==0
+demucs==0
+lightning==0
+openai-whisper==0
+optimum==0
+pyannote-audio==0
+pytorch-lightning==0
+pytorch-triton-rocm==0
+stable-ts==0
+triton==0
 
 # Optional: include cuda/toolkit meta-packages just in case
 nvidia-cuda-runtime-cu12==0
