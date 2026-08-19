@@ -125,9 +125,19 @@ def launch_webui(
 
     # Launch the interface
     logger.info("Launching WebUI on %s:%s", host, port)
+    # Include the effective configured transcripts dir so generated files
+    # remain serveable when WHISPER_TRANSCRIPTS_DIR points elsewhere.
+    # Preserve order while deduplicating (the default collides with "transcripts").
+    allowed_paths = list(
+        dict.fromkeys([
+            "temp_uploads",
+            "transcripts",
+            constants.DEFAULT_TRANSCRIPTS_DIR,
+        ])
+    )
     iface.launch(
         server_name=host,
         server_port=port,
         share=share,
-        allowed_paths=["temp_uploads", "transcripts"],
+        allowed_paths=allowed_paths,
     )

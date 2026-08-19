@@ -28,7 +28,6 @@ from insanely_fast_whisper_rocm.utils.constants import (
     MAX_BATCH_SIZE,
     MAX_SPEAKERS,
     MIN_BATCH_SIZE,
-    MIN_SPEAKERS,
     SUPPORTED_UPLOAD_FORMATS,
 )
 from insanely_fast_whisper_rocm.webui.handlers import (
@@ -67,7 +66,7 @@ class _StatusStreamingProgressProxy:
 
     @property
     def cancelled(self) -> bool:
-        """Return whether the underlying Gradio progress was cancelled."""
+        """Whether the underlying Gradio progress was cancelled."""
         return bool(getattr(self._progress, "cancelled", False))
 
     def __call__(
@@ -171,8 +170,8 @@ def _create_stabilization_ui(
 def _create_diarization_ui(
     *,
     default_diarize: bool = DEFAULT_DIARIZE,
-    default_min_speakers: int = MIN_SPEAKERS,
-    default_max_speakers: int = MAX_SPEAKERS,
+    default_min_speakers: int = 0,
+    default_max_speakers: int = 0,
 ) -> tuple[gr.Checkbox, gr.Slider, gr.Slider, gr.Slider, gr.Radio]:
     """Helper function to create speaker diarization UI components.
 
@@ -194,18 +193,18 @@ def _create_diarization_ui(
             label="Number of speakers (0 = auto-detect)",
         )
         min_speakers = gr.Slider(
-            minimum=MIN_SPEAKERS,
+            minimum=0,
             maximum=MAX_SPEAKERS,
             step=1,
             value=default_min_speakers,
-            label="Min speakers",
+            label="Min speakers (0 = auto-detect)",
         )
         max_speakers = gr.Slider(
-            minimum=MIN_SPEAKERS,
+            minimum=0,
             maximum=MAX_SPEAKERS,
             step=1,
             value=default_max_speakers,
-            label="Max speakers",
+            label="Max speakers (0 = auto-detect)",
         )
         diarization_device = gr.Radio(
             choices=["cpu", "cuda"],
@@ -323,12 +322,8 @@ def _process_transcription_request_wrapper(
     # Inject diarization options
     transcription_cfg.diarize = diarize
     transcription_cfg.num_speakers = num_speakers if num_speakers > 0 else None
-    transcription_cfg.min_speakers = (
-        None if min_speakers == MIN_SPEAKERS else min_speakers
-    )
-    transcription_cfg.max_speakers = (
-        None if max_speakers == MAX_SPEAKERS else max_speakers
-    )
+    transcription_cfg.min_speakers = min_speakers if min_speakers > 0 else None
+    transcription_cfg.max_speakers = max_speakers if max_speakers > 0 else None
     transcription_cfg.diarization_device = diarization_device
 
     final_result: tuple[object, ...] | None = None
@@ -344,7 +339,7 @@ def _process_transcription_request_wrapper(
                 file_handling_config=file_handling_cfg,
                 progress_tracker=cast(Any, progress_proxy),
             )
-        except Exception as exc:  # pragma: no cover - defensive passthrough
+        except Exception as exc:  # noqa: BLE001 - pragma: no cover - defensive passthrough to main thread
             final_error = exc
         finally:
             status_queue.put(_STATUS_STREAM_DONE)

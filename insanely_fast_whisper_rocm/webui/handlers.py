@@ -182,7 +182,7 @@ def _to_gradio_file_value(path: str | Path | None) -> str | None:
     return str(Path(path).resolve())
 
 
-def _is_stabilization_corrupt(segments: list[dict]) -> bool:
+def _is_stabilization_corrupt(segments: list[dict[str, Any]]) -> bool:
     """Check if the stabilized segments appear to be corrupt.
 
     Returns:
@@ -889,7 +889,11 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 continue
             status_output_val = f"Error processing {file_name_for_log}."
             transcription_output_val = f"Error processing {file_name_for_log}: {e}"
-            json_output_val = {"error": str(e), "file": file_name_for_log}
+            json_output_val = json.dumps(
+                {"error": str(e), "file": file_name_for_log},
+                indent=2,
+                ensure_ascii=False,
+            )
             raw_result_state_val = None
             return (
                 status_output_val,
@@ -936,11 +940,15 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
                 f"Unexpected error while processing {file_name_for_log}."
             )
             transcription_output_val = f"Unexpected error with {file_name_for_log}: {e}"
-            json_output_val = {
-                "error": str(e),
-                "file": file_name_for_log,
-                "details": "Check logs.",
-            }
+            json_output_val = json.dumps(
+                {
+                    "error": str(e),
+                    "file": file_name_for_log,
+                    "details": "Check logs.",
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
             raw_result_state_val = None
             return (
                 status_output_val,
@@ -957,7 +965,7 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         return (
             "No files processed.",
             "No files processed.",
-            {},
+            json.dumps({}, indent=2, ensure_ascii=False),
             {},
             dl_btn_hidden_update,  # zip_btn_update
             dl_btn_hidden_update,  # txt_btn_update
@@ -977,10 +985,14 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         transcription_output_val = (
             f"All {num_files} files failed to process.\nDetails:\n{error_summary_msg}"
         )
-        json_output_val = {
-            "summary": processed_files_summary,
-            "errors": [res for res in all_results_data if "error" in res],
-        }
+        json_output_val = json.dumps(
+            {
+                "summary": processed_files_summary,
+                "errors": [res for res in all_results_data if "error" in res],
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
         raw_result_state_val = None
         return (
             f"All {num_files} files failed.",
@@ -1365,7 +1377,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
     else:
         status_output_val = "No valid results to process."
         transcription_output_val = "No valid results to process."
-        json_output_val = {"error": "No results"}
+        json_output_val = json.dumps(
+            {"error": "No results"}, indent=2, ensure_ascii=False
+        )
         raw_result_state_val = None
         # All buttons remain hidden (dl_btn_hidden)
 
@@ -1374,13 +1388,13 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         progress_tracker(1.0, desc="Done")
 
     logger.info(
-        "WebUI response summary: transcription_text_len=%s json_keys=%s state=%s ",
+        "WebUI response summary: transcription_text_len=%s json_len=%s state=%s ",
         (
             len(transcription_output_val)
             if isinstance(transcription_output_val, str)
             else None
         ),
-        sorted(json_output_val.keys()) if isinstance(json_output_val, dict) else None,
+        len(json_output_val) if isinstance(json_output_val, str) else None,
         type(raw_result_state_val).__name__,
     )
 
