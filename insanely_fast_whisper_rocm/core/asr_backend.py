@@ -54,6 +54,11 @@ class HuggingFaceBackendConfig:
 class ASRBackend(ABC):  # pylint: disable=too-few-public-methods
     """Abstract base class for ASR backends."""
 
+    # Shared configuration contract. Concrete backends assign this in
+    # ``__init__``; declaring it here lets callers (pipeline, routes) access
+    # ``backend.config`` without per-subclass casts.
+    config: HuggingFaceBackendConfig
+
     @abstractmethod
     def process_audio(
         self,
@@ -94,12 +99,12 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         if "cuda" in self.effective_device and not torch.cuda.is_available():
             raise DeviceNotFoundError(
                 f"CUDA device {self.effective_device} requested but CUDA is not "
-                f"available. Try using 'cpu' instead."
+                + "available. Try using 'cpu' instead."
             )
         if self.effective_device == "mps" and not torch.backends.mps.is_available():
             raise DeviceNotFoundError(
                 "MPS device requested but MPS (Apple Silicon) is not available. "
-                "Try using 'cpu' instead."
+                + "Try using 'cpu' instead."
             )
 
     def _initialize_pipeline(self, progress_cb: ProgressCallback | None = None) -> None:
@@ -183,7 +188,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                     ):
                         logger.warning(
                             "Model load with SDPA failed on ROCm, retrying with "
-                            "attn_implementation='eager': %s",
+                            + "attn_implementation='eager': %s",
                             str(e_first),
                         )
                         model_load_kwargs["attn_implementation"] = "eager"
@@ -223,8 +228,8 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                                 str(e_to),
                             )
                             raise ModelLoadingOOMError(
-                                f"OOM moving model to "
-                                f"{self.effective_device}: {str(e_to)}",
+                                "OOM moving model to "
+                                + f"{self.effective_device}: {str(e_to)}",
                                 device=self.effective_device,
                                 config={"model": self.config.model_name},
                             ) from e_to
@@ -369,6 +374,9 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             self._initialize_pipeline(progress_cb=cb)
             if cancellation_token is not None:
                 cancellation_token.raise_if_cancelled()
+        # _initialize_pipeline populates asr_pipe; narrow for the type checker
+        # so attribute access below (e.g. self.asr_pipe.model) is sound.
+        assert self.asr_pipe is not None  # noqa: S101
 
         start_time = time.perf_counter()
 
@@ -398,7 +406,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 supports_timestamps = version_num >= 2
                 logger.debug(
                     "Distil-whisper version detection: last_part=%s, version_str=%s, "
-                    "version_num=%d, supports_timestamps=%s",
+                    + "version_num=%d, supports_timestamps=%s",
                     last_part,
                     version_str,
                     version_num,
@@ -458,7 +466,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
             chunk_length_value = None
             logger.debug(
                 "Disabling chunk_length_s for word-level timestamps to avoid "
-                "Transformers internal chunking conflict"
+                + "Transformers internal chunking conflict"
             )
 
         pipeline_kwargs: dict[str, Any] = {
@@ -518,14 +526,14 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         elif task != "transcribe" or language:
             logger.warning(
                 "Generation config for model %s lacks task/language mappings; "
-                "falling back to default transcription.",
+                + "falling back to default transcription.",
                 self.config.model_name,
             )
 
         try:
             logger.debug(
                 "Calling ASR pipeline: audio=%s, chunk_length_s=%s, batch_size=%d, "
-                "return_timestamps=%s",
+                + "return_timestamps=%s",
                 audio_file_path,
                 chunk_length_value,
                 self.config.batch_size,
@@ -556,8 +564,8 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                 logger.warning(
                     (
                         "Word-level timestamp extraction failed due to "
-                        "tensor size mismatch. Falling back to chunk-level "
-                        "timestamps for %s: %s"
+                        + "tensor size mismatch. Falling back to chunk-level "
+                        + "timestamps for %s: %s"
                     ),
                     audio_file_path,
                     str(e),
@@ -573,7 +581,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                     outputs = self.asr_pipe(str(audio_file_path), **fallback_kwargs)
                     logger.info(
                         "Successfully completed transcription with chunk-level "
-                        "timestamps fallback for %s",
+                        + "timestamps fallback for %s",
                         audio_file_path,
                     )
                 except (RuntimeError, OSError, ValueError, MemoryError) as fallback_e:
@@ -585,7 +593,7 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
                     )
                     raise TranscriptionError(
                         "Failed to transcribe audio even with fallback: "
-                        f"{str(fallback_e)}"
+                        + f"{str(fallback_e)}"
                     ) from fallback_e
             else:
                 # Re-raise other RuntimeErrors
@@ -618,14 +626,14 @@ class HuggingFaceBackend(ASRBackend):  # pylint: disable=too-few-public-methods
         segments = outputs.get("segments", chunks)
         logger.debug(
             "Raw ASR pipeline output: text_len=%d, chunks=%d, segments=%d, "
-            "elapsed=%.2fs",
+            + "elapsed=%.2fs",
             len(outputs.get("text", "")),
             len(chunks) if chunks else 0,
             len(segments) if segments else 0,
             elapsed_time,
         )
 
-        result = {
+        result: dict[str, Any] = {
             "text": outputs["text"].strip(),
             "chunks": chunks,  # Keep for backward compatibility
             "segments": segments,  # Normalize to 'segments'

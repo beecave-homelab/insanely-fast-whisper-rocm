@@ -4,12 +4,19 @@ Each integration is imported lazily by its consumers to avoid pulling
 optional dependencies (like pyannote.audio) at module load time.
 """
 
+from typing import TYPE_CHECKING
+
 from .stable_ts import stabilize_timestamps  # noqa: F401
 
-__all__ = [  # noqa: F822  # diarize/clear_diarization_cache via __getattr__
-    "stabilize_timestamps",
-    "diarize",
+if TYPE_CHECKING:
+    # Declared for type checkers only; at runtime these are re-exported lazily
+    # via __getattr__ to avoid importing pyannote.audio at module load time.
+    from .diarization import clear_diarization_cache, diarize
+
+__all__ = [
     "clear_diarization_cache",
+    "diarize",
+    "stabilize_timestamps",
 ]
 
 

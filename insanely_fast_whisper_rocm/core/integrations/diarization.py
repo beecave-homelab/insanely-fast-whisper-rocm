@@ -218,7 +218,7 @@ def _raise_load_error(model_name: str, exc: Exception) -> None:
     ) from exc
 
 
-def _is_rocm_miopen_runtime_error(exc: Exception) -> bool:
+def _is_retriable_gpu_runtime_error(exc: Exception) -> bool:
     """Return whether an exception is a ROCm/MIOpen or GPU OOM failure.
 
     Args:
@@ -257,13 +257,15 @@ def _clear_gpu_diarization_cache() -> None:
         keys_to_remove = []
         for key, cached_pipeline in _CACHE.items():
             device = key[1]
-            if isinstance(device, str) and device.lower() in {"cuda", "gpu"}:
+            if isinstance(device, str) and device == "cuda":
                 try:
                     import torch
 
                     cached_pipeline.to(torch.device("cpu"))
-                except Exception:
-                    pass
+                except Exception as exc:  # noqa: BLE001  # defensive: cleanup must not raise
+                    logger.debug(
+                        "Failed to move cached pipeline %s to CPU: %s", key, exc
+                    )
                 keys_to_remove.append(key)
         for key in keys_to_remove:
             _CACHE.pop(key, None)
@@ -273,8 +275,8 @@ def _clear_gpu_diarization_cache() -> None:
 
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001  # defensive: cache cleanup must not raise
+            logger.debug("Failed to empty CUDA cache after GPU cleanup: %s", exc)
         logger.info(
             "Cleared %d GPU diarization pipeline(s) from cache",
             len(keys_to_remove),
@@ -424,13 +426,22 @@ def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
         pyannote.
 
     Raises:
-        DiarizationError: If neither torchaudio nor ffmpeg can decode the
-            audio (reason ``audio_decode_unavailable``).
+        DiarizationError: If torchaudio cannot be imported, or if both
+            direct torchaudio loading and ffmpeg→torchaudio conversion
+            fail (reason ``audio_decode_unavailable``).
     """
     # Fast path: torchaudio can read it directly (WAV, FLAC, etc.)
     try:
         import torchaudio  # pyright: ignore[reportMissingTypeStubs]
+    except Exception as exc:
+        raise DiarizationError(
+            "Audio decode unavailable; torchaudio could not be imported."
+            + " Install torchaudio or torchcodec.",
+            model=DEFAULT_DIARIZATION_MODEL,
+            reason="audio_decode_unavailable",
+        ) from exc
 
+    try:
         started_at = time.perf_counter()
         waveform, sample_rate = torchaudio.load(audio_path)
         # Ensure mono — pyannote expects single-channel audio.
@@ -474,16 +485,16 @@ def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
                 capture_output=True,
                 text=True,
                 check=False,
-                timeout=DIARIZATION_FFMPEG_TIMEOUT_SECONDS or None,
+                timeout=DIARIZATION_FFMPEG_TIMEOUT_SECONDS,
             )
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as timeout_exc:
             raise DiarizationError(
                 "Audio decode unavailable; ffmpeg conversion timed out"
                 + f" for {audio_path}. Install torchcodec or provide"
                 + " WAV/FLAC input.",
                 model=DEFAULT_DIARIZATION_MODEL,
                 reason="audio_decode_unavailable",
-            )
+            ) from timeout_exc
 
         if result.returncode != 0:
             raise DiarizationError(
@@ -522,6 +533,59 @@ def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
 # --- Public API --------------------------------------------------------------
 
 
+def validate_speaker_config(
+    *,
+    num_speakers: int | None,
+    min_speakers: int | None,
+    max_speakers: int | None,
+) -> None:
+    """Validate speaker-count parameters before diarization inference.
+
+    Args:
+        num_speakers: Exact number of speakers (``None`` = auto-detect).
+        min_speakers: Minimum number of speakers (``None`` = unspecified).
+        max_speakers: Maximum number of speakers (``None`` = unspecified).
+
+    Raises:
+        DiarizationError: If any count is less than 1, if
+            ``num_speakers`` is combined with ``min_speakers`` or
+            ``max_speakers``, or if ``min_speakers > max_speakers``
+            (reason ``invalid_speaker_config``).
+    """
+    invalid_count = next(
+        (
+            count
+            for count in (num_speakers, min_speakers, max_speakers)
+            if count is not None and count < 1
+        ),
+        None,
+    )
+    if invalid_count is not None:
+        raise DiarizationError(
+            "Speaker counts must be greater than zero.",
+            model=DEFAULT_DIARIZATION_MODEL,
+            reason="invalid_speaker_config",
+        )
+    if num_speakers is not None and (
+        min_speakers is not None or max_speakers is not None
+    ):
+        raise DiarizationError(
+            "num_speakers cannot be combined with min_speakers or max_speakers.",
+            model=DEFAULT_DIARIZATION_MODEL,
+            reason="invalid_speaker_config",
+        )
+    if (
+        min_speakers is not None
+        and max_speakers is not None
+        and min_speakers > max_speakers
+    ):
+        raise DiarizationError(
+            "min_speakers cannot be greater than max_speakers.",
+            model=DEFAULT_DIARIZATION_MODEL,
+            reason="invalid_speaker_config",
+        )
+
+
 def diarize(
     result: dict[str, Any],
     audio_path: str,
@@ -552,9 +616,16 @@ def diarize(
         ``diarized`` set to ``True``.
 
     Raises:
-        DiarizationError: If pyannote is not installed, the HuggingFace
+        DiarizationError: If speaker count parameters are invalid or
+            conflicting, pyannote is not installed, the HuggingFace
             token is missing, or the model cannot be loaded.
     """
+    validate_speaker_config(
+        num_speakers=num_speakers,
+        min_speakers=min_speakers,
+        max_speakers=max_speakers,
+    )
+
     if Pipeline is None:
         raise DiarizationError(
             "Speaker diarization was requested but pyannote.audio is not installed. "
@@ -601,7 +672,7 @@ def diarize(
     # Run diarization.
     # Free GPU memory held by the ASR backend cache before inference —
     # on 8 GB cards the Whisper model and pyannote cannot coexist on GPU.
-    if device.lower() in {"cuda", "gpu"}:
+    if device == "cuda":
         invalidate_gpu_cache()
 
     logger.info(
@@ -625,17 +696,17 @@ def diarize(
             diarization_result = pipeline(audio_input, **kwargs)
             _log_timing("inference", started_at, device=device)
         except Exception as exc:
-            is_gpu_device = device.lower() in {"cuda", "gpu"}
+            is_gpu_device = device == "cuda"
             can_retry_cpu = (
                 DIARIZATION_ALLOW_CPU_FALLBACK
                 and is_gpu_device
-                and _is_rocm_miopen_runtime_error(exc)
+                and _is_retriable_gpu_runtime_error(exc)
             )
             if not can_retry_cpu:
                 raise
 
             logger.warning(
-                "Diarization failed on ROCm GPU with %s; retrying on CPU",
+                "Diarization failed on GPU with %s; retrying on CPU",
                 exc,
             )
             cpu_pipeline = _get_or_create_pipeline(
@@ -654,7 +725,7 @@ def diarize(
 
     # Free GPU memory held by the diarization pipeline after inference —
     # the ASR backend will need VRAM for the next transcription request.
-    if device.lower() in {"cuda", "gpu"}:
+    if device == "cuda":
         _clear_gpu_diarization_cache()
 
     # Extract speaker turns as (start, end, label) tuples.
@@ -673,7 +744,11 @@ def diarize(
 
     if not speaker_turns:
         logger.warning("Diarization produced no speaker turns")
-        return result
+        return {
+            **result,
+            "diarized": False,
+            "diarization_error": "Diarization produced no speaker turns.",
+        }
 
     # Align speakers to chunks, falling back to segments when chunks are
     # absent (e.g. after stabilization removes the ``chunks`` key).
@@ -682,7 +757,13 @@ def diarize(
 
     if not chunks and not segments:
         logger.warning("No chunks or segments in result - nothing to diarize")
-        return result
+        return {
+            **result,
+            "diarized": False,
+            "diarization_error": (
+                "No chunks or segments available for speaker alignment."
+            ),
+        }
 
     # Use chunks as the primary alignment target; fall back to segments.
     primary = chunks if chunks else segments
