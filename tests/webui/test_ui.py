@@ -234,6 +234,8 @@ class TestProcessTranscriptionRequestWrapper:
         assert transcription_cfg.demucs is False
         assert transcription_cfg.vad is True
         assert transcription_cfg.vad_threshold == 0.35
+        assert transcription_cfg.min_speakers == 1
+        assert transcription_cfg.max_speakers == 10
 
         # Check file handling config
         file_handling_cfg = call_args.kwargs["file_handling_config"]

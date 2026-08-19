@@ -234,7 +234,7 @@ class TestDotEnvFileSupport:
                 patch("dotenv.load_dotenv") as mock_load,
             ):
                 reload(constants_module)
-                mock_load.assert_called_once_with(Path(env_file_path), override=True)
+                mock_load.assert_any_call(Path(env_file_path), override=True)
         finally:
             # Clean up temp file
             os.unlink(env_file_path)

@@ -12,7 +12,7 @@ class TestSetupTimezone:
 
     @patch("time.tzset")
     @patch("time.tzname", new=["EST", "EDT"])
-    @patch("logging.info")
+    @patch("insanely_fast_whisper_rocm.utils.constants.logger.info")
     def test_setup_timezone_success(
         self, mock_logging_info: Mock, mock_tzset: Mock
     ) -> None:
@@ -33,17 +33,19 @@ class TestSetupTimezone:
             expected_timezone,
         )
 
-    @patch("os.environ.__setitem__", side_effect=OSError("Permission denied"))
-    @patch("logging.warning")
+    @patch("insanely_fast_whisper_rocm.utils.constants.os.environ")
+    @patch("insanely_fast_whisper_rocm.utils.constants.logger.warning")
     def test_setup_timezone_oserror(
-        self, mock_logging_warning: Mock, mock_setitem: Mock
+        self, mock_logging_warning: Mock, mock_environ: Mock
     ) -> None:
         """Test timezone setup with OSError."""
+        mock_environ.__setitem__ = Mock(side_effect=OSError("Permission denied"))
+
         # Execute
         setup_timezone()
 
         # Verify
-        mock_setitem.assert_called_once_with("TZ", constants.APP_TIMEZONE)
+        mock_environ.__setitem__.assert_called_once_with("TZ", constants.APP_TIMEZONE)
         mock_logging_warning.assert_called_once_with(
             "Could not set timezone using APP_TIMEZONE='%s': %s. Using system default.",
             constants.APP_TIMEZONE,
@@ -51,7 +53,7 @@ class TestSetupTimezone:
         )
 
     @patch("time.tzset", side_effect=TypeError("Invalid timezone"))
-    @patch("logging.warning")
+    @patch("insanely_fast_whisper_rocm.utils.constants.logger.warning")
     def test_setup_timezone_typeerror(
         self, mock_logging_warning: Mock, mock_tzset: Mock
     ) -> None:
@@ -72,7 +74,7 @@ class TestSetupTimezone:
 
     @patch("time.tzname", new=["EST"])  # Missing EDT
     @patch("time.tzset")
-    @patch("logging.warning")
+    @patch("insanely_fast_whisper_rocm.utils.constants.logger.warning")
     def test_setup_timezone_indexerror(
         self, mock_logging_warning: Mock, mock_tzset: Mock
     ) -> None:

@@ -511,7 +511,10 @@ def test_diarize__returns_unchanged_when_no_chunks_and_no_segments() -> None:
         out = diarize(result, audio_path="/fake.wav", hf_token="tok")
 
     # No chunks and no segments → no alignment, returns original
-    assert "diarized" not in out
+    assert out["diarized"] is False
+    assert out["diarization_error"] == (
+        "No chunks or segments available for speaker alignment."
+    )
 
 
 def test_diarize__returns_unchanged_when_no_speaker_turns() -> None:
@@ -546,7 +549,34 @@ def test_diarize__returns_unchanged_when_no_speaker_turns() -> None:
         mock_load.return_value = (MagicMock(shape=torch.Size([1, 48000])), 16000)
         out = diarize(result, audio_path="/fake.wav", hf_token="tok")
 
-    assert "diarized" not in out
+    assert out["diarized"] is False
+    assert out["diarization_error"] == "Diarization produced no speaker turns."
+
+
+@pytest.mark.parametrize(
+    ("num_speakers", "min_speakers", "max_speakers", "message"),
+    [
+        (0, None, None, "greater than zero"),
+        (2, 1, None, "cannot be combined"),
+        (None, 3, 2, "cannot be greater"),
+    ],
+)
+def test_diarize__rejects_invalid_speaker_config(
+    num_speakers: int | None,
+    min_speakers: int | None,
+    max_speakers: int | None,
+    message: str,
+) -> None:
+    """diarize() rejects invalid or ambiguous speaker count options."""
+    with pytest.raises(DiarizationError, match=message):
+        diarize(
+            _sample_result(),
+            audio_path="/fake.wav",
+            hf_token="tok",
+            num_speakers=num_speakers,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -789,6 +819,16 @@ def test_diarize__preserves_stabilized_segments_structure() -> None:
 # ---------------------------------------------------------------------------
 # _preload_audio_as_waveform — audio preloading for torchcodec-less envs
 # ---------------------------------------------------------------------------
+
+
+def test_preload_audio_as_waveform__raises_when_torchaudio_is_unavailable() -> None:
+    """Audio preload reports an actionable decoder error when torchaudio is absent."""
+    with patch.dict("sys.modules", {"torchaudio": None}):
+        with pytest.raises(DiarizationError) as exc_info:
+            _preload_audio_as_waveform("/audio.wav")
+
+    assert exc_info.value.reason == "audio_decode_unavailable"
+    assert "torchaudio could not be imported" in str(exc_info.value)
 
 
 def test_preload_audio_as_waveform__loads_wav_directly() -> None:

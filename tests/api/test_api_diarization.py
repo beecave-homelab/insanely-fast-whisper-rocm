@@ -222,6 +222,46 @@ def test_post_transcriptions__records_diarization_error_in_saved_json(
     assert "HF_TOKEN" in saved["diarization_error"]
 
 
+@pytest.mark.parametrize(
+    ("speaker_options", "error_message"),
+    [
+        ({"num_speakers": "0"}, "greater than zero"),
+        (
+            {"num_speakers": "2", "min_speakers": "1"},
+            "cannot be combined",
+        ),
+        (
+            {"min_speakers": "3", "max_speakers": "2"},
+            "cannot be greater",
+        ),
+    ],
+)
+def test_post_transcriptions__rejects_invalid_speaker_config(
+    client: TestClient,
+    mock_orchestrator: pytest.MonkeyPatch,
+    speaker_options: dict[str, str],
+    error_message: str,
+) -> None:
+    """Invalid speaker-count options return HTTP 400 before diarization runs."""
+    audio_file = io.BytesIO(DUMMY_WAV_HEADER)
+    with patch(
+        "insanely_fast_whisper_rocm.core.integrations.diarization.diarize"
+    ) as mock_diarize:
+        response = client.post(
+            "/v1/audio/transcriptions",
+            files={"file": ("test.wav", audio_file, "audio/wav")},
+            data={
+                "diarize": "true",
+                "response_format": "json",
+                **speaker_options,
+            },
+        )
+
+    assert response.status_code == 400
+    assert error_message in response.json()["detail"]
+    mock_diarize.assert_not_called()
+
+
 def test_post_transcriptions__returns_400_for_invalid_diarization_device(
     client: TestClient,
     mock_orchestrator: pytest.MonkeyPatch,
