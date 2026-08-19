@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from insanely_fast_whisper_rocm.api.dependencies import (
     get_asr_pipeline,
@@ -48,6 +49,10 @@ VALID_DIARIZATION_DEVICES = {"cpu", "cuda", "gpu"}
 def _json_default(value: object) -> object:
     """Convert non-standard JSON scalar values for persisted API results.
 
+    Handles numpy/torch scalar wrappers (``.item()``) and array-like objects
+    (``.tolist()``) by dispatching through ``getattr`` so the ``object``
+    parameter stays statically typed.
+
     Args:
         value: Value passed by ``json.dumps`` when default encoding fails.
 
@@ -57,10 +62,12 @@ def _json_default(value: object) -> object:
     Raises:
         TypeError: If the value cannot be converted.
     """
-    if hasattr(value, "item"):
-        return value.item()
-    if hasattr(value, "tolist"):
-        return value.tolist()
+    item = getattr(value, "item", None)
+    if callable(item):
+        return item()
+    tolist = getattr(value, "tolist", None)
+    if callable(tolist):
+        return tolist()
     raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
 
 
@@ -166,7 +173,17 @@ def _apply_post_processing(
             from insanely_fast_whisper_rocm.core.integrations.diarization import (
                 diarize as diarize_result,
             )
+            from insanely_fast_whisper_rocm.core.integrations.diarization import (
+                validate_speaker_config,
+            )
 
+            # Validate early so invalid speaker config returns HTTP 400
+            # before any diarization pipeline work (diarize() also validates).
+            validate_speaker_config(
+                num_speakers=num_speakers,
+                min_speakers=min_speakers,
+                max_speakers=max_speakers,
+            )
             result = diarize_result(
                 result,
                 audio_path=audio_path,
@@ -190,6 +207,7 @@ def _apply_post_processing(
     tags=["Transcription"],
     summary="Transcribe Audio",
     description="Convert speech in an audio file to text using the Whisper model",
+    response_model=None,
     responses={
         200: {
             "description": "Successful transcription",
@@ -238,7 +256,7 @@ async def create_transcription(
     ),
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),  # noqa: B008
     file_handler: FileHandler = Depends(get_file_handler),  # noqa: B008
-) -> str | dict:
+) -> JSONResponse | PlainTextResponse:
     """Transcribe speech in an audio file to text.
 
     This endpoint processes an audio file and returns its transcription using the
@@ -266,7 +284,8 @@ async def create_transcription(
         file_handler: Injected file handler instance
 
     Returns:
-        Union[str, dict]: Transcription result as plain text or JSON with metadata
+        JSONResponse | PlainTextResponse: Transcription result as plain text
+            or JSON with metadata.
 
     Raises:
         HTTPException: If file validation fails or processing errors occur
@@ -350,6 +369,7 @@ async def create_transcription(
     tags=["Translation"],
     summary="Translate Audio",
     description="Translate speech in an audio file to English using the Whisper model",
+    response_model=None,
     responses={
         200: {
             "description": "Successful translation",
@@ -397,7 +417,7 @@ async def create_translation(
     ),
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),  # noqa: B008
     file_handler: FileHandler = Depends(get_file_handler),  # noqa: B008
-) -> str | dict:
+) -> JSONResponse | PlainTextResponse:
     """Translate speech in an audio file to English.
 
     This endpoint processes an audio file in any supported language and translates
@@ -423,7 +443,8 @@ async def create_translation(
         file_handler: Injected file handler instance
 
     Returns:
-        Union[str, dict]: Translation result as plain text or JSON with metadata
+        JSONResponse | PlainTextResponse: Translation result as plain text or
+            JSON with metadata.
 
     Raises:
         HTTPException: If file validation fails or processing errors occur

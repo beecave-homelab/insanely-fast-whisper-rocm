@@ -424,6 +424,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
                     hf_token=constants.HF_TOKEN,
                 )
             except DiarizationError as exc:
+                result["diarized"] = False
                 result["diarization_error"] = str(exc)
                 if not quiet:
                     click.secho(
@@ -431,6 +432,7 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
                         fg="yellow",
                     )
             except Exception as exc:  # pragma: no cover — defensive
+                result["diarized"] = False
                 result["diarization_error"] = str(exc)
                 if not quiet:
                     click.secho(
