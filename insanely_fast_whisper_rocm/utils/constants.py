@@ -89,23 +89,24 @@ from dotenv import load_dotenv
 
 # --- Early environment bootstrap for env_loader ---
 # env_loader is imported below for PROJECT_ROOT, USER_ENV_*, and debug_print.
-# While it is being imported it needs the effective LOG_LEVEL to decide whether
-# to enable debug printing during .env loading. Load the same .env files here
-# first and expose LOG_LEVEL before the env_loader import so env_loader can read
-# it from this module instead of accessing the environment directly.
+# env_loader reads LOG_LEVEL directly from os.getenv (it is the dedicated
+# env-loading module), so there is no circular import: the dependency direction
+# is one-way (constants -> env_loader). We still load the .env files here first
+# so that LOG_LEVEL below and env_loader's own LOG_LEVEL see the same values.
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _USER_CONFIG_DIR = Path.home() / ".config" / "insanely-fast-whisper-rocm"
 _USER_ENV_FILE = _USER_CONFIG_DIR / ".env"
+_in_test_mode = "pytest" in sys.modules
 if (_PROJECT_ROOT / ".env").exists():
     load_dotenv(_PROJECT_ROOT / ".env", override=True)
-if _USER_ENV_FILE.exists():
+if _USER_ENV_FILE.exists() and not _in_test_mode:
     load_dotenv(_USER_ENV_FILE, override=True)
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-# env_loader is imported after the bootstrap above because env_loader itself needs
-# LOG_LEVEL (defined just above) while it initializes. Keeping this import below the
-# bootstrap avoids a circular import. noqa: E402
+# env_loader does not import constants (one-way dependency), so this import is
+# safe at module top level. Kept below the bootstrap for ordering clarity.
+# noqa: E402
 from insanely_fast_whisper_rocm.utils.env_loader import (  # noqa: E402
     PROJECT_ROOT,
     USER_CONFIG_DIR,
@@ -136,9 +137,9 @@ if USER_ENV_EXISTS:
 # --- Log final environment state ---
 debug_print(
     f"Config loaded from .env: model={os.getenv('WHISPER_MODEL')}, "
-    f"batch_size={os.getenv('WHISPER_BATCH_SIZE')}, "
-    f"log_level={LOG_LEVEL} "
-    f"(CLI flags will override when specified)"
+    + f"batch_size={os.getenv('WHISPER_BATCH_SIZE')}, "
+    + f"log_level={LOG_LEVEL} "
+    + "(CLI flags will override when specified)"
 )
 
 # --- Test/CI awareness and optional FS-check skipping ---
@@ -192,9 +193,9 @@ HF_TOKEN = (
 )
 MIN_SPEAKERS = 1  # Minimum number of speakers for diarization
 MAX_SPEAKERS = 10  # Maximum number of speakers for diarization
-DIARIZATION_FFMPEG_TIMEOUT_SECONDS = int(
-    os.getenv("DIARIZATION_FFMPEG_TIMEOUT_SECONDS", "30")
-)  # Timeout for ffmpeg audio conversion during diarization
+DIARIZATION_FFMPEG_TIMEOUT_SECONDS = max(
+    int(os.getenv("DIARIZATION_FFMPEG_TIMEOUT_SECONDS", "30")), 1
+)  # Timeout for ffmpeg audio conversion during diarization (clamped to >=1s)
 DIARIZATION_PRELOAD_AUDIO = (
     os.getenv("DIARIZATION_PRELOAD_AUDIO", "true").lower() == "true"
 )  # Preload audio tensors instead of relying on pyannote/TorchCodec decoding
