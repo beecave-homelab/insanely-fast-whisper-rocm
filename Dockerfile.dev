@@ -24,11 +24,13 @@ RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive ap
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy requirement files first
-COPY requirements-container.txt /app/
+# Copy the fully resolved dependency export first. Unlike the container-only
+# export, it includes the full ROCm PyTorch wheels required by this image.
+COPY requirements-all.txt /app/
 
-# Install project dependencies from requirements files.
-RUN pip install --no-cache-dir --no-deps -r /app/requirements-container.txt
+# Install the resolved package set without dependency resolution. This keeps the
+# full (non-.lw) ROCm PyTorch wheel while avoiding unpinned transitive packages.
+RUN pip install --no-cache-dir --no-deps -r /app/requirements-all.txt
 
 # Copy the project definition file to leverage Docker layer caching for dependencies
 COPY pyproject.toml /app/
