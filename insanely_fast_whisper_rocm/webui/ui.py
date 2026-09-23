@@ -254,7 +254,8 @@ def _create_file_handling_ui() -> tuple[gr.Checkbox, gr.Textbox]:
         temp_uploads_dir = gr.Textbox(
             value=DEFAULT_TRANSCRIPTS_DIR,
             label="Save directory",
-            info="Directory to save transcription results",
+            info="Directory configured by the server administrator",
+            interactive=False,
         )
     return save_transcriptions, temp_uploads_dir
 
@@ -312,7 +313,9 @@ def _process_transcription_request_wrapper(
         chunk_overlap=None,
     )
     file_handling_cfg = FileHandlingConfig(
-        save_transcriptions=save_transcriptions, temp_uploads_dir=temp_uploads_dir
+        save_transcriptions=save_transcriptions,
+        # Downloads are served only from the configured, launch-allowed directory.
+        temp_uploads_dir=DEFAULT_TRANSCRIPTS_DIR,
     )
     # Inject stabilization options
     transcription_cfg.stabilize = stabilize

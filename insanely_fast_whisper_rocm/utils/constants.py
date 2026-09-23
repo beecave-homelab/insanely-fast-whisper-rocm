@@ -193,9 +193,13 @@ HF_TOKEN = (
 )
 MIN_SPEAKERS = 1  # Minimum number of speakers for diarization
 MAX_SPEAKERS = 10  # Maximum number of speakers for diarization
-DIARIZATION_FFMPEG_TIMEOUT_SECONDS = max(
-    int(os.getenv("DIARIZATION_FFMPEG_TIMEOUT_SECONDS", "30")), 1
-)  # Timeout for ffmpeg audio conversion during diarization (clamped to >=1s)
+try:
+    DIARIZATION_FFMPEG_TIMEOUT_SECONDS = max(
+        int(os.getenv("DIARIZATION_FFMPEG_TIMEOUT_SECONDS", "30")), 1
+    )
+except ValueError:
+    logger.warning("Invalid DIARIZATION_FFMPEG_TIMEOUT_SECONDS; using 30 seconds")
+    DIARIZATION_FFMPEG_TIMEOUT_SECONDS = 30
 DIARIZATION_PRELOAD_AUDIO = (
     os.getenv("DIARIZATION_PRELOAD_AUDIO", "true").lower() == "true"
 )  # Preload audio tensors instead of relying on pyannote/TorchCodec decoding

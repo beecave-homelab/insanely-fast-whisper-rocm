@@ -23,7 +23,6 @@ from insanely_fast_whisper_rocm.audio.processing import extract_audio_from_video
 from insanely_fast_whisper_rocm.core.asr_backend import HuggingFaceBackendConfig
 from insanely_fast_whisper_rocm.core.cancellation import CancellationToken
 from insanely_fast_whisper_rocm.core.errors import (
-    DiarizationError,
     OutOfMemoryError,
     TranscriptionCancelledError,
     TranscriptionError,
@@ -701,14 +700,7 @@ def transcribe(
                         "Diarization did not annotate result for %s",
                         original_file_name_for_desc,
                     )
-            except DiarizationError as exc:
-                logger.warning("Diarization failed: %s", exc)
-                result = {
-                    **result,
-                    "diarized": False,
-                    "diarization_error": str(exc),
-                }
-            except Exception as exc:  # pragma: no cover — defensive
+            except Exception as exc:
                 logger.warning("Diarization failed: %s", exc)
                 result = {
                     **result,
@@ -856,6 +848,9 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
             })
             processed_files_summary.append(
                 f"{file_name_for_log}: Transcribed successfully."
+                if not raw_transcription_result.get("diarization_error")
+                else f"{file_name_for_log}: Transcribed; diarization failed: "
+                f"{raw_transcription_result['diarization_error']}"
             )
 
             if progress_tracker is not None:
@@ -1382,6 +1377,18 @@ def process_transcription_request(  # pylint: disable=too-many-locals, too-many-
         )
         raw_result_state_val = None
         # All buttons remain hidden (dl_btn_hidden)
+
+    diarization_warnings = [
+        f"{Path(item['audio_original_path']).name}: "
+        f"{item['raw_result']['diarization_error']}"
+        for item in successful_results
+        if item["raw_result"].get("diarization_error")
+    ]
+    if diarization_warnings:
+        warning_text = "Diarization failed: " + "; ".join(diarization_warnings)
+        status_output_val += " — " + warning_text
+        if num_files > 1:
+            transcription_output_val += "\n" + warning_text
 
     if progress_tracker is not None:
         # Final update to 100% if all files processed (or attempted)

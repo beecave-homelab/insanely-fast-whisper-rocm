@@ -75,6 +75,7 @@ run_step() {
 check_no_heavy_packages() {
   local heavy_pattern
   local heavy_hits
+  local installed_packages
   heavy_pattern="^(torch|torchvision|torchaudio|torch-audiomentations|"
   heavy_pattern+="torch-pitch-shift|torchcodec|torchmetrics|onnx|"
   heavy_pattern+="onnxruntime|onnxruntime-gpu|onnxruntime-rocm|"
@@ -83,8 +84,12 @@ check_no_heavy_packages() {
   heavy_pattern+="pytorch-lightning|accelerate|optimum|tensorflow|"
   heavy_pattern+="jax|jaxlib|flax|ctranslate2)=="
 
+  if ! installed_packages="$(pdm list --freeze)"; then
+    echo "Failed to inspect reviewer environment packages." >&2
+    return 1
+  fi
   heavy_hits="$(mktemp)"
-  if pdm list --freeze | grep -E "${heavy_pattern}" >"${heavy_hits}"; then
+  if grep -E "${heavy_pattern}" <<<"${installed_packages}" >"${heavy_hits}"; then
     echo "Heavy packages found in reviewer environment:" >&2
     cat "${heavy_hits}" >&2
     rm -f "${heavy_hits}"

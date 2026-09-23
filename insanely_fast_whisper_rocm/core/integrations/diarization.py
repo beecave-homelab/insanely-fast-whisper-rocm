@@ -723,10 +723,10 @@ def diarize(
             reason="inference_error",
         ) from exc
 
-    # Free GPU memory held by the diarization pipeline after inference —
-    # the ASR backend will need VRAM for the next transcription request.
-    if device == "cuda":
-        _clear_gpu_diarization_cache()
+    finally:
+        # Release VRAM even when inference or the CPU retry fails.
+        if device == "cuda":
+            _clear_gpu_diarization_cache()
 
     # Extract speaker turns as (start, end, label) tuples.
     # pyannote.audio v4 returns a DiarizeOutput dataclass; v3 returns

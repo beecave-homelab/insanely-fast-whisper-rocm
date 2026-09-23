@@ -187,7 +187,9 @@ def _run_task(*, task: str, audio_file: Path, **kwargs: Any) -> None:  # noqa: A
     num_speakers: int | None = kwargs.pop("num_speakers", None)
     min_speakers: int | None = kwargs.pop("min_speakers", None)
     max_speakers: int | None = kwargs.pop("max_speakers", None)
-    diarization_device: str = kwargs.pop("diarization_device", "cpu")
+    diarization_device: str = kwargs.pop(
+        "diarization_device", constants.DEFAULT_DIARIZATION_DEVICE
+    )
 
     debug: bool = kwargs.pop("debug", False)
     quiet: bool = kwargs.pop("quiet", False)

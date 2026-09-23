@@ -922,3 +922,40 @@ def test_preload_audio_as_waveform__raises_error_on_ffmpeg_timeout(
         with pytest.raises(DiarizationError) as exc_info:
             _preload_audio_as_waveform("/audio.m4a")
         assert exc_info.value.reason == "audio_decode_unavailable"
+
+
+@pytest.mark.parametrize("outcome", ["success", "gpu_failure", "cpu_failure"])
+def test_diarize__always_releases_gpu_cache(outcome: str) -> None:
+    """Cleanup runs on success, inference errors, and failed CPU retries."""
+    from insanely_fast_whisper_rocm.core.integrations import diarization
+
+    gpu = MagicMock(return_value=MagicMock(spec=["itertracks"]))
+    gpu.return_value.itertracks.return_value = []
+    cpu = MagicMock(side_effect=RuntimeError("CPU inference failed"))
+    if outcome == "gpu_failure":
+        gpu.side_effect = RuntimeError("unrecoverable failure")
+    elif outcome == "cpu_failure":
+        gpu.side_effect = RuntimeError("miopenStatusUnknownError")
+    with (
+        patch.object(diarization, "Pipeline", MagicMock()),
+        patch.object(diarization, "_get_or_create_pipeline", side_effect=[gpu, cpu]),
+        patch.object(diarization, "_preload_audio_as_waveform", return_value={}),
+        patch.object(diarization, "DIARIZATION_PRELOAD_AUDIO", True),
+        patch.object(diarization, "DIARIZATION_ALLOW_CPU_FALLBACK", True),
+        patch.object(diarization, "invalidate_gpu_cache"),
+        patch.object(diarization, "_clear_gpu_diarization_cache") as cleanup,
+    ):
+        if outcome == "success":
+            diarize(
+                _sample_result(), audio_path="fake.wav", hf_token="test", device="cuda"
+            )
+        else:
+            with pytest.raises(DiarizationError, match="inference"):
+                diarize(
+                    _sample_result(),
+                    audio_path="fake.wav",
+                    hf_token="test",
+                    device="cuda",
+                )
+        cleanup.assert_called_once_with()
+        assert cpu.call_count == (1 if outcome == "cpu_failure" else 0)

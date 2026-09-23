@@ -77,7 +77,9 @@ def test_post_transcriptions__accepts_diarize_form_param(
     assert response.status_code == 200
 
 
-def test_post_transcriptions__includes_speaker_field_in_verbose_json(
+@pytest.mark.parametrize("endpoint", ["transcriptions", "translations"])
+def test_post_audio__includes_speaker_field_in_verbose_json(
+    endpoint: str,
     client: TestClient,
     mock_orchestrator: pytest.MonkeyPatch,
     _mock_diarize_ok: None,
@@ -85,7 +87,7 @@ def test_post_transcriptions__includes_speaker_field_in_verbose_json(
     """verbose_json response includes speaker field when diarized."""
     audio_file = io.BytesIO(DUMMY_WAV_HEADER)
     response = client.post(
-        "/v1/audio/transcriptions",
+        f"/v1/audio/{endpoint}",
         files={"file": ("test.wav", audio_file, "audio/wav")},
         data={
             "diarize": "true",
@@ -95,7 +97,8 @@ def test_post_transcriptions__includes_speaker_field_in_verbose_json(
     assert response.status_code == 200
     body = response.json()
     assert "segments" in body
-    assert any("speaker" in seg for seg in body["segments"])
+    assert any(seg.get("speaker") == "SPEAKER_00" for seg in body["segments"])
+    assert body["diarized"] is True
 
 
 def test_post_transcriptions__includes_diarized_flag_in_response(

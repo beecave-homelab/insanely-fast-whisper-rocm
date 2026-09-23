@@ -36,7 +36,7 @@ reviews:
     custom_checks:
       - mode: error
         name: "Local CI Pipeline"
-        instructions: "Run `scripts/local-ci.sh` to verify Ruff rules (F, E, W, N, D, DOC, TID, UP, FA), Google-style docstrings, naming/import rules, test coverage (min 85%). Also check SOLID principles, and no direct env access outside utils.constants."
+        instructions: "Run `scripts/local-ci.sh` to verify Ruff rules (F, E, W, N, D, DOC, TID, UP, FA), Google-style docstrings, naming/import rules, test coverage (min 85%). Also check SOLID principles, and no direct env access outside utils.constants, except bootstrap logging/environment loading in utils.env_loader as allowed by AGENTS.md section 16.2."
 
 chat:
   art: false

@@ -995,7 +995,7 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                         # to seg.speaker if all are None.
                         non_none = [s for s in spk_slice if s is not None]
                         if non_none:
-                            chunk_speaker = max(set(non_none), key=non_none.count)
+                            chunk_speaker = max(non_none, key=non_none.count)
                         else:
                             chunk_speaker = seg.speaker
 
@@ -1004,13 +1004,13 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                     per = (end_time - current_time) / max(len(chunk_tokens), 1)
                     chunk_words = []
                     t0 = current_time
-                    for ct in chunk_tokens:
+                    for ct, speaker in zip(chunk_tokens, spk_slice):
                         chunk_words.append(
                             Word(
                                 text=ct,
                                 start=t0,
                                 end=t0 + per,
-                                speaker=chunk_speaker,
+                                speaker=speaker,
                             )
                         )
                         t0 += per
@@ -1048,7 +1048,7 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                 if spk_slice:
                     non_none = [s for s in spk_slice if s is not None]
                     if non_none:
-                        chunk_speaker = max(set(non_none), key=non_none.count)
+                        chunk_speaker = max(non_none, key=non_none.count)
                     else:
                         chunk_speaker = seg.speaker
 
@@ -1056,13 +1056,13 @@ def _enforce_cps(segments: list[Segment]) -> list[Segment]:
                 per = (end_time - current_time) / max(len(chunk_tokens), 1)
                 chunk_words = []
                 t0 = current_time
-                for ct in chunk_tokens:
+                for ct, speaker in zip(chunk_tokens, spk_slice):
                     chunk_words.append(
                         Word(
                             text=ct,
                             start=t0,
                             end=t0 + per,
-                            speaker=chunk_speaker,
+                            speaker=speaker,
                         )
                     )
                     t0 += per

@@ -6,6 +6,7 @@ import json
 import unittest.mock
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 from insanely_fast_whisper_rocm.cli.cli import cli
@@ -78,3 +79,49 @@ def test_cli_transcribe_fallback_on_corrupted_stabilization(
     assert final_data["text"] == "This is a valid transcription."
     assert len(final_data["segments"]) == 2
     assert final_data["segments"][0]["start"] == 0.0
+
+
+@pytest.mark.parametrize("explicit_device", [None, "cpu"])
+def test_run_task__uses_configured_or_explicit_diarization_device(
+    tmp_path: Path,
+    explicit_device: str | None,
+) -> None:
+    """An omitted device uses configuration and an explicit device wins."""
+    from insanely_fast_whisper_rocm.cli import commands
+
+    options = {} if explicit_device is None else {"diarization_device": explicit_device}
+    with (
+        unittest.mock.patch.object(
+            commands.constants, "DEFAULT_DIARIZATION_DEVICE", "cuda"
+        ),
+        unittest.mock.patch.object(
+            commands.cli_facade,
+            "process_audio",
+            return_value={"text": "Hello", "chunks": []},
+        ),
+        unittest.mock.patch.object(commands, "_handle_output_and_benchmarks"),
+        unittest.mock.patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization.diarize",
+            return_value={"text": "Hello", "diarized": True},
+        ) as mock_diarize,
+    ):
+        commands._run_task(
+            task="transcribe",
+            audio_file=tmp_path / "test.wav",
+            model="tiny",
+            device="cpu",
+            dtype="float32",
+            batch_size=1,
+            progress_group_size=1,
+            chunk_length=30,
+            language="en",
+            timestamp_type="word",
+            stabilize=False,
+            demucs=False,
+            vad=False,
+            vad_threshold=0.35,
+            diarize=True,
+            progress=False,
+            **options,
+        )
+    assert mock_diarize.call_args.kwargs["device"] == (explicit_device or "cuda")

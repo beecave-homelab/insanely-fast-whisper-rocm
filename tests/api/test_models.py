@@ -184,6 +184,7 @@ def test_transcription_chunk_schema() -> None:
     assert "properties" in schema
     assert "text" in schema["properties"]
     assert "timestamp" in schema["properties"]
+    assert "speaker" in schema["properties"]
     assert schema["title"] == "TranscriptionChunk"
 
 
@@ -199,4 +200,5 @@ def test_transcription_response_schema() -> None:
     assert "segments" in schema["properties"]
     assert "language" in schema["properties"]
     assert "runtime_seconds" in schema["properties"]
+    assert "diarized" in schema["properties"]
     assert schema["title"] == "TranscriptionResponse"

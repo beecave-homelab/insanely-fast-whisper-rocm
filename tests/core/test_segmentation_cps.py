@@ -9,7 +9,12 @@ from __future__ import annotations
 
 import pytest
 
-from insanely_fast_whisper_rocm.core.segmentation import Word, segment_words
+from insanely_fast_whisper_rocm.core.segmentation import (
+    Segment,
+    Word,
+    _enforce_cps,
+    segment_words,
+)
 from insanely_fast_whisper_rocm.utils import constants
 
 
@@ -75,3 +80,34 @@ def test_segment_words_cps_within_limits(sentence: str) -> None:
     assert joined_output.startswith(original[: len(original) // 2]), (
         "Output text should contain the original sentence content (at least partially)."
     )
+
+
+def test_enforce_cps__preserves_word_speakers_in_every_synthetic_chunk(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Both flushed and final chunks retain labels, including unknown speakers."""
+    monkeypatch.setattr(constants, "MAX_CPS", 10)
+    monkeypatch.setattr(constants, "MAX_SEGMENT_DURATION_SEC", 1)
+    words = [
+        Word(text=text, start=i * 0.01, end=(i + 1) * 0.01, speaker=speaker)
+        for i, (text, speaker) in enumerate([
+            ("aaa", "A"),
+            ("bbb", "B"),
+            ("ccc", None),
+            ("ddd", "B"),
+        ])
+    ]
+    result = _enforce_cps([
+        Segment(text="aaa bbb ccc ddd", start=0, end=0.04, words=words, speaker="A")
+    ])
+    assert len(result) == 2
+    assert [word.speaker for segment in result for word in segment.words] == [
+        "A",
+        "B",
+        None,
+        "B",
+    ]
+    assert [segment.speaker for segment in result] == ["A", "B"]
+    assert [word.text for segment in result for word in segment.words] == [
+        word.text for word in words
+    ]

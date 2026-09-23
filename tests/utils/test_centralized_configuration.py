@@ -5,10 +5,7 @@ instead of direct environment variable access, and verifies default values
 and .env file overrides work properly.
 """
 
-import os
-import tempfile
 from importlib import reload
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -209,35 +206,16 @@ class TestModuleCentralizedConfigurationUsage:
 class TestDotEnvFileSupport:
     """Test .env file loading and support."""
 
-    def test_dotenv_file_loading(self) -> None:
-        """Test that .env files are properly loaded by constants.py."""
-        # Create a temporary .env file
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".env", delete=False
-        ) as env_file:
-            env_file.write("WHISPER_MODEL=test-model-from-env\n")
-            env_file.write("FILENAME_TIMEZONE=Europe/Paris\n")
-            env_file.write("HF_TOKEN=test-token-from-env\n")
-            env_file_path = env_file.name
-
-        try:
-            # Patch env_loader to make constants.py believe a user .env exists.
-            with (
-                patch(
-                    "insanely_fast_whisper_rocm.utils.env_loader.USER_ENV_FILE",
-                    Path(env_file_path),
-                ),
-                patch(
-                    "insanely_fast_whisper_rocm.utils.env_loader.USER_ENV_EXISTS",
-                    True,
-                ),
-                patch("dotenv.load_dotenv") as mock_load,
-            ):
-                reload(constants_module)
-                mock_load.assert_any_call(Path(env_file_path), override=True)
-        finally:
-            # Clean up temp file
-            os.unlink(env_file_path)
+    def test_dotenv_loading__excludes_user_config_under_pytest(self) -> None:
+        """Load the project dotenv but exclude personal settings during tests."""
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("dotenv.load_dotenv") as mock_load,
+        ):
+            reload(constants_module)
+        mock_load.assert_called_once_with(
+            constants_module._PROJECT_ROOT / ".env", override=True
+        )
 
     def test_config_dir_creation(self) -> None:
         """Test that configuration directory is created if it doesn't exist."""
@@ -265,3 +243,25 @@ def restore_constants() -> None:
     yield
     # Reload to restore original state
     reload(constants_module)
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [(None, 30), ("12", 12), ("0", 1), ("-4", 1), ("invalid", 30), ("", 30)],
+)
+def test_diarization_timeout__parses_with_safe_default(
+    value: str | None,
+    expected: int,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Invalid timeouts warn and default; valid values retain the minimum."""
+    with monkeypatch.context() as patcher:
+        patcher.delenv("DIARIZATION_FFMPEG_TIMEOUT_SECONDS", raising=False)
+        if value is not None:
+            patcher.setenv("DIARIZATION_FFMPEG_TIMEOUT_SECONDS", value)
+        with patch("dotenv.load_dotenv"):
+            reload(constants_module)
+        assert constants_module.DIARIZATION_FFMPEG_TIMEOUT_SECONDS == expected
+        if value in ("invalid", ""):
+            assert "Invalid DIARIZATION_FFMPEG_TIMEOUT_SECONDS" in caplog.text

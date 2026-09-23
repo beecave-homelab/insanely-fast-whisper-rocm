@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import gradio as gr
 
+from insanely_fast_whisper_rocm.utils.constants import DEFAULT_TRANSCRIPTS_DIR
 from insanely_fast_whisper_rocm.webui.ui import (
     _create_file_handling_ui,
     _create_model_config_ui,
@@ -178,6 +179,7 @@ class TestCreateFileHandlingUI:
 
             assert save_transcriptions.value is True
             assert temp_uploads_dir.value == DEFAULT_TRANSCRIPTS_DIR
+            assert temp_uploads_dir.interactive is False
 
 
 class TestProcessTranscriptionRequestWrapper:
@@ -188,7 +190,16 @@ class TestProcessTranscriptionRequestWrapper:
         self, mock_process: MagicMock
     ) -> None:
         """Test that wrapper creates correct config objects and calls handler."""
-        mock_process.return_value = ("text", {}, {}, Mock(), Mock(), Mock(), Mock())
+        mock_process.return_value = (
+            "status",
+            "text",
+            {},
+            {},
+            Mock(),
+            Mock(),
+            Mock(),
+            Mock(),
+        )
 
         gen = _process_transcription_request_wrapper(
             audio_paths=["test.wav"],
@@ -214,7 +225,8 @@ class TestProcessTranscriptionRequestWrapper:
             progress=None,
         )
         # Consume the generator so the background thread runs.
-        list(gen)
+        outputs = list(gen)
+        assert len(outputs[-1]) == 8
 
         # Verify process_transcription_request was called
         assert mock_process.called
@@ -234,13 +246,16 @@ class TestProcessTranscriptionRequestWrapper:
         assert transcription_cfg.demucs is False
         assert transcription_cfg.vad is True
         assert transcription_cfg.vad_threshold == 0.35
+        assert transcription_cfg.diarize is False
+        assert transcription_cfg.num_speakers is None
+        assert transcription_cfg.diarization_device == "cpu"
         assert transcription_cfg.min_speakers == 1
         assert transcription_cfg.max_speakers == 10
 
         # Check file handling config
         file_handling_cfg = call_args.kwargs["file_handling_config"]
         assert file_handling_cfg.save_transcriptions is True
-        assert file_handling_cfg.temp_uploads_dir == "/tmp/test"
+        assert file_handling_cfg.temp_uploads_dir == DEFAULT_TRANSCRIPTS_DIR
 
     @patch("insanely_fast_whisper_rocm.webui.ui.process_transcription_request")
     @patch("insanely_fast_whisper_rocm.webui.ui.gr.Progress")
@@ -248,7 +263,16 @@ class TestProcessTranscriptionRequestWrapper:
         self, mock_progress_cls: MagicMock, mock_process: MagicMock
     ) -> None:
         """Test that wrapper creates Progress instance when progress is None."""
-        mock_process.return_value = ("text", {}, {}, Mock(), Mock(), Mock(), Mock())
+        mock_process.return_value = (
+            "status",
+            "text",
+            {},
+            {},
+            Mock(),
+            Mock(),
+            Mock(),
+            Mock(),
+        )
         mock_progress_instance = Mock()
         mock_progress_cls.return_value = mock_progress_instance
 
@@ -276,7 +300,8 @@ class TestProcessTranscriptionRequestWrapper:
             progress=None,
         )
         # Consume the generator so the background thread runs.
-        list(gen)
+        outputs = list(gen)
+        assert len(outputs[-1]) == 8
 
         # Verify Progress was created
         mock_progress_cls.assert_called_once()
@@ -284,7 +309,16 @@ class TestProcessTranscriptionRequestWrapper:
     @patch("insanely_fast_whisper_rocm.webui.ui.process_transcription_request")
     def test_wrapper__uses_provided_progress(self, mock_process: MagicMock) -> None:
         """Test that wrapper uses provided progress tracker."""
-        mock_process.return_value = ("text", {}, {}, Mock(), Mock(), Mock(), Mock())
+        mock_process.return_value = (
+            "status",
+            "text",
+            {},
+            {},
+            Mock(),
+            Mock(),
+            Mock(),
+            Mock(),
+        )
         progress_tracker = Mock(spec=gr.Progress)
 
         gen = _process_transcription_request_wrapper(
@@ -311,7 +345,8 @@ class TestProcessTranscriptionRequestWrapper:
             progress=progress_tracker,
         )
         # Consume the generator so the background thread runs.
-        list(gen)
+        outputs = list(gen)
+        assert len(outputs[-1]) == 8
 
         # Verify the provided progress tracker was used
         call_args = mock_process.call_args
