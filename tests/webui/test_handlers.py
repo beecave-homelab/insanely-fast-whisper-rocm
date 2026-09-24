@@ -11,6 +11,7 @@ import pytest
 
 from insanely_fast_whisper_rocm.core.errors import (
     DiarizationError,
+    OutOfMemoryError,
     TranscriptionCancelledError,
     TranscriptionError,
 )
@@ -526,3 +527,21 @@ def test_transcribe__retains_text_and_reports_diarization_error(
     assert result["text"] == "Hello"
     assert result["diarized"] is False
     assert result["diarization_error"] == str(error)
+
+
+def test_transcribe__reports_gpu_oom_in_plain_language() -> None:
+    """Explain an exhausted GPU clearly without duplicating error prefixes."""
+    orchestrator = unittest.mock.MagicMock()
+    orchestrator.run_transcription.side_effect = OutOfMemoryError(
+        "HIPBLAS_STATUS_ALLOC_FAILED"
+    )
+    with unittest.mock.patch.object(
+        handlers, "create_orchestrator", return_value=orchestrator
+    ):
+        with pytest.raises(TranscriptionError) as exc_info:
+            handlers.transcribe("fake.wav", TranscriptionConfig(), FileHandlingConfig())
+
+    message = str(exc_info.value)
+    assert "GPU ran out of memory (OOM)" in message
+    assert "Stop other GPU workloads" in message
+    assert not message.startswith("Transcription failed: Transcription failed")

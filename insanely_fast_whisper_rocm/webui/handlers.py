@@ -523,10 +523,9 @@ def transcribe(
             )
         except OutOfMemoryError as oom:
             error_msg = (
-                f"Transcription failed due to insufficient memory. Try: "
-                f"(1) selecting a smaller model, (2) reducing batch size "
-                f"manually, "
-                f"or (3) processing shorter audio segments. "
+                "Transcription failed because the GPU ran out of memory (OOM). "
+                "Stop other GPU workloads, select a smaller model, reduce the "
+                "batch size, or process shorter audio segments. "
                 f"Current settings: model={config.model}, "
                 f"batch_size={config.batch_size}, "
                 f"chunk_length={config.chunk_length}"
@@ -730,6 +729,8 @@ def transcribe(
     except TranscriptionCancelledError as exc:
         logger.info("Transcription cancelled for %s", audio_file_path)
         raise exc
+    except TranscriptionError:
+        raise
     except Exception as e:
         logger.error("Error during transcription: %s", str(e))
         raise TranscriptionError(f"Transcription failed: {str(e)}") from e

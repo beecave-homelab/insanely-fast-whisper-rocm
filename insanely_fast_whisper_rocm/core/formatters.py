@@ -27,6 +27,18 @@ from insanely_fast_whisper_rocm.utils.format_time import (
 logger = logging.getLogger(__name__)
 
 
+def _normalize_punctuation_spacing(text: str) -> str:
+    """Remove whitespace immediately before closing punctuation.
+
+    Args:
+        text: Text assembled from ASR word tokens.
+
+    Returns:
+        Text with punctuation attached to the preceding token.
+    """
+    return re.sub(r"\s+([,.;:!?])", r"\1", text)
+
+
 def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
     """Extract `Word` objects from a transcription result if available.
 
@@ -257,6 +269,19 @@ class BaseFormatter:
 class TxtFormatter(BaseFormatter):
     """Formatter for plain text output."""
 
+    @staticmethod
+    def _join_fragments(fragments: list[str]) -> str:
+        """Join word or segment fragments into readable prose.
+
+        Args:
+            fragments: Adjacent text fragments from one speaker turn.
+
+        Returns:
+            A normalized paragraph without spaces before punctuation.
+        """
+        text = " ".join(fragment.strip() for fragment in fragments if fragment.strip())
+        return _normalize_punctuation_spacing(text)
+
     @classmethod
     def format(cls, result: dict[str, Any]) -> str:
         """Format as plain text.
@@ -281,22 +306,33 @@ class TxtFormatter(BaseFormatter):
                     and isinstance(chunks[0], dict)
                     and any(c.get("speaker") for c in chunks if isinstance(c, dict))
                 ):
-                    lines: list[str] = []
-                    prev_speaker: str | None = None
+                    paragraphs: list[str] = []
+                    current_speaker: str | None = None
+                    fragments: list[str] = []
+
+                    def flush_turn() -> None:
+                        """Append the accumulated speaker turn to the output."""
+                        if not fragments:
+                            return
+                        text = cls._join_fragments(fragments)
+                        paragraphs.append(
+                            f"[{current_speaker}] {text}" if current_speaker else text
+                        )
+                        fragments.clear()
+
                     for chunk in chunks:
                         speaker = chunk.get("speaker")
-                        text = chunk.get("text", "").strip()
-                        if not text:
+                        text = chunk.get("text", "")
+                        if not isinstance(text, str) or not text.strip():
                             continue
-                        if speaker != prev_speaker:
-                            if lines:
-                                lines.append("")
-                            lines.append(f"[{speaker}] {text}" if speaker else text)
-                            prev_speaker = speaker
-                        else:
-                            lines.append(text)
-                    if lines:
-                        return "\n".join(lines)
+                        if fragments and speaker != current_speaker:
+                            flush_turn()
+                        if not fragments:
+                            current_speaker = speaker
+                        fragments.append(text)
+                    flush_turn()
+                    if paragraphs:
+                        return "\n\n".join(paragraphs)
 
             text = result.get("text", "")
             if not isinstance(text, str):
@@ -385,7 +421,9 @@ class SrtFormatter(BaseFormatter):
                         start = format_srt_time(segment.start)
                         end = format_srt_time(segment.end)
                         wrapped = split_lines(segment.text)
-                        normalized_text = cls._normalize_hyphen_spacing(wrapped)
+                        normalized_text = _normalize_punctuation_spacing(
+                            cls._normalize_hyphen_spacing(wrapped)
+                        )
                         if segment.speaker:
                             normalized_text = f"[{segment.speaker}] {normalized_text}"
                         srt_content.append(
@@ -463,7 +501,7 @@ class SrtFormatter(BaseFormatter):
                     speaker = chunk.get("speaker")
 
                     # Apply line splitting for readability
-                    formatted_text = split_lines(text)
+                    formatted_text = _normalize_punctuation_spacing(split_lines(text))
                     formatted_text = cls._normalize_hyphen_spacing(formatted_text)
                     if speaker:
                         formatted_text = f"[{speaker}] {formatted_text}"
@@ -592,7 +630,7 @@ class VttFormatter(BaseFormatter):
                 for segment in segments:
                     start = format_vtt_time(segment.start)
                     end = format_vtt_time(segment.end)
-                    seg_text = segment.text
+                    seg_text = _normalize_punctuation_spacing(segment.text)
                     if segment.speaker:
                         seg_text = f"[{segment.speaker}] {seg_text}"
                     vtt_content.append(f"{start} --> {end}\n{seg_text}\n")
@@ -650,7 +688,7 @@ class VttFormatter(BaseFormatter):
 
                     start = format_vtt_time(start_sec)
                     end = format_vtt_time(end_sec)
-                    text = chunk.get("text", "").strip()
+                    text = _normalize_punctuation_spacing(chunk.get("text", "").strip())
                     speaker = chunk.get("speaker")
 
                     # Apply line splitting for readability

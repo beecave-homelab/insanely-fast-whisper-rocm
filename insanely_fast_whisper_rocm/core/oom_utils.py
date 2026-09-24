@@ -29,9 +29,16 @@ def classify_oom_error(exception: Exception) -> OutOfMemoryError | None:
 
     msg = str(exception)
     msg_lower = msg.lower()
-    # Check for common CUDA and HIP OOM signatures
+    # Check for explicit OOM messages and allocation failures emitted while
+    # CUDA/ROCm libraries initialize their handles.
     is_oom = any(
-        pattern in msg_lower for pattern in ("hip out of memory", "cuda out of memory")
+        pattern in msg_lower
+        for pattern in (
+            "hip out of memory",
+            "cuda out of memory",
+            "hipblas_status_alloc_failed",
+            "cublas_status_alloc_failed",
+        )
     )
 
     if not is_oom:

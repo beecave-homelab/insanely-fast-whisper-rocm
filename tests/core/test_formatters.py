@@ -42,6 +42,41 @@ class TestTxtFormatter:
         """TxtFormatter should return correct file extension."""
         assert TxtFormatter.get_file_extension() == "txt"
 
+    def test_txt_formatter__groups_word_chunks_into_speaker_turns(self) -> None:
+        """Diarized word chunks should form paragraphs instead of one line each."""
+        result = {
+            "diarized": True,
+            "chunks": [
+                {"text": " Okay,", "speaker": "SPEAKER_00"},
+                {"text": " we", "speaker": "SPEAKER_00"},
+                {"text": " have", "speaker": "SPEAKER_00"},
+                {"text": " 3", "speaker": "SPEAKER_00"},
+                {"text": " .15.", "speaker": "SPEAKER_00"},
+                {"text": " Hello", "speaker": "SPEAKER_01"},
+                {"text": " there!", "speaker": "SPEAKER_01"},
+            ],
+        }
+
+        formatted = TxtFormatter.format(result)
+
+        assert formatted == (
+            "[SPEAKER_00] Okay, we have 3.15.\n\n[SPEAKER_01] Hello there!"
+        )
+
+
+def test_subtitle_formatters__normalize_spaces_before_punctuation() -> None:
+    """SRT and VTT exports should attach punctuation tokens to prior words."""
+    result = {
+        "chunks": [
+            {"text": "It is", "timestamp": [0.0, 0.5]},
+            {"text": " 3", "timestamp": [0.5, 0.8]},
+            {"text": " .15.", "timestamp": [0.8, 1.2]},
+        ]
+    }
+
+    assert "It is 3.15." in SrtFormatter.format(result)
+    assert "It is 3.15." in VttFormatter.format(result)
+
 
 class TestBuildQualitySegments:
     """Test suite for build_quality_segments function."""
