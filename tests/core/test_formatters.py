@@ -79,6 +79,19 @@ class TestTxtFormatter:
 
         assert TxtFormatter.format(result) == "[SPEAKER_00] 你好，世界"
 
+    def test_txt_formatter__separates_latin_word_fragments(self) -> None:
+        """Diarized Latin word fragments should retain readable boundaries."""
+        result = {
+            "diarized": True,
+            "chunks": [
+                {"text": "Hello", "speaker": "SPEAKER_00"},
+                {"text": "world", "speaker": "SPEAKER_00"},
+                {"text": "!", "speaker": "SPEAKER_00"},
+            ],
+        }
+
+        assert TxtFormatter.format(result) == "[SPEAKER_00] Hello world!"
+
 
 def test_subtitle_formatters__normalize_spaces_before_punctuation() -> None:
     """SRT and VTT exports should attach punctuation tokens to prior words."""

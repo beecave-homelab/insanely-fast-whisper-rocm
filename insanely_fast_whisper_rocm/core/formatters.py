@@ -10,6 +10,7 @@ import json
 import logging
 import math
 import re
+import unicodedata
 from typing import Any
 
 from insanely_fast_whisper_rocm.core.segmentation import (
@@ -37,6 +38,48 @@ def _normalize_punctuation_spacing(text: str) -> str:
         Text with punctuation attached to the preceding token.
     """
     return re.sub(r"[^\S\r\n]+([,.;:!?])", r"\1", text)
+
+
+def _is_cjk_character(character: str) -> bool:
+    """Return whether a character belongs to a CJK writing system.
+
+    Args:
+        character: A single Unicode character.
+
+    Returns:
+        Whether the character is a CJK ideograph or Japanese/Korean syllable.
+    """
+    name = unicodedata.name(character, "")
+    return name.startswith((
+        "CJK UNIFIED IDEOGRAPH",
+        "CJK COMPATIBILITY IDEOGRAPH",
+        "HIRAGANA",
+        "KATAKANA",
+        "HANGUL",
+    ))
+
+
+def _needs_fragment_separator(left: str, right: str) -> bool:
+    """Return whether adjacent ASR fragments need an inserted space.
+
+    Args:
+        left: Text accumulated from preceding fragments.
+        right: The next fragment to append.
+
+    Returns:
+        Whether joining the fragments directly would merge separate words.
+    """
+    if not left or not right or left[-1].isspace() or right[0].isspace():
+        return False
+
+    left_character = left[-1]
+    right_character = right[0]
+    if not left_character.isalnum() or not right_character.isalnum():
+        return False
+
+    return not (
+        _is_cjk_character(left_character) and _is_cjk_character(right_character)
+    )
 
 
 def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
@@ -279,7 +322,12 @@ class TxtFormatter(BaseFormatter):
         Returns:
             A normalized paragraph without spaces before punctuation.
         """
-        text = "".join(fragments).strip()
+        text = ""
+        for fragment in fragments:
+            if _needs_fragment_separator(text, fragment):
+                text += " "
+            text += fragment
+        text = text.strip()
         return _normalize_punctuation_spacing(text)
 
     @classmethod
