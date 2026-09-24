@@ -57,9 +57,11 @@ with warnings.catch_warnings():
     except ImportError:
         Pipeline = None  # type: ignore[assignment, misc]
 
-# Pipeline cache (simple dict + RLock, no refcounting)
+# Pipeline cache and active-use tracking.
 # Key includes a hash of hf_token so different tokens get separate entries.
 _CACHE: dict[tuple[str, str, str], Pipeline] = {}  # type: ignore[type-arg]
+_ACTIVE_PIPELINE_USES: dict[int, int] = {}
+_PENDING_GPU_EVICTIONS: dict[int, Pipeline] = {}  # type: ignore[type-arg]
 _LOCK = threading.RLock()
 
 
@@ -67,6 +69,8 @@ def _get_or_create_pipeline(
     model_name: str,
     device: str,
     hf_token: str,
+    *,
+    reserve: bool = False,
 ) -> Pipeline:  # type: ignore[valid-type]
     """Return a cached pyannote Pipeline or create a new one.
 
@@ -75,6 +79,7 @@ def _get_or_create_pipeline(
             ``pyannote/speaker-diarization-3.1``).
         device: Torch device string (``"cpu"`` or ``"cuda"``).
         hf_token: HuggingFace access token for gated models.
+        reserve: Track the returned pipeline as actively in use.
 
     Returns:
         A ``pyannote.audio.Pipeline`` instance.
@@ -91,6 +96,8 @@ def _get_or_create_pipeline(
     with _LOCK:
         cached = _CACHE.get(key)
         if cached is not None:
+            if reserve:
+                _reserve_pipeline(cached)
             logger.info(
                 "Diarization timing: pipeline_cache_hit model=%s device=%s",
                 model_name,
@@ -149,7 +156,42 @@ def _get_or_create_pipeline(
                     key,
                     exc_info=exc,
                 )
-        return _CACHE[key]
+        cached = _CACHE[key]
+        if reserve:
+            _reserve_pipeline(cached)
+        return cached
+
+
+def _reserve_pipeline(pipeline: Pipeline) -> None:  # type: ignore[valid-type]
+    """Record an active caller for a cached pipeline.
+
+    Args:
+        pipeline: Pipeline that is about to run inference.
+    """
+    pipeline_id = id(pipeline)
+    _ACTIVE_PIPELINE_USES[pipeline_id] = _ACTIVE_PIPELINE_USES.get(pipeline_id, 0) + 1
+
+
+def _release_pipeline(pipeline: Pipeline) -> None:  # type: ignore[valid-type]
+    """Release an active pipeline and complete any deferred GPU eviction.
+
+    Args:
+        pipeline: Pipeline whose inference call has completed.
+    """
+    pipeline_to_evict: Pipeline | None = None  # type: ignore[type-arg]
+    pipeline_id = id(pipeline)
+    with _LOCK:
+        active_uses = _ACTIVE_PIPELINE_USES.get(pipeline_id, 0)
+        if active_uses <= 1:
+            _ACTIVE_PIPELINE_USES.pop(pipeline_id, None)
+            pipeline_to_evict = _PENDING_GPU_EVICTIONS.pop(pipeline_id, None)
+        else:
+            _ACTIVE_PIPELINE_USES[pipeline_id] = active_uses - 1
+
+    if pipeline_to_evict is not None:
+        _move_pipeline_to_cpu(pipeline_to_evict)
+        _empty_gpu_cache()
+        logger.info("Completed deferred GPU diarization pipeline eviction")
 
 
 def _normalize_diarization_device(device: str) -> str:
@@ -247,39 +289,63 @@ def clear_diarization_cache() -> None:
     logger.info("Diarization pipeline cache cleared")
 
 
+def _move_pipeline_to_cpu(pipeline: Pipeline) -> None:  # type: ignore[valid-type]
+    """Move a diarization pipeline to CPU without allowing cleanup to raise.
+
+    Args:
+        pipeline: Pipeline to migrate off the GPU.
+    """
+    try:
+        import torch
+
+        pipeline.to(torch.device("cpu"))
+    except Exception as exc:  # noqa: BLE001  # defensive: cleanup must not raise
+        logger.debug("Failed to move cached pipeline to CPU: %s", exc)
+
+
+def _empty_gpu_cache() -> None:
+    """Release unused GPU memory without allowing cleanup to raise."""
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception as exc:  # noqa: BLE001  # defensive: cleanup must not raise
+        logger.debug("Failed to empty CUDA cache after GPU cleanup: %s", exc)
+
+
 def _clear_gpu_diarization_cache() -> None:
     """Remove GPU-based diarization pipelines from the cache.
 
     Moves cached GPU pipelines to CPU and clears the cache entries so
     VRAM is freed for the ASR backend on the next transcription request.
     """
+    pipelines_to_evict: list[Pipeline] = []  # type: ignore[type-arg]
+    deferred_count = 0
     with _LOCK:
-        keys_to_remove = []
+        keys_to_remove: list[tuple[str, str, str]] = []
         for key, cached_pipeline in _CACHE.items():
             device = key[1]
             if isinstance(device, str) and device == "cuda":
-                try:
-                    import torch
-
-                    cached_pipeline.to(torch.device("cpu"))
-                except Exception as exc:  # noqa: BLE001  # defensive: cleanup must not raise
-                    logger.debug(
-                        "Failed to move cached pipeline %s to CPU: %s", key, exc
-                    )
                 keys_to_remove.append(key)
+                pipeline_id = id(cached_pipeline)
+                if _ACTIVE_PIPELINE_USES.get(pipeline_id, 0):
+                    _PENDING_GPU_EVICTIONS[pipeline_id] = cached_pipeline
+                    deferred_count += 1
+                else:
+                    pipelines_to_evict.append(cached_pipeline)
         for key in keys_to_remove:
             _CACHE.pop(key, None)
-    if keys_to_remove:
-        try:
-            import torch
 
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-        except Exception as exc:  # noqa: BLE001  # defensive: cache cleanup must not raise
-            logger.debug("Failed to empty CUDA cache after GPU cleanup: %s", exc)
+    for cached_pipeline in pipelines_to_evict:
+        _move_pipeline_to_cpu(cached_pipeline)
+    if pipelines_to_evict:
+        _empty_gpu_cache()
+    if keys_to_remove:
         logger.info(
-            "Cleared %d GPU diarization pipeline(s) from cache",
+            "Cleared %d GPU diarization pipeline(s) from cache (%d deferred)",
             len(keys_to_remove),
+            deferred_count,
         )
 
 
@@ -652,7 +718,12 @@ def diarize(
         device,
     )
     started_at = time.perf_counter()
-    pipeline = _get_or_create_pipeline(DEFAULT_DIARIZATION_MODEL, device, hf_token)
+    pipeline = _get_or_create_pipeline(
+        DEFAULT_DIARIZATION_MODEL,
+        device,
+        hf_token,
+        reserve=True,
+    )
     _log_timing("pipeline_ready", started_at, device=device)
     logger.info("Diarization pipeline ready")
 
@@ -710,11 +781,17 @@ def diarize(
                 exc,
             )
             cpu_pipeline = _get_or_create_pipeline(
-                DEFAULT_DIARIZATION_MODEL, "cpu", hf_token
+                DEFAULT_DIARIZATION_MODEL,
+                "cpu",
+                hf_token,
+                reserve=True,
             )
-            started_at = time.perf_counter()
-            diarization_result = cpu_pipeline(audio_input, **kwargs)
-            _log_timing("inference", started_at, device="cpu", fallback=True)
+            try:
+                started_at = time.perf_counter()
+                diarization_result = cpu_pipeline(audio_input, **kwargs)
+                _log_timing("inference", started_at, device="cpu", fallback=True)
+            finally:
+                _release_pipeline(cpu_pipeline)
     except Exception as exc:
         logger.error("Diarization inference failed: %s", exc, exc_info=True)
         raise DiarizationError(
@@ -724,7 +801,9 @@ def diarize(
         ) from exc
 
     finally:
-        # Release VRAM even when inference or the CPU retry fails.
+        _release_pipeline(pipeline)
+        # Release VRAM even when inference or the CPU retry fails. Eviction is
+        # deferred when another request still uses the shared GPU pipeline.
         if device == "cuda":
             _clear_gpu_diarization_cache()
 

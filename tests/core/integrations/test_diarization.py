@@ -303,6 +303,41 @@ def test_clear_diarization_cache__empties_cache() -> None:
         assert len(_CACHE) == 0
 
 
+def test_gpu_cache_cleanup__defers_migration_until_all_callers_release() -> None:
+    """GPU cleanup waits for every active user before migrating a pipeline."""
+    from insanely_fast_whisper_rocm.core.integrations import diarization
+
+    pipeline = MagicMock()
+    pipeline.to.return_value = pipeline
+    pipeline_cls = MagicMock()
+    pipeline_cls.from_pretrained.return_value = pipeline
+
+    with (
+        patch.object(diarization, "Pipeline", pipeline_cls),
+        patch.object(diarization, "_move_pipeline_to_cpu") as move_to_cpu,
+        patch.object(diarization, "_empty_gpu_cache") as empty_gpu_cache,
+    ):
+        first = diarization._get_or_create_pipeline(
+            "model-x", "cuda", "tok", reserve=True
+        )
+        second = diarization._get_or_create_pipeline(
+            "model-x", "cuda", "tok", reserve=True
+        )
+
+        diarization._clear_gpu_diarization_cache()
+
+        assert first is second
+        assert not diarization._CACHE
+        move_to_cpu.assert_not_called()
+
+        diarization._release_pipeline(first)
+        move_to_cpu.assert_not_called()
+
+        diarization._release_pipeline(second)
+        move_to_cpu.assert_called_once_with(pipeline)
+        empty_gpu_cache.assert_called_once_with()
+
+
 # ---------------------------------------------------------------------------
 # diarize() — graceful degradation on runtime error
 # ---------------------------------------------------------------------------
