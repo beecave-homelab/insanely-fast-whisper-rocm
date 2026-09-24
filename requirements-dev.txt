@@ -3,10 +3,10 @@
 
 docstr-coverage==2.3.2
 interrogate==1.7.0
-pytest==9.0.2
-pytest-cov==7.0.0
-ruff==0.14.11
-types-PyYAML==6.0.12.20250915
+pytest==9.0.3
+pytest-cov==7.1.0
+ruff==0.15.11
+types-PyYAML==6.0.12.20260408
 typing-extensions==4.15.0
 --index-url https://pypi.org/simple/
 --find-links https://repo.radeon.com/rocm/manylinux/rocm-rel-7.0/

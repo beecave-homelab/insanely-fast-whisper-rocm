@@ -36,7 +36,7 @@ def _normalize_punctuation_spacing(text: str) -> str:
     Returns:
         Text with punctuation attached to the preceding token.
     """
-    return re.sub(r"\s+([,.;:!?])", r"\1", text)
+    return re.sub(r"[^\S\r\n]+([,.;:!?])", r"\1", text)
 
 
 def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
@@ -279,7 +279,7 @@ class TxtFormatter(BaseFormatter):
         Returns:
             A normalized paragraph without spaces before punctuation.
         """
-        text = " ".join(fragment.strip() for fragment in fragments if fragment.strip())
+        text = "".join(fragments).strip()
         return _normalize_punctuation_spacing(text)
 
     @classmethod
@@ -420,9 +420,10 @@ class SrtFormatter(BaseFormatter):
                     for i, segment in enumerate(segments, 1):
                         start = format_srt_time(segment.start)
                         end = format_srt_time(segment.end)
-                        wrapped = split_lines(segment.text)
-                        normalized_text = _normalize_punctuation_spacing(
-                            cls._normalize_hyphen_spacing(wrapped)
+                        normalized_text = split_lines(
+                            _normalize_punctuation_spacing(
+                                cls._normalize_hyphen_spacing(segment.text)
+                            )
                         )
                         if segment.speaker:
                             normalized_text = f"[{segment.speaker}] {normalized_text}"
@@ -501,8 +502,11 @@ class SrtFormatter(BaseFormatter):
                     speaker = chunk.get("speaker")
 
                     # Apply line splitting for readability
-                    formatted_text = _normalize_punctuation_spacing(split_lines(text))
-                    formatted_text = cls._normalize_hyphen_spacing(formatted_text)
+                    formatted_text = split_lines(
+                        cls._normalize_hyphen_spacing(
+                            _normalize_punctuation_spacing(text)
+                        )
+                    )
                     if speaker:
                         formatted_text = f"[{speaker}] {formatted_text}"
 

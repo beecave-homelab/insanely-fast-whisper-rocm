@@ -522,10 +522,21 @@ def transcribe(
                 output_dir=file_config.temp_uploads_dir,
             )
         except OutOfMemoryError as oom:
-            error_msg = (
-                "Transcription failed because the GPU ran out of memory (OOM). "
-                "Stop other GPU workloads, select a smaller model, reduce the "
-                "batch size, or process shorter audio segments. "
+            is_cpu_oom = (oom.device or "").lower().startswith("cpu")
+            if is_cpu_oom:
+                error_msg = (
+                    "Transcription failed because the computer ran out of system "
+                    "memory (RAM). Close other memory-heavy applications, select a "
+                    "smaller model, reduce the batch size, or process shorter audio "
+                    "segments. "
+                )
+            else:
+                error_msg = (
+                    "Transcription failed because the GPU ran out of memory (OOM). "
+                    "Stop other GPU workloads, select a smaller model, reduce the "
+                    "batch size, or process shorter audio segments. "
+                )
+            error_msg += (
                 f"Current settings: model={config.model}, "
                 f"batch_size={config.batch_size}, "
                 f"chunk_length={config.chunk_length}"

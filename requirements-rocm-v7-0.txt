@@ -48,7 +48,7 @@ greenlet==3.4.0; python_version >= "3.10" and python_version < "3.14" and (platf
 groovy==0.1.2; python_version >= "3.10" and python_version < "3.14"
 grpcio==1.80.0; python_version >= "3.10" and python_version <= "3.13"
 h11==0.16.0; python_version >= "3.10" and python_version < "3.14"
-hf-xet==1.4.3; python_version >= "3.10" and python_version < "3.14" and (platform_machine == "x86_64" or platform_machine == "amd64" or platform_machine == "arm64" or platform_machine == "aarch64")
+hf-xet==1.4.3; python_version >= "3.10" and python_version < "3.14" and (platform_machine == "x86_64" or platform_machine == "amd64" or platform_machine == "AMD64" or platform_machine == "arm64" or platform_machine == "aarch64")
 httpcore==1.0.9; python_version >= "3.10" and python_version < "3.14"
 httpx==0.28.1; python_version >= "3.10" and python_version < "3.14"
 huggingface-hub==1.5.0; python_version >= "3.10" and python_version < "3.14"
@@ -163,4 +163,5 @@ xxhash==3.6.0; python_version >= "3.10" and python_version < "3.14"
 yarl==1.23.0; python_version >= "3.10" and python_version < "3.14"
 zipp==3.23.1; python_version >= "3.10" and python_version < "3.14"
 --index-url https://pypi.org/simple/
+--find-links https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/
 --find-links https://repo.radeon.com/rocm/manylinux/rocm-rel-7.0/

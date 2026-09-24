@@ -529,11 +529,22 @@ def test_transcribe__retains_text_and_reports_diarization_error(
     assert result["diarization_error"] == str(error)
 
 
-def test_transcribe__reports_gpu_oom_in_plain_language() -> None:
-    """Explain an exhausted GPU clearly without duplicating error prefixes."""
+@pytest.mark.parametrize(
+    ("device", "expected", "guidance"),
+    [
+        (None, "GPU ran out of memory (OOM)", "Stop other GPU workloads"),
+        ("cpu", "ran out of system memory (RAM)", "memory-heavy applications"),
+    ],
+)
+def test_transcribe__reports_oom_in_plain_language(
+    device: str | None,
+    expected: str,
+    guidance: str,
+) -> None:
+    """Explain exhausted GPU or system memory with device-specific guidance."""
     orchestrator = unittest.mock.MagicMock()
     orchestrator.run_transcription.side_effect = OutOfMemoryError(
-        "HIPBLAS_STATUS_ALLOC_FAILED"
+        "memory allocation failed", device=device
     )
     with unittest.mock.patch.object(
         handlers, "create_orchestrator", return_value=orchestrator
@@ -542,6 +553,6 @@ def test_transcribe__reports_gpu_oom_in_plain_language() -> None:
             handlers.transcribe("fake.wav", TranscriptionConfig(), FileHandlingConfig())
 
     message = str(exc_info.value)
-    assert "GPU ran out of memory (OOM)" in message
-    assert "Stop other GPU workloads" in message
+    assert expected in message
+    assert guidance in message
     assert not message.startswith("Transcription failed: Transcription failed")

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
+from insanely_fast_whisper_rocm.core import formatters
 from insanely_fast_whisper_rocm.core.formatters import (
     SrtFormatter,
     TxtFormatter,
@@ -63,6 +66,19 @@ class TestTxtFormatter:
             "[SPEAKER_00] Okay, we have 3.15.\n\n[SPEAKER_01] Hello there!"
         )
 
+    def test_txt_formatter__preserves_fragment_spacing_for_cjk(self) -> None:
+        """Diarized CJK fragments should not gain artificial ASCII spaces."""
+        result = {
+            "diarized": True,
+            "chunks": [
+                {"text": "你", "speaker": "SPEAKER_00"},
+                {"text": "好", "speaker": "SPEAKER_00"},
+                {"text": "，世界", "speaker": "SPEAKER_00"},
+            ],
+        }
+
+        assert TxtFormatter.format(result) == "[SPEAKER_00] 你好，世界"
+
 
 def test_subtitle_formatters__normalize_spaces_before_punctuation() -> None:
     """SRT and VTT exports should attach punctuation tokens to prior words."""
@@ -76,6 +92,18 @@ def test_subtitle_formatters__normalize_spaces_before_punctuation() -> None:
 
     assert "It is 3.15." in SrtFormatter.format(result)
     assert "It is 3.15." in VttFormatter.format(result)
+
+
+def test_srt_formatter__preserves_line_break_before_punctuation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Punctuation cleanup should not consume a line break added by wrapping."""
+    monkeypatch.setattr(formatters, "split_lines", lambda _text: "First line\n, next")
+    result = {"chunks": [{"text": "First line , next", "timestamp": [0.0, 2.0]}]}
+
+    formatted = SrtFormatter.format(result)
+
+    assert "First line\n, next" in formatted
 
 
 class TestBuildQualitySegments:

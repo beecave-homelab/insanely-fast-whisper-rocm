@@ -1,5 +1,7 @@
-# Use an official Python runtime as a parent image
-FROM python:3.10-slim
+# syntax=docker/dockerfile:1
+
+ARG ROCM_PYTORCH_BASE=rocm/pytorch:rocm7.0_ubuntu22.04_py3.10_pytorch_release_2.8.0
+FROM ${ROCM_PYTORCH_BASE}
 
 LABEL org.opencontainers.image.source https://github.com/beecave-homelab/insanely-fast-whisper-rocm
 
@@ -16,22 +18,21 @@ ENV HSA_OVERRIDE_GFX_VERSION=${HSA_OVERRIDE_GFX_VERSION}
 ENV MIOPEN_FIND_MODE=2
 
 # Install specific packages using pip
-RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \ 
+RUN apt-get update -y && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     ffmpeg \
+    libsndfile1 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy requirements file for installing dependencies
-# COPY requirements-rocm-v6-4-1.txt .
-COPY requirements-rocm-v7-0.txt .
-COPY .python-version .
+# Copy the fully resolved runtime export first for Docker layer caching.
+COPY requirements-container.txt /app/
 
-# Install project dependencies using pip
-RUN pip install --no-cache-dir -r requirements-rocm-v7-0.txt
-RUN pip uninstall -y torchcodec
+# Install the resolved runtime package set without dependency resolution. This
+# preserves the full ROCm PyTorch wheel and excludes development-only tooling.
+RUN pip install --no-cache-dir --no-deps -r /app/requirements-container.txt
 
 # Copy the OpenAPI spec file
 COPY openapi.yaml /app/
@@ -53,6 +54,7 @@ RUN pip install --no-cache-dir --no-deps .
 
 # Added in case Gradio is used and needs to be accessible; remove if not needed.
 ENV GRADIO_SERVER_NAME="0.0.0.0"
+ENV TORCHAUDIO_USE_SOUNDFILE=1
 
 # Expose default internal ports (API/WebUI). Actual bindings are controlled by Compose.
 EXPOSE 8888
