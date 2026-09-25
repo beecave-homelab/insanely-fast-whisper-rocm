@@ -10,6 +10,8 @@ from pathlib import Path
 import pytest
 
 from insanely_fast_whisper_rocm.core.errors import (
+    DiarizationError,
+    OutOfMemoryError,
     TranscriptionCancelledError,
     TranscriptionError,
 )
@@ -383,11 +385,13 @@ def test_process_transcription_request_single_file() -> None:
                 file_config,
             )
 
-            # Should return a tuple with 7 elements
-            assert len(result) == 7
-            # First element is transcription output text
+            # Should return a tuple with 8 elements (status + 7 others)
+            assert len(result) == 8
+            # First element is status text
             assert isinstance(result[0], str)
-            assert "Test transcription" in result[0]
+            # Second element is transcription output text
+            assert isinstance(result[1], str)
+            assert "Test transcription" in result[1]
 
 
 def test_process_transcription_request_multiple_files() -> None:
@@ -420,11 +424,9 @@ def test_process_transcription_request_multiple_files() -> None:
                 file_config,
             )
 
-            assert len(result) == 7
+            assert len(result) == 8
             # For multiple files, should show summary message
-            assert "Successfully processed 2 files" in str(result[0]) or "2" in str(
-                result[0]
-            )
+            assert "Successfully processed 2 files" in result[1]
 
 
 def test_process_transcription_request_with_error() -> None:
@@ -469,3 +471,88 @@ def test_process_transcription_request_with_cancellation() -> None:
                     config,
                     file_config,
                 )
+
+
+@pytest.mark.parametrize("file_count", [1, 2])
+def test_process_transcription_request__shows_diarization_failure(
+    tmp_path: Path,
+    file_count: int,
+) -> None:
+    """Single and batch results visibly warn when transcription lacks speakers."""
+    paths = [str(tmp_path / f"audio{i}.wav") for i in range(file_count)]
+    with unittest.mock.patch.object(
+        handlers,
+        "transcribe",
+        return_value={
+            "text": "Transcribed words",
+            "diarized": False,
+            "diarization_error": "inference failed",
+        },
+    ):
+        result = handlers.process_transcription_request(
+            paths,
+            TranscriptionConfig(),
+            FileHandlingConfig(temp_uploads_dir=str(tmp_path)),
+        )
+    assert "Diarization failed" in result[0]
+    assert "inference failed" in result[0]
+    if file_count == 2:
+        assert "Diarization failed" in result[1]
+        assert "Transcribed; diarization failed" in result[2]
+    else:
+        assert "Transcribed words" in result[1]
+
+
+@pytest.mark.parametrize(
+    "error", [DiarizationError("missing token"), RuntimeError("inference failed")]
+)
+def test_transcribe__retains_text_and_reports_diarization_error(
+    error: Exception,
+) -> None:
+    """Expected and unexpected diarization failures preserve the transcript."""
+    orchestrator = unittest.mock.MagicMock()
+    orchestrator.run_transcription.return_value = {"text": "Hello", "chunks": []}
+    with (
+        unittest.mock.patch.object(
+            handlers, "create_orchestrator", return_value=orchestrator
+        ),
+        unittest.mock.patch(
+            "insanely_fast_whisper_rocm.core.integrations.diarization.diarize",
+            side_effect=error,
+        ),
+    ):
+        result = handlers.transcribe(
+            "fake.wav", TranscriptionConfig(diarize=True), FileHandlingConfig()
+        )
+    assert result["text"] == "Hello"
+    assert result["diarized"] is False
+    assert result["diarization_error"] == str(error)
+
+
+@pytest.mark.parametrize(
+    ("device", "expected", "guidance"),
+    [
+        (None, "GPU ran out of memory (OOM)", "Stop other GPU workloads"),
+        ("cpu", "ran out of system memory (RAM)", "memory-heavy applications"),
+    ],
+)
+def test_transcribe__reports_oom_in_plain_language(
+    device: str | None,
+    expected: str,
+    guidance: str,
+) -> None:
+    """Explain exhausted GPU or system memory with device-specific guidance."""
+    orchestrator = unittest.mock.MagicMock()
+    orchestrator.run_transcription.side_effect = OutOfMemoryError(
+        "memory allocation failed", device=device
+    )
+    with unittest.mock.patch.object(
+        handlers, "create_orchestrator", return_value=orchestrator
+    ):
+        with pytest.raises(TranscriptionError) as exc_info:
+            handlers.transcribe("fake.wav", TranscriptionConfig(), FileHandlingConfig())
+
+    message = str(exc_info.value)
+    assert expected in message
+    assert guidance in message
+    assert not message.startswith("Transcription failed: Transcription failed")

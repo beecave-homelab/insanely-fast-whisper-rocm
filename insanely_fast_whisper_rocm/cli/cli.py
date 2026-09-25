@@ -30,7 +30,7 @@ constants.set_tokenizers_parallelism()  # Suppress parallelism warning
 @click.group()
 @click.version_option(version=constants.API_VERSION, prog_name=constants.API_TITLE)
 def cli() -> None:
-    """🎵 Insanely Fast Whisper API - CLI Tool.
+    """🎵 Insanely Fast Whisper ROCm - CLI Tool.
 
     A high-performance CLI for audio transcription and translation.
 

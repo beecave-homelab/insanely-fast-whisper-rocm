@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from insanely_fast_whisper_rocm.core.oom_utils import classify_oom_error
 
 
@@ -34,3 +36,21 @@ def test_classify_oom_error_cuda_without_device_has_none_device() -> None:
 
     assert oom is not None
     assert oom.device is None
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "CUDA error: HIPBLAS_STATUS_ALLOC_FAILED when calling hipblasCreate(handle)",
+        "CUBLAS_STATUS_ALLOC_FAILED when calling cublasCreate(handle)",
+    ],
+    ids=["hipblas", "cublas"],
+)
+def test_classify_oom_error__recognizes_blas_allocation_failure(
+    message: str,
+) -> None:
+    """Classify CUDA and ROCm BLAS handle allocation failures as OOM."""
+    oom = classify_oom_error(RuntimeError(message))
+
+    assert oom is not None
+    assert str(oom) == message

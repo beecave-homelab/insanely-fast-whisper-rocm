@@ -184,12 +184,21 @@ class ResponseFormatter:
                     "compression_ratio": chunk.get("compression_ratio", 0.0),
                     "no_speech_prob": chunk.get("no_speech_prob", 0.0),
                 }
+                speaker = chunk.get("speaker")
+                if speaker is not None:
+                    seg["speaker"] = speaker
                 segments.append(seg)
 
             verbose_payload: dict[str, Any] = {
                 "text": result.get("text", ""),
                 "segments": segments,
+                "diarized": bool(result.get("diarized", False)),
             }
+
+            # Include stabilization status when present
+            stabilized = result.get("stabilized")
+            if stabilized is not None:
+                verbose_payload["stabilized"] = bool(stabilized)
 
             # Attempt to include detected language if available
             language = result.get("language") or result.get("config_used", {}).get(
@@ -248,7 +257,7 @@ class ResponseFormatter:
             chunks = transcription_output.get("chunks", [])
             segments: list[dict] = []
             for idx, chunk in enumerate(chunks):
-                segments.append({
+                seg_dict: dict[str, Any] = {
                     "id": chunk.get("id", idx),
                     "seek": chunk.get("seek", 0),
                     "start": chunk.get("start", 0.0),
@@ -259,11 +268,19 @@ class ResponseFormatter:
                     "avg_logprob": chunk.get("avg_logprob", 0.0),
                     "compression_ratio": chunk.get("compression_ratio", 0.0),
                     "no_speech_prob": chunk.get("no_speech_prob", 0.0),
-                })
+                }
+                speaker = chunk.get("speaker")
+                if speaker is not None:
+                    seg_dict["speaker"] = speaker
+                segments.append(seg_dict)
             verbose_payload = {
                 "text": transcription_output.get("text", ""),
                 "segments": segments,
+                "diarized": bool(transcription_output.get("diarized", False)),
             }
+            stabilized = transcription_output.get("stabilized")
+            if stabilized is not None:
+                verbose_payload["stabilized"] = bool(stabilized)
             language = transcription_output.get("language") or transcription_output.get(
                 "config_used", {}
             ).get("language")

@@ -10,6 +10,7 @@ import json
 import logging
 import math
 import re
+import unicodedata
 from typing import Any
 
 from insanely_fast_whisper_rocm.core.segmentation import (
@@ -25,6 +26,60 @@ from insanely_fast_whisper_rocm.utils.format_time import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_punctuation_spacing(text: str) -> str:
+    """Remove whitespace immediately before closing punctuation.
+
+    Args:
+        text: Text assembled from ASR word tokens.
+
+    Returns:
+        Text with punctuation attached to the preceding token.
+    """
+    return re.sub(r"[^\S\r\n]+([,.;:!?])", r"\1", text)
+
+
+def _is_cjk_character(character: str) -> bool:
+    """Return whether a character belongs to a CJK writing system.
+
+    Args:
+        character: A single Unicode character.
+
+    Returns:
+        Whether the character is a CJK ideograph or Japanese/Korean syllable.
+    """
+    name = unicodedata.name(character, "")
+    return name.startswith((
+        "CJK UNIFIED IDEOGRAPH",
+        "CJK COMPATIBILITY IDEOGRAPH",
+        "HIRAGANA",
+        "KATAKANA",
+        "HANGUL",
+    ))
+
+
+def _needs_fragment_separator(left: str, right: str) -> bool:
+    """Return whether adjacent ASR fragments need an inserted space.
+
+    Args:
+        left: Text accumulated from preceding fragments.
+        right: The next fragment to append.
+
+    Returns:
+        Whether joining the fragments directly would merge separate words.
+    """
+    if not left or not right or left[-1].isspace() or right[0].isspace():
+        return False
+
+    left_character = left[-1]
+    right_character = right[0]
+    if not left_character.isalnum() or not right_character.isalnum():
+        return False
+
+    return not (
+        _is_cjk_character(left_character) and _is_cjk_character(right_character)
+    )
 
 
 def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
@@ -52,10 +107,13 @@ def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
         for chunk in chunks:
             text = chunk.get("text", "").strip()
             timestamp = chunk.get("timestamp")
+            speaker = chunk.get("speaker")
             if text and isinstance(timestamp, (list, tuple)) and len(timestamp) == 2:
                 start, end = timestamp
                 if isinstance(start, (int, float)) and isinstance(end, (int, float)):
-                    words_list.append(Word(text=text, start=start, end=end))
+                    words_list.append(
+                        Word(text=text, start=start, end=end, speaker=speaker)
+                    )
 
     if words_list:
         # Heuristic: if the average word duration is very short, it's likely word-level
@@ -85,17 +143,26 @@ def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
             # Nested structure: segments contain words arrays
             for segment in segments:
                 words = segment.get("words")
+                segment_speaker = segment.get("speaker")
                 if isinstance(words, list) and words and isinstance(words[0], dict):
                     for word_data in words:
                         text = word_data.get("word", "").strip()
                         start = word_data.get("start")
                         end = word_data.get("end")
+                        speaker = word_data.get("speaker", segment_speaker)
                         if (
                             text
                             and isinstance(start, (int, float))
                             and isinstance(end, (int, float))
                         ):
-                            words_list.append(Word(text=text, start=start, end=end))
+                            words_list.append(
+                                Word(
+                                    text=text,
+                                    start=start,
+                                    end=end,
+                                    speaker=speaker,
+                                )
+                            )
         elif "start" in first_segment and "end" in first_segment:
             # Flat structure: each segment IS a word (from stable-ts)
             # Check if these look like word-level segments (short duration)
@@ -103,12 +170,15 @@ def _result_to_words(result: dict[str, Any]) -> list[Word] | None:
                 text = segment.get("text", "").strip()
                 start = segment.get("start")
                 end = segment.get("end")
+                speaker = segment.get("speaker")
                 if (
                     text
                     and isinstance(start, (int, float))
                     and isinstance(end, (int, float))
                 ):
-                    words_list.append(Word(text=text, start=start, end=end))
+                    words_list.append(
+                        Word(text=text, start=start, end=end, speaker=speaker)
+                    )
 
             # Only return if average duration suggests word-level data
             if words_list:
@@ -192,7 +262,7 @@ def build_quality_segments(result: dict[str, Any]) -> list[dict[str, Any]]:
 
     logger.info(
         "[build_quality_segments] No words found, using fallback from raw "
-        "chunks/segments"
+        + "chunks/segments"
     )
     fallback_segments: list[dict[str, Any]] = []
     for chunk in result.get("segments") or result.get("chunks") or []:
@@ -242,9 +312,30 @@ class BaseFormatter:
 class TxtFormatter(BaseFormatter):
     """Formatter for plain text output."""
 
+    @staticmethod
+    def _join_fragments(fragments: list[str]) -> str:
+        """Join word or segment fragments into readable prose.
+
+        Args:
+            fragments: Adjacent text fragments from one speaker turn.
+
+        Returns:
+            A normalized paragraph without spaces before punctuation.
+        """
+        text = ""
+        for fragment in fragments:
+            if _needs_fragment_separator(text, fragment):
+                text += " "
+            text += fragment
+        text = text.strip()
+        return _normalize_punctuation_spacing(text)
+
     @classmethod
     def format(cls, result: dict[str, Any]) -> str:
         """Format as plain text.
+
+        When diarization data is present, each speaker turn is prefixed
+        with ``[SPEAKER_XX]`` so the plain-text output reflects who spoke.
 
         Args:
             result: The transcription result from ASRPipeline
@@ -255,6 +346,42 @@ class TxtFormatter(BaseFormatter):
         """
         logger.debug(f"[TxtFormatter] Formatting result: keys={list(result.keys())}")
         try:
+            if result.get("diarized"):
+                chunks = result.get("chunks") or result.get("segments") or []
+                if (
+                    isinstance(chunks, list)
+                    and chunks
+                    and isinstance(chunks[0], dict)
+                    and any(c.get("speaker") for c in chunks if isinstance(c, dict))
+                ):
+                    paragraphs: list[str] = []
+                    current_speaker: str | None = None
+                    fragments: list[str] = []
+
+                    def flush_turn() -> None:
+                        """Append the accumulated speaker turn to the output."""
+                        if not fragments:
+                            return
+                        text = cls._join_fragments(fragments)
+                        paragraphs.append(
+                            f"[{current_speaker}] {text}" if current_speaker else text
+                        )
+                        fragments.clear()
+
+                    for chunk in chunks:
+                        speaker = chunk.get("speaker")
+                        text = chunk.get("text", "")
+                        if not isinstance(text, str) or not text.strip():
+                            continue
+                        if fragments and speaker != current_speaker:
+                            flush_turn()
+                        if not fragments:
+                            current_speaker = speaker
+                        fragments.append(text)
+                    flush_turn()
+                    if paragraphs:
+                        return "\n\n".join(paragraphs)
+
             text = result.get("text", "")
             if not isinstance(text, str):
                 logger.error("[TxtFormatter] 'text' field is not a string.")
@@ -326,14 +453,14 @@ class SrtFormatter(BaseFormatter):
                 if has_timing_bug:
                     logger.warning(
                         "[SrtFormatter] Detected word-level timestamp bug "
-                        "(all words have same timestamp). "
-                        "Using fallback chunk-based formatting to avoid gaps."
+                        + "(all words have same timestamp). "
+                        + "Using fallback chunk-based formatting to avoid gaps."
                     )
                 else:
                     segments = segment_words(words)
                     logger.info(
                         "[SrtFormatter] segment_words() produced %d segments "
-                        "from %d words.",
+                        + "from %d words.",
                         len(segments),
                         len(words),
                     )
@@ -341,8 +468,13 @@ class SrtFormatter(BaseFormatter):
                     for i, segment in enumerate(segments, 1):
                         start = format_srt_time(segment.start)
                         end = format_srt_time(segment.end)
-                        wrapped = split_lines(segment.text)
-                        normalized_text = cls._normalize_hyphen_spacing(wrapped)
+                        normalized_text = split_lines(
+                            _normalize_punctuation_spacing(
+                                cls._normalize_hyphen_spacing(segment.text)
+                            )
+                        )
+                        if segment.speaker:
+                            normalized_text = f"[{segment.speaker}] {normalized_text}"
                         srt_content.append(
                             f"{i}\n{start} --> {end}\n{normalized_text}\n"
                         )
@@ -415,10 +547,16 @@ class SrtFormatter(BaseFormatter):
                     start = format_srt_time(start_sec)
                     end = format_srt_time(end_sec)
                     text = chunk.get("text", "").strip()
+                    speaker = chunk.get("speaker")
 
                     # Apply line splitting for readability
-                    formatted_text = split_lines(text)
-                    formatted_text = cls._normalize_hyphen_spacing(formatted_text)
+                    formatted_text = split_lines(
+                        cls._normalize_hyphen_spacing(
+                            _normalize_punctuation_spacing(text)
+                        )
+                    )
+                    if speaker:
+                        formatted_text = f"[{speaker}] {formatted_text}"
 
                     srt_content.append(f"{i}\n{start} --> {end}\n{formatted_text}\n")
                 except (TypeError, KeyError, AttributeError, IndexError) as chunk_e:
@@ -544,7 +682,10 @@ class VttFormatter(BaseFormatter):
                 for segment in segments:
                     start = format_vtt_time(segment.start)
                     end = format_vtt_time(segment.end)
-                    vtt_content.append(f"{start} --> {end}\n{segment.text}\n")
+                    seg_text = _normalize_punctuation_spacing(segment.text)
+                    if segment.speaker:
+                        seg_text = f"[{segment.speaker}] {seg_text}"
+                    vtt_content.append(f"{start} --> {end}\n{seg_text}\n")
                 return "\n".join(vtt_content)
 
         # Fallback to old chunk-based formatting if no words are found
@@ -599,10 +740,13 @@ class VttFormatter(BaseFormatter):
 
                     start = format_vtt_time(start_sec)
                     end = format_vtt_time(end_sec)
-                    text = chunk.get("text", "").strip()
+                    text = _normalize_punctuation_spacing(chunk.get("text", "").strip())
+                    speaker = chunk.get("speaker")
 
                     # Apply line splitting for readability
                     formatted_text = split_lines(text)
+                    if speaker:
+                        formatted_text = f"[{speaker}] {formatted_text}"
 
                     vtt_content.append(f"{start} --> {end}\n{formatted_text}\n")
                 except (TypeError, KeyError, AttributeError, IndexError) as chunk_e:

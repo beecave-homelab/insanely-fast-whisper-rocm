@@ -118,18 +118,32 @@ class TqdmProgressReporter(ProgressCallback):
 
     # ------------------------ post-processing ------------------------- #
     def on_postprocess_started(self, name: str) -> None:
-        """No-op to keep post-process output minimal and clean."""
+        """Print a status line for long-running post-processing steps.
+
+        Short-lived steps (e.g. "extract-audio") remain silent.  Long-running
+        steps like "diarization" and "stable-ts" print a message so the user
+        knows the pipeline is still active.
+
+        Args:
+            name: Identifier for the post-process step.
+        """
         if not self.enabled:
             return
-        return
+        key = name.strip().lower()
+        if key == "diarization":
+            tqdm.write("\u23f3 Diarization running...")
+        elif key == "stable-ts":
+            tqdm.write("\u23f3 Stabilizing timestamps...")
 
     def on_postprocess_finished(self, name: str) -> None:
-        """Print granular completion lines for Demucs and VAD.
+        """Print granular completion lines for post-processing steps.
 
         Args:
             name: Identifier for the post-process step. Supported values:
                 - "demucs" → prints "✔ Demucs vocals isolated".
                 - "vad threshold=..." → prints threshold value.
+                - "diarization" → prints "✔ Diarization complete".
+                - "stable-ts" → prints "✔ Timestamps stabilized".
                 - any other → generic "✔ Post completed".
         """
         if not self.enabled:
@@ -150,6 +164,12 @@ class TqdmProgressReporter(ProgressCallback):
                 tqdm.write(f"✔ VAD applied (threshold={threshold})")
             else:
                 tqdm.write("✔ VAD applied")
+            return
+        if key == "diarization":
+            tqdm.write("✔ Diarization complete")
+            return
+        if key == "stable-ts":
+            tqdm.write("✔ Timestamps stabilized")
             return
         tqdm.write("✔ Post completed")
 

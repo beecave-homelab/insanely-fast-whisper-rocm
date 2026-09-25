@@ -15,15 +15,17 @@
     "extraPaths": [
         "./insanely_fast_whisper_rocm"
     ],
+    "venvPath": ".",
+    "venv": ".venv",
     "pythonVersion": "3.10",
     "pythonPlatform": "Linux",
     "reportMissingImports": "warning",
     "reportMissingTypeStubs": "information",
     "reportImportCycles": "error",
-    "reportUnusedImport": "information",
-    "reportUnusedClass": "information",
-    "reportUnusedFunction": "information",
-    "reportUnusedVariable": "information",
+    "reportUnusedImport": "warning",
+    "reportUnusedClass": "warning",
+    "reportUnusedFunction": "warning",
+    "reportUnusedVariable": "warning",
     "reportDuplicateImport": "error",
     "reportUndefinedVariable": "error",
     "reportAssertAlwaysTrue": "warning",
@@ -31,5 +33,10 @@
     "reportImplicitStringConcatenation": "warning",
     "strictListInference": true,
     "strictDictionaryInference": true,
-    "strictParameterNoneValue": true
+    "strictParameterNoneValue": true,
+    "reportMissingTypeArgument": "warning",
+    "reportIncompatibleMethodOverride": "warning",
+    "reportDeprecated": "warning",
+    "reportOptionalSubscript": "warning",
+    "reportOptionalMemberAccess": "warning"
 } 
