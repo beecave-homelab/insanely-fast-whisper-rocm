@@ -66,6 +66,29 @@ def test_result_to_words_nested_word_structure() -> None:
     assert words[1].text == "world"
 
 
+def test_result_to_words_nested_word_structure_inherits_segment_speaker() -> None:
+    """Nested words should inherit speaker labels from their parent segment."""
+    result = {
+        "segments": [
+            {
+                "speaker": "SPEAKER_00",
+                "words": [
+                    {"word": "Hello", "start": 0.0, "end": 0.5},
+                    {"word": "world", "start": 0.5, "end": 1.0},
+                ],
+            }
+        ],
+        "diarized": True,
+    }
+
+    words = _result_to_words(result)
+    assert words is not None
+    assert [word.speaker for word in words] == ["SPEAKER_00", "SPEAKER_00"]
+
+    srt = SrtFormatter.format(result)
+    assert "[SPEAKER_00] Hello world" in srt
+
+
 def test_result_to_words_segments_word_level() -> None:
     """Test _result_to_words with segments that are word-level (short duration).
 

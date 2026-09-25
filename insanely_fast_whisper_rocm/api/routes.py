@@ -4,26 +4,37 @@ This module contains clean, focused route definitions that use dependency
 injection for ASR pipeline instances and file handling.
 """
 
+import json
 import logging
-from typing import Literal
+from pathlib import Path
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from insanely_fast_whisper_rocm.api.dependencies import (
     get_asr_pipeline,
     get_file_handler,
 )
 from insanely_fast_whisper_rocm.api.responses import ResponseFormatter
-from insanely_fast_whisper_rocm.core.errors import OutOfMemoryError
-from insanely_fast_whisper_rocm.core.integrations.stable_ts import stabilize_timestamps
+from insanely_fast_whisper_rocm.core.errors import (
+    DiarizationError,
+    OutOfMemoryError,
+)
+from insanely_fast_whisper_rocm.core.integrations.stable_ts import (
+    stabilize_timestamps,
+)
 from insanely_fast_whisper_rocm.core.orchestrator import create_orchestrator
 from insanely_fast_whisper_rocm.core.pipeline import WhisperPipeline
 from insanely_fast_whisper_rocm.utils import (
     DEFAULT_DEMUCS,
+    DEFAULT_DIARIZATION_DEVICE,
+    DEFAULT_DIARIZE,
     DEFAULT_STABILIZE,
     DEFAULT_TIMESTAMP_TYPE,
     DEFAULT_VAD,
     DEFAULT_VAD_THRESHOLD,
+    HF_TOKEN,
     RESPONSE_FORMAT_JSON,
     SUPPORTED_RESPONSE_FORMATS,
     FileHandler,
@@ -32,6 +43,163 @@ from insanely_fast_whisper_rocm.utils import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+VALID_DIARIZATION_DEVICES = {"cpu", "cuda", "gpu"}
+
+
+def _json_default(value: object) -> object:
+    """Convert non-standard JSON scalar values for persisted API results.
+
+    Handles numpy/torch scalar wrappers (``.item()``) and array-like objects
+    (``.tolist()``) by dispatching through ``getattr`` so the ``object``
+    parameter stays statically typed.
+
+    Args:
+        value: Value passed by ``json.dumps`` when default encoding fails.
+
+    Returns:
+        JSON-compatible scalar or container value.
+
+    Raises:
+        TypeError: If the value cannot be converted.
+    """
+    item = getattr(value, "item", None)
+    if callable(item):
+        return item()
+    tolist = getattr(value, "tolist", None)
+    if callable(tolist):
+        return tolist()
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
+
+def _persist_post_processed_result(result: dict[str, Any]) -> None:
+    """Persist the final API result when the pipeline already created a JSON file.
+
+    The pipeline saves before API-level stabilization and diarization run. Rewrite
+    that file after post-processing so disk artifacts match the response.
+
+    Args:
+        result: Final post-processed transcription or translation result.
+    """
+    output_file_path = result.get("output_file_path")
+    if not isinstance(output_file_path, str) or not output_file_path:
+        return
+
+    output_path = Path(output_file_path)
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(
+            json.dumps(
+                result,
+                ensure_ascii=False,
+                indent=2,
+                default=_json_default,
+            ),
+            encoding="utf-8",
+        )
+        logger.info("Post-processed API result saved to %s", output_path)
+    except (OSError, TypeError, ValueError) as exc:
+        logger.warning(
+            "Failed to update post-processed API result at %s: %s",
+            output_path,
+            exc,
+            exc_info=True,
+        )
+
+
+def _apply_post_processing(
+    result: dict[str, Any],
+    *,
+    stabilize: bool,
+    demucs: bool,
+    vad: bool,
+    vad_threshold: float,
+    diarize: bool,
+    diarization_device: str,
+    num_speakers: int | None,
+    min_speakers: int | None,
+    max_speakers: int | None,
+    audio_path: str,
+) -> dict[str, Any]:
+    """Apply optional stabilization and diarization post-processing.
+
+    Args:
+        result: Raw Whisper transcription result.
+        stabilize: Whether to run timestamp stabilization.
+        demucs: Enable Demucs noise reduction in stabilization.
+        vad: Enable VAD in stabilization.
+        vad_threshold: VAD sensitivity threshold.
+        diarize: Whether to run speaker diarization.
+        diarization_device: Device for diarization pipeline.
+        num_speakers: Exact speaker count (None = auto).
+        min_speakers: Minimum speaker count.
+        max_speakers: Maximum speaker count.
+        audio_path: Path to the audio file on disk.
+
+    Returns:
+        The result dict, potentially enriched with stabilization and/or
+        speaker labels.  When ``stabilize=True``, a ``"stabilized"`` key
+        is added (``True`` on success, ``False`` if stabilization failed).
+
+    Raises:
+        HTTPException: If diarization_device is invalid or diarization fails.
+            Diarization failures are recorded on ``result`` before raising.
+    """
+    if stabilize:
+        try:
+            result = stabilize_timestamps(
+                result, demucs=demucs, vad=vad, vad_threshold=vad_threshold
+            )
+            result["stabilized"] = True
+        except Exception as stab_exc:  # noqa: BLE001
+            logger.error("Stabilization failed: %s", stab_exc, exc_info=True)
+            result["stabilized"] = False
+
+    if diarize:
+        if diarization_device not in VALID_DIARIZATION_DEVICES:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Invalid diarization_device "
+                    f"'{diarization_device}'. Must be one of: "
+                    f"{sorted(VALID_DIARIZATION_DEVICES)}"
+                ),
+            )
+
+        normalized_device = (
+            "cuda" if diarization_device == "gpu" else diarization_device
+        )
+
+        try:
+            from insanely_fast_whisper_rocm.core.integrations.diarization import (
+                diarize as diarize_result,
+            )
+            from insanely_fast_whisper_rocm.core.integrations.diarization import (
+                validate_speaker_config,
+            )
+
+            # Validate early so invalid speaker config returns HTTP 400
+            # before any diarization pipeline work (diarize() also validates).
+            validate_speaker_config(
+                num_speakers=num_speakers,
+                min_speakers=min_speakers,
+                max_speakers=max_speakers,
+            )
+            result = diarize_result(
+                result,
+                audio_path=audio_path,
+                num_speakers=num_speakers,
+                min_speakers=min_speakers,
+                max_speakers=max_speakers,
+                device=normalized_device,
+                hf_token=HF_TOKEN,
+            )
+        except DiarizationError as e:
+            result["diarized"] = False
+            result["diarization_error"] = str(e)
+            _persist_post_processed_result(result)
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return result
 
 
 @router.post(
@@ -39,6 +207,7 @@ router = APIRouter()
     tags=["Transcription"],
     summary="Transcribe Audio",
     description="Convert speech in an audio file to text using the Whisper model",
+    response_model=None,
     responses={
         200: {
             "description": "Successful transcription",
@@ -77,9 +246,17 @@ async def create_transcription(
     vad_threshold: float = Form(
         DEFAULT_VAD_THRESHOLD, description="VAD threshold for speech detection"
     ),
+    diarize: bool = Form(DEFAULT_DIARIZE, description="Enable speaker diarization"),
+    num_speakers: int | None = Form(None, description="Exact number of speakers"),
+    min_speakers: int | None = Form(None, description="Minimum number of speakers"),
+    max_speakers: int | None = Form(None, description="Maximum number of speakers"),
+    diarization_device: str = Form(
+        DEFAULT_DIARIZATION_DEVICE,
+        description="Device for diarization (cpu, cuda, or gpu)",
+    ),
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),  # noqa: B008
     file_handler: FileHandler = Depends(get_file_handler),  # noqa: B008
-) -> str | dict:
+) -> JSONResponse | PlainTextResponse:
     """Transcribe speech in an audio file to text.
 
     This endpoint processes an audio file and returns its transcription using the
@@ -97,11 +274,18 @@ async def create_transcription(
         demucs: Enable Demucs noise reduction if True.
         vad: Enable Voice Activity Detection if True.
         vad_threshold: VAD sensitivity threshold (0.0 - 1.0).
+        diarize: Enable speaker diarization if True.
+        num_speakers: Exact number of speakers (auto-detect if None).
+        min_speakers: Minimum number of speakers for diarization.
+        max_speakers: Maximum number of speakers for diarization.
+        diarization_device: Device for diarization ("cpu", "cuda", or
+            "gpu"; "gpu" is an alias for "cuda").
         asr_pipeline: Injected ASR pipeline instance
         file_handler: Injected file handler instance
 
     Returns:
-        Union[str, dict]: Transcription result as plain text or JSON with metadata
+        JSONResponse | PlainTextResponse: Transcription result as plain text
+            or JSON with metadata.
 
     Raises:
         HTTPException: If file validation fails or processing errors occur
@@ -150,14 +334,22 @@ async def create_transcription(
                 raise
             raise HTTPException(status_code=500, detail=str(e)) from e
 
-        # Optional stabilization (post-process) applied here for API
-        if stabilize:
-            try:
-                result = stabilize_timestamps(
-                    result, demucs=demucs, vad=vad, vad_threshold=vad_threshold
-                )
-            except Exception as stab_exc:  # noqa: BLE001
-                logger.error("Stabilization failed: %s", stab_exc, exc_info=True)
+        # Optional post-processing (stabilization + diarization)
+        result = _apply_post_processing(
+            result,
+            stabilize=stabilize,
+            demucs=demucs,
+            vad=vad,
+            vad_threshold=vad_threshold,
+            diarize=diarize,
+            diarization_device=diarization_device,
+            num_speakers=num_speakers,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+            audio_path=temp_filepath,
+        )
+        _persist_post_processed_result(result)
+
         logger.info("Transcription completed successfully")
 
         # Validate response_format
@@ -177,6 +369,7 @@ async def create_transcription(
     tags=["Translation"],
     summary="Translate Audio",
     description="Translate speech in an audio file to English using the Whisper model",
+    response_model=None,
     responses={
         200: {
             "description": "Successful translation",
@@ -214,9 +407,17 @@ async def create_translation(
     vad_threshold: float = Form(
         DEFAULT_VAD_THRESHOLD, description="VAD threshold for speech detection"
     ),
+    diarize: bool = Form(DEFAULT_DIARIZE, description="Enable speaker diarization"),
+    num_speakers: int | None = Form(None, description="Exact number of speakers"),
+    min_speakers: int | None = Form(None, description="Minimum number of speakers"),
+    max_speakers: int | None = Form(None, description="Maximum number of speakers"),
+    diarization_device: str = Form(
+        DEFAULT_DIARIZATION_DEVICE,
+        description="Device for diarization (cpu, cuda, or gpu)",
+    ),
     asr_pipeline: WhisperPipeline = Depends(get_asr_pipeline),  # noqa: B008
     file_handler: FileHandler = Depends(get_file_handler),  # noqa: B008
-) -> str | dict:
+) -> JSONResponse | PlainTextResponse:
     """Translate speech in an audio file to English.
 
     This endpoint processes an audio file in any supported language and translates
@@ -232,11 +433,18 @@ async def create_translation(
         demucs: Enable Demucs noise reduction if True.
         vad: Enable Voice Activity Detection if True.
         vad_threshold: VAD sensitivity threshold (0.0 - 1.0).
+        diarize: Enable speaker diarization if True.
+        num_speakers: Exact number of speakers (auto-detect if None).
+        min_speakers: Minimum number of speakers for diarization.
+        max_speakers: Maximum number of speakers for diarization.
+        diarization_device: Device for diarization ("cpu", "cuda", or
+            "gpu"; "gpu" is an alias for "cuda").
         asr_pipeline: Injected ASR pipeline instance
         file_handler: Injected file handler instance
 
     Returns:
-        Union[str, dict]: Translation result as plain text or JSON with metadata
+        JSONResponse | PlainTextResponse: Translation result as plain text or
+            JSON with metadata.
 
     Raises:
         HTTPException: If file validation fails or processing errors occur
@@ -277,14 +485,22 @@ async def create_translation(
                 raise
             raise HTTPException(status_code=500, detail=str(e)) from e
 
-        # Optional stabilization (post-process) applied here for API
-        if stabilize:
-            try:
-                result = stabilize_timestamps(
-                    result, demucs=demucs, vad=vad, vad_threshold=vad_threshold
-                )
-            except Exception as stab_exc:  # noqa: BLE001
-                logger.error("Stabilization failed: %s", stab_exc, exc_info=True)
+        # Optional post-processing (stabilization + diarization)
+        result = _apply_post_processing(
+            result,
+            stabilize=stabilize,
+            demucs=demucs,
+            vad=vad,
+            vad_threshold=vad_threshold,
+            diarize=diarize,
+            diarization_device=diarization_device,
+            num_speakers=num_speakers,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+            audio_path=temp_filepath,
+        )
+        _persist_post_processed_result(result)
+
         logger.info("Translation completed successfully")
         logger.debug("Translation result: %s", result)
 

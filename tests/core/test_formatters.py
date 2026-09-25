@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
+from insanely_fast_whisper_rocm.core import formatters
 from insanely_fast_whisper_rocm.core.formatters import (
     SrtFormatter,
     TxtFormatter,
@@ -41,6 +44,79 @@ class TestTxtFormatter:
     def test_txt_formatter__get_file_extension(self) -> None:
         """TxtFormatter should return correct file extension."""
         assert TxtFormatter.get_file_extension() == "txt"
+
+    def test_txt_formatter__groups_word_chunks_into_speaker_turns(self) -> None:
+        """Diarized word chunks should form paragraphs instead of one line each."""
+        result = {
+            "diarized": True,
+            "chunks": [
+                {"text": " Okay,", "speaker": "SPEAKER_00"},
+                {"text": " we", "speaker": "SPEAKER_00"},
+                {"text": " have", "speaker": "SPEAKER_00"},
+                {"text": " 3", "speaker": "SPEAKER_00"},
+                {"text": " .15.", "speaker": "SPEAKER_00"},
+                {"text": " Hello", "speaker": "SPEAKER_01"},
+                {"text": " there!", "speaker": "SPEAKER_01"},
+            ],
+        }
+
+        formatted = TxtFormatter.format(result)
+
+        assert formatted == (
+            "[SPEAKER_00] Okay, we have 3.15.\n\n[SPEAKER_01] Hello there!"
+        )
+
+    def test_txt_formatter__preserves_fragment_spacing_for_cjk(self) -> None:
+        """Diarized CJK fragments should not gain artificial ASCII spaces."""
+        result = {
+            "diarized": True,
+            "chunks": [
+                {"text": "你", "speaker": "SPEAKER_00"},
+                {"text": "好", "speaker": "SPEAKER_00"},
+                {"text": "，世界", "speaker": "SPEAKER_00"},
+            ],
+        }
+
+        assert TxtFormatter.format(result) == "[SPEAKER_00] 你好，世界"
+
+    def test_txt_formatter__separates_latin_word_fragments(self) -> None:
+        """Diarized Latin word fragments should retain readable boundaries."""
+        result = {
+            "diarized": True,
+            "chunks": [
+                {"text": "Hello", "speaker": "SPEAKER_00"},
+                {"text": "world", "speaker": "SPEAKER_00"},
+                {"text": "!", "speaker": "SPEAKER_00"},
+            ],
+        }
+
+        assert TxtFormatter.format(result) == "[SPEAKER_00] Hello world!"
+
+
+def test_subtitle_formatters__normalize_spaces_before_punctuation() -> None:
+    """SRT and VTT exports should attach punctuation tokens to prior words."""
+    result = {
+        "chunks": [
+            {"text": "It is", "timestamp": [0.0, 0.5]},
+            {"text": " 3", "timestamp": [0.5, 0.8]},
+            {"text": " .15.", "timestamp": [0.8, 1.2]},
+        ]
+    }
+
+    assert "It is 3.15." in SrtFormatter.format(result)
+    assert "It is 3.15." in VttFormatter.format(result)
+
+
+def test_srt_formatter__preserves_line_break_before_punctuation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Punctuation cleanup should not consume a line break added by wrapping."""
+    monkeypatch.setattr(formatters, "split_lines", lambda _text: "First line\n, next")
+    result = {"chunks": [{"text": "First line , next", "timestamp": [0.0, 2.0]}]}
+
+    formatted = SrtFormatter.format(result)
+
+    assert "First line\n, next" in formatted
 
 
 class TestBuildQualitySegments:

@@ -9,6 +9,7 @@ This module is responsible for:
 """
 
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -27,6 +28,10 @@ USER_ENV_FILE = USER_CONFIG_DIR / ".env"
 
 _cli_debug_mode = "--debug" in sys.argv
 
+# Skip user-specific .env loading during tests to prevent user configuration
+# from leaking into the test suite (e.g. DIARIZE_DEFAULT=true).
+_in_test_mode = "pytest" in sys.modules
+
 # Temporarily load .env files to check LOG_LEVEL for initial debug print decision.
 # This is a pre-load specifically for determining SHOW_DEBUG_PRINTS.
 # The main loading in constants.py will handle the final override logic.
@@ -35,19 +40,19 @@ _project_root_env_exists_temp = PROJECT_ROOT_ENV_FILE.exists()
 if _project_root_env_exists_temp:
     load_dotenv(PROJECT_ROOT_ENV_FILE, override=True)
 
-_user_env_exists_temp = USER_ENV_FILE.exists()
+_user_env_exists_temp = USER_ENV_FILE.exists() and not _in_test_mode
 if _user_env_exists_temp:
     load_dotenv(
         USER_ENV_FILE, override=True
     )  # User .env can override project for LOG_LEVEL check
 
 
-# LOG_LEVEL is owned by constants.py. Import it here (after the pre-load above) so
-# we can decide whether to enable debug printing without directly accessing the
-# process environment. This import is intentionally placed mid-module to avoid a
-# circular import: constants.py imports env_loader first, and env_loader then reads
-# the LOG_LEVEL that constants.py has already defined.
-from insanely_fast_whisper_rocm.utils.constants import LOG_LEVEL  # noqa: E402
+# LOG_LEVEL is owned by constants.py for the public API, but reading it here
+# via a direct os.getenv avoids a circular import (constants.py imports
+# env_loader first). env_loader is the dedicated env-loading module, so
+# reading os.getenv here is appropriate and keeps the dependency direction
+# one-way: constants -> env_loader.
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 _env_debug_mode_temp = LOG_LEVEL.upper() == "DEBUG"
 

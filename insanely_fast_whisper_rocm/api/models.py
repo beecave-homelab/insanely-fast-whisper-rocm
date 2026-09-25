@@ -15,6 +15,9 @@ class TranscriptionChunk(BaseModel):
     timestamp: tuple[float, float] = Field(
         ..., description="Start and end timestamps in seconds"
     )
+    speaker: str | None = Field(
+        None, description="Assigned speaker label (when diarization is enabled)"
+    )
 
 
 class TranscriptionResponse(BaseModel):
@@ -36,3 +39,4 @@ class TranscriptionResponse(BaseModel):
     runtime_seconds: float | None = Field(
         None, description="Processing time in seconds"
     )
+    diarized: bool = Field(False, description="Whether speaker diarization was applied")
