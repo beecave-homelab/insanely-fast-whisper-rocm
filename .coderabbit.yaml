@@ -8,8 +8,10 @@ reviews:
     drafts: true
     auto_incremental_review: true
 
-  # Focus review scope on source, tests, and scripts; skip generated/auxiliary dirs
+  # Review source, tests, scripts, and the configuration files checked below.
   path_filters:
+      - ".coderabbit.yaml"
+      - ".env.example"
       - "insanely_fast_whisper_rocm/**"
       - "tests/**"
       - "scripts/**"
