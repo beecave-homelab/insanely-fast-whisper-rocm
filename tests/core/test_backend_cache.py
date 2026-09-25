@@ -163,7 +163,9 @@ class TestBackendCache:
         finally:
             backend_cache._EAGER_RELEASE = original_eager_release
 
-    def test_warm_cache_mode_keeps_backend(self) -> None:
+    def test_warm_cache_mode_keeps_backend(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Verify that default warm cache behavior keeps backend alive at ref_count=0."""
         cfg = HuggingFaceBackendConfig(
             model_name="openai/whisper-tiny",
@@ -174,32 +176,26 @@ class TestBackendCache:
             progress_group_size=5,
         )
 
-        # Save the original eager-release flag and disable eager release directly.
-        original_eager_release = backend_cache._EAGER_RELEASE
-        backend_cache._EAGER_RELEASE = False
-        try:
-            with patch(
-                "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
-            ) as mock_backend_class:
-                with patch(
-                    "insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"
-                ):
-                    mock_backend = MagicMock()
-                    mock_backend.close = Mock()
-                    mock_backend_class.return_value = mock_backend
+        monkeypatch.setattr(backend_cache, "_EAGER_RELEASE", False)
+        monkeypatch.setattr(backend_cache, "_RELEASE_TIMEOUT", None)
+        with patch(
+            "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
+        ) as mock_backend_class:
+            with patch("insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"):
+                mock_backend = MagicMock()
+                mock_backend.close = Mock()
+                mock_backend_class.return_value = mock_backend
 
-                    # Acquire and release
-                    _pipeline, key = acquire_pipeline(cfg)
-                    release_pipeline(key)
+                # Acquire and release
+                _pipeline, key = acquire_pipeline(cfg)
+                release_pipeline(key)
 
-                    # Backend should NOT have been closed (warm cache mode)
-                    mock_backend.close.assert_not_called()
+                # Backend should NOT have been closed (warm cache mode)
+                mock_backend.close.assert_not_called()
 
-                    # Entry should still exist in cache
-                    assert key in backend_cache._CACHE
-                    assert backend_cache._CACHE[key].ref_count == 0
-        finally:
-            backend_cache._EAGER_RELEASE = original_eager_release
+                # Entry should still exist in cache
+                assert key in backend_cache._CACHE
+                assert backend_cache._CACHE[key].ref_count == 0
 
     def test_borrow_pipeline_context_manager(self) -> None:
         """Verify that borrow_pipeline context manager properly acquires and releases."""

@@ -12,6 +12,7 @@ synchronously and deterministically without real wall-clock waits.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
+from dataclasses import replace
 from importlib import reload
 from threading import Event, Thread
 from types import SimpleNamespace
@@ -269,6 +270,80 @@ class TestTimeoutRelease:
 
         assert key not in backend_cache._CACHE
         assert acquired.is_set()
+
+    @pytest.mark.parametrize("mode", ["eager", "immediate", "timed"])
+    def test_release_pipeline__waits_for_same_key_cleanup(
+        self,
+        mode: str,
+        fake_timer: type[FakeTimer],
+        release_policy: Callable[[bool, float | None], None],
+    ) -> None:
+        """Wait for a key's close before rebuilding it, without blocking other keys."""
+        release_policy(mode == "eager", 1.0 if mode == "timed" else 0.0)
+        close_started = Event()
+        finish_close = Event()
+        same_started = Event()
+        same_done = Event()
+        other_done = Event()
+
+        def close_first_backend() -> None:
+            """Hold the first close open until concurrent acquisitions are checked."""
+            close_started.set()
+            assert finish_close.wait(2)
+
+        with (
+            patch(
+                "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
+            ) as backend_class,
+            patch("insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"),
+        ):
+            first_backend = MagicMock()
+            first_backend.close.side_effect = close_first_backend
+            backend_class.side_effect = [first_backend, MagicMock(), MagicMock()]
+            cfg = _cfg()
+            _pipeline, key = acquire_pipeline(cfg)
+
+            if mode == "timed":
+                release_pipeline(key)
+                close_thread = Thread(target=fake_timer.instances[0].fire)
+            else:
+                close_thread = Thread(target=release_pipeline, args=(key,))
+
+            def acquire_same_key() -> None:
+                """Request the key whose previous backend is closing."""
+                same_started.set()
+                acquire_pipeline(cfg)
+                same_done.set()
+
+            def acquire_other_key() -> None:
+                """Request an independent key while the first backend closes."""
+                acquire_pipeline(replace(cfg, model_name="other-model"))
+                other_done.set()
+
+            same_thread = Thread(target=acquire_same_key)
+            other_thread = Thread(target=acquire_other_key)
+            try:
+                close_thread.start()
+                assert close_started.wait(1)
+                same_thread.start()
+                assert same_started.wait(1)
+                assert not same_done.wait(0.05)
+                other_thread.start()
+                assert other_done.wait(1)
+                assert not same_done.is_set()
+            finally:
+                finish_close.set()
+                for worker in (close_thread, same_thread, other_thread):
+                    if worker.ident is not None:
+                        worker.join(timeout=2)
+
+            assert not any(
+                worker.is_alive()
+                for worker in (close_thread, same_thread, other_thread)
+            )
+            assert same_done.is_set()
+            assert backend_class.call_count == 3
+            assert backend_cache._CACHE[key].ref_count == 1
 
     def test_positive_timeout_schedules_timer(
         self, fake_timer: type, release_policy: Callable[[bool, float | None], None]
