@@ -9,6 +9,8 @@ from __future__ import annotations
 import threading
 from unittest.mock import MagicMock, Mock, patch
 
+import pytest
+
 from insanely_fast_whisper_rocm.core import backend_cache
 from insanely_fast_whisper_rocm.core.asr_backend import HuggingFaceBackendConfig
 from insanely_fast_whisper_rocm.core.backend_cache import (
@@ -89,8 +91,12 @@ class TestBackendCache:
                 # Both should return the same pipeline instance
                 assert pipeline1 is pipeline2
 
-    def test_release_pipeline_decrements_refcount(self) -> None:
+    def test_release_pipeline_decrements_refcount(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Verify that release_pipeline decrements ref_count."""
+        monkeypatch.setattr(backend_cache, "_EAGER_RELEASE", False)
+        monkeypatch.setattr(backend_cache, "_RELEASE_TIMEOUT", None)
         cfg = HuggingFaceBackendConfig(
             model_name="openai/whisper-tiny",
             device="cpu",

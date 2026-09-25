@@ -11,9 +11,11 @@ synchronously and deterministically without real wall-clock waits.
 
 from __future__ import annotations
 
-import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from importlib import reload
+from threading import Event, Thread
+from types import SimpleNamespace
+from typing import ClassVar
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -48,7 +50,7 @@ class FakeTimer:
     so tests control exactly when (or whether) the delayed release runs.
     """
 
-    instances: list[FakeTimer] = []
+    instances: ClassVar[list[FakeTimer]] = []
 
     def __init__(
         self,
@@ -93,7 +95,7 @@ class FakeTimer:
 
 
 @pytest.fixture(autouse=True)
-def _reset_cache() -> None:
+def _reset_cache() -> Iterator[None]:
     """Clear cache and fake-timer log before each test.
 
     Yields:
@@ -107,15 +109,14 @@ def _reset_cache() -> None:
 
 
 @pytest.fixture
-def fake_timer(monkeypatch: pytest.MonkeyPatch) -> type:
+def fake_timer(monkeypatch: pytest.MonkeyPatch) -> Iterator[type[FakeTimer]]:
     """Patch ``threading.Timer`` in backend_cache with FakeTimer.
 
     Yields:
         The FakeTimer class so tests can inspect created instances.
     """
-    monkeypatch.setattr(backend_cache.threading, "Timer", FakeTimer)
+    monkeypatch.setattr(backend_cache, "threading", SimpleNamespace(Timer=FakeTimer))
     yield FakeTimer
-    monkeypatch.setattr(backend_cache.threading, "Timer", threading.Timer)
 
 
 @pytest.fixture
@@ -231,6 +232,43 @@ class TestTimeoutRelease:
 
             mock_backend.close.assert_called_once()
             assert key not in backend_cache._CACHE
+
+    @pytest.mark.parametrize("eager_release,timeout", [(True, None), (False, 0.0)])
+    def test_release_pipeline__closes_without_holding_cache_lock(
+        self,
+        eager_release: bool,
+        timeout: float | None,
+        release_policy: Callable[[bool, float | None], None],
+    ) -> None:
+        """Allow another thread to use the cache while a backend closes."""
+        release_policy(eager_release, timeout)
+        acquired = Event()
+
+        def close_backend() -> None:
+            """Check that a separate thread can acquire the cache lock."""
+
+            def acquire_lock() -> None:
+                """Signal when the cache lock is available."""
+                with backend_cache._LOCK:
+                    acquired.set()
+
+            worker = Thread(target=acquire_lock)
+            worker.start()
+            assert acquired.wait(1)
+            worker.join()
+
+        with (
+            patch(
+                "insanely_fast_whisper_rocm.core.backend_cache.HuggingFaceBackend"
+            ) as backend_class,
+            patch("insanely_fast_whisper_rocm.core.backend_cache.WhisperPipeline"),
+        ):
+            backend_class.return_value.close.side_effect = close_backend
+            _pipeline, key = acquire_pipeline(_cfg())
+            release_pipeline(key)
+
+        assert key not in backend_cache._CACHE
+        assert acquired.is_set()
 
     def test_positive_timeout_schedules_timer(
         self, fake_timer: type, release_policy: Callable[[bool, float | None], None]

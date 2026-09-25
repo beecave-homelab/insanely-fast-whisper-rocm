@@ -42,6 +42,8 @@ class _CacheEntry:
         backend: The cached ASR backend instance.
         pipeline: A pipeline bound to the backend for end-to-end processing.
         ref_count: Number of active borrowers for this pipeline.
+        _release_timer: Pending idle release timer, when one is scheduled.
+        _release_generation: Unique token used to reject stale timer callbacks.
     """
 
     backend: HuggingFaceBackend
@@ -224,28 +226,20 @@ def release_pipeline(key: tuple[Hashable, ...]) -> None:
             return
 
         # refcount is zero — decide release policy.
-        if _EAGER_RELEASE:
-            _cancel_release_timer(entry)
-            try:
-                entry.backend.close()
-            finally:
-                _CACHE.pop(key, None)
-            return
-
-        if _RELEASE_TIMEOUT is None:
+        if _RELEASE_TIMEOUT is None and not _EAGER_RELEASE:
             # No timeout configured — keep the model warm.
             return
 
-        if _RELEASE_TIMEOUT == 0:
+        if _EAGER_RELEASE or _RELEASE_TIMEOUT == 0:
             _cancel_release_timer(entry)
-            try:
-                entry.backend.close()
-            finally:
-                _CACHE.pop(key, None)
+            _CACHE.pop(key, None)
+            backend = entry.backend
+        else:
+            # Positive timeout — schedule a delayed, cancellable release.
+            _schedule_release(key, entry, _RELEASE_TIMEOUT)
             return
 
-        # Positive timeout — schedule a delayed, cancellable release.
-        _schedule_release(key, entry, _RELEASE_TIMEOUT)
+    backend.close()
 
 
 def invalidate_gpu_cache() -> None:
