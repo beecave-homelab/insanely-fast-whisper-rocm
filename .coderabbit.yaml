@@ -31,12 +31,12 @@ reviews:
     flake8:
       enabled: false
 
-  # Single source of truth for code quality: scripts/local-ci.sh
+  # Evaluate source changes here; executable checks belong in GitHub CI.
   pre_merge_checks:
     custom_checks:
       - mode: error
-        name: "Local CI Pipeline"
-        instructions: "Run `scripts/local-ci.sh` to verify Ruff rules (F, E, W, N, D, DOC, TID, UP, FA), Google-style docstrings, naming/import rules, test coverage (min 85%). Also check SOLID principles, and no direct env access outside utils.constants, except bootstrap logging/environment loading in utils.env_loader as allowed by AGENTS.md section 16.2."
+        name: "Configuration Access"
+        instructions: "Inspect the PR diff for new direct environment reads in production code outside insanely_fast_whisper_rocm/utils/constants.py. Allow bootstrap environment loading in utils/env_loader.py. Check that new environment variables are documented in .env.example. Evaluate these rules from the diff only; do not run scripts/local-ci.sh or infer Ruff, test, or coverage results from this check."
 
 chat:
   art: false
