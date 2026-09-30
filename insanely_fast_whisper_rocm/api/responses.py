@@ -140,6 +140,57 @@ class ResponseFormatter:
             return format_callable()
 
     @staticmethod
+    def _collect_segments(source: dict[str, Any]) -> list[dict]:
+        """Collect segment dicts from a pipeline/stabilized result.
+
+        Stabilized results (stable-ts) drop ``chunks`` once usable
+        ``segments`` exist (see ``core.integrations.stable_ts``), so both
+        keys must be considered. When both are present the chunk list wins
+        to preserve the pre-stabilization raw word/segment data.
+
+        Args:
+            source: Result dict potentially containing ``chunks`` or ``segments``.
+
+        Returns:
+            List of segment dictionaries, preferring ``chunks`` when non-empty.
+        """
+        chunks = source.get("chunks")
+        if isinstance(chunks, list) and chunks:
+            return chunks
+        segments = source.get("segments")
+        if isinstance(segments, list):
+            return segments
+        return []
+
+    @staticmethod
+    def _verbose_segment(chunk: dict[str, Any], idx: int) -> dict[str, Any]:
+        """Normalise one chunk/segment to the OpenAI verbose_json shape.
+
+        Args:
+            chunk: Raw chunk or segment dictionary.
+            idx: Positional index used when the item has no ``id``.
+
+        Returns:
+            Segment dict with all OpenAI-expected keys present.
+        """
+        seg: dict[str, Any] = {
+            "id": chunk.get("id", idx),
+            "seek": chunk.get("seek", 0),
+            "start": chunk.get("start", 0.0),
+            "end": chunk.get("end", 0.0),
+            "text": chunk.get("text", ""),
+            "tokens": chunk.get("tokens", []),
+            "temperature": chunk.get("temperature", 0.0),
+            "avg_logprob": chunk.get("avg_logprob", 0.0),
+            "compression_ratio": chunk.get("compression_ratio", 0.0),
+            "no_speech_prob": chunk.get("no_speech_prob", 0.0),
+        }
+        speaker = chunk.get("speaker")
+        if speaker is not None:
+            seg["speaker"] = speaker
+        return seg
+
+    @staticmethod
     def format_transcription(
         result: dict[str, Any], response_format: str = RESPONSE_FORMAT_JSON
     ) -> JSONResponse | PlainTextResponse:
@@ -169,24 +220,10 @@ class ResponseFormatter:
             # Normalise each chunk to include all expected keys so downstream
             # clients (e.g. MacWhisper) can rely on their presence even if
             # some values are only best-effort defaults.
-            chunks = result.get("chunks", [])
+            chunks = ResponseFormatter._collect_segments(result)
             segments: list[dict] = []
             for idx, chunk in enumerate(chunks):
-                seg: dict[str, Any] = {
-                    "id": chunk.get("id", idx),
-                    "seek": chunk.get("seek", 0),
-                    "start": chunk.get("start", 0.0),
-                    "end": chunk.get("end", 0.0),
-                    "text": chunk.get("text", ""),
-                    "tokens": chunk.get("tokens", []),
-                    "temperature": chunk.get("temperature", 0.0),
-                    "avg_logprob": chunk.get("avg_logprob", 0.0),
-                    "compression_ratio": chunk.get("compression_ratio", 0.0),
-                    "no_speech_prob": chunk.get("no_speech_prob", 0.0),
-                }
-                speaker = chunk.get("speaker")
-                if speaker is not None:
-                    seg["speaker"] = speaker
+                seg: dict[str, Any] = ResponseFormatter._verbose_segment(chunk, idx)
                 segments.append(seg)
 
             verbose_payload: dict[str, Any] = {
@@ -254,24 +291,12 @@ class ResponseFormatter:
         # Verbose JSON response – reuse logic similar to transcription
         if response_format == RESPONSE_FORMAT_VERBOSE_JSON:
             transcription_output = result.get("transcription", result)
-            chunks = transcription_output.get("chunks", [])
+            chunks = ResponseFormatter._collect_segments(transcription_output)
             segments: list[dict] = []
             for idx, chunk in enumerate(chunks):
-                seg_dict: dict[str, Any] = {
-                    "id": chunk.get("id", idx),
-                    "seek": chunk.get("seek", 0),
-                    "start": chunk.get("start", 0.0),
-                    "end": chunk.get("end", 0.0),
-                    "text": chunk.get("text", ""),
-                    "tokens": chunk.get("tokens", []),
-                    "temperature": chunk.get("temperature", 0.0),
-                    "avg_logprob": chunk.get("avg_logprob", 0.0),
-                    "compression_ratio": chunk.get("compression_ratio", 0.0),
-                    "no_speech_prob": chunk.get("no_speech_prob", 0.0),
-                }
-                speaker = chunk.get("speaker")
-                if speaker is not None:
-                    seg_dict["speaker"] = speaker
+                seg_dict: dict[str, Any] = ResponseFormatter._verbose_segment(
+                    chunk, idx
+                )
                 segments.append(seg_dict)
             verbose_payload = {
                 "text": transcription_output.get("text", ""),

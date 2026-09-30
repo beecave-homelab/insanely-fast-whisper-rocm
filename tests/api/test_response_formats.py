@@ -198,3 +198,119 @@ def test_response_format_variants(
 
     if response_format == RESPONSE_FORMAT_TEXT:
         assert response.text == "hello world"
+
+
+# ---------------------------------------------------------------------------
+# Stabilized results: segments present, chunks missing/empty (issue #77)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "/v1/audio/transcriptions",
+        "/v1/audio/translations",
+    ],
+)
+@pytest.mark.parametrize("chunks_key_present", [False, True])
+@patch("insanely_fast_whisper_rocm.api.routes.create_orchestrator")
+def test_verbose_json_includes_stabilized_segments(
+    mock_create_orchestrator: Mock,
+    endpoint: str,
+    chunks_key_present: bool,
+) -> None:
+    """Verbose_json must expose stabilized segments without chunks.
+
+    A stabilized result with populated segments and missing/empty chunks
+    must expose those segments (with timestamps and speaker labels) through
+    verbose_json on both endpoints.
+
+    Regression for issue #77: stable_ts drops ``chunks`` once usable
+    ``segments`` exist, but the API formatters only read ``chunks``.
+    """
+    mock_orch = mock_create_orchestrator.return_value
+    stabilized_result: dict[str, Any] = {
+        "text": "hello world",
+        "stabilized": True,
+        "language": "en",
+        "segments": [
+            {
+                "start": 0.0,
+                "end": 1.5,
+                "text": "hello ",
+                "speaker": "SPEAKER_00",
+            },
+            {
+                "start": 1.5,
+                "end": 2.0,
+                "text": "world",
+            },
+        ],
+    }
+    if chunks_key_present:
+        stabilized_result["chunks"] = []
+
+    # Translation results are wrapped in a "transcription" object.
+    if endpoint == "/v1/audio/translations":
+        mock_orch.run_transcription.return_value = {"transcription": stabilized_result}
+    else:
+        mock_orch.run_transcription.return_value = stabilized_result
+
+    client = TestClient(app)
+    response = _post_file(client, endpoint, RESPONSE_FORMAT_VERBOSE_JSON)
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert payload["stabilized"] is True
+    assert payload["language"] == "en"
+    segments = payload["segments"]
+    assert len(segments) == 2
+
+    first = segments[0]
+    assert first["id"] == 0
+    assert first["start"] == 0.0
+    assert first["end"] == 1.5
+    assert first["text"] == "hello "
+    assert first["speaker"] == "SPEAKER_00"
+    # OpenAI-expected keys stay present even for stabilized segments.
+    assert {
+        "seek",
+        "tokens",
+        "temperature",
+        "avg_logprob",
+        "compression_ratio",
+        "no_speech_prob",
+    } <= first.keys()
+
+    second = segments[1]
+    assert second["id"] == 1
+    assert second["start"] == 1.5
+    assert second["end"] == 2.0
+    assert second["text"] == "world"
+    assert "speaker" not in second
+
+
+@patch("insanely_fast_whisper_rocm.api.routes.create_orchestrator")
+def test_verbose_json_still_prefers_chunks(mock_create_orchestrator: Mock) -> None:
+    """Results that still carry chunks keep using them (backward compat)."""
+    mock_orch = mock_create_orchestrator.return_value
+    mock_orch.run_transcription.return_value = {
+        "text": "hello world",
+        "chunks": [
+            {"start": 0.0, "end": 1.0, "text": "hello "},
+            {"start": 1.0, "end": 2.0, "text": "world"},
+        ],
+        "segments": [
+            {"start": 0.0, "end": 9.0, "text": "stale segment"},
+        ],
+        "language": "en",
+    }
+
+    client = TestClient(app)
+    response = _post_file(
+        client, "/v1/audio/transcriptions", RESPONSE_FORMAT_VERBOSE_JSON
+    )
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert [seg["text"] for seg in payload["segments"]] == ["hello ", "world"]
