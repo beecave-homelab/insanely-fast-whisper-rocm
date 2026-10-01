@@ -55,7 +55,7 @@ dev = [
     "interrogate>=1.7.0",
 ]
 
-# Should allow version from rocm-wheels-6.4.1 and rocm-wheels-7.0
+# ROCm framework versions are pinned per image stack.
 rocm-6-4-1 = [
     # "torch==2.7.1+rocm6.4.1",
     "torch==2.6.0+rocm6.4.1.git1ded221d",
@@ -70,6 +70,13 @@ rocm-7-0 = [
     "torchaudio==2.8.0+rocm7.0.0.git6e1c7fe9",
     "onnxruntime-rocm==1.22.1",
     "pytorch-triton-rocm==3.4.0",
+]
+rocm-7-2-4 = [
+    # Match the preinstalled wheels in the ROCm 7.2.4 / PyTorch 2.9.1 image.
+    "torch==2.9.1+rocm7.2.4.lw.git39497456",
+    "torchaudio==2.9.0+rocm7.2.4.gite3c6ee2b",
+    "torchvision==0.24.0+rocm7.2.4.gitb919bd0c",
+    "triton==3.5.1+rocm7.2.4.gita272dfa8",
 ]
 
 # Tool configurations for development
@@ -262,7 +269,7 @@ name = "pypi"
 url = "https://pypi.org/simple/"
 verify_ssl = true
 type = "index"
-exclude_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton", "nvidia-*", "torchcodec"]
+exclude_packages = ["torch", "torchaudio", "torchvision", "onnxruntime-rocm", "pytorch-triton-rocm", "triton", "nvidia-*", "torchcodec"]
 include_packages = ["*"]
 
 
@@ -279,6 +286,13 @@ url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.0/"
 verify_ssl = true
 type = "find_links"
 include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "triton"]
+
+[[tool.pdm.source]]
+name = "rocm-wheels-7.2.4"
+url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.2.4/"
+verify_ssl = true
+type = "find_links"
+include_packages = ["torch", "torchaudio", "torchvision", "triton"]
 
 
 # PDM resolution constraints

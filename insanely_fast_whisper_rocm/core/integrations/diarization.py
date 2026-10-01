@@ -477,12 +477,30 @@ def _time_overlap(
     return max(0.0, overlap_end - overlap_start)
 
 
+def _load_audio_with_soundfile(audio_path: str) -> tuple[Any, int]:
+    """Decode audio without TorchCodec and return a mono Torch waveform.
+
+    Args:
+        audio_path: Path to a format supported by libsndfile.
+
+    Returns:
+        Mono waveform tensor and sample rate.
+    """
+    import soundfile
+    import torch
+
+    samples, sample_rate = soundfile.read(audio_path, dtype="float32", always_2d=True)
+    waveform = torch.from_numpy(samples.T.copy())
+    if waveform.shape[0] > 1:
+        waveform = waveform.mean(dim=0, keepdim=True)
+    return waveform, sample_rate
+
+
 def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
     """Load audio as a waveform dict for pyannote when torchcodec is absent.
 
-    Tries ``torchaudio.load`` first (fast path for WAV/FLAC).  When that
-    fails because the format is unsupported by the soundfile backend (e.g.
-    ``.m4a``, ``.mp3``), converts to WAV via ``ffmpeg`` and retries.
+    Try torchaudio, then SoundFile when TorchCodec is unavailable. Convert
+    formats that neither decoder supports to WAV with FFmpeg.
 
     Args:
         audio_path: Path to the audio file on disk.
@@ -492,9 +510,8 @@ def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
         pyannote.
 
     Raises:
-        DiarizationError: If torchaudio cannot be imported, or if both
-            direct torchaudio loading and ffmpeg→torchaudio conversion
-            fail (reason ``audio_decode_unavailable``).
+        DiarizationError: If torchaudio cannot be imported or decoding fails
+            after FFmpeg conversion (reason ``audio_decode_unavailable``).
     """
     # Fast path: torchaudio can read it directly (WAV, FLAC, etc.)
     try:
@@ -522,9 +539,21 @@ def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
         return {"waveform": waveform, "sample_rate": sample_rate}
     except Exception as direct_exc:
         logger.debug(
-            "torchaudio.load failed for %s: %s - trying ffmpeg conversion",
+            "torchaudio.load failed for %s: %s - trying SoundFile",
             audio_path,
             direct_exc,
+        )
+
+    try:
+        started_at = time.perf_counter()
+        waveform, sample_rate = _load_audio_with_soundfile(audio_path)
+        _log_timing("audio_preload", started_at, route="soundfile")
+        return {"waveform": waveform, "sample_rate": sample_rate}
+    except Exception as soundfile_exc:
+        logger.debug(
+            "SoundFile failed for %s: %s - trying ffmpeg conversion",
+            audio_path,
+            soundfile_exc,
         )
 
     # Slow path: convert to WAV via ffmpeg, then load.
@@ -571,14 +600,20 @@ def _preload_audio_as_waveform(audio_path: str) -> dict[str, Any]:
                 reason="audio_decode_unavailable",
             )
 
-        waveform, sample_rate = torchaudio.load(tmp_path)  # type: ignore[possibly-undefined]
+        try:
+            waveform, sample_rate = torchaudio.load(tmp_path)
+            route = "ffmpeg_torchaudio"
+        except Exception:
+            waveform, sample_rate = _load_audio_with_soundfile(tmp_path)
+            route = "ffmpeg_soundfile"
         logger.debug(
-            "Preloaded audio via ffmpeg→torchaudio: shape=%s, sr=%d, src=%s",
+            "Preloaded audio via %s: shape=%s, sr=%d, src=%s",
+            route,
             waveform.shape,
             sample_rate,
             suffix,
         )
-        _log_timing("audio_preload", started_at, route="ffmpeg_torchaudio")
+        _log_timing("audio_preload", started_at, route=route)
         return {"waveform": waveform, "sample_rate": sample_rate}
     except DiarizationError:
         raise
