@@ -8,6 +8,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+import soundfile
 import torch
 
 from insanely_fast_whisper_rocm.core.errors import DiarizationError
@@ -877,6 +878,20 @@ def test_preload_audio_as_waveform__loads_wav_directly() -> None:
     assert result["waveform"] is fake_waveform
 
 
+def test_preload_audio_as_waveform__uses_soundfile_without_torchcodec(
+    tmp_path: Path,
+) -> None:
+    """Load a real WAV when torchaudio requires unavailable TorchCodec."""
+    audio_path = tmp_path / "speech.wav"
+    soundfile.write(audio_path, torch.zeros(16000).numpy(), 16000)
+
+    with patch("torchaudio.load", side_effect=ImportError("TorchCodec required")):
+        result = _preload_audio_as_waveform(str(audio_path))
+
+    assert result["sample_rate"] == 16000
+    assert result["waveform"].shape == (1, 16000)
+
+
 def test_preload_audio_as_waveform__uses_ffmpeg_decode_for_m4a(
     tmp_path: Path,
 ) -> None:
@@ -910,6 +925,33 @@ def test_preload_audio_as_waveform__uses_ffmpeg_decode_for_m4a(
     assert result["waveform"] is fake_waveform
     mock_run.assert_called_once()
     assert mock_run.call_args.kwargs["timeout"] == 12
+
+
+def test_preload_audio_as_waveform__decodes_converted_wav_without_torchcodec(
+    tmp_path: Path,
+) -> None:
+    """Use SoundFile on FFmpeg output when Torchaudio still needs TorchCodec."""
+    mock_completed = MagicMock(returncode=0)
+    samples = torch.zeros((16000, 1)).numpy()
+
+    with (
+        patch("torchaudio.load", side_effect=ImportError("TorchCodec required")),
+        patch(
+            "soundfile.read",
+            side_effect=[RuntimeError("unsupported m4a"), (samples, 16000)],
+        ),
+        patch("subprocess.run", return_value=mock_completed) as mock_run,
+        patch("tempfile.NamedTemporaryFile") as mock_tmp,
+    ):
+        mock_file = MagicMock()
+        mock_file.name = str(tmp_path / "converted.wav")
+        mock_tmp.return_value = mock_file
+
+        result = _preload_audio_as_waveform("/audio.m4a")
+
+    assert result["sample_rate"] == 16000
+    assert result["waveform"].shape == (1, 16000)
+    mock_run.assert_called_once()
 
 
 def test_preload_audio_as_waveform__raises_error_on_ffmpeg_failure(

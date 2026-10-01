@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1
+
+# Experimental issue #74 build. Keep the validated framework stack in this base.
+FROM rocm/pytorch:rocm7.2.4_ubuntu22.04_py3.10_pytorch_release_2.9.1@sha256:9c9592175fece788d6c0b86059012f49b568dc95c98c13879dfdf89c30342559
+
+ARG HSA_OVERRIDE_GFX_VERSION=
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    ROCM_PATH=/opt/rocm \
+    HSA_OVERRIDE_GFX_VERSION=${HSA_OVERRIDE_GFX_VERSION} \
+    MIOPEN_FIND_MODE=2 \
+    GRADIO_SERVER_NAME=0.0.0.0 \
+    TORCHAUDIO_USE_SOUNDFILE=1
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    ffmpeg libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY requirements-container-rocm-7-2-4.txt /app/
+
+# Install the PDM export pinned to AMD's ROCm 7.2.4 wheel index. Pip keeps the
+# identical framework wheels already present in the matching base image.
+RUN pip install --no-cache-dir --no-deps -r /app/requirements-container-rocm-7-2-4.txt \
+    && python -c 'import importlib.metadata as m; expected = {"torch": "2.9.1+rocm7.2.4.lw.git39497456", "torchaudio": "2.9.0+rocm7.2.4.gite3c6ee2b", "torchvision": "0.24.0+rocm7.2.4.gitb919bd0c", "triton": "3.5.1+rocm7.2.4.gita272dfa8"}; actual = {name: m.version(name) for name in expected}; print(actual); assert actual == expected'
+
+COPY pyproject.toml openapi.yaml /app/
+COPY insanely_fast_whisper_rocm /app/insanely_fast_whisper_rocm/
+RUN pip install --no-cache-dir --no-deps .
+
+EXPOSE 8888 7860
+CMD ["python", "-m", "insanely_fast_whisper_rocm.webui"]
