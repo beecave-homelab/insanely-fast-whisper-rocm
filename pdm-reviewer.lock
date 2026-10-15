@@ -4,8 +4,8 @@
 [metadata]
 groups = ["reviewer"]
 strategy = ["inherit_metadata"]
-lock_version = "4.5.0"
-content_hash = "sha256:b4bc84ab316ddfe077a4a2c0ae77966e5413f6d044bb20e45a3b7a1cb59a17c1"
+lock_version = "4.5.1"
+content_hash = "sha256:261069669e0f8ddbf62c4884b3ce63c29f3bcaea0a50ac2f6d64b54146d41f7a"
 
 [[metadata.targets]]
 requires_python = "~=3.10"
@@ -3106,7 +3106,7 @@ files = [
 
 [[package]]
 name = "transformers"
-version = "5.5.0"
+version = "5.10.4"
 requires_python = ">=3.10.0"
 summary = "Transformers: the model-definition framework for state-of-the-art machine learning models in text, vision, audio, and multimodal models, for both inference and training."
 groups = ["reviewer"]
@@ -3123,8 +3123,8 @@ dependencies = [
     "typer",
 ]
 files = [
-    {file = "transformers-5.5.0-py3-none-any.whl", hash = "sha256:821a9ff0961abbb29eb1eb686d78df1c85929fdf213a3fe49dc6bd94f9efa944"},
-    {file = "transformers-5.5.0.tar.gz", hash = "sha256:c8db656cf51c600cd8c75f06b20ef85c72e8b8ff9abc880c5d3e8bc70e0ddcbd"},
+    {file = "transformers-5.10.4-py3-none-any.whl", hash = "sha256:8c5b99b141b53619435a76629b0284f04d27ff46d788b463fc0ecb23b8ff130e"},
+    {file = "transformers-5.10.4.tar.gz", hash = "sha256:de37741509e64ccb88f7f5708beaf5b1914df447f5fe659f9c0fd95950413168"},
 ]
 
 [[package]]
